@@ -36,6 +36,8 @@ configure_file(config/margrete-rpc.ini.in "${CMAKE_CURRENT_BINARY_DIR}/margrete-
 add_library(margrete_rpc SHARED
     src/DLLMain.cpp
     src/Plugin.cpp
+    src/Config.cpp
+    src/Logger.cpp
     ${GEN_SRC}
 )
 
@@ -49,7 +51,10 @@ endif()
 add_executable(plugin_tests
     tests/smoke_tests.cpp
     tests/frame_protocol_tests.cpp
+    tests/config_tests.cpp
     src/FrameProtocol.cpp
+    src/Config.cpp
+    src/Logger.cpp
     ${GEN_SRC}
 )
 
