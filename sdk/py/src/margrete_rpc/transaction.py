@@ -35,4 +35,6 @@ class Transaction:
     def commit(self) -> int:
         if not self._items:
             return 0
-        return self._client._append_transaction(self._name, self._items)
+        count = self._client._append_transaction(self._name, self._items)
+        self._items.clear()
+        return count

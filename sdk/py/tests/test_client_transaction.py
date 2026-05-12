@@ -48,6 +48,20 @@ def test_transaction_sends_one_batch_on_success():
     assert len(request.items) == 1
 
 
+def test_early_commit_inside_with_sends_one_batch():
+    transport = FakeTransport()
+    mg = Margrete("127.0.0.1:48731", transport=transport)
+
+    with mg.transaction("batch") as chart:
+        chart.append(Tap(tick=100, lane=4))
+        chart.commit()
+
+    append_requests = [
+        r for r in transport.requests if r.HasField("append_transaction_request")
+    ]
+    assert len(append_requests) == 1
+
+
 def test_transaction_exception_sends_nothing():
     transport = FakeTransport()
     mg = Margrete("127.0.0.1:48731", transport=transport)

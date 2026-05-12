@@ -101,6 +101,7 @@ class Hold:
     timeline: int = 0
 
     def to_append_item(self) -> messages_pb2.AppendItem:
+        _validate_base(self.tick, self.lane, self.width)
         if self.duration <= 0:
             raise ValueError("duration must be positive")
         return messages_pb2.AppendItem(
@@ -194,6 +195,7 @@ class AirHold:
     timeline: int = 0
 
     def to_append_item(self) -> messages_pb2.AppendItem:
+        _validate_base(self.tick, self.lane, self.width)
         if self.duration <= 0:
             raise ValueError("duration must be positive")
         return messages_pb2.AppendItem(
