@@ -1,9 +1,33 @@
 from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
+from margrete_rpc.chart import (
+    BeatChangeEvent,
+    BpmEvent,
+    Chart,
+    Direction,
+    ExAttr,
+    LongAttr,
+    Note,
+    NoteSpeedEvent,
+    NoteType,
+    TimelineSpeedEvent,
+    normalize_event_operations,
+)
 from margrete_rpc.client import Margrete
 
 __all__ = [
+    "BeatChangeEvent",
+    "BpmEvent",
+    "Chart",
+    "Direction",
+    "ExAttr",
+    "LongAttr",
     "Margrete",
     "MargreteError",
     "MargreteProtocolError",
     "MargreteRemoteError",
+    "Note",
+    "NoteSpeedEvent",
+    "NoteType",
+    "TimelineSpeedEvent",
+    "normalize_event_operations",
 ]
