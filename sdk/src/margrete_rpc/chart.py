@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
+from fractions import Fraction
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+
+_TICKS_PER_BEAT = 1920
 
 
 class NoteType(IntEnum):
@@ -56,6 +59,11 @@ class ExAttr(IntEnum):
     EXJDG = messages_pb2.EX_ATTR_EXJDG
 
 
+class AirCrushOption(IntEnum):
+    TRACELIKE = 0
+    HEAD_ONLY = 0x7FFFFFFF
+
+
 @dataclass
 class Note:
     type: NoteType = NoteType.UNKNOWN
@@ -75,6 +83,19 @@ class Note:
     @classmethod
     def tap(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
         return cls(type=NoteType.TAP, tick=tick, x=x, width=width, **kwargs)
+
+    @property
+    def bar(self) -> tuple[int, int]:
+        fraction = Fraction(self.tick, _TICKS_PER_BEAT)
+        return fraction.numerator, fraction.denominator
+
+    @bar.setter
+    def bar(self, value: tuple[int, int]) -> None:
+        numerator, denominator = value
+        tick = Fraction(numerator * _TICKS_PER_BEAT, denominator)
+        if tick.denominator != 1:
+            raise ValueError("beat division must resolve to a whole tick")
+        self.tick = tick.numerator
 
     @classmethod
     def extap(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
@@ -101,24 +122,44 @@ class Note:
         return cls(type=NoteType.HOLD, tick=tick, x=x, width=width, long_attr=long_attr, **kwargs)
 
     @classmethod
+    def hold_begin(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls.hold(tick=tick, x=x, width=width, long_attr=LongAttr.BEGIN, **kwargs)
+
+    @classmethod
+    def hold_end(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls.hold(tick=tick, x=x, width=width, long_attr=LongAttr.END, **kwargs)
+
+    @classmethod
+    def slide(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        long_attr: LongAttr = LongAttr.BEGIN,
+        **kwargs,
+    ) -> Note:
+        return cls._slide_segment(NoteType.SLIDE, long_attr, tick, x, width, **kwargs)
+
+    @classmethod
     def slide_begin(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.SLIDE, LongAttr.BEGIN, tick, x, width, **kwargs)
+        return cls.slide(tick=tick, x=x, width=width, long_attr=LongAttr.BEGIN, **kwargs)
 
     @classmethod
     def slide_step(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.SLIDE, LongAttr.STEP, tick, x, width, **kwargs)
+        return cls.slide(tick=tick, x=x, width=width, long_attr=LongAttr.STEP, **kwargs)
 
     @classmethod
     def slide_control(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.SLIDE, LongAttr.CONTROL, tick, x, width, **kwargs)
+        return cls.slide(tick=tick, x=x, width=width, long_attr=LongAttr.CONTROL, **kwargs)
 
     @classmethod
     def slide_curve_control(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.SLIDE, LongAttr.CURVE_CONTROL, tick, x, width, **kwargs)
+        return cls.slide(tick=tick, x=x, width=width, long_attr=LongAttr.CURVE_CONTROL, **kwargs)
 
     @classmethod
     def slide_end(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.SLIDE, LongAttr.END, tick, x, width, **kwargs)
+        return cls.slide(tick=tick, x=x, width=width, long_attr=LongAttr.END, **kwargs)
 
     @classmethod
     def air(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
@@ -134,45 +175,37 @@ class Note:
         long_attr: LongAttr = LongAttr.BEGIN,
         **kwargs,
     ) -> Note:
-        return cls(
-            type=NoteType.AIRSLIDE,
-            tick=tick,
-            x=x,
-            width=width,
-            long_attr=long_attr,
-            **kwargs,
-        )
+        return cls._slide_segment(NoteType.AIRSLIDE, long_attr, tick, x, width, **kwargs)
 
     @classmethod
     def air_slide_begin(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.AIRSLIDE, LongAttr.BEGIN, tick, x, width, **kwargs)
+        return cls.air_slide(tick=tick, x=x, width=width, long_attr=LongAttr.BEGIN, **kwargs)
 
     @classmethod
     def air_slide_step(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.AIRSLIDE, LongAttr.STEP, tick, x, width, **kwargs)
+        return cls.air_slide(tick=tick, x=x, width=width, long_attr=LongAttr.STEP, **kwargs)
 
     @classmethod
     def air_slide_control(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.AIRSLIDE, LongAttr.CONTROL, tick, x, width, **kwargs)
+        return cls.air_slide(tick=tick, x=x, width=width, long_attr=LongAttr.CONTROL, **kwargs)
 
     @classmethod
     def air_slide_curve_control(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(
-            NoteType.AIRSLIDE,
-            LongAttr.CURVE_CONTROL,
-            tick,
-            x,
-            width,
+        return cls.air_slide(
+            tick=tick,
+            x=x,
+            width=width,
+            long_attr=LongAttr.CURVE_CONTROL,
             **kwargs,
         )
 
     @classmethod
     def air_slide_end(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.AIRSLIDE, LongAttr.END, tick, x, width, **kwargs)
+        return cls.air_slide(tick=tick, x=x, width=width, long_attr=LongAttr.END, **kwargs)
 
     @classmethod
     def air_slide_end_noact(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
-        return cls._slide_segment(NoteType.AIRSLIDE, LongAttr.END_NOACT, tick, x, width, **kwargs)
+        return cls.air_slide(tick=tick, x=x, width=width, long_attr=LongAttr.END_NOACT, **kwargs)
 
     @classmethod
     def _slide_segment(
@@ -211,6 +244,62 @@ class Note:
             long_attr=long_attr,
             **kwargs,
         )
+
+    @classmethod
+    def air_hold_begin(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls.air_hold(tick=tick, x=x, width=width, long_attr=LongAttr.BEGIN, **kwargs)
+
+    @classmethod
+    def air_hold_end(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls.air_hold(tick=tick, x=x, width=width, long_attr=LongAttr.END, **kwargs)
+
+    @classmethod
+    def air_crush(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        long_attr: LongAttr = LongAttr.BEGIN,
+        option_value: int = 0,
+        **kwargs,
+    ) -> Note:
+        return cls(
+            type=NoteType.AIRCRUSH,
+            tick=tick,
+            x=x,
+            width=width,
+            long_attr=long_attr,
+            option_value=int(option_value),
+            **kwargs,
+        )
+
+    @classmethod
+    def air_crush_begin(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        option_value: int = 0,
+        **kwargs,
+    ) -> Note:
+        return cls.air_crush(
+            tick=tick,
+            x=x,
+            width=width,
+            long_attr=LongAttr.BEGIN,
+            option_value=int(option_value),
+            **kwargs,
+        )
+
+    @classmethod
+    def air_crush_control(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls.air_crush(tick=tick, x=x, width=width, long_attr=LongAttr.CONTROL, **kwargs)
+
+    @classmethod
+    def air_crush_end(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls.air_crush(tick=tick, x=x, width=width, long_attr=LongAttr.END, **kwargs)
 
     @classmethod
     def from_proto(cls, proto: messages_pb2.Note) -> Note:

@@ -1,4 +1,5 @@
 from margrete_rpc import (
+    AirCrushOption,
     BeatChangeEvent,
     BpmEvent,
     Chart,
@@ -21,21 +22,29 @@ def test_note_type_factories_set_kind_and_geometry():
     assert Note.damage(tick=1, x=2).type is NoteType.DAMAGE
     assert Note.hold(tick=1, x=2).type is NoteType.HOLD
     assert Note.hold(tick=1, x=2).long_attr is LongAttr.BEGIN
+    assert Note.hold_begin(tick=1, x=2) == Note.hold(tick=1, x=2, long_attr=LongAttr.BEGIN)
+    assert Note.hold_end(tick=1, x=2) == Note.hold(tick=1, x=2, long_attr=LongAttr.END)
     assert Note.slide_begin(tick=1, x=2).type is NoteType.SLIDE
     assert Note.slide_begin(tick=1, x=2).long_attr is LongAttr.BEGIN
+    assert Note.slide(tick=1, x=2) == Note.slide_begin(tick=1, x=2)
     assert Note.air(tick=1, x=2).type is NoteType.AIR
-    assert Note.air_slide(tick=1, x=2).type is NoteType.AIRSLIDE
+    assert Note.air_slide_begin(tick=1, x=2).type is NoteType.AIRSLIDE
+    assert Note.air_slide(tick=1, x=2) == Note.air_slide_begin(tick=1, x=2)
     assert Note.air_hold(tick=1, x=2).type is NoteType.AIRHOLD
+    assert Note.air_hold_begin(tick=1, x=2) == Note.air_hold(tick=1, x=2, long_attr=LongAttr.BEGIN)
+    assert Note.air_hold_end(tick=1, x=2) == Note.air_hold(tick=1, x=2, long_attr=LongAttr.END)
+    assert Note.air_hold(tick=1, x=2, long_attr=LongAttr.STEP).long_attr is LongAttr.STEP
+    crush0 = Note.air_crush_begin(tick=1, x=2, option_value=AirCrushOption.TRACELIKE)
+    assert crush0.type is NoteType.AIRCRUSH
+    assert crush0.long_attr is LongAttr.BEGIN
+    assert crush0.option_value == AirCrushOption.TRACELIKE
+    head = Note.air_crush_begin(tick=1, x=2, option_value=AirCrushOption.HEAD_ONLY)
+    assert head.option_value == 0x7FFFFFFF
+    assert Note.air_crush_begin(tick=1, x=2, option_value=120).option_value == 120
 
 
 def test_slide_segment_factories_match_long_attr():
-    assert Note.slide_begin(tick=10, x=3) == Note(
-        type=NoteType.SLIDE,
-        long_attr=LongAttr.BEGIN,
-        tick=10,
-        x=3,
-        width=1,
-    )
+    assert Note.slide_begin(tick=10, x=3) == Note.slide(tick=10, x=3, long_attr=LongAttr.BEGIN)
     assert Note.slide_step(tick=10, x=3).long_attr is LongAttr.STEP
     assert Note.slide_control(tick=10, x=3).long_attr is LongAttr.CONTROL
     assert Note.slide_curve_control(tick=10, x=3).long_attr is LongAttr.CURVE_CONTROL
@@ -52,6 +61,14 @@ def test_air_slide_segment_factories_match_long_attr():
     assert Note.air_slide_end_noact(tick=11, x=4).long_attr is LongAttr.END_NOACT
 
 
+def test_air_crush_segment_factories_match_long_attr():
+    begin = Note.air_crush_begin(tick=11, x=4, option_value=5)
+    assert begin == Note.air_crush(tick=11, x=4, long_attr=LongAttr.BEGIN, option_value=5)
+    assert begin.option_value == 5
+    assert Note.air_crush_control(tick=11, x=4).long_attr is LongAttr.CONTROL
+    assert Note.air_crush_end(tick=11, x=4).long_attr is LongAttr.END
+
+
 def test_note_defaults_and_tap_constructor_are_pythonic():
     note = Note.tap(tick=960, x=4, width=1)
 
@@ -64,6 +81,33 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
     assert note.width == 1
     assert note.id is None
     assert note.children == []
+
+
+def test_note_bar_getter_represents_tick_as_reduced_beat_fraction():
+    note = Note.tap(tick=240, x=4)
+
+    assert note.bar == (1, 8)
+
+    note.tick = 480
+    assert note.bar == (1, 4)
+
+    note.tick = 1920
+    assert note.bar == (1, 1)
+
+    note.tick = 300
+    assert note.bar == (5, 32)
+
+
+def test_note_bar_setter_updates_tick_from_beat_fraction():
+    note = Note.tap(tick=0, x=4)
+
+    note.bar = (1, 8)
+    assert note.tick == 240
+    assert note.bar == (1, 8)
+
+    note.bar = (1, 4)
+    assert note.tick == 480
+    assert note.bar == (1, 4)
 
 
 def test_note_round_trips_to_protobuf_with_children_and_id():

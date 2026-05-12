@@ -1,5 +1,6 @@
 from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
 from margrete_rpc.chart import (
+    AirCrushOption,
     BeatChangeEvent,
     BpmEvent,
     Chart,
@@ -14,6 +15,7 @@ from margrete_rpc.chart import (
 from margrete_rpc.client import Margrete
 
 __all__ = [
+    "AirCrushOption",
     "BeatChangeEvent",
     "BpmEvent",
     "Chart",

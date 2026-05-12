@@ -56,10 +56,15 @@ key; they are not complete snapshots of existing Margrete events.
 Use classmethods on `Note` for common kinds (all use keyword `tick`, `x`, optional `width`, plus `**kwargs` for any other `Note` field such as `direction`, `long_attr`, `children`):
 
 - `Note.tap`, `Note.extap`, `Note.flick`, `Note.damage`
-- `Note.hold`, `Note.slide` — default `long_attr=LongAttr.BEGIN` for a long-note head; pass `long_attr=` for other segments
-- **Slide segments:** `Note.slide_begin`, `slide_step`, `slide_control`, `slide_curve_control`, `slide_end`, `slide_end_noact` (fixed `LongAttr` each)
-- `Note.air`, `Note.air_slide`, `Note.air_hold` — generic `air_slide` / `air_hold` default `long_attr=LongAttr.BEGIN`
-- **Air-slide segments:** `Note.air_slide_begin`, `air_slide_step`, `air_slide_control`, `air_slide_curve_control`, `air_slide_end`, `air_slide_end_noact`
+- `Note.hold`, `Note.hold_begin`, `Note.hold_end`, `Note.slide` — `hold` / `slide` default `long_attr=LongAttr.BEGIN`
+- **Slide segments:** `Note.slide_begin`, `slide_step`, `slide_control`, `slide_curve_control`, `slide_end` (wrappers around `slide`)
+- `Note.air`, `Note.air_slide`, `Note.air_hold`, `Note.air_hold_begin`, `Note.air_hold_end` — `air_slide` / `air_hold` default `BEGIN`; other air-hold segments use `air_hold(..., long_attr=...)`
+- **Air-slide segments:** `Note.air_slide_begin`, `air_slide_step`, `air_slide_control`, `air_slide_curve_control`, `air_slide_end`, `air_slide_end_noact` (wrappers around `air_slide`)
+- **Air-crush:** `Note.air_crush`, `air_crush_begin`, `air_crush_control`, `air_crush_end` — `option_value` on `BEGIN` is density or `AirCrushOption`
+
+`note.bar` gets or sets the note tick as a reduced beat division tuple. One beat
+is 1920 ticks, so `note.bar = (1, 8)` sets `note.tick` to `240`; changing
+`note.tick` directly updates the next `note.bar` value.
 
 ## Client: `Margrete`
 
