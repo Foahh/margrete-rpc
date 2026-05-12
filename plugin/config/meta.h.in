@@ -1,0 +1,19 @@
+#pragma once
+
+#define TITLE "@TITLE@"
+#define W_TITLE L"@TITLE@"
+
+#define DESC "@DESC@"
+#define W_DESC L"@DESC@"
+
+#define DEVELOPER "@DEVELOPER@"
+#define W_DEVELOPER L"@DEVELOPER@"
+
+#define DLL_NAME "@DLL_NAME@"
+#define W_DLL_NAME L"@DLL_NAME@"
+
+#define PRODUCT_VERSION "@PROJECT_VERSION@"
+#define W_PRODUCT_VERSION L"@PROJECT_VERSION@"
+
+#define DIALOG_TITLE "@TITLE@ v@PROJECT_VERSION@"
+#define W_DIALOG_TITLE L"@TITLE@ v@PROJECT_VERSION@"

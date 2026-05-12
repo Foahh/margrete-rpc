@@ -1,7 +1,7 @@
 [en_US]
-title = Margrete RPC
-desc = Local TCP/protobuf bridge for Python chart scripting
-dev = Foahh
+title = @TITLE@
+desc = @DESC@
+dev = @DEVELOPER@
 
 [server]
 host = 127.0.0.1

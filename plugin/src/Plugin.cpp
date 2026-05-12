@@ -2,6 +2,8 @@
 
 #include <cwchar>
 
+#include "meta.h"
+
 MpInteger Plugin::addRef() {
     return ++refCount_;
 }
@@ -31,7 +33,7 @@ MpBoolean Plugin::getCommandName(wchar_t* text, MpInteger textLength) const {
     if (!text || textLength <= 0) {
         return MP_FALSE;
     }
-    wcsncpy_s(text, static_cast<size_t>(textLength), L"Margrete RPC", _TRUNCATE);
+    wcsncpy_s(text, static_cast<size_t>(textLength), W_TITLE, _TRUNCATE);
     return MP_TRUE;
 }
 

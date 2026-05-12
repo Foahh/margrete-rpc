@@ -2,6 +2,7 @@
 
 #include <MargretePlugin.h>
 #include "Plugin.h"
+#include "meta.h"
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
@@ -18,14 +19,13 @@ DLLEXPORT void WINAPI MargretePluginGetInfo(MP_PLUGININFO* info) {
     }
     info->sdkVersion = MP_SDK_VERSION;
     if (info->nameBuffer) {
-        wcsncpy_s(info->nameBuffer, static_cast<size_t>(info->nameBufferLength), L"Margrete RPC", _TRUNCATE);
+        wcsncpy_s(info->nameBuffer, static_cast<size_t>(info->nameBufferLength), W_TITLE, _TRUNCATE);
     }
     if (info->descBuffer) {
-        wcsncpy_s(info->descBuffer, static_cast<size_t>(info->descBufferLength),
-                  L"Local TCP/protobuf bridge for Python chart scripting", _TRUNCATE);
+        wcsncpy_s(info->descBuffer, static_cast<size_t>(info->descBufferLength), W_DESC, _TRUNCATE);
     }
     if (info->developerBuffer) {
-        wcsncpy_s(info->developerBuffer, static_cast<size_t>(info->developerBufferLength), L"Foahh", _TRUNCATE);
+        wcsncpy_s(info->developerBuffer, static_cast<size_t>(info->developerBufferLength), W_DEVELOPER, _TRUNCATE);
     }
 }
 
