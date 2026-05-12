@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package margrete.rpc.v1;
 
+option optimize_for = LITE_RUNTIME;
+
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;
   ERROR_CODE_UNAVAILABLE = 1;
@@ -63,19 +65,17 @@ enum ExAttr {
 message Envelope {
   uint64 request_id = 1;
   oneof body {
-    PingRequest ping_request = 10;
-    PingResponse ping_response = 11;
-    GetCurrentTickRequest get_current_tick_request = 20;
-    GetCurrentTickResponse get_current_tick_response = 21;
-    BeginEditRequest begin_edit_request = 30;
-    BeginEditResponse begin_edit_response = 31;
-    BeginAppendRequest begin_append_request = 32;
-    BeginAppendResponse begin_append_response = 33;
-    ApplyEditPatchRequest apply_edit_patch_request = 40;
-    ApplyEditPatchResponse apply_edit_patch_response = 41;
-    ApplyAppendPatchRequest apply_append_patch_request = 42;
-    ApplyAppendPatchResponse apply_append_patch_response = 43;
-    ErrorResponse error_response = 100;
+    PingRequest ping_request = 2;
+    PingResponse ping_response = 3;
+    BeginEditRequest begin_edit_request = 4;
+    BeginEditResponse begin_edit_response = 5;
+    BeginAppendRequest begin_append_request = 6;
+    BeginAppendResponse begin_append_response = 7;
+    ApplyEditPatchRequest apply_edit_patch_request = 8;
+    ApplyEditPatchResponse apply_edit_patch_response = 9;
+    ApplyAppendPatchRequest apply_append_patch_request = 10;
+    ApplyAppendPatchResponse apply_append_patch_response = 11;
+    ErrorResponse error_response = 12;
   }
 }
 
@@ -83,12 +83,6 @@ message PingRequest {}
 
 message PingResponse {
   string server_name = 1;
-}
-
-message GetCurrentTickRequest {}
-
-message GetCurrentTickResponse {
-  int32 tick = 1;
 }
 
 message Note {

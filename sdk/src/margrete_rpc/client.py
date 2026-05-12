@@ -18,12 +18,6 @@ class Margrete:
         )
         return response.ping_response.server_name
 
-    def current_tick(self) -> int:
-        response = self._transport.request(
-            messages_pb2.Envelope(get_current_tick_request=messages_pb2.GetCurrentTickRequest())
-        )
-        return response.get_current_tick_response.tick
-
     def open_edit(self, name: str) -> EditTransaction:
         response = self._transport.request(
             messages_pb2.Envelope(begin_edit_request=messages_pb2.BeginEditRequest(name=name))

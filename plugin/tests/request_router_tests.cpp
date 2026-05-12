@@ -19,20 +19,6 @@ TEST_CASE("router responds to ping")
     REQUIRE(response.ping_response().server_name() == "Margrete RPC");
 }
 
-TEST_CASE("router responds to current tick")
-{
-    FakeContext context;
-    context.currentTick = 1234;
-    RequestRouter router(&context);
-    margrete::rpc::v1::Envelope request;
-    request.set_request_id(12);
-    request.mutable_get_current_tick_request();
-
-    const auto response = router.route(request);
-
-    REQUIRE(response.get_current_tick_response().tick() == 1234);
-}
-
 TEST_CASE("router rejects unknown request body")
 {
     FakeContext context;

@@ -28,8 +28,7 @@ from margrete_rpc import Margrete
 
 mg = Margrete("127.0.0.1:48731")
 name = mg.ping()
-tick = mg.current_tick()
-print(name, tick)
+print(name)
 ```
 
 ## Chart Editing
@@ -70,7 +69,6 @@ from margrete_rpc import Margrete
 
 - `Margrete(endpoint="127.0.0.1:48731", timeout=5.0)`
 - `ping() -> str`
-- `current_tick() -> int`
 - `open_edit(name: str) -> EditTransaction` — context manager; snapshot note tree, commit on success
 - `open_append(name: str) -> AppendTransaction` — context manager; current tick only, append-only notes
 

@@ -32,12 +32,6 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_UNAVAILABLE,
                          "Margrete context is unavailable");
         }
-        if (request.has_get_current_tick_request())
-        {
-            MargreteSession session(*context_);
-            response.mutable_get_current_tick_response()->set_tick(session.currentTick());
-            return response;
-        }
         if (request.has_begin_edit_request())
         {
             MargreteSession session(*context_);

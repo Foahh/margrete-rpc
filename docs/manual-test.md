@@ -15,7 +15,7 @@ python -m pip install -e .
 from margrete_rpc import Margrete, Note
 
 mg = Margrete("127.0.0.1:48731")
-print(mg.ping(), mg.current_tick())
+print(mg.ping())
 
 with mg.open_append("manual append") as tx:
     tx.chart.notes.append(Note.tap(tick=tx.current_tick, x=4, width=1))
