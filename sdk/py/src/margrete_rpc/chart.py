@@ -97,7 +97,6 @@ class Hold:
     timeline: int = 0
 
     def to_append_item(self) -> messages_pb2.AppendItem:
-        _validate_base(self.tick, self.lane, self.width)
         if self.duration <= 0:
             raise ValueError("duration must be positive")
         return messages_pb2.AppendItem(
@@ -128,6 +127,9 @@ class Slide:
     width: int
     points: list[SlidePoint]
     timeline: int = 0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "points", tuple(self.points))
 
     def to_append_item(self) -> messages_pb2.AppendItem:
         _validate_base(self.tick, self.lane, self.width)
@@ -196,6 +198,9 @@ class AirSlide:
     air_direction: int = messages_pb2.DIRECTION_UP
     air_ex_attr: int = messages_pb2.EX_ATTR_NONE
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "points", tuple(self.points))
+
     def to_append_item(self) -> messages_pb2.AppendItem:
         _validate_base(self.tick, self.lane, self.width)
         if len(self.points) < 2:
@@ -241,6 +246,9 @@ class AirCrush:
     timeline: int = 0
     variation_id: int = 0
     option_value: int = 0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "points", tuple(self.points))
 
     def to_append_item(self) -> messages_pb2.AppendItem:
         _validate_base(self.tick, self.lane, self.width)
@@ -371,7 +379,11 @@ class RawNoteNode:
     option_value: int = 0
     children: list["RawNoteNode"] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "children", tuple(self.children))
+
     def to_proto(self) -> messages_pb2.RawNoteNode:
+        # x is horizontal lane position in raw editor nodes; reuse lane validation rules.
         _validate_base(self.tick, self.x, self.width)
         return messages_pb2.RawNoteNode(
             type=self.type,
