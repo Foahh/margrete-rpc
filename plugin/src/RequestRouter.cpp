@@ -7,8 +7,7 @@
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
 
-RequestRouter::RequestRouter(IMargretePluginContext *context)
-    : RequestRouter(context, ServerConfig{})
+RequestRouter::RequestRouter(IMargretePluginContext *context) : RequestRouter(context, ServerConfig{})
 {
 }
 

@@ -362,14 +362,16 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
     {
         ++deletedEvents;
         deletedEventPointers.push_back(event);
-        existingBpmEvents.erase(std::remove(existingBpmEvents.begin(), existingBpmEvents.end(), event), existingBpmEvents.end());
+        existingBpmEvents.erase(std::remove(existingBpmEvents.begin(), existingBpmEvents.end(), event),
+                                existingBpmEvents.end());
         existingBeatEvents.erase(std::remove(existingBeatEvents.begin(), existingBeatEvents.end(), event),
                                  existingBeatEvents.end());
         existingTimelineSpeedEvents.erase(
             std::remove(existingTimelineSpeedEvents.begin(), existingTimelineSpeedEvents.end(), event),
             existingTimelineSpeedEvents.end());
-        existingNoteSpeedEvents.erase(std::remove(existingNoteSpeedEvents.begin(), existingNoteSpeedEvents.end(), event),
-                                      existingNoteSpeedEvents.end());
+        existingNoteSpeedEvents.erase(
+            std::remove(existingNoteSpeedEvents.begin(), existingNoteSpeedEvents.end(), event),
+            existingNoteSpeedEvents.end());
         return MP_TRUE;
     }
     FakeBpmEvent *addExistingBpmEvent(int tick, double bpm)

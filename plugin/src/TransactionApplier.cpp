@@ -1,7 +1,7 @@
 #include "TransactionApplier.h"
 
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -139,14 +139,14 @@ void DeleteMissingBpmEvents(IMargretePluginChart &chart, const margrete::rpc::v1
         void *existing = nullptr;
         if (!finalTicks.contains(tick) && chart.findEventBpm(tick, &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
+            Check(chart.deleteEvent(
+                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
                   "failed to delete bpm event");
         }
     }
 }
 
-void DeleteMissingBeatChangeEvents(IMargretePluginChart &chart,
-                                   const margrete::rpc::v1::ApplyEditPatchRequest &request)
+void DeleteMissingBeatChangeEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request)
 {
     std::unordered_set<int> finalBars;
     for (const auto &eventProto : request.beat_change_events())

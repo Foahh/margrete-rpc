@@ -43,29 +43,14 @@ with mg.open_edit("move notes") as tx:
     tx.chart.bpm_events.append(BpmEvent(tick=0, bpm=180.0))
 
 with mg.open_append("append pattern") as tx:
-    tx.chart.notes.append(Note.tap(tick=tx.current_tick, x=4, width=1))
+    tx.chart.notes.append(Note.tap(tx.current_tick, 4, 1))
 ```
 
-`open_edit()` fetches the current note tree and commits the final note tree.
-It also fetches event snapshots inside the plugin's configured event scan range.
-`open_append()` fetches only the current tick and appends new notes. In append
-mode, event lists start empty and represent append-or-replace operations by
-event key.
+`open_edit()` fetches the current chart and the current tick.
 
-## Building notes
+`open_append()` fetches only the current tick and appends new notes, which is much quicker than `open_edit()`.
 
-Use classmethods on `Note` for common kinds (all use keyword `tick`, `x`, optional `width`, plus `**kwargs` for any other `Note` field such as `direction`, `long_attr`, `children`):
-
-- `Note.tap`, `Note.extap`, `Note.flick`, `Note.damage`
-- `Note.hold`, `Note.hold_begin`, `Note.hold_end`, `Note.slide` — `hold` / `slide` default `long_attr=LongAttr.BEGIN`
-- **Slide segments:** `Note.slide_begin`, `slide_step`, `slide_control`, `slide_curve_control`, `slide_end` (wrappers around `slide`)
-- `Note.air`, `Note.air_slide`, `Note.air_hold`, `Note.air_hold_begin`, `Note.air_hold_end` — `air_slide` / `air_hold` default `BEGIN`; other air-hold segments use `air_hold(..., long_attr=...)`
-- **Air-slide segments:** `Note.air_slide_begin`, `air_slide_step`, `air_slide_control`, `air_slide_curve_control`, `air_slide_end`, `air_slide_end_noact` (wrappers around `air_slide`)
-- **Air-crush:** `Note.air_crush`, `air_crush_begin`, `air_crush_control`, `air_crush_end` — `option_value` on `BEGIN` is density or `AirCrushOption`
-
-`note.bar` gets or sets the note tick as a reduced beat division tuple. One beat
-is 1920 ticks, so `note.bar = (1, 8)` sets `note.tick` to `240`; changing
-`note.tick` directly updates the next `note.bar` value.
+See [`example`](../example/) for more complex usage.
 
 ## Client: `Margrete`
 
