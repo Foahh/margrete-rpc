@@ -4,7 +4,7 @@
 
 ## Motivation
 
-Existing tooling (including my earlier project, [margrete-air-curve-converter](https://github.com/Foahh/margrete-air-curve-converter)) can be great for
+Existing tooling (including my earlier project, [margrete-air-curve-converter](https://github.com/Foahh/margrete-air-curve-converter)) can be useful for
 specific transforms, but it can also feel brittle when you want to:
 
 - generate / adjust **complex pattern**

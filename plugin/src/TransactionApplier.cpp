@@ -106,8 +106,7 @@ void ApplyNoteSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v1::N
     Check(chart.appendEvent(event), "failed to append note speed event");
 }
 
-template <typename Request>
-void ApplyEvents(IMargretePluginChart &chart, const Request &request)
+template <typename Request> void ApplyEvents(IMargretePluginChart &chart, const Request &request)
 {
     for (const auto &eventProto : request.bpm_events())
     {
@@ -185,8 +184,7 @@ void ReconcileRootNotes(IMargretePluginChart &chart,
     }
 }
 
-template <typename Fn>
-void WithUndo(MargreteSession &session, Fn fn)
+template <typename Fn> void WithUndo(MargreteSession &session, Fn fn)
 {
     Check(session.undo().beginRecording(), "failed to begin undo recording");
     try
@@ -220,8 +218,7 @@ void TransactionApplier::ApplyAppend(MargreteSession &session,
     });
 }
 
-void TransactionApplier::ApplyEdit(MargreteSession &session,
-                                     const margrete::rpc::v1::ApplyEditPatchRequest &request)
+void TransactionApplier::ApplyEdit(MargreteSession &session, const margrete::rpc::v1::ApplyEditPatchRequest &request)
 {
     WithUndo(session, [&]() {
         ReconcileRootNotes(session.chart(), request.notes());
