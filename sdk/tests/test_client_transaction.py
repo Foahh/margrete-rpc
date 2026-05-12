@@ -33,8 +33,8 @@ def test_open_edit_fetches_snapshot_and_sends_final_note_tree():
     with mg.open_edit("move") as tx:
         assert tx.current_tick == 960
         tx.chart.notes[0].x = 5
-        tx.chart.bpm_events.append(BpmEvent(tick=0, bpm=180.0))
-        tx.chart.bpm_events.append(BpmEvent(tick=0, bpm=185.0))
+        tx.chart.events.bpm.append(BpmEvent(tick=0, bpm=180.0))
+        tx.chart.events.bpm.append(BpmEvent(tick=0, bpm=185.0))
 
     assert transport.requests[0].begin_edit_request.name == "move"
     request = transport.requests[1].apply_edit_patch_request

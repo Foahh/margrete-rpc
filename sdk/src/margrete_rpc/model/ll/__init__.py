@@ -1,20 +1,19 @@
-from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
-from margrete_rpc.model.ll import (
-    AirCrushOption,
+from margrete_rpc.model.ll.chart import Chart, ChartEvents, normalize_event_operations
+from margrete_rpc.model.ll.event import (
     BeatChangeEvent,
     BpmEvent,
-    Chart,
-    ChartEvents,
+    NoteSpeedEvent,
+    TimelineSpeedEvent,
+)
+from margrete_rpc.model.ll.note import (
+    AirCrushOption,
     Direction,
     ExAttr,
     LongAttr,
     Note,
-    NoteSpeedEvent,
     NoteType,
-    TimelineSpeedEvent,
     pair_air,
 )
-from margrete_rpc.client import Margrete
 
 __all__ = [
     "AirCrushOption",
@@ -25,13 +24,10 @@ __all__ = [
     "Direction",
     "ExAttr",
     "LongAttr",
-    "Margrete",
-    "MargreteError",
-    "MargreteProtocolError",
-    "MargreteRemoteError",
     "Note",
     "NoteSpeedEvent",
     "NoteType",
     "TimelineSpeedEvent",
+    "normalize_event_operations",
     "pair_air",
 ]

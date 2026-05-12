@@ -5,6 +5,7 @@ from margrete_rpc import (
     BeatChangeEvent,
     BpmEvent,
     Chart,
+    ChartEvents,
     Direction,
     ExAttr,
     LongAttr,
@@ -15,7 +16,7 @@ from margrete_rpc import (
     pair_air,
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart import normalize_event_operations
+from margrete_rpc.model.ll import normalize_event_operations
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -283,32 +284,34 @@ def test_chart_from_begin_edit_response_builds_event_snapshot():
     )
 
     chart = Chart.from_begin_edit_response(response)
-    chart.bpm_events[0].bpm = 180.0
+    chart.events.bpm[0].bpm = 180.0
 
     assert chart.notes == [Note(type=NoteType.TAP, tick=240, x=1)]
-    assert chart.bpm_events == [BpmEvent(0, 180.0)]
-    assert chart.beat_change_events == [BeatChangeEvent(0, 4, 4)]
-    assert chart.timeline_speed_events == [TimelineSpeedEvent(2, 960, 0.75)]
-    assert chart.note_speed_events == [NoteSpeedEvent(960, 1.25)]
+    assert chart.events.bpm == [BpmEvent(0, 180.0)]
+    assert chart.events.beat == [BeatChangeEvent(0, 4, 4)]
+    assert chart.events.til == [TimelineSpeedEvent(2, 960, 0.75)]
+    assert chart.events.note_speed == [NoteSpeedEvent(960, 1.25)]
 
 
 def test_event_normalization_uses_last_write_wins_by_key():
     chart = Chart(
-        bpm_events=[BpmEvent(0, 120.0), BpmEvent(0, 180.0)],
-        beat_change_events=[
-            BeatChangeEvent(bar=0, beats_per_bar=3, beat_unit=4),
-            BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4),
-        ],
-        timeline_speed_events=[
-            TimelineSpeedEvent(tick=960, timeline_id=1, speed=0.5),
-            TimelineSpeedEvent(tick=960, timeline_id=1, speed=0.75),
-        ],
-        note_speed_events=[NoteSpeedEvent(480, 1.5), NoteSpeedEvent(480, 1.25)],
+        events=ChartEvents(
+            bpm=[BpmEvent(0, 120.0), BpmEvent(0, 180.0)],
+            beat=[
+                BeatChangeEvent(bar=0, beats_per_bar=3, beat_unit=4),
+                BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4),
+            ],
+            til=[
+                TimelineSpeedEvent(tick=960, timeline_id=1, speed=0.5),
+                TimelineSpeedEvent(tick=960, timeline_id=1, speed=0.75),
+            ],
+            note_speed=[NoteSpeedEvent(480, 1.5), NoteSpeedEvent(480, 1.25)],
+        ),
     )
 
     normalized = normalize_event_operations(chart)
 
-    assert normalized.bpm_events == [BpmEvent(0, 180.0)]
-    assert normalized.beat_change_events == [BeatChangeEvent(0, 4, 4)]
-    assert normalized.timeline_speed_events == [TimelineSpeedEvent(1, 960, 0.75)]
-    assert normalized.note_speed_events == [NoteSpeedEvent(480, 1.25)]
+    assert normalized.events.bpm == [BpmEvent(0, 180.0)]
+    assert normalized.events.beat == [BeatChangeEvent(0, 4, 4)]
+    assert normalized.events.til == [TimelineSpeedEvent(1, 960, 0.75)]
+    assert normalized.events.note_speed == [NoteSpeedEvent(480, 1.25)]

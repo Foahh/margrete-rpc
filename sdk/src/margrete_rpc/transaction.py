@@ -4,15 +4,16 @@ from dataclasses import dataclass
 from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart import Chart, normalize_event_operations
+from margrete_rpc.model.ll import Chart, normalize_event_operations
 
 
 def _extend_events(request, chart: Chart) -> None:
-    events = normalize_event_operations(chart)
-    request.bpm_events.extend(event.to_proto() for event in events.bpm_events)
-    request.beat_change_events.extend(event.to_proto() for event in events.beat_change_events)
-    request.timeline_speed_events.extend(event.to_proto() for event in events.timeline_speed_events)
-    request.note_speed_events.extend(event.to_proto() for event in events.note_speed_events)
+    normalized = normalize_event_operations(chart)
+    ev = normalized.events
+    request.bpm_events.extend(event.to_proto() for event in ev.bpm)
+    request.beat_change_events.extend(event.to_proto() for event in ev.beat)
+    request.timeline_speed_events.extend(event.to_proto() for event in ev.til)
+    request.note_speed_events.extend(event.to_proto() for event in ev.note_speed)
 
 
 def _has_existing_note_id(notes) -> bool:

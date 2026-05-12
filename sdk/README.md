@@ -40,7 +40,7 @@ mg = Margrete()
 
 with mg.open_edit("move notes") as tx:
     tx.chart.notes[0].x += 1
-    tx.chart.bpm_events.append(BpmEvent(tick=0, bpm=180.0))
+    tx.chart.events.bpm.append(BpmEvent(tick=0, bpm=180.0))
 
 with mg.open_append("append pattern") as tx:
     tx.chart.notes.append(Note.tap(tx.current_tick, 4, 1))
