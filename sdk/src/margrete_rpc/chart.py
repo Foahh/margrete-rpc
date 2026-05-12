@@ -339,20 +339,28 @@ class Note:
         return proto
 
 
-@dataclass(frozen=True)
+@dataclass
 class BpmEvent:
     tick: int
     bpm: float
+
+    @classmethod
+    def from_proto(cls, proto: messages_pb2.BpmEvent) -> BpmEvent:
+        return cls(tick=proto.tick, bpm=proto.bpm)
 
     def to_proto(self) -> messages_pb2.BpmEvent:
         return messages_pb2.BpmEvent(tick=self.tick, bpm=self.bpm)
 
 
-@dataclass(frozen=True)
+@dataclass
 class BeatChangeEvent:
     bar: int
     beats_per_bar: int
     beat_unit: int
+
+    @classmethod
+    def from_proto(cls, proto: messages_pb2.BeatChangeEvent) -> BeatChangeEvent:
+        return cls(bar=proto.bar, beats_per_bar=proto.beats_per_bar, beat_unit=proto.beat_unit)
 
     def to_proto(self) -> messages_pb2.BeatChangeEvent:
         return messages_pb2.BeatChangeEvent(
@@ -362,11 +370,15 @@ class BeatChangeEvent:
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class TimelineSpeedEvent:
     tick: int
     timeline_id: int
     speed: float
+
+    @classmethod
+    def from_proto(cls, proto: messages_pb2.TimelineSpeedEvent) -> TimelineSpeedEvent:
+        return cls(tick=proto.tick, timeline_id=proto.timeline_id, speed=proto.speed)
 
     def to_proto(self) -> messages_pb2.TimelineSpeedEvent:
         return messages_pb2.TimelineSpeedEvent(
@@ -376,10 +388,14 @@ class TimelineSpeedEvent:
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class NoteSpeedEvent:
     tick: int
     speed: float
+
+    @classmethod
+    def from_proto(cls, proto: messages_pb2.NoteSpeedEvent) -> NoteSpeedEvent:
+        return cls(tick=proto.tick, speed=proto.speed)
 
     def to_proto(self) -> messages_pb2.NoteSpeedEvent:
         return messages_pb2.NoteSpeedEvent(tick=self.tick, speed=self.speed)
@@ -395,7 +411,19 @@ class Chart:
 
     @classmethod
     def from_begin_edit_response(cls, response: messages_pb2.BeginEditResponse) -> Chart:
-        return cls(notes=[Note.from_proto(note) for note in response.notes])
+        return cls(
+            notes=[Note.from_proto(note) for note in response.notes],
+            bpm_events=[BpmEvent.from_proto(event) for event in response.bpm_events],
+            beat_change_events=[
+                BeatChangeEvent.from_proto(event) for event in response.beat_change_events
+            ],
+            timeline_speed_events=[
+                TimelineSpeedEvent.from_proto(event) for event in response.timeline_speed_events
+            ],
+            note_speed_events=[
+                NoteSpeedEvent.from_proto(event) for event in response.note_speed_events
+            ],
+        )
 
 
 def _last_by_key[T](items: list[T], key) -> list[T]:

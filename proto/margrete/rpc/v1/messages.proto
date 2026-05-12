@@ -130,6 +130,12 @@ message BeginEditRequest {
 message BeginEditResponse {
   int32 current_tick = 1;
   repeated Note notes = 2;
+  repeated BpmEvent bpm_events = 3;
+  repeated BeatChangeEvent beat_change_events = 4;
+  repeated TimelineSpeedEvent timeline_speed_events = 5;
+  repeated NoteSpeedEvent note_speed_events = 6;
+  int32 event_scan_until_tick = 7;
+  repeated int32 event_scan_timeline_ids = 8;
 }
 
 message BeginAppendRequest {
@@ -147,6 +153,8 @@ message ApplyEditPatchRequest {
   repeated BeatChangeEvent beat_change_events = 4;
   repeated TimelineSpeedEvent timeline_speed_events = 5;
   repeated NoteSpeedEvent note_speed_events = 6;
+  int32 event_scan_until_tick = 7;
+  repeated int32 event_scan_timeline_ids = 8;
 }
 
 message ApplyEditPatchResponse {}

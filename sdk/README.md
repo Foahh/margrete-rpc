@@ -47,9 +47,10 @@ with mg.open_append("append pattern") as tx:
 ```
 
 `open_edit()` fetches the current note tree and commits the final note tree.
-`open_append()` fetches only the current tick and appends new notes. Event lists
-start empty in both modes and represent append-or-replace operations by event
-key; they are not complete snapshots of existing Margrete events.
+It also fetches event snapshots inside the plugin's configured event scan range.
+`open_append()` fetches only the current tick and appends new notes. In append
+mode, event lists start empty and represent append-or-replace operations by
+event key.
 
 ## Building notes
 

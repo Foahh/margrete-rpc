@@ -28,6 +28,8 @@ class EditTransaction:
     transport: object
     current_tick: int
     chart: Chart
+    event_scan_until_tick: int
+    event_scan_timeline_ids: list[int]
 
     def __enter__(self) -> EditTransaction:
         return self
@@ -41,6 +43,8 @@ class EditTransaction:
         if exc_type is not None:
             return False
         request = messages_pb2.ApplyEditPatchRequest(name=self.name)
+        request.event_scan_until_tick = self.event_scan_until_tick
+        request.event_scan_timeline_ids.extend(self.event_scan_timeline_ids)
         request.notes.extend(note.to_proto() for note in self.chart.notes)
         _extend_events(request, self.chart)
         self.transport.request(messages_pb2.Envelope(apply_edit_patch_request=request))

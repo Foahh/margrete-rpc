@@ -136,19 +136,30 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
     assert restored == note
 
 
-def test_chart_from_begin_edit_response_keeps_events_empty():
+def test_chart_from_begin_edit_response_builds_event_snapshot():
     response = messages_pb2.BeginEditResponse(
         current_tick=240,
         notes=[messages_pb2.Note(type=messages_pb2.NOTE_TYPE_TAP, tick=240, x=1)],
+        event_scan_until_tick=4800,
+        event_scan_timeline_ids=[0, 2],
+        bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
+        beat_change_events=[
+            messages_pb2.BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4)
+        ],
+        timeline_speed_events=[
+            messages_pb2.TimelineSpeedEvent(tick=960, timeline_id=2, speed=0.75)
+        ],
+        note_speed_events=[messages_pb2.NoteSpeedEvent(tick=960, speed=1.25)],
     )
 
     chart = Chart.from_begin_edit_response(response)
+    chart.bpm_events[0].bpm = 180.0
 
     assert chart.notes == [Note(type=NoteType.TAP, tick=240, x=1)]
-    assert chart.bpm_events == []
-    assert chart.beat_change_events == []
-    assert chart.timeline_speed_events == []
-    assert chart.note_speed_events == []
+    assert chart.bpm_events == [BpmEvent(0, 180.0)]
+    assert chart.beat_change_events == [BeatChangeEvent(0, 4, 4)]
+    assert chart.timeline_speed_events == [TimelineSpeedEvent(960, 2, 0.75)]
+    assert chart.note_speed_events == [NoteSpeedEvent(960, 1.25)]
 
 
 def test_event_normalization_uses_last_write_wins_by_key():

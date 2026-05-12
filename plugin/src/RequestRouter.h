@@ -4,12 +4,14 @@
 
 #include <MargretePlugin.h>
 
+#include "Config.h"
 #include "margrete/rpc/v1/messages.pb.h"
 
 class RequestRouter
 {
   public:
     explicit RequestRouter(IMargretePluginContext *context);
+    RequestRouter(IMargretePluginContext *context, ServerConfig config);
     ~RequestRouter();
     RequestRouter(const RequestRouter &) = delete;
     RequestRouter &operator=(const RequestRouter &) = delete;
@@ -24,4 +26,5 @@ class RequestRouter
 
     mutable std::mutex contextMutex_;
     IMargretePluginContext *context_{nullptr};
+    ServerConfig config_;
 };

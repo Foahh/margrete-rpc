@@ -28,6 +28,8 @@ class Margrete:
             transport=self._transport,
             current_tick=begin.current_tick,
             chart=Chart.from_begin_edit_response(begin),
+            event_scan_until_tick=begin.event_scan_until_tick,
+            event_scan_timeline_ids=list(begin.event_scan_timeline_ids),
         )
 
     def open_append(self, name: str) -> AppendTransaction:

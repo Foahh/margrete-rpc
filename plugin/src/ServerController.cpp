@@ -1,7 +1,7 @@
 #include "ServerController.h"
 
 ServerController::ServerController(ServerConfig config)
-    : config_(std::move(config)), logger_(config_.logPath), router_(nullptr)
+    : config_(std::move(config)), logger_(config_.logPath), router_(nullptr, config_)
 {
 }
 

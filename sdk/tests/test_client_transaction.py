@@ -20,6 +20,8 @@ def test_open_edit_fetches_snapshot_and_sends_final_note_tree():
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
+                    event_scan_until_tick=4800,
+                    event_scan_timeline_ids=[0, 2],
                     notes=[messages_pb2.Note(id=1, type=messages_pb2.NOTE_TYPE_TAP, x=1)],
                 )
             ),
@@ -37,6 +39,8 @@ def test_open_edit_fetches_snapshot_and_sends_final_note_tree():
     assert transport.requests[0].begin_edit_request.name == "move"
     request = transport.requests[1].apply_edit_patch_request
     assert request.name == "move"
+    assert request.event_scan_until_tick == 4800
+    assert list(request.event_scan_timeline_ids) == [0, 2]
     assert request.notes[0].id == 1
     assert request.notes[0].x == 5
     assert list(request.bpm_events) == [messages_pb2.BpmEvent(tick=0, bpm=185.0)]

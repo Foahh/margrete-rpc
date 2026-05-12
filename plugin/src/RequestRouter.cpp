@@ -1,12 +1,18 @@
 #include "RequestRouter.h"
 
 #include <stdexcept>
+#include <utility>
 
 #include "ChartMapper.h"
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
 
 RequestRouter::RequestRouter(IMargretePluginContext *context)
+    : RequestRouter(context, ServerConfig{})
+{
+}
+
+RequestRouter::RequestRouter(IMargretePluginContext *context, ServerConfig config) : config_(std::move(config))
 {
     setContext(context);
 }
@@ -54,10 +60,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             MargreteSession session(*context);
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
-            for (const auto &note : ChartMapper::SnapshotNotes(session.chart()))
-            {
-                *begin->add_notes() = note;
-            }
+            ChartMapper::SnapshotForEdit(session.chart(), config_.eventScanExtraTicks, config_.maxScanTil, *begin);
             return response;
         }
         if (request.has_begin_append_request())

@@ -35,3 +35,31 @@ TEST_CASE("chart mapper serializes root notes and child notes")
     REQUIRE(notes[0].children(0).id() == 11);
     REQUIRE(notes[0].children(0).tick() == 180);
 }
+
+TEST_CASE("chart mapper scans events through configured tick range")
+{
+    FakeContext context;
+    auto *root = context.chart.addExistingNote(10);
+    root->info.tick = 1000;
+    root->info.timelineId = 2;
+    context.chart.addExistingBpmEvent(120, 180.0);
+    context.chart.addExistingNoteSpeedEvent(240, 1.25);
+    context.chart.addExistingTimelineSpeedEvent(360, 2, 0.75);
+    context.chart.addExistingBeatEvent(1, 3, 4);
+
+    margrete::rpc::v1::BeginEditResponse response;
+    ChartMapper::SnapshotForEdit(context.chart, 200, 1500, response);
+
+    REQUIRE(response.event_scan_until_tick() == 1200);
+    REQUIRE(response.event_scan_timeline_ids_size() == 1);
+    REQUIRE(response.event_scan_timeline_ids(0) == 2);
+    REQUIRE(response.bpm_events_size() == 1);
+    REQUIRE(response.bpm_events(0).tick() == 120);
+    REQUIRE(response.bpm_events(0).bpm() == 180.0);
+    REQUIRE(response.note_speed_events_size() == 1);
+    REQUIRE(response.note_speed_events(0).tick() == 240);
+    REQUIRE(response.timeline_speed_events_size() == 1);
+    REQUIRE(response.timeline_speed_events(0).timeline_id() == 2);
+    REQUIRE(response.beat_change_events_size() == 1);
+    REQUIRE(response.beat_change_events(0).bar() == 1);
+}

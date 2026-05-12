@@ -142,3 +142,28 @@ TEST_CASE("edit patch deletes existing note missing from final tree")
     REQUIRE(context.chart.notes[0]->id == 11);
     REQUIRE(context.chart.deletedNotes == 1);
 }
+
+TEST_CASE("edit patch reconciles scanned bpm events to final list")
+{
+    FakeContext context;
+    auto *deleted = context.chart.addExistingBpmEvent(120, 150.0);
+    auto *updated = context.chart.addExistingBpmEvent(240, 160.0);
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditPatchRequest request;
+    request.set_event_scan_until_tick(300);
+    auto *event = request.add_bpm_events();
+    event->set_tick(240);
+    event->set_bpm(180.0);
+    auto *created = request.add_bpm_events();
+    created->set_tick(280);
+    created->set_bpm(190.0);
+
+    TransactionApplier::ApplyEdit(session, request);
+
+    REQUIRE(updated->info.bpm == 180.0);
+    REQUIRE(context.chart.createdBpmEvents.size() == 1);
+    REQUIRE(context.chart.createdBpmEvents[0]->info.tick == 280);
+    REQUIRE(context.chart.deletedEvents == 1);
+    REQUIRE(context.chart.deletedEventPointers.size() == 1);
+    REQUIRE(context.chart.deletedEventPointers[0] == deleted);
+}

@@ -358,8 +358,18 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         ++appendedEvents;
         return MP_TRUE;
     }
-    MpBoolean deleteEvent(IMargretePluginEvent *) override
+    MpBoolean deleteEvent(IMargretePluginEvent *event) override
     {
+        ++deletedEvents;
+        deletedEventPointers.push_back(event);
+        existingBpmEvents.erase(std::remove(existingBpmEvents.begin(), existingBpmEvents.end(), event), existingBpmEvents.end());
+        existingBeatEvents.erase(std::remove(existingBeatEvents.begin(), existingBeatEvents.end(), event),
+                                 existingBeatEvents.end());
+        existingTimelineSpeedEvents.erase(
+            std::remove(existingTimelineSpeedEvents.begin(), existingTimelineSpeedEvents.end(), event),
+            existingTimelineSpeedEvents.end());
+        existingNoteSpeedEvents.erase(std::remove(existingNoteSpeedEvents.begin(), existingNoteSpeedEvents.end(), event),
+                                      existingNoteSpeedEvents.end());
         return MP_TRUE;
     }
     FakeBpmEvent *addExistingBpmEvent(int tick, double bpm)
@@ -368,6 +378,32 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         existingBpmEvents.back()->info.tick = tick;
         existingBpmEvents.back()->info.bpm = bpm;
         return existingBpmEvents.back();
+    }
+
+    FakeBeatEvent *addExistingBeatEvent(int bar, int beatsPerBar, int beatUnit)
+    {
+        existingBeatEvents.push_back(new FakeBeatEvent());
+        existingBeatEvents.back()->info.bar = bar;
+        existingBeatEvents.back()->info.beatsPerBar = beatsPerBar;
+        existingBeatEvents.back()->info.beatUnit = beatUnit;
+        return existingBeatEvents.back();
+    }
+
+    FakeTimelineSpeedEvent *addExistingTimelineSpeedEvent(int tick, int timelineId, double speed)
+    {
+        existingTimelineSpeedEvents.push_back(new FakeTimelineSpeedEvent());
+        existingTimelineSpeedEvents.back()->info.tick = tick;
+        existingTimelineSpeedEvents.back()->info.timelineId = timelineId;
+        existingTimelineSpeedEvents.back()->info.speed = speed;
+        return existingTimelineSpeedEvents.back();
+    }
+
+    FakeNoteSpeedEvent *addExistingNoteSpeedEvent(int tick, double speed)
+    {
+        existingNoteSpeedEvents.push_back(new FakeNoteSpeedEvent());
+        existingNoteSpeedEvents.back()->info.tick = tick;
+        existingNoteSpeedEvents.back()->info.speed = speed;
+        return existingNoteSpeedEvents.back();
     }
 
     MpBoolean findEventBpm(MpInteger tick, void **ppobj) override
@@ -433,6 +469,8 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
     int appendedNotes{0};
     int appendedEvents{0};
     int deletedNotes{0};
+    int deletedEvents{0};
+    std::vector<IMargretePluginEvent *> deletedEventPointers;
 };
 
 class FakeUndo final : public IMargretePluginUndoBuffer, public FakeBase

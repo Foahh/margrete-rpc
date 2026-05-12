@@ -26,7 +26,7 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         return config;
     }
 
-    bool inServer = false;
+    std::string section;
     std::string line;
     while (std::getline(in, line))
     {
@@ -37,11 +37,7 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         }
         if (line.starts_with('[') && line.ends_with(']'))
         {
-            inServer = line == "[server]";
-            continue;
-        }
-        if (!inServer)
-        {
+            section = line.substr(1, line.size() - 2);
             continue;
         }
         const std::size_t pos = line.find('=');
@@ -51,11 +47,11 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         }
         const std::string key = Trim(line.substr(0, pos));
         const std::string value = Trim(line.substr(pos + 1));
-        if (key == "host")
+        if (section == "server" && key == "host")
         {
             config.host = value;
         }
-        else if (key == "port")
+        else if (section == "server" && key == "port")
         {
             const int port = std::stoi(value);
             if (port <= 0 || port > 65535)
@@ -64,9 +60,17 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
             }
             config.port = static_cast<std::uint16_t>(port);
         }
-        else if (key == "log")
+        else if (section == "server" && key == "log")
         {
             config.logPath = value;
+        }
+        else if (section == "chart_editing" && key == "event_scan_extra_ticks")
+        {
+            config.eventScanExtraTicks = std::stoi(value);
+        }
+        else if (section == "chart_editing" && key == "max_scan_til")
+        {
+            config.maxScanTil = std::stoi(value);
         }
     }
 
@@ -77,6 +81,10 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
     if (config.logPath.empty())
     {
         config.logPath = "margrete-rpc.log";
+    }
+    if (config.eventScanExtraTicks <= 0 || config.maxScanTil <= 0)
+    {
+        throw std::runtime_error("chart editing scan limits must be positive");
     }
     return config;
 }

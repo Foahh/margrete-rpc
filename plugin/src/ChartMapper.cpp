@@ -1,5 +1,7 @@
 #include "ChartMapper.h"
 
+#include <algorithm>
+#include <set>
 #include <stdexcept>
 
 namespace
@@ -23,6 +25,63 @@ margrete::rpc::v1::ExAttr ToProtoExAttr(MpInteger value)
 {
     return static_cast<margrete::rpc::v1::ExAttr>(value);
 }
+
+MpInteger LastNoteTick(const margrete::rpc::v1::Note &note)
+{
+    MpInteger tick = note.tick();
+    for (const auto &child : note.children())
+    {
+        tick = std::max(tick, LastNoteTick(child));
+    }
+    return tick;
+}
+
+void CollectTimelineIds(const margrete::rpc::v1::Note &note, std::set<MpInteger> &timelineIds)
+{
+    timelineIds.insert(note.timeline_id());
+    for (const auto &child : note.children())
+    {
+        CollectTimelineIds(child, timelineIds);
+    }
+}
+
+void AddBpmEvent(IMargretePluginEventBpm &event, margrete::rpc::v1::BeginEditResponse &response)
+{
+    MP_EVENT_BPMINFO info{};
+    event.getInfo(&info);
+    auto *proto = response.add_bpm_events();
+    proto->set_tick(info.tick);
+    proto->set_bpm(info.bpm);
+}
+
+void AddBeatEvent(IMargretePluginEventBeatChange &event, margrete::rpc::v1::BeginEditResponse &response)
+{
+    MP_EVENT_BCINFO info{};
+    event.getInfo(&info);
+    auto *proto = response.add_beat_change_events();
+    proto->set_bar(info.bar);
+    proto->set_beats_per_bar(info.beatsPerBar);
+    proto->set_beat_unit(info.beatUnit);
+}
+
+void AddTimelineSpeedEvent(IMargretePluginEventTimelineSpeed &event, margrete::rpc::v1::BeginEditResponse &response)
+{
+    MP_EVENT_TLSINFO info{};
+    event.getInfo(&info);
+    auto *proto = response.add_timeline_speed_events();
+    proto->set_tick(info.tick);
+    proto->set_timeline_id(info.timelineId);
+    proto->set_speed(info.speed);
+}
+
+void AddNoteSpeedEvent(IMargretePluginEventNoteSpeedModifier &event, margrete::rpc::v1::BeginEditResponse &response)
+{
+    MP_EVENT_NSMINFO info{};
+    event.getInfo(&info);
+    auto *proto = response.add_note_speed_events();
+    proto->set_tick(info.tick);
+    proto->set_speed(info.speed);
+}
 } // namespace
 
 std::vector<margrete::rpc::v1::Note> ChartMapper::SnapshotNotes(IMargretePluginChart &chart)
@@ -40,6 +99,60 @@ std::vector<margrete::rpc::v1::Note> ChartMapper::SnapshotNotes(IMargretePluginC
         notes.push_back(NoteToProto(*note));
     }
     return notes;
+}
+
+void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventScanExtraTicks, MpInteger maxScanTil,
+                                  margrete::rpc::v1::BeginEditResponse &response)
+{
+    MpInteger lastNoteTick = 0;
+    std::set<MpInteger> timelineIds;
+    for (const auto &note : SnapshotNotes(chart))
+    {
+        lastNoteTick = std::max(lastNoteTick, LastNoteTick(note));
+        CollectTimelineIds(note, timelineIds);
+        *response.add_notes() = note;
+    }
+    if (timelineIds.empty())
+    {
+        timelineIds.insert(0);
+    }
+
+    const MpInteger scanUntil = std::min(lastNoteTick + eventScanExtraTicks, maxScanTil);
+    response.set_event_scan_until_tick(scanUntil);
+    for (const MpInteger timelineId : timelineIds)
+    {
+        response.add_event_scan_timeline_ids(timelineId);
+    }
+
+    for (MpInteger tick = 0; tick <= scanUntil; ++tick)
+    {
+        void *found = nullptr;
+        if (chart.findEventBpm(tick, &found) == MP_TRUE && found)
+        {
+            AddBpmEvent(*static_cast<IMargretePluginEventBpm *>(found), response);
+        }
+
+        found = nullptr;
+        if (chart.findEventNoteSpeedModifier(tick, &found) == MP_TRUE && found)
+        {
+            AddNoteSpeedEvent(*static_cast<IMargretePluginEventNoteSpeedModifier *>(found), response);
+        }
+
+        found = nullptr;
+        if (chart.findEventBeatChange(tick, &found) == MP_TRUE && found)
+        {
+            AddBeatEvent(*static_cast<IMargretePluginEventBeatChange *>(found), response);
+        }
+
+        for (const MpInteger timelineId : timelineIds)
+        {
+            found = nullptr;
+            if (chart.findEventTimelineSpeed(tick, timelineId, &found) == MP_TRUE && found)
+            {
+                AddTimelineSpeedEvent(*static_cast<IMargretePluginEventTimelineSpeed *>(found), response);
+            }
+        }
+    }
 }
 
 margrete::rpc::v1::Note ChartMapper::NoteToProto(IMargretePluginNote &note)

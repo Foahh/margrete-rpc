@@ -7,3 +7,7 @@ dev = @DEVELOPER@
 host = 127.0.0.1
 port = 48731
 log = margrete-rpc.log
+
+[chart_editing]
+event_scan_extra_ticks = 768000
+max_scan_til = 16384

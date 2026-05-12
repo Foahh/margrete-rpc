@@ -1,6 +1,7 @@
 #include "TransactionApplier.h"
 
 #include <stdexcept>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -126,6 +127,101 @@ template <typename Request> void ApplyEvents(IMargretePluginChart &chart, const 
     }
 }
 
+void DeleteMissingBpmEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request)
+{
+    std::unordered_set<int> finalTicks;
+    for (const auto &eventProto : request.bpm_events())
+    {
+        finalTicks.insert(eventProto.tick());
+    }
+    for (MpInteger tick = 0; tick <= request.event_scan_until_tick(); ++tick)
+    {
+        void *existing = nullptr;
+        if (!finalTicks.contains(tick) && chart.findEventBpm(tick, &existing) == MP_TRUE && existing)
+        {
+            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
+                  "failed to delete bpm event");
+        }
+    }
+}
+
+void DeleteMissingBeatChangeEvents(IMargretePluginChart &chart,
+                                   const margrete::rpc::v1::ApplyEditPatchRequest &request)
+{
+    std::unordered_set<int> finalBars;
+    for (const auto &eventProto : request.beat_change_events())
+    {
+        finalBars.insert(eventProto.bar());
+    }
+    for (MpInteger bar = 0; bar <= request.event_scan_until_tick(); ++bar)
+    {
+        void *existing = nullptr;
+        if (!finalBars.contains(bar) && chart.findEventBeatChange(bar, &existing) == MP_TRUE && existing)
+        {
+            Check(chart.deleteEvent(
+                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBeatChange *>(existing))),
+                  "failed to delete beat change event");
+        }
+    }
+}
+
+void DeleteMissingTimelineSpeedEvents(IMargretePluginChart &chart,
+                                      const margrete::rpc::v1::ApplyEditPatchRequest &request)
+{
+    std::set<std::pair<int, int>> finalKeys;
+    for (const auto &eventProto : request.timeline_speed_events())
+    {
+        finalKeys.emplace(eventProto.tick(), eventProto.timeline_id());
+    }
+    for (MpInteger tick = 0; tick <= request.event_scan_until_tick(); ++tick)
+    {
+        for (const MpInteger timelineId : request.event_scan_timeline_ids())
+        {
+            void *existing = nullptr;
+            if (!finalKeys.contains({tick, timelineId}) &&
+                chart.findEventTimelineSpeed(tick, timelineId, &existing) == MP_TRUE && existing)
+            {
+                Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(
+                          static_cast<IMargretePluginEventTimelineSpeed *>(existing))),
+                      "failed to delete timeline speed event");
+            }
+        }
+    }
+}
+
+void DeleteMissingNoteSpeedEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request)
+{
+    std::unordered_set<int> finalTicks;
+    for (const auto &eventProto : request.note_speed_events())
+    {
+        finalTicks.insert(eventProto.tick());
+    }
+    for (MpInteger tick = 0; tick <= request.event_scan_until_tick(); ++tick)
+    {
+        void *existing = nullptr;
+        if (!finalTicks.contains(tick) && chart.findEventNoteSpeedModifier(tick, &existing) == MP_TRUE && existing)
+        {
+            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(
+                      static_cast<IMargretePluginEventNoteSpeedModifier *>(existing))),
+                  "failed to delete note speed event");
+        }
+    }
+}
+
+void ReconcileEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request)
+{
+    if (request.event_scan_until_tick() <= 0)
+    {
+        ApplyEvents(chart, request);
+        return;
+    }
+    DeleteMissingBpmEvents(chart, request);
+    DeleteMissingBeatChangeEvents(chart, request);
+    DeleteMissingTimelineSpeedEvents(chart, request);
+    DeleteMissingNoteSpeedEvents(chart, request);
+    ApplyEvents(chart, request);
+}
+
 std::vector<IMargretePluginNote *> CurrentRootNotes(IMargretePluginChart &chart)
 {
     std::vector<IMargretePluginNote *> notes;
@@ -222,6 +318,6 @@ void TransactionApplier::ApplyEdit(MargreteSession &session, const margrete::rpc
 {
     WithUndo(session, [&]() {
         ReconcileRootNotes(session.chart(), request.notes());
-        ApplyEvents(session.chart(), request);
+        ReconcileEvents(session.chart(), request);
     });
 }
