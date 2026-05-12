@@ -19,6 +19,29 @@ TEST_CASE("router responds to ping")
     REQUIRE(response.ping_response().server_name() == "Margrete RPC");
 }
 
+TEST_CASE("router retains context while it may be used by background requests")
+{
+    FakeContext first;
+    FakeContext second;
+    REQUIRE(first.refCountValue() == 1);
+    REQUIRE(second.refCountValue() == 1);
+
+    {
+        RequestRouter router(&first);
+        REQUIRE(first.refCountValue() == 2);
+
+        router.setContext(&second);
+        REQUIRE(first.refCountValue() == 1);
+        REQUIRE(second.refCountValue() == 2);
+
+        router.setContext(nullptr);
+        REQUIRE(second.refCountValue() == 1);
+    }
+
+    REQUIRE(first.refCountValue() == 1);
+    REQUIRE(second.refCountValue() == 1);
+}
+
 TEST_CASE("router rejects unknown request body")
 {
     FakeContext context;

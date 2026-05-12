@@ -20,6 +20,10 @@ class FakeBase
     {
         return MP_FALSE;
     }
+    MpInteger refCountValue() const
+    {
+        return refCount;
+    }
 
   private:
     MpInteger refCount{1};

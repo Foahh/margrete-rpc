@@ -6,12 +6,27 @@
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
 
-RequestRouter::RequestRouter(IMargretePluginContext *context) : context_(context)
+RequestRouter::RequestRouter(IMargretePluginContext *context)
 {
+    setContext(context);
+}
+
+RequestRouter::~RequestRouter()
+{
+    setContext(nullptr);
 }
 
 void RequestRouter::setContext(IMargretePluginContext *context)
 {
+    std::scoped_lock lock(contextMutex_);
+    if (context)
+    {
+        context->addRef();
+    }
+    if (context_)
+    {
+        context_->release();
+    }
     context_ = context;
 }
 
@@ -27,14 +42,16 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             response.mutable_ping_response()->set_server_name("Margrete RPC");
             return response;
         }
-        if (!context_)
+
+        auto context = retainContext();
+        if (!context)
         {
             return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_UNAVAILABLE,
                          "Margrete context is unavailable");
         }
         if (request.has_begin_edit_request())
         {
-            MargreteSession session(*context_);
+            MargreteSession session(*context);
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
             for (const auto &note : ChartMapper::SnapshotNotes(session.chart()))
@@ -45,20 +62,20 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         }
         if (request.has_begin_append_request())
         {
-            MargreteSession session(*context_);
+            MargreteSession session(*context);
             response.mutable_begin_append_response()->set_current_tick(session.currentTick());
             return response;
         }
         if (request.has_apply_edit_patch_request())
         {
-            MargreteSession session(*context_);
+            MargreteSession session(*context);
             TransactionApplier::ApplyEdit(session, request.apply_edit_patch_request());
             response.mutable_apply_edit_patch_response();
             return response;
         }
         if (request.has_apply_append_patch_request())
         {
-            MargreteSession session(*context_);
+            MargreteSession session(*context);
             TransactionApplier::ApplyAppend(session, request.apply_append_patch_request());
             response.mutable_apply_append_patch_response();
             return response;
@@ -77,6 +94,17 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
     {
         return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INTERNAL, "unexpected plugin error");
     }
+}
+
+MargreteComPtr<IMargretePluginContext> RequestRouter::retainContext() const
+{
+    std::scoped_lock lock(contextMutex_);
+    if (!context_)
+    {
+        return {};
+    }
+    context_->addRef();
+    return MargreteComPtr<IMargretePluginContext>(context_);
 }
 
 margrete::rpc::v1::Envelope RequestRouter::error(std::uint64_t requestId, margrete::rpc::v1::ErrorCode code,
