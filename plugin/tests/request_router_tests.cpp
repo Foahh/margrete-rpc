@@ -33,13 +33,13 @@ TEST_CASE("router responds to current tick")
     REQUIRE(response.get_current_tick_response().tick() == 1234);
 }
 
-TEST_CASE("router maps bad append to error response")
+TEST_CASE("router rejects unknown request body")
 {
     FakeContext context;
     RequestRouter router(&context);
     margrete::rpc::v1::Envelope request;
     request.set_request_id(13);
-    request.mutable_append_transaction_request()->set_transaction_name("empty");
+    // No oneof field set.
 
     const auto response = router.route(request);
 

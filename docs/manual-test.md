@@ -13,15 +13,10 @@ python -m pip install -e .
 
 ```python
 from margrete_rpc import Margrete
-from margrete_rpc.chart import Tap
 
 mg = Margrete("127.0.0.1:48731")
-tick = mg.current_tick()
-
-with mg.transaction("manual tap") as chart:
-    chart.append(Tap(tick=tick, lane=4, width=1))
+print(mg.ping(), mg.current_tick())
 ```
 
-6. Confirm one tap appears at the current tick.
-7. Confirm Margrete undo removes the tap in one step.
-8. Invoke the plugin command again and confirm the server stops.
+6. Confirm the server responds without errors.
+7. Invoke the plugin command again and confirm the server stops.

@@ -2,7 +2,6 @@
 
 #include <MargretePlugin.h>
 
-#include "TransactionApplier.h"
 #include "margrete/rpc/v1/messages.pb.h"
 
 class RequestRouter
@@ -17,5 +16,4 @@ class RequestRouter
                                       const std::string &message) const;
 
     IMargretePluginContext *context_{nullptr};
-    TransactionApplier applier_;
 };

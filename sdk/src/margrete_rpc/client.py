@@ -21,19 +21,3 @@ class Margrete:
             messages_pb2.Envelope(get_current_tick_request=messages_pb2.GetCurrentTickRequest())
         )
         return response.get_current_tick_response.tick
-
-    def transaction(self, name: str = "Margrete RPC transaction"):
-        from margrete_rpc.transaction import Transaction
-
-        return Transaction(self, name)
-
-    def _append_transaction(self, name: str, items: list[messages_pb2.AppendItem]) -> int:
-        response = self._transport.request(
-            messages_pb2.Envelope(
-                append_transaction_request=messages_pb2.AppendTransactionRequest(
-                    transaction_name=name,
-                    items=items,
-                )
-            )
-        )
-        return response.append_transaction_response.appended_items

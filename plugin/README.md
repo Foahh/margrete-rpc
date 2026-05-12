@@ -1,6 +1,6 @@
 # Margrete RPC Plugin
 
-This plugin hosts a localhost TCP/protobuf server for append-only chart scripting.
+This plugin hosts a localhost TCP/protobuf server for chart scripting.
 
 Invoke the plugin command once in Margrete to start the server. Invoke it again to stop the server.
 

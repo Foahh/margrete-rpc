@@ -11,7 +11,7 @@ function(setup_metadata)
     set(REPO_URL "https://github.com/Foahh/margrete-rpc")
 
     set(TITLE "Margrete RPC" PARENT_SCOPE)
-    set(DESC "TCP/protobuf bridge for chart scripting\\n${REPO_URL}" PARENT_SCOPE)
+    set(DESC "TCP/protobuf bridge for Margrete\\n${REPO_URL}" PARENT_SCOPE)
     set(DEVELOPER "Foahh" PARENT_SCOPE)
     set(DLL_NAME "margrete_rpc" PARENT_SCOPE)
 endfunction()
@@ -60,8 +60,6 @@ add_library(margrete_rpc SHARED
     src/Logger.cpp
     src/FrameProtocol.cpp
     src/MargreteSession.cpp
-    src/TransactionApplier.cpp
-    src/ChartMapper.cpp
     src/RequestRouter.cpp
     src/SocketServer.cpp
     src/ServerController.cpp
@@ -86,16 +84,11 @@ add_executable(plugin_tests
     tests/smoke_tests.cpp
     tests/frame_protocol_tests.cpp
     tests/config_tests.cpp
-    tests/transaction_applier_tests.cpp
     tests/request_router_tests.cpp
-    tests/chart_mapper_tests.cpp
-    tests/event_mapper_tests.cpp
     src/Config.cpp
     src/Logger.cpp
     src/FrameProtocol.cpp
     src/MargreteSession.cpp
-    src/TransactionApplier.cpp
-    src/ChartMapper.cpp
     src/RequestRouter.cpp
     ${GEN_SRC}
 )

@@ -36,12 +36,6 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             response.mutable_get_current_tick_response()->set_tick(session.currentTick());
             return response;
         }
-        if (request.has_append_transaction_request())
-        {
-            const std::uint32_t count = applier_.apply(*context_, request.append_transaction_request());
-            response.mutable_append_transaction_response()->set_appended_items(count);
-            return response;
-        }
         return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INVALID_ARGUMENT, "unsupported request");
     }
     catch (const std::invalid_argument &ex)
