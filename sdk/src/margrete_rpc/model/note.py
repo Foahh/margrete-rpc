@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import KW_ONLY, dataclass, field
 from enum import IntEnum
 from fractions import Fraction
@@ -82,10 +81,6 @@ class Note:
     children: list[Note] = field(default_factory=list)
     id: int | None = None
 
-    @classmethod
-    def tap(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
-        return cls(type=NoteType.TAP, tick=tick, x=x, width=width, height=height, **kwargs)
-
     @property
     def bar(self) -> tuple[int, int]:
         fraction = Fraction(self.tick, _TICKS_PER_BEAT)
@@ -98,6 +93,14 @@ class Note:
         if tick.denominator != 1:
             raise ValueError("beat division must resolve to a whole tick")
         self.tick = tick.numerator
+
+    def child(self, *children: Note) -> Note:
+        self.children = list(children)
+        return self
+
+    @classmethod
+    def tap(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
+        return cls(type=NoteType.TAP, tick=tick, x=x, width=width, height=height, **kwargs)
 
     @classmethod
     def extap(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
@@ -160,13 +163,6 @@ class Note:
     @classmethod
     def air(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
         return cls(type=NoteType.AIR, tick=tick, x=x, width=width, height=height, **kwargs)
-
-    @classmethod
-    def with_air(cls, host: Note, *air_notes: Note) -> Note:
-        if not air_notes:
-            air_notes = (cls.air(host.tick, host.x, host.width, height=host.height),)
-        host.children.extend(air_notes)
-        return host
 
     @classmethod
     def air_slide_begin(cls, tick: int, x: int, width: int, height: int, **kwargs) -> Note:
@@ -262,26 +258,6 @@ class Note:
             long_attr=long_attr,
             **kwargs,
         )
-
-    @classmethod
-    def _long_note_tree(
-        cls,
-        factory_name: str,
-        note_type: NoteType,
-        nodes: tuple[Note, ...],
-    ) -> Note:
-        if not nodes:
-            raise TypeError(f"Note.{factory_name}() requires at least one node")
-        for node in nodes:
-            if not isinstance(node, Note):
-                raise TypeError(f"Note.{factory_name}() accepts Note nodes only")
-            if node.type is not note_type:
-                raise TypeError(f"Note.{factory_name}() requires {note_type.name} nodes")
-        root = nodes[0]
-        if root.long_attr is not LongAttr.BEGIN:
-            raise ValueError(f"Note.{factory_name}() first node must be a BEGIN segment")
-        root.children = list(nodes[1:])
-        return root
 
     @classmethod
     def air_hold_begin(cls, tick: int, x: int, width: int, height: int, **kwargs) -> Note:
@@ -417,27 +393,3 @@ class Note:
             proto.id = self.id
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
-
-
-class _LongNoteTreeFactory:
-    __slots__ = ("_factory_name", "_note_type", "begin")
-
-    def __init__(
-        self,
-        factory_name: str,
-        note_type: NoteType,
-        begin: Callable[..., Note],
-    ) -> None:
-        self._factory_name = factory_name
-        self._note_type = note_type
-        self.begin = begin
-
-    def __call__(self, *nodes: Note) -> Note:
-        return Note._long_note_tree(self._factory_name, self._note_type, nodes)
-
-
-Note.hold = _LongNoteTreeFactory("hold", NoteType.HOLD, Note.hold_begin)
-Note.slide = _LongNoteTreeFactory("slide", NoteType.SLIDE, Note.slide_begin)
-Note.air_slide = _LongNoteTreeFactory("air_slide", NoteType.AIRSLIDE, Note.air_slide_begin)
-Note.air_hold = _LongNoteTreeFactory("air_hold", NoteType.AIRHOLD, Note.air_hold_begin)
-Note.air_crush = _LongNoteTreeFactory("air_crush", NoteType.AIRCRUSH, Note.air_crush_begin)

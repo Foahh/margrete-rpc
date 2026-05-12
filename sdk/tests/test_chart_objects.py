@@ -46,8 +46,6 @@ def test_note_factories_require_geometry_and_specific_fields():
     with pytest.raises(TypeError):
         Note.tap(tick=1, x=2)
     with pytest.raises(TypeError):
-        Note.slide(1, 2, 1)
-    with pytest.raises(TypeError):
         Note.air_crush_begin(1, 2, 1)
     with pytest.raises(TypeError):
         Note.air_slide_begin(1, 2, 1)
@@ -55,65 +53,54 @@ def test_note_factories_require_geometry_and_specific_fields():
         Note.air_hold_begin(1, 2, 1)
 
 
-def test_long_note_factories_assemble_tree_from_nodes():
-    assert Note.slide.begin == Note.slide_begin
-    assert Note.hold.begin == Note.hold_begin
-    assert Note.air_slide.begin == Note.air_slide_begin
-    assert Note.air_hold.begin == Note.air_hold_begin
-    assert Note.air_crush.begin == Note.air_crush_begin
-
-    slide_begin = Note.slide.begin(10, 0, 4)
+def test_child_builds_long_note_chains():
+    slide_begin = Note.slide_begin(10, 0, 4)
     slide_step = Note.slide_step(20, 6, 4)
     slide_end = Note.slide_end(30, 12, 4)
 
-    slide = Note.slide(slide_begin, slide_step, slide_end)
+    slide = slide_begin.child(slide_step, slide_end)
 
     assert slide is slide_begin
     assert slide.children == [slide_step, slide_end]
 
     hold_begin = Note.hold_begin(40, 2, 4)
     hold_end = Note.hold_end(50, 2, 4)
-    assert Note.hold(hold_begin, hold_end) is hold_begin
+    assert hold_begin.child(hold_end) is hold_begin
     assert hold_begin.children == [hold_end]
 
     air_slide_begin = Note.air_slide_begin(60, 4, 8, 80)
     air_slide_step = Note.air_slide_step(70, 8, 8, 120)
     air_slide_end = Note.air_slide_end(80, 12, 8, 80)
-    assert Note.air_slide(air_slide_begin, air_slide_step, air_slide_end) is air_slide_begin
+    assert air_slide_begin.child(air_slide_step, air_slide_end) is air_slide_begin
     assert air_slide_begin.children == [air_slide_step, air_slide_end]
 
     air_hold_begin = Note.air_hold_begin(90, 4, 8, 80)
     air_hold_end = Note.air_hold_end(100, 4, 8, 80)
-    assert Note.air_hold(air_hold_begin, air_hold_end) is air_hold_begin
+    assert air_hold_begin.child(air_hold_end) is air_hold_begin
     assert air_hold_begin.children == [air_hold_end]
 
     air_crush_begin = Note.air_crush_begin(110, 4, 8, 80, 5)
     air_crush_control = Note.air_crush_control(120, 8, 8, 120, 0)
     air_crush_end = Note.air_crush_end(130, 12, 8, 80, 0)
-    assert Note.air_crush(air_crush_begin, air_crush_control, air_crush_end) is air_crush_begin
+    assert air_crush_begin.child(air_crush_control, air_crush_end) is air_crush_begin
     assert air_crush_begin.children == [air_crush_control, air_crush_end]
 
 
-def test_with_air_adds_same_position_air_child_when_air_notes_is_omitted():
+def test_child_with_no_arguments_clears_children():
     note = Note.tap(960, 4, 2, height=700)
 
-    result = Note.with_air(note)
-
-    assert result is note
-    assert note.children == [Note.air(960, 4, 2, height=700)]
+    assert note.child() is note
+    assert note.children == []
 
 
-def test_with_air_adds_explicit_airlike_children_to_single_note():
+def test_child_adds_airlike_children_to_single_note():
     note = Note.tap(960, 4, 2)
     air = Note.air(960, 4, 2, direction=Direction.UP)
-    air_slide = Note.air_slide(
-        Note.air_slide.begin(960, 4, 2, 80),
+    air_slide = Note.air_slide_begin(960, 4, 2, 80).child(
         Note.air_slide_end(1440, 8, 2, 80),
     )
 
-    result = Note.with_air(note, air, air_slide)
-
-    assert result is note
+    assert note.child(air, air_slide) is note
     assert note.children == [air, air_slide]
 
 
