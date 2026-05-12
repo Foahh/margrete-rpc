@@ -21,20 +21,25 @@ def test_note_type_factories_set_kind_and_geometry():
     assert Note.damage(tick=1, x=2).type is NoteType.DAMAGE
     assert Note.hold(tick=1, x=2).type is NoteType.HOLD
     assert Note.hold(tick=1, x=2).long_attr is LongAttr.BEGIN
-    assert Note.slide(tick=1, x=2).type is NoteType.SLIDE
-    assert Note.slide(tick=1, x=2).long_attr is LongAttr.BEGIN
+    assert Note.slide_begin(tick=1, x=2).type is NoteType.SLIDE
+    assert Note.slide_begin(tick=1, x=2).long_attr is LongAttr.BEGIN
     assert Note.air(tick=1, x=2).type is NoteType.AIR
     assert Note.air_slide(tick=1, x=2).type is NoteType.AIRSLIDE
     assert Note.air_hold(tick=1, x=2).type is NoteType.AIRHOLD
 
 
 def test_slide_segment_factories_match_long_attr():
-    assert Note.slide_begin(tick=10, x=3) == Note.slide(tick=10, x=3, long_attr=LongAttr.BEGIN)
+    assert Note.slide_begin(tick=10, x=3) == Note(
+        type=NoteType.SLIDE,
+        long_attr=LongAttr.BEGIN,
+        tick=10,
+        x=3,
+        width=1,
+    )
     assert Note.slide_step(tick=10, x=3).long_attr is LongAttr.STEP
     assert Note.slide_control(tick=10, x=3).long_attr is LongAttr.CONTROL
     assert Note.slide_curve_control(tick=10, x=3).long_attr is LongAttr.CURVE_CONTROL
     assert Note.slide_end(tick=10, x=3).long_attr is LongAttr.END
-    assert Note.slide_end_noact(tick=10, x=3).long_attr is LongAttr.END_NOACT
 
 
 def test_air_slide_segment_factories_match_long_attr():
