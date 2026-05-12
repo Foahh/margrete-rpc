@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.30)
 
+if(WIN32 AND MSVC AND NOT DEFINED CACHE{CMAKE_MSVC_RUNTIME_LIBRARY})
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "MSVC runtime library")
+endif()
+
 file(STRINGS "config/VERSION" PROJECT_VERSION)
 project(margrete_rpc VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
@@ -76,7 +80,7 @@ target_include_directories(margrete_rpc PRIVATE
     "${GENERATED_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
-target_link_libraries(margrete_rpc PRIVATE MargretePluginSDK protobuf::libprotobuf ws2_32)
+target_link_libraries(margrete_rpc PRIVATE MargretePluginSDK protobuf::libprotobuf-lite ws2_32)
 
 if(MSVC)
     target_compile_options(margrete_rpc PRIVATE /EHsc /utf-8)
@@ -105,7 +109,7 @@ target_include_directories(plugin_tests PRIVATE
     "${GENERATED_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
-target_link_libraries(plugin_tests PRIVATE MargretePluginSDK protobuf::libprotobuf Catch2::Catch2WithMain ws2_32)
+target_link_libraries(plugin_tests PRIVATE MargretePluginSDK protobuf::libprotobuf-lite Catch2::Catch2WithMain ws2_32)
 
 include(CTest)
 add_test(NAME plugin_tests COMMAND $<TARGET_FILE:plugin_tests>)

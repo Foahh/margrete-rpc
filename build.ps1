@@ -15,7 +15,10 @@
   Copy margrete-rpc.dll and margrete-rpc.ini into repo-root publish/ for manual install.
 
 .PARAMETER VcpkgRoot
-  vcpkg installation root. Defaults to $env:VCPKG_ROOT.
+  vcpkg installation root. Defaults to $env:VCPKG_ROOT (must be set for CMakePresets.json toolchain path).
+
+.PARAMETER ConfigurePreset
+  CMake configure preset from plugin/CMakePresets.json (default: windows-x64).
 
 .PARAMETER InitSubmodules
   Run `git submodule update --init --recursive` before CMake configure.
@@ -33,6 +36,7 @@ param(
     [switch] $Test,
     [switch] $Publish,
     [string] $VcpkgRoot = $env:VCPKG_ROOT,
+    [string] $ConfigurePreset = 'windows-x64',
     [switch] $InitSubmodules
 )
 
@@ -147,20 +151,20 @@ try {
         throw "vcpkg toolchain file not found: $toolchain"
     }
 
+    $env:VCPKG_ROOT = $VcpkgRoot
+
+    $buildPreset = "$ConfigurePreset-$($Configuration.ToLowerInvariant())"
+
     if ($InitSubmodules) {
         Write-Host "`n==> git submodule update --init --recursive"
         Invoke-Checked -Exe 'git' -Arguments @('-C', $RepoRoot, 'submodule', 'update', '--init', '--recursive')
     }
 
-    Write-Host "`n==> CMake configure ($Configuration)"
-    Invoke-Checked -Exe 'cmake' -Arguments @(
-        '-B', $BuildDir,
-        '-S', $PluginDir,
-        "-DCMAKE_TOOLCHAIN_FILE=$toolchain"
-    )
+    Write-Host "`n==> CMake configure (preset: $ConfigurePreset)"
+    Invoke-Checked -Exe 'cmake' -Arguments @('--preset', $ConfigurePreset, '-S', $PluginDir)
 
-    Write-Host "`n==> CMake build ($Configuration)"
-    Invoke-Checked -Exe 'cmake' -Arguments @('--build', $BuildDir, '--config', $Configuration)
+    Write-Host "`n==> CMake build (preset: $buildPreset)"
+    Invoke-Checked -Exe 'cmake' -Arguments @('--build', '--preset', $buildPreset)
 
     if ($Test) {
         Write-Host "`n==> ctest ($Configuration)"
