@@ -10,7 +10,6 @@ from margrete_rpc.chart import (
     NoteSpeedEvent,
     NoteType,
     TimelineSpeedEvent,
-    normalize_event_operations,
 )
 from margrete_rpc.client import Margrete
 
@@ -29,5 +28,4 @@ __all__ = [
     "NoteSpeedEvent",
     "NoteType",
     "TimelineSpeedEvent",
-    "normalize_event_operations",
 ]
