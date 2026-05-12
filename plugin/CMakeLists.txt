@@ -89,6 +89,7 @@ add_executable(plugin_tests
     tests/transaction_applier_tests.cpp
     tests/request_router_tests.cpp
     tests/chart_mapper_tests.cpp
+    tests/event_mapper_tests.cpp
     src/Config.cpp
     src/Logger.cpp
     src/FrameProtocol.cpp

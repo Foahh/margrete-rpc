@@ -245,6 +245,64 @@ IMargretePluginNote& ChartMapper::createRawTree(IMargretePluginChart& chart, con
     return note;
 }
 
-void ChartMapper::appendEvent(IMargretePluginChart&, const margrete::rpc::v1::EventObject&) const {
-    throw std::runtime_error("event append requires Margrete event interface implementation");
+void ChartMapper::appendEvent(IMargretePluginChart& chart, const margrete::rpc::v1::EventObject& event) const {
+    if (event.has_bpm()) {
+        IMargretePluginEventBpm* bpmEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventBpm, reinterpret_cast<void**>(&bpmEvent)) != MP_TRUE || !bpmEvent) {
+            throw std::runtime_error("failed to create bpm event");
+        }
+        MP_EVENT_BPMINFO info{};
+        info.tick = event.bpm().tick();
+        info.bpm = event.bpm().bpm();
+        bpmEvent->setInfo(&info);
+        if (chart.appendEvent(bpmEvent) != MP_TRUE) {
+            throw std::runtime_error("failed to append bpm event");
+        }
+        return;
+    }
+    if (event.has_beat()) {
+        IMargretePluginEventBeatChange* beatEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventBeatChange, reinterpret_cast<void**>(&beatEvent)) != MP_TRUE || !beatEvent) {
+            throw std::runtime_error("failed to create beat event");
+        }
+        MP_EVENT_BCINFO info{};
+        info.bar = event.beat().bar();
+        info.beatsPerBar = event.beat().beats_per_bar();
+        info.beatUnit = event.beat().beat_unit();
+        beatEvent->setInfo(&info);
+        if (chart.appendEvent(beatEvent) != MP_TRUE) {
+            throw std::runtime_error("failed to append beat event");
+        }
+        return;
+    }
+    if (event.has_scroll_speed()) {
+        IMargretePluginEventTimelineSpeed* speedEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventTimelineSpeed, reinterpret_cast<void**>(&speedEvent)) != MP_TRUE || !speedEvent) {
+            throw std::runtime_error("failed to create scroll speed event");
+        }
+        MP_EVENT_TLSINFO info{};
+        info.timelineId = event.scroll_speed().timeline();
+        info.tick = event.scroll_speed().tick();
+        info.speed = event.scroll_speed().speed();
+        speedEvent->setInfo(&info);
+        if (chart.appendEvent(speedEvent) != MP_TRUE) {
+            throw std::runtime_error("failed to append scroll speed event");
+        }
+        return;
+    }
+    if (event.has_note_speed()) {
+        IMargretePluginEventNoteSpeedModifier* speedEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventNoteSpeedModifier, reinterpret_cast<void**>(&speedEvent)) != MP_TRUE || !speedEvent) {
+            throw std::runtime_error("failed to create note speed event");
+        }
+        MP_EVENT_NSMINFO info{};
+        info.tick = event.note_speed().tick();
+        info.speed = event.note_speed().speed();
+        speedEvent->setInfo(&info);
+        if (chart.appendEvent(speedEvent) != MP_TRUE) {
+            throw std::runtime_error("failed to append note speed event");
+        }
+        return;
+    }
+    throw std::runtime_error("unsupported event object");
 }

@@ -84,16 +84,6 @@ TEST_CASE("empty append item throws") {
     REQUIRE_THROWS_WITH(mapper.appendItem(chart, item), ContainsSubstring("append item is empty"));
 }
 
-TEST_CASE("event append throws until event mapping exists") {
-    FakeChart chart;
-    ChartMapper mapper;
-    margrete::rpc::v1::AppendItem item;
-    item.mutable_event()->mutable_bpm()->set_tick(240);
-    item.mutable_event()->mutable_bpm()->set_bpm(180.0);
-
-    REQUIRE_THROWS_WITH(mapper.appendItem(chart, item), ContainsSubstring("event append"));
-}
-
 TEST_CASE("tap appends single lane note") {
     FakeChart chart;
     ChartMapper mapper;
