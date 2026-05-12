@@ -12,10 +12,13 @@ python -m pip install -e .
 5. Run this script:
 
 ```python
-from margrete_rpc import Margrete
+from margrete_rpc import Margrete, Note
 
 mg = Margrete("127.0.0.1:48731")
 print(mg.ping(), mg.current_tick())
+
+with mg.open_append("manual append") as tx:
+    tx.chart.notes.append(Note.tap(tick=tx.current_tick, x=4, width=1))
 ```
 
 6. Confirm the server responds without errors.

@@ -30,7 +30,7 @@ specific transforms, but it can also feel brittle when you want to:
 1. **Install/enable the plugin** in Margrete.
 2. In Margrete, run the plugin command once to **start** the server (run again to stop).
 3. Use an SDK to call the RPC surface you need:
-   - **Python**: follow [`sdk/README.md`](sdk/README.md)
+   - **Python**: follow [`sdk/README.md`](sdk/README.md) — `ping()`, `current_tick()`, and chart transactions via `open_edit()` / `open_append()`.
 
 ## Links
 
