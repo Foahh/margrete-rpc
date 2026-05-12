@@ -62,6 +62,7 @@ add_library(margrete_rpc SHARED
     src/MargreteSession.cpp
     src/TransactionApplier.cpp
     src/ChartMapper.cpp
+    src/RequestRouter.cpp
     ${GEN_SRC}
     ${CMAKE_CURRENT_BINARY_DIR}/include/version.rc
 )
@@ -84,12 +85,14 @@ add_executable(plugin_tests
     tests/frame_protocol_tests.cpp
     tests/config_tests.cpp
     tests/transaction_applier_tests.cpp
+    tests/request_router_tests.cpp
     src/Config.cpp
     src/Logger.cpp
     src/FrameProtocol.cpp
     src/MargreteSession.cpp
     src/TransactionApplier.cpp
     src/ChartMapper.cpp
+    src/RequestRouter.cpp
     ${GEN_SRC}
 )
 
