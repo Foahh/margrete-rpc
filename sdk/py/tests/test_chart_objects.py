@@ -1,7 +1,7 @@
 import pytest
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart import AirSlide, AirSlidePoint, Hold, RawNoteNode, Tap
+from margrete_rpc.chart import AirHold, AirSlide, AirSlidePoint, Hold, RawNoteNode, Tap
 
 
 def test_tap_converts_to_note_object():
@@ -15,6 +15,14 @@ def test_tap_converts_to_note_object():
 def test_hold_rejects_negative_duration():
     with pytest.raises(ValueError, match="duration"):
         Hold(tick=120, lane=4, width=2, duration=-1).to_append_item()
+
+
+def test_air_hold_converts_to_note_object():
+    item = AirHold(tick=10, lane=2, width=1, duration=120, height=64).to_append_item()
+
+    assert item.note.air_hold.base.tick == 10
+    assert item.note.air_hold.duration == 120
+    assert item.note.air_hold.height == 64
 
 
 def test_air_slide_converts_points():

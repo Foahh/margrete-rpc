@@ -181,6 +181,32 @@ class Air:
 
 
 @dataclass(frozen=True)
+class AirHold:
+    tick: int
+    lane: int
+    width: int
+    duration: int
+    height: int
+    timeline: int = 0
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        if self.duration <= 0:
+            raise ValueError("duration must be positive")
+        return messages_pb2.AppendItem(
+            note=messages_pb2.NoteObject(
+                air_hold=messages_pb2.AirHold(
+                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                    duration=self.duration,
+                    height=self.height,
+                )
+            )
+        )
+
+    def shifted(self, tick_offset: int) -> "AirHold":
+        return replace(self, tick=self.tick + tick_offset)
+
+
+@dataclass(frozen=True)
 class AirSlidePoint:
     dt: int
     lane: int
