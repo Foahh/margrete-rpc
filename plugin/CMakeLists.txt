@@ -56,6 +56,12 @@ target_include_directories(MargretePluginSDK INTERFACE "${MARGRETE_SDK_INCLUDE}"
 add_library(margrete_rpc SHARED
     src/DLLMain.cpp
     src/Plugin.cpp
+    src/Config.cpp
+    src/Logger.cpp
+    src/FrameProtocol.cpp
+    src/MargreteSession.cpp
+    src/TransactionApplier.cpp
+    src/ChartMapper.cpp
     ${GEN_SRC}
     ${CMAKE_CURRENT_BINARY_DIR}/include/version.rc
 )
@@ -76,12 +82,20 @@ endif()
 add_executable(plugin_tests
     tests/smoke_tests.cpp
     tests/frame_protocol_tests.cpp
+    tests/config_tests.cpp
+    tests/transaction_applier_tests.cpp
+    src/Config.cpp
+    src/Logger.cpp
     src/FrameProtocol.cpp
+    src/MargreteSession.cpp
+    src/TransactionApplier.cpp
+    src/ChartMapper.cpp
     ${GEN_SRC}
 )
 
 target_include_directories(plugin_tests PRIVATE
     src
+    "${CMAKE_CURRENT_LIST_DIR}/tests"
     "${GENERATED_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
