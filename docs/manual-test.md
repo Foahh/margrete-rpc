@@ -3,7 +3,7 @@
 1. Build the plugin in Debug or Release.
 2. Copy `margrete_rpc.dll` and `margrete-rpc.ini` into the Margrete plugin folder (use the files from your CMake build output directory, e.g. `plugin/build/Debug/` on Windows).
 3. Start Margrete and invoke the **Margrete RPC** plugin command.
-4. From `sdk/py`, install the SDK:
+4. From `sdk/`, install the SDK:
 
 ```powershell
 python -m pip install -e .

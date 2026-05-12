@@ -15,8 +15,8 @@ specific transforms, but it can also feel brittle when you want to:
 
 - **[`plugin/`](plugin/)**: the Margrete plugin that hosts the localhost RPC server  
   See [`plugin/README.md`](plugin/README.md) for server behavior and default configuration.
-- **[`sdk/py/`](sdk/py/)**: Python SDK for sending transactions to the plugin  
-  See [`sdk/py/README.md`](sdk/py/README.md) for installation and usage.
+- **[`sdk/`](sdk/)**: Python SDK for sending transactions to the plugin  
+  See [`sdk/README.md`](sdk/README.md) for installation and usage.
 - **[`proto/`](proto/)**: protobuf schema shared by the plugin and SDKs.
 
 ## How it works (high level)
@@ -31,12 +31,12 @@ specific transforms, but it can also feel brittle when you want to:
 1. **Install/enable the plugin** in Margrete.
 2. In Margrete, run the plugin command once to **start** the server (run again to stop).
 3. Use an SDK to send edits:
-   - **Python**: follow [`sdk/py/README.md`](sdk/py/README.md)
+   - **Python**: follow [`sdk/README.md`](sdk/README.md)
 
 ## Links
 
 - **Plugin README**: [`plugin/README.md`](plugin/README.md)
-- **Python SDK README**: [`sdk/py/README.md`](sdk/py/README.md)
+- **Python SDK README**: [`sdk/README.md`](sdk/README.md)
 
 ## Documentation site
 

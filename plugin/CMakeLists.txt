@@ -44,7 +44,7 @@ add_custom_command(
     VERBATIM
     COMMENT "Generating C++ protobuf sources for margrete.rpc.v1")
 
-set(MARGRETE_SDK_ROOT "${CMAKE_CURRENT_LIST_DIR}/../MargretePluginSDK")
+set(MARGRETE_SDK_ROOT "${CMAKE_CURRENT_LIST_DIR}/margrete")
 set(MARGRETE_SDK_INCLUDE "${MARGRETE_SDK_ROOT}/include")
 if(NOT EXISTS "${MARGRETE_SDK_INCLUDE}/MargretePlugin.h")
     message(FATAL_ERROR "MargretePluginSDK not found at ${MARGRETE_SDK_ROOT}. Run: git submodule update --init --recursive")

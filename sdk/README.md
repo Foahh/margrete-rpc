@@ -9,7 +9,7 @@ Python client for the **Margrete RPC** plugin.
 
 ## Installation
 
-From the `sdk/py` directory (editable install while developing):
+From the `sdk/` directory (editable install while developing):
 
 ```bash
 pip install -e .
@@ -18,7 +18,7 @@ pip install -e .
 Or install from a path to this folder:
 
 ```bash
-pip install /path/to/margrete-rpc/sdk/py
+pip install /path/to/margrete-rpc/sdk
 ```
 
 ## Quick start

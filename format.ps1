@@ -80,17 +80,17 @@ try {
     }
 
     if (-not $SkipPython) {
-        $pyRoot = Join-Path $RepoRoot 'sdk\py'
+        $pyRoot = Join-Path $RepoRoot 'sdk'
         if (-not (Test-Path -LiteralPath $pyRoot)) {
             Write-Host "Python SDK path not found: $pyRoot"
         }
         else {
             $ruff = Get-Command ruff -ErrorAction SilentlyContinue
             if (-not $ruff) {
-                Write-Host "ruff not on PATH; install dev deps in sdk/py (e.g. pip install -e `".[dev]`") or use -SkipPython." -ForegroundColor Yellow
+                Write-Host "ruff not on PATH; install dev deps in sdk (e.g. pip install -e `".[dev]`") or use -SkipPython." -ForegroundColor Yellow
             }
             else {
-                Write-Host "`n==> ruff format (sdk/py)"
+                Write-Host "`n==> ruff format (sdk)"
                 if ($Check) {
                     Invoke-Checked -Exe $ruff.Source -Arguments @('format', '--check', $pyRoot)
                     Invoke-Checked -Exe $ruff.Source -Arguments @('check', $pyRoot)
