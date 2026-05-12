@@ -1,10 +1,15 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
+
 #include <MargretePlugin.h>
+
+#include "ServerController.h"
 
 class Plugin final : public IMargretePluginCommand {
 public:
+    Plugin();
     MpInteger addRef() override;
     MpInteger release() override;
     MpBoolean queryInterface(const MpGuid& iid, void** ppobj) override;
@@ -12,7 +17,7 @@ public:
     MpBoolean invoke(IMargretePluginContext* ctx) override;
 
 private:
-    ~Plugin() = default;
+    ~Plugin();
     std::atomic<MpInteger> refCount_{0};
-    std::atomic_bool running_{false};
+    std::unique_ptr<ServerController> controller_;
 };

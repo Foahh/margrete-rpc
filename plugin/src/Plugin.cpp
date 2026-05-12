@@ -2,7 +2,16 @@
 
 #include <cwchar>
 
+#include "Config.h"
 #include "meta.h"
+
+Plugin::Plugin() : controller_(std::make_unique<ServerController>(LoadServerConfig("margrete-rpc.ini"))) {}
+
+Plugin::~Plugin() {
+    if (controller_) {
+        controller_->stop();
+    }
+}
 
 MpInteger Plugin::addRef() {
     return ++refCount_;
@@ -37,7 +46,10 @@ MpBoolean Plugin::getCommandName(wchar_t* text, MpInteger textLength) const {
     return MP_TRUE;
 }
 
-MpBoolean Plugin::invoke(IMargretePluginContext*) {
-    running_.store(!running_.load());
+MpBoolean Plugin::invoke(IMargretePluginContext* ctx) {
+    if (!ctx || !controller_) {
+        return MP_FALSE;
+    }
+    controller_->toggle(ctx);
     return MP_TRUE;
 }

@@ -63,6 +63,8 @@ add_library(margrete_rpc SHARED
     src/TransactionApplier.cpp
     src/ChartMapper.cpp
     src/RequestRouter.cpp
+    src/SocketServer.cpp
+    src/ServerController.cpp
     ${GEN_SRC}
     ${CMAKE_CURRENT_BINARY_DIR}/include/version.rc
 )
