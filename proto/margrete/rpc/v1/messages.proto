@@ -10,6 +10,56 @@ enum ErrorCode {
   ERROR_CODE_INTERNAL = 4;
 }
 
+enum NoteType {
+  NOTE_TYPE_UNKNOWN = 0;
+  NOTE_TYPE_TAP = 1;
+  NOTE_TYPE_EXTAP = 2;
+  NOTE_TYPE_FLICK = 3;
+  NOTE_TYPE_DAMAGE = 4;
+  NOTE_TYPE_HOLD = 5;
+  NOTE_TYPE_SLIDE = 6;
+  NOTE_TYPE_AIR = 7;
+  NOTE_TYPE_AIRHOLD = 8;
+  NOTE_TYPE_AIRSLIDE = 9;
+  NOTE_TYPE_AIRCRUSH = 10;
+  NOTE_TYPE_CLICK = 11;
+}
+
+enum LongAttr {
+  LONG_ATTR_NONE = 0;
+  LONG_ATTR_BEGIN = 1;
+  LONG_ATTR_STEP = 2;
+  LONG_ATTR_CONTROL = 3;
+  LONG_ATTR_CURVE_CONTROL = 4;
+  LONG_ATTR_END = 5;
+  LONG_ATTR_END_NOACT = 6;
+}
+
+enum Direction {
+  DIRECTION_NONE = 0;
+  DIRECTION_AUTO = 1;
+  DIRECTION_UP = 2;
+  DIRECTION_DOWN = 3;
+  DIRECTION_CENTER = 4;
+  DIRECTION_LEFT = 5;
+  DIRECTION_RIGHT = 6;
+  DIRECTION_UPLEFT = 7;
+  DIRECTION_UPRIGHT = 8;
+  DIRECTION_DOWNLEFT = 9;
+  DIRECTION_DOWNRIGHT = 10;
+  DIRECTION_ROTATE_LEFT = 11;
+  DIRECTION_ROTATE_RIGHT = 12;
+  DIRECTION_INOUT = 13;
+  DIRECTION_OUTIN = 14;
+}
+
+enum ExAttr {
+  EX_ATTR_NONE = 0;
+  EX_ATTR_INVERT = 1;
+  EX_ATTR_HAS_NOTE = 2;
+  EX_ATTR_EXJDG = 3;
+}
+
 message Envelope {
   uint64 request_id = 1;
   oneof body {
@@ -17,6 +67,14 @@ message Envelope {
     PingResponse ping_response = 11;
     GetCurrentTickRequest get_current_tick_request = 20;
     GetCurrentTickResponse get_current_tick_response = 21;
+    BeginEditRequest begin_edit_request = 30;
+    BeginEditResponse begin_edit_response = 31;
+    BeginAppendRequest begin_append_request = 32;
+    BeginAppendResponse begin_append_response = 33;
+    ApplyEditPatchRequest apply_edit_patch_request = 40;
+    ApplyEditPatchResponse apply_edit_patch_response = 41;
+    ApplyAppendPatchRequest apply_append_patch_request = 42;
+    ApplyAppendPatchResponse apply_append_patch_response = 43;
     ErrorResponse error_response = 100;
   }
 }
@@ -32,6 +90,83 @@ message GetCurrentTickRequest {}
 message GetCurrentTickResponse {
   int32 tick = 1;
 }
+
+message Note {
+  optional int32 id = 1;
+  NoteType type = 2;
+  LongAttr long_attr = 3;
+  Direction direction = 4;
+  ExAttr ex_attr = 5;
+  int32 variation_id = 6;
+  int32 x = 7;
+  int32 width = 8;
+  int32 height = 9;
+  int32 tick = 10;
+  int32 timeline_id = 11;
+  int32 option_value = 12;
+  repeated Note children = 13;
+}
+
+message BpmEvent {
+  int32 tick = 1;
+  double bpm = 2;
+}
+
+message BeatChangeEvent {
+  int32 bar = 1;
+  int32 beats_per_bar = 2;
+  int32 beat_unit = 3;
+}
+
+message TimelineSpeedEvent {
+  int32 tick = 1;
+  int32 timeline_id = 2;
+  double speed = 3;
+}
+
+message NoteSpeedEvent {
+  int32 tick = 1;
+  double speed = 2;
+}
+
+message BeginEditRequest {
+  string name = 1;
+}
+
+message BeginEditResponse {
+  int32 current_tick = 1;
+  repeated Note notes = 2;
+}
+
+message BeginAppendRequest {
+  string name = 1;
+}
+
+message BeginAppendResponse {
+  int32 current_tick = 1;
+}
+
+message ApplyEditPatchRequest {
+  string name = 1;
+  repeated Note notes = 2;
+  repeated BpmEvent bpm_events = 3;
+  repeated BeatChangeEvent beat_change_events = 4;
+  repeated TimelineSpeedEvent timeline_speed_events = 5;
+  repeated NoteSpeedEvent note_speed_events = 6;
+}
+
+message ApplyEditPatchResponse {}
+
+message ApplyAppendPatchRequest {
+  string name = 1;
+  repeated Note notes = 2;
+  repeated BpmEvent bpm_events = 3;
+  repeated BeatChangeEvent beat_change_events = 4;
+  repeated TimelineSpeedEvent timeline_speed_events = 5;
+  repeated NoteSpeedEvent note_speed_events = 6;
+}
+
+message ApplyAppendPatchResponse {}
 
 message ErrorResponse {
   ErrorCode code = 1;

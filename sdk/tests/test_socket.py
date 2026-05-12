@@ -65,3 +65,81 @@ def test_client_maps_error_response_to_exception():
 
     assert exc.value.code == messages_pb2.ERROR_CODE_INVALID_ARGUMENT
     assert str(exc.value) == "bad request"
+
+
+def test_generated_chart_transaction_messages_exist():
+    note = messages_pb2.Note(
+        id=7,
+        type=messages_pb2.NOTE_TYPE_TAP,
+        tick=960,
+        x=4,
+        width=1,
+    )
+    note.children.add(type=messages_pb2.NOTE_TYPE_AIR, tick=1000, x=4)
+
+    begin_edit = messages_pb2.Envelope(
+        begin_edit_request=messages_pb2.BeginEditRequest(name="edit")
+    )
+    append = messages_pb2.Envelope(
+        apply_append_patch_request=messages_pb2.ApplyAppendPatchRequest(
+            name="append",
+            notes=[note],
+            bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=180.0)],
+        )
+    )
+
+    assert begin_edit.HasField("begin_edit_request")
+    assert append.apply_append_patch_request.notes[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
+    assert append.apply_append_patch_request.bpm_events[0].bpm == 180.0
+
+
+def test_generated_chart_transaction_messages_exist():
+    note = messages_pb2.Note(
+        id=7,
+        type=messages_pb2.NOTE_TYPE_TAP,
+        tick=960,
+        x=4,
+        width=1,
+    )
+    note.children.add(type=messages_pb2.NOTE_TYPE_AIR, tick=1000, x=4)
+
+    begin_edit = messages_pb2.Envelope(
+        begin_edit_request=messages_pb2.BeginEditRequest(name="edit")
+    )
+    append = messages_pb2.Envelope(
+        apply_append_patch_request=messages_pb2.ApplyAppendPatchRequest(
+            name="append",
+            notes=[note],
+            bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=180.0)],
+        )
+    )
+
+    assert begin_edit.HasField("begin_edit_request")
+    assert append.apply_append_patch_request.notes[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
+    assert append.apply_append_patch_request.bpm_events[0].bpm == 180.0
+
+
+def test_generated_chart_transaction_messages_exist():
+    note = messages_pb2.Note(
+        id=7,
+        type=messages_pb2.NOTE_TYPE_TAP,
+        tick=960,
+        x=4,
+        width=1,
+    )
+    note.children.add(type=messages_pb2.NOTE_TYPE_AIR, tick=1000, x=4)
+
+    begin_edit = messages_pb2.Envelope(
+        begin_edit_request=messages_pb2.BeginEditRequest(name="edit")
+    )
+    append = messages_pb2.Envelope(
+        apply_append_patch_request=messages_pb2.ApplyAppendPatchRequest(
+            name="append",
+            notes=[note],
+            bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=180.0)],
+        )
+    )
+
+    assert begin_edit.HasField("begin_edit_request")
+    assert append.apply_append_patch_request.notes[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
+    assert append.apply_append_patch_request.bpm_events[0].bpm == 180.0
