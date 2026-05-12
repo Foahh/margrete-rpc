@@ -48,6 +48,8 @@ endif()
 
 add_executable(plugin_tests
     tests/smoke_tests.cpp
+    tests/frame_protocol_tests.cpp
+    src/FrameProtocol.cpp
     ${GEN_SRC}
 )
 
