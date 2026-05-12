@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.ll.event import (
+from margrete_rpc.model.event import (
     BeatChangeEvent,
     BpmEvent,
     NoteSpeedEvent,
     TimelineSpeedEvent,
     _last_by_key,
 )
-from margrete_rpc.model.ll.note import Note
+from margrete_rpc.model.note import Note
 
 
 @dataclass
@@ -32,12 +32,9 @@ class Chart:
             notes=[Note.from_proto(note) for note in response.notes],
             events=ChartEvents(
                 bpm=[BpmEvent.from_proto(event) for event in response.bpm_events],
-                beat=[
-                    BeatChangeEvent.from_proto(event) for event in response.beat_change_events
-                ],
+                beat=[BeatChangeEvent.from_proto(event) for event in response.beat_change_events],
                 til=[
-                    TimelineSpeedEvent.from_proto(event)
-                    for event in response.timeline_speed_events
+                    TimelineSpeedEvent.from_proto(event) for event in response.timeline_speed_events
                 ],
                 note_speed=[
                     NoteSpeedEvent.from_proto(event) for event in response.note_speed_events

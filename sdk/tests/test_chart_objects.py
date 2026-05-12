@@ -16,7 +16,7 @@ from margrete_rpc import (
     pair_air,
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.ll import normalize_event_operations
+from margrete_rpc.model import normalize_event_operations
 
 
 def test_note_type_factories_set_kind_and_geometry():

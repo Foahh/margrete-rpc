@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.ll import Chart, normalize_event_operations
+from margrete_rpc.model import Chart, normalize_event_operations
 
 
 def _extend_events(request, chart: Chart) -> None:

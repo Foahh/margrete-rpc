@@ -1,5 +1,6 @@
 from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
-from margrete_rpc.model.ll import (
+from margrete_rpc.client import Margrete
+from margrete_rpc.model import (
     AirCrushOption,
     BeatChangeEvent,
     BpmEvent,
@@ -14,7 +15,6 @@ from margrete_rpc.model.ll import (
     TimelineSpeedEvent,
     pair_air,
 )
-from margrete_rpc.client import Margrete
 
 __all__ = [
     "AirCrushOption",
