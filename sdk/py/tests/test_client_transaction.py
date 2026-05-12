@@ -56,9 +56,7 @@ def test_early_commit_inside_with_sends_one_batch():
         chart.append(Tap(tick=100, lane=4))
         chart.commit()
 
-    append_requests = [
-        r for r in transport.requests if r.HasField("append_transaction_request")
-    ]
+    append_requests = [r for r in transport.requests if r.HasField("append_transaction_request")]
     assert len(append_requests) == 1
 
 

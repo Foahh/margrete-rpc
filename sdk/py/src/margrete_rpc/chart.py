@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
@@ -10,6 +10,11 @@ class Appendable(Protocol):
     def to_append_item(self) -> messages_pb2.AppendItem: ...
 
     def shifted(self, tick_offset: int) -> Appendable: ...
+
+
+@runtime_checkable
+class Note(Appendable, Protocol):
+    def to_note_object(self) -> messages_pb2.NoteObject: ...
 
 
 def _validate_base(tick: int, lane: int, width: int) -> None:
@@ -31,14 +36,13 @@ class Tap:
     width: int = 1
     timeline: int = 0
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                tap=messages_pb2.Tap(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline)
-                )
-            )
+    def to_note_object(self) -> messages_pb2.NoteObject:
+        return messages_pb2.NoteObject(
+            tap=messages_pb2.Tap(base=_lane_note(self.tick, self.lane, self.width, self.timeline))
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> Tap:
         return replace(self, tick=self.tick + tick_offset)
@@ -52,15 +56,16 @@ class ExTap:
     timeline: int = 0
     direction: int = messages_pb2.DIRECTION_UP
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                ex_tap=messages_pb2.ExTap(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    direction=self.direction,
-                )
+    def to_note_object(self) -> messages_pb2.NoteObject:
+        return messages_pb2.NoteObject(
+            ex_tap=messages_pb2.ExTap(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                direction=self.direction,
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> ExTap:
         return replace(self, tick=self.tick + tick_offset)
@@ -68,26 +73,28 @@ class ExTap:
 
 @dataclass(frozen=True)
 class Flick(Tap):
-    def to_append_item(self) -> messages_pb2.AppendItem:
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                flick=messages_pb2.Flick(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline)
-                )
+    def to_note_object(self) -> messages_pb2.NoteObject:
+        return messages_pb2.NoteObject(
+            flick=messages_pb2.Flick(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline)
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
 
 @dataclass(frozen=True)
 class Damage(Tap):
-    def to_append_item(self) -> messages_pb2.AppendItem:
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                damage=messages_pb2.Damage(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline)
-                )
+    def to_note_object(self) -> messages_pb2.NoteObject:
+        return messages_pb2.NoteObject(
+            damage=messages_pb2.Damage(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline)
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
 
 @dataclass(frozen=True)
@@ -98,18 +105,19 @@ class Hold:
     duration: int
     timeline: int = 0
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
+    def to_note_object(self) -> messages_pb2.NoteObject:
         _validate_base(self.tick, self.lane, self.width)
         if self.duration <= 0:
             raise ValueError("duration must be positive")
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                hold=messages_pb2.Hold(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    duration=self.duration,
-                )
+        return messages_pb2.NoteObject(
+            hold=messages_pb2.Hold(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                duration=self.duration,
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> Hold:
         return replace(self, tick=self.tick + tick_offset)
@@ -134,26 +142,27 @@ class Slide:
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
+    def to_note_object(self) -> messages_pb2.NoteObject:
         _validate_base(self.tick, self.lane, self.width)
         if len(self.points) < 2:
             raise ValueError("slide requires at least two points")
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                slide=messages_pb2.Slide(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    points=[
-                        messages_pb2.SlidePoint(
-                            dt=point.dt,
-                            lane=point.lane,
-                            width=point.width,
-                            attr=point.attr,
-                        )
-                        for point in self.points
-                    ],
-                )
+        return messages_pb2.NoteObject(
+            slide=messages_pb2.Slide(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                points=[
+                    messages_pb2.SlidePoint(
+                        dt=point.dt,
+                        lane=point.lane,
+                        width=point.width,
+                        attr=point.attr,
+                    )
+                    for point in self.points
+                ],
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> Slide:
         return replace(self, tick=self.tick + tick_offset)
@@ -168,16 +177,17 @@ class Air:
     direction: int = messages_pb2.DIRECTION_UP
     ex_attr: int = messages_pb2.EX_ATTR_NONE
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                air=messages_pb2.Air(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    direction=self.direction,
-                    ex_attr=self.ex_attr,
-                )
+    def to_note_object(self) -> messages_pb2.NoteObject:
+        return messages_pb2.NoteObject(
+            air=messages_pb2.Air(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                direction=self.direction,
+                ex_attr=self.ex_attr,
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> Air:
         return replace(self, tick=self.tick + tick_offset)
@@ -192,19 +202,20 @@ class AirHold:
     height: int
     timeline: int = 0
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
+    def to_note_object(self) -> messages_pb2.NoteObject:
         _validate_base(self.tick, self.lane, self.width)
         if self.duration <= 0:
             raise ValueError("duration must be positive")
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                air_hold=messages_pb2.AirHold(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    duration=self.duration,
-                    height=self.height,
-                )
+        return messages_pb2.NoteObject(
+            air_hold=messages_pb2.AirHold(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                duration=self.duration,
+                height=self.height,
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> AirHold:
         return replace(self, tick=self.tick + tick_offset)
@@ -231,28 +242,29 @@ class AirSlide:
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
+    def to_note_object(self) -> messages_pb2.NoteObject:
         _validate_base(self.tick, self.lane, self.width)
         if len(self.points) < 2:
             raise ValueError("air slide requires at least two points")
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                air_slide=messages_pb2.AirSlide(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    air_direction=self.air_direction,
-                    air_ex_attr=self.air_ex_attr,
-                    points=[
-                        messages_pb2.AirSlidePoint(
-                            dt=point.dt,
-                            lane=point.lane,
-                            height=point.height,
-                            attr=point.attr,
-                        )
-                        for point in self.points
-                    ],
-                )
+        return messages_pb2.NoteObject(
+            air_slide=messages_pb2.AirSlide(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                air_direction=self.air_direction,
+                air_ex_attr=self.air_ex_attr,
+                points=[
+                    messages_pb2.AirSlidePoint(
+                        dt=point.dt,
+                        lane=point.lane,
+                        height=point.height,
+                        attr=point.attr,
+                    )
+                    for point in self.points
+                ],
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> AirSlide:
         return replace(self, tick=self.tick + tick_offset)
@@ -280,29 +292,30 @@ class AirCrush:
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
 
-    def to_append_item(self) -> messages_pb2.AppendItem:
+    def to_note_object(self) -> messages_pb2.NoteObject:
         _validate_base(self.tick, self.lane, self.width)
         if len(self.points) < 2:
             raise ValueError("air crush requires at least two points")
-        return messages_pb2.AppendItem(
-            note=messages_pb2.NoteObject(
-                air_crush=messages_pb2.AirCrush(
-                    base=_lane_note(self.tick, self.lane, self.width, self.timeline),
-                    variation_id=self.variation_id,
-                    option_value=self.option_value,
-                    points=[
-                        messages_pb2.AirCrushPoint(
-                            dt=point.dt,
-                            lane=point.lane,
-                            width=point.width,
-                            height=point.height,
-                            attr=point.attr,
-                        )
-                        for point in self.points
-                    ],
-                )
+        return messages_pb2.NoteObject(
+            air_crush=messages_pb2.AirCrush(
+                base=_lane_note(self.tick, self.lane, self.width, self.timeline),
+                variation_id=self.variation_id,
+                option_value=self.option_value,
+                points=[
+                    messages_pb2.AirCrushPoint(
+                        dt=point.dt,
+                        lane=point.lane,
+                        width=point.width,
+                        height=point.height,
+                        attr=point.attr,
+                    )
+                    for point in self.points
+                ],
             )
         )
+
+    def to_append_item(self) -> messages_pb2.AppendItem:
+        return messages_pb2.AppendItem(note=self.to_note_object())
 
     def shifted(self, tick_offset: int) -> AirCrush:
         return replace(self, tick=self.tick + tick_offset)
