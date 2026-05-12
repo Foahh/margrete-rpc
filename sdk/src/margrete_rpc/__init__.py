@@ -13,7 +13,6 @@ from margrete_rpc.model import (
     NoteSpeedEvent,
     NoteType,
     TimelineSpeedEvent,
-    pair_air,
 )
 
 __all__ = [
@@ -33,5 +32,4 @@ __all__ = [
     "NoteSpeedEvent",
     "NoteType",
     "TimelineSpeedEvent",
-    "pair_air",
 ]

@@ -13,7 +13,6 @@ from margrete_rpc import (
     NoteSpeedEvent,
     NoteType,
     TimelineSpeedEvent,
-    pair_air,
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
@@ -57,7 +56,13 @@ def test_note_factories_require_geometry_and_specific_fields():
 
 
 def test_long_note_factories_assemble_tree_from_nodes():
-    slide_begin = Note.slide_begin(10, 0, 4)
+    assert Note.slide.begin == Note.slide_begin
+    assert Note.hold.begin == Note.hold_begin
+    assert Note.air_slide.begin == Note.air_slide_begin
+    assert Note.air_hold.begin == Note.air_hold_begin
+    assert Note.air_crush.begin == Note.air_crush_begin
+
+    slide_begin = Note.slide.begin(10, 0, 4)
     slide_step = Note.slide_step(20, 6, 4)
     slide_end = Note.slide_end(30, 12, 4)
 
@@ -89,24 +94,24 @@ def test_long_note_factories_assemble_tree_from_nodes():
     assert air_crush_begin.children == [air_crush_control, air_crush_end]
 
 
-def test_pair_air_adds_same_position_air_child_when_airlike_is_omitted():
+def test_with_air_adds_same_position_air_child_when_air_notes_is_omitted():
     note = Note.tap(960, 4, 2, height=700)
 
-    result = pair_air(note)
+    result = Note.with_air(note)
 
     assert result is note
     assert note.children == [Note.air(960, 4, 2, height=700)]
 
 
-def test_pair_air_adds_explicit_airlike_children_to_single_note():
+def test_with_air_adds_explicit_airlike_children_to_single_note():
     note = Note.tap(960, 4, 2)
     air = Note.air(960, 4, 2, direction=Direction.UP)
     air_slide = Note.air_slide(
-        Note.air_slide_begin(960, 4, 2, 80),
+        Note.air_slide.begin(960, 4, 2, 80),
         Note.air_slide_end(1440, 8, 2, 80),
     )
 
-    result = pair_air(note, air, air_slide)
+    result = Note.with_air(note, air, air_slide)
 
     assert result is note
     assert note.children == [air, air_slide]

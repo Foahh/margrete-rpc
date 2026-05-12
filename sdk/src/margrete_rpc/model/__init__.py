@@ -14,7 +14,6 @@ from margrete_rpc.model.note import (
     LongAttr,
     Note,
     NoteType,
-    pair_air,
 )
 
 __all__ = [
@@ -31,5 +30,4 @@ __all__ = [
     "NoteType",
     "TimelineSpeedEvent",
     "normalize_event_operations",
-    "pair_air",
 ]

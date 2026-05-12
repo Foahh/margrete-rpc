@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import KW_ONLY, dataclass, field
 from enum import IntEnum
 from fractions import Fraction
@@ -111,20 +112,12 @@ class Note:
         return cls(type=NoteType.DAMAGE, tick=tick, x=x, width=width, height=height, **kwargs)
 
     @classmethod
-    def hold(cls, *nodes: Note) -> Note:
-        return cls._long_note_tree("hold", NoteType.HOLD, nodes)
-
-    @classmethod
     def hold_begin(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
         return cls._long_segment(NoteType.HOLD, LongAttr.BEGIN, tick, x, width, height, **kwargs)
 
     @classmethod
     def hold_end(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
         return cls._long_segment(NoteType.HOLD, LongAttr.END, tick, x, width, height, **kwargs)
-
-    @classmethod
-    def slide(cls, *nodes: Note) -> Note:
-        return cls._long_note_tree("slide", NoteType.SLIDE, nodes)
 
     @classmethod
     def slide_begin(cls, tick: int, x: int, width: int, *, height: int = 800, **kwargs) -> Note:
@@ -169,8 +162,11 @@ class Note:
         return cls(type=NoteType.AIR, tick=tick, x=x, width=width, height=height, **kwargs)
 
     @classmethod
-    def air_slide(cls, *nodes: Note) -> Note:
-        return cls._long_note_tree("air_slide", NoteType.AIRSLIDE, nodes)
+    def with_air(cls, host: Note, *air_notes: Note) -> Note:
+        if not air_notes:
+            air_notes = (cls.air(host.tick, host.x, host.width, height=host.height),)
+        host.children.extend(air_notes)
+        return host
 
     @classmethod
     def air_slide_begin(cls, tick: int, x: int, width: int, height: int, **kwargs) -> Note:
@@ -288,10 +284,6 @@ class Note:
         return root
 
     @classmethod
-    def air_hold(cls, *nodes: Note) -> Note:
-        return cls._long_note_tree("air_hold", NoteType.AIRHOLD, nodes)
-
-    @classmethod
     def air_hold_begin(cls, tick: int, x: int, width: int, height: int, **kwargs) -> Note:
         return cls._long_segment(NoteType.AIRHOLD, LongAttr.BEGIN, tick, x, width, height, **kwargs)
 
@@ -314,10 +306,6 @@ class Note:
             height,
             **kwargs,
         )
-
-    @classmethod
-    def air_crush(cls, *nodes: Note) -> Note:
-        return cls._long_note_tree("air_crush", NoteType.AIRCRUSH, nodes)
 
     @classmethod
     def _air_crush_segment(
@@ -431,8 +419,25 @@ class Note:
         return proto
 
 
-def pair_air(note: Note, *airlikes: Note) -> Note:
-    if not airlikes:
-        airlikes = (Note.air(note.tick, note.x, note.width, height=note.height),)
-    note.children.extend(airlikes)
-    return note
+class _LongNoteTreeFactory:
+    __slots__ = ("_factory_name", "_note_type", "begin")
+
+    def __init__(
+        self,
+        factory_name: str,
+        note_type: NoteType,
+        begin: Callable[..., Note],
+    ) -> None:
+        self._factory_name = factory_name
+        self._note_type = note_type
+        self.begin = begin
+
+    def __call__(self, *nodes: Note) -> Note:
+        return Note._long_note_tree(self._factory_name, self._note_type, nodes)
+
+
+Note.hold = _LongNoteTreeFactory("hold", NoteType.HOLD, Note.hold_begin)
+Note.slide = _LongNoteTreeFactory("slide", NoteType.SLIDE, Note.slide_begin)
+Note.air_slide = _LongNoteTreeFactory("air_slide", NoteType.AIRSLIDE, Note.air_slide_begin)
+Note.air_hold = _LongNoteTreeFactory("air_hold", NoteType.AIRHOLD, Note.air_hold_begin)
+Note.air_crush = _LongNoteTreeFactory("air_crush", NoteType.AIRCRUSH, Note.air_crush_begin)
