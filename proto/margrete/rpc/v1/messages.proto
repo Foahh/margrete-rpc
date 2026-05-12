@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package margrete.rpc.v1;
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_UNAVAILABLE = 1;
+  ERROR_CODE_INVALID_ARGUMENT = 2;
+  ERROR_CODE_FAILED_PRECONDITION = 3;
+  ERROR_CODE_INTERNAL = 4;
+}
+
+enum NoteType {
+  NOTE_TYPE_UNSPECIFIED = 0;
+  NOTE_TYPE_TAP = 1;
+  NOTE_TYPE_EXTAP = 2;
+  NOTE_TYPE_FLICK = 3;
+  NOTE_TYPE_DAMAGE = 4;
+  NOTE_TYPE_HOLD = 5;
+  NOTE_TYPE_SLIDE = 6;
+  NOTE_TYPE_AIR = 7;
+  NOTE_TYPE_AIRHOLD = 8;
+  NOTE_TYPE_AIRSLIDE = 9;
+  NOTE_TYPE_AIRCRUSH = 10;
+}
+
+enum LongAttr {
+  LONG_ATTR_NONE = 0;
+  LONG_ATTR_BEGIN = 1;
+  LONG_ATTR_STEP = 2;
+  LONG_ATTR_CONTROL = 3;
+  LONG_ATTR_CURVE_CONTROL = 4;
+  LONG_ATTR_END = 5;
+  LONG_ATTR_END_NOACT = 6;
+}
+
+enum Direction {
+  DIRECTION_NONE = 0;
+  DIRECTION_AUTO = 1;
+  DIRECTION_UP = 2;
+  DIRECTION_DOWN = 3;
+  DIRECTION_CENTER = 4;
+  DIRECTION_LEFT = 5;
+  DIRECTION_RIGHT = 6;
+  DIRECTION_UPLEFT = 7;
+  DIRECTION_UPRIGHT = 8;
+  DIRECTION_DOWNLEFT = 9;
+  DIRECTION_DOWNRIGHT = 10;
+  DIRECTION_ROTATE_LEFT = 11;
+  DIRECTION_ROTATE_RIGHT = 12;
+  DIRECTION_INOUT = 13;
+  DIRECTION_OUTIN = 14;
+}
+
+enum ExAttr {
+  EX_ATTR_NONE = 0;
+  EX_ATTR_INVERT = 1;
+  EX_ATTR_HAS_NOTE = 2;
+  EX_ATTR_EXJDG = 3;
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_BPM = 1;
+  EVENT_TYPE_BEAT = 2;
+  EVENT_TYPE_SCROLL_SPEED = 3;
+  EVENT_TYPE_NOTE_SPEED = 4;
+}
+
+message Envelope {
+  uint64 request_id = 1;
+  oneof body {
+    PingRequest ping_request = 10;
+    PingResponse ping_response = 11;
+    GetCurrentTickRequest get_current_tick_request = 20;
+    GetCurrentTickResponse get_current_tick_response = 21;
+    AppendTransactionRequest append_transaction_request = 30;
+    AppendTransactionResponse append_transaction_response = 31;
+    ErrorResponse error_response = 100;
+  }
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string server_name = 1;
+}
+
+message GetCurrentTickRequest {}
+
+message GetCurrentTickResponse {
+  int32 tick = 1;
+}
+
+message AppendTransactionRequest {
+  string transaction_name = 1;
+  repeated AppendItem items = 2;
+}
+
+message AppendTransactionResponse {
+  uint32 appended_items = 1;
+}
+
+message AppendItem {
+  oneof item {
+    NoteObject note = 1;
+    EventObject event = 2;
+    RawNoteNode raw_note = 3;
+  }
+}
+
+message NoteObject {
+  oneof note {
+    Tap tap = 1;
+    ExTap ex_tap = 2;
+    Flick flick = 3;
+    Damage damage = 4;
+    Hold hold = 5;
+    Slide slide = 6;
+    Air air = 7;
+    AirHold air_hold = 8;
+    AirSlide air_slide = 9;
+    AirCrush air_crush = 10;
+  }
+}
+
+message EventObject {
+  oneof event {
+    BpmEvent bpm = 1;
+    BeatEvent beat = 2;
+    ScrollSpeedEvent scroll_speed = 3;
+    NoteSpeedEvent note_speed = 4;
+  }
+}
+
+message LaneNote {
+  int32 tick = 1;
+  int32 lane = 2;
+  int32 width = 3;
+  int32 timeline = 4;
+}
+
+message Tap {
+  LaneNote base = 1;
+}
+
+message ExTap {
+  LaneNote base = 1;
+  Direction direction = 2;
+}
+
+message Flick {
+  LaneNote base = 1;
+}
+
+message Damage {
+  LaneNote base = 1;
+}
+
+message Hold {
+  LaneNote base = 1;
+  int32 duration = 2;
+}
+
+message SlidePoint {
+  int32 dt = 1;
+  int32 lane = 2;
+  int32 width = 3;
+  LongAttr attr = 4;
+}
+
+message Slide {
+  LaneNote base = 1;
+  repeated SlidePoint points = 2;
+}
+
+message Air {
+  LaneNote base = 1;
+  Direction direction = 2;
+  ExAttr ex_attr = 3;
+}
+
+message AirHold {
+  LaneNote base = 1;
+  int32 duration = 2;
+  int32 height = 3;
+}
+
+message AirSlidePoint {
+  int32 dt = 1;
+  int32 lane = 2;
+  int32 height = 3;
+  LongAttr attr = 4;
+}
+
+message AirSlide {
+  LaneNote base = 1;
+  Direction air_direction = 2;
+  ExAttr air_ex_attr = 3;
+  repeated AirSlidePoint points = 4;
+}
+
+message AirCrushPoint {
+  int32 dt = 1;
+  int32 lane = 2;
+  int32 width = 3;
+  int32 height = 4;
+  LongAttr attr = 5;
+}
+
+message AirCrush {
+  LaneNote base = 1;
+  int32 variation_id = 2;
+  int32 option_value = 3;
+  repeated AirCrushPoint points = 4;
+}
+
+message BpmEvent {
+  int32 tick = 1;
+  double bpm = 2;
+}
+
+message BeatEvent {
+  int32 bar = 1;
+  int32 beats_per_bar = 2;
+  int32 beat_unit = 3;
+}
+
+message ScrollSpeedEvent {
+  int32 tick = 1;
+  int32 timeline = 2;
+  double speed = 3;
+}
+
+message NoteSpeedEvent {
+  int32 tick = 1;
+  double speed = 2;
+}
+
+message RawNoteNode {
+  NoteType type = 1;
+  LongAttr long_attr = 2;
+  Direction direction = 3;
+  ExAttr ex_attr = 4;
+  int32 variation_id = 5;
+  int32 x = 6;
+  int32 width = 7;
+  int32 height = 8;
+  int32 tick = 9;
+  int32 timeline_id = 10;
+  int32 option_value = 11;
+  repeated RawNoteNode children = 12;
+}
+
+message ErrorResponse {
+  ErrorCode code = 1;
+  string message = 2;
+}
