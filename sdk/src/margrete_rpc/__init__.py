@@ -4,6 +4,7 @@ from margrete_rpc.chart import (
     BeatChangeEvent,
     BpmEvent,
     Chart,
+    ChartEvents,
     Direction,
     ExAttr,
     LongAttr,
@@ -11,6 +12,7 @@ from margrete_rpc.chart import (
     NoteSpeedEvent,
     NoteType,
     TimelineSpeedEvent,
+    pair_air,
 )
 from margrete_rpc.client import Margrete
 
@@ -19,6 +21,7 @@ __all__ = [
     "BeatChangeEvent",
     "BpmEvent",
     "Chart",
+    "ChartEvents",
     "Direction",
     "ExAttr",
     "LongAttr",
@@ -30,4 +33,5 @@ __all__ = [
     "NoteSpeedEvent",
     "NoteType",
     "TimelineSpeedEvent",
+    "pair_air",
 ]

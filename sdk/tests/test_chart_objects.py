@@ -1,3 +1,5 @@
+import pytest
+
 from margrete_rpc import (
     AirCrushOption,
     BeatChangeEvent,
@@ -10,67 +12,139 @@ from margrete_rpc import (
     NoteSpeedEvent,
     NoteType,
     TimelineSpeedEvent,
+    pair_air,
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart import normalize_event_operations
 
 
 def test_note_type_factories_set_kind_and_geometry():
-    assert Note.tap(tick=1, x=2).type is NoteType.TAP
-    assert Note.extap(tick=1, x=2).type is NoteType.EXTAP
-    assert Note.flick(tick=1, x=2).type is NoteType.FLICK
-    assert Note.damage(tick=1, x=2).type is NoteType.DAMAGE
-    assert Note.hold(tick=1, x=2).type is NoteType.HOLD
-    assert Note.hold(tick=1, x=2).long_attr is LongAttr.BEGIN
-    assert Note.hold_begin(tick=1, x=2) == Note.hold(tick=1, x=2, long_attr=LongAttr.BEGIN)
-    assert Note.hold_end(tick=1, x=2) == Note.hold(tick=1, x=2, long_attr=LongAttr.END)
-    assert Note.slide_begin(tick=1, x=2).type is NoteType.SLIDE
-    assert Note.slide_begin(tick=1, x=2).long_attr is LongAttr.BEGIN
-    assert Note.slide(tick=1, x=2) == Note.slide_begin(tick=1, x=2)
-    assert Note.air(tick=1, x=2).type is NoteType.AIR
-    assert Note.air_slide_begin(tick=1, x=2).type is NoteType.AIRSLIDE
-    assert Note.air_slide(tick=1, x=2) == Note.air_slide_begin(tick=1, x=2)
-    assert Note.air_hold(tick=1, x=2).type is NoteType.AIRHOLD
-    assert Note.air_hold_begin(tick=1, x=2) == Note.air_hold(tick=1, x=2, long_attr=LongAttr.BEGIN)
-    assert Note.air_hold_end(tick=1, x=2) == Note.air_hold(tick=1, x=2, long_attr=LongAttr.END)
-    assert Note.air_hold(tick=1, x=2, long_attr=LongAttr.STEP).long_attr is LongAttr.STEP
-    crush0 = Note.air_crush_begin(tick=1, x=2, option_value=AirCrushOption.TRACELIKE)
+    assert Note.tap(1, 2, 1).type is NoteType.TAP
+    assert Note.extap(1, 2, 1).type is NoteType.EXTAP
+    assert Note.flick(1, 2, 1).type is NoteType.FLICK
+    assert Note.damage(1, 2, 1).type is NoteType.DAMAGE
+    assert Note.hold_begin(1, 2, 1).type is NoteType.HOLD
+    assert Note.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
+    assert Note.hold_end(1, 2, 1).long_attr is LongAttr.END
+    assert Note.slide_begin(1, 2, 1).type is NoteType.SLIDE
+    assert Note.slide_begin(1, 2, 1).long_attr is LongAttr.BEGIN
+    assert Note.air(1, 2, 1).type is NoteType.AIR
+    assert Note.air_slide_begin(1, 2, 1, 80).type is NoteType.AIRSLIDE
+    assert Note.air_hold_begin(1, 2, 1, 80).type is NoteType.AIRHOLD
+    assert Note.air_hold_begin(1, 2, 1, 80).long_attr is LongAttr.BEGIN
+    assert Note.air_hold_end(1, 2, 1, 80).long_attr is LongAttr.END
+    crush0 = Note.air_crush_begin(1, 2, 1, 80, AirCrushOption.TRACELIKE)
     assert crush0.type is NoteType.AIRCRUSH
     assert crush0.long_attr is LongAttr.BEGIN
     assert crush0.option_value == AirCrushOption.TRACELIKE
-    head = Note.air_crush_begin(tick=1, x=2, option_value=AirCrushOption.HEAD_ONLY)
+    head = Note.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY)
     assert head.option_value == 0x7FFFFFFF
-    assert Note.air_crush_begin(tick=1, x=2, option_value=120).option_value == 120
+    assert Note.air_crush_begin(1, 2, 1, 80, 120).option_value == 120
+
+
+def test_note_factories_require_geometry_and_specific_fields():
+    with pytest.raises(TypeError):
+        Note.tap(tick=1, x=2)
+    with pytest.raises(TypeError):
+        Note.slide(1, 2, 1)
+    with pytest.raises(TypeError):
+        Note.air_crush_begin(1, 2, 1)
+    with pytest.raises(TypeError):
+        Note.air_slide_begin(1, 2, 1)
+    with pytest.raises(TypeError):
+        Note.air_hold_begin(1, 2, 1)
+
+
+def test_long_note_factories_assemble_tree_from_nodes():
+    slide_begin = Note.slide_begin(10, 0, 4)
+    slide_step = Note.slide_step(20, 6, 4)
+    slide_end = Note.slide_end(30, 12, 4)
+
+    slide = Note.slide(slide_begin, slide_step, slide_end)
+
+    assert slide is slide_begin
+    assert slide.children == [slide_step, slide_end]
+
+    hold_begin = Note.hold_begin(40, 2, 4)
+    hold_end = Note.hold_end(50, 2, 4)
+    assert Note.hold(hold_begin, hold_end) is hold_begin
+    assert hold_begin.children == [hold_end]
+
+    air_slide_begin = Note.air_slide_begin(60, 4, 8, 80)
+    air_slide_step = Note.air_slide_step(70, 8, 8, 120)
+    air_slide_end = Note.air_slide_end(80, 12, 8, 80)
+    assert Note.air_slide(air_slide_begin, air_slide_step, air_slide_end) is air_slide_begin
+    assert air_slide_begin.children == [air_slide_step, air_slide_end]
+
+    air_hold_begin = Note.air_hold_begin(90, 4, 8, 80)
+    air_hold_end = Note.air_hold_end(100, 4, 8, 80)
+    assert Note.air_hold(air_hold_begin, air_hold_end) is air_hold_begin
+    assert air_hold_begin.children == [air_hold_end]
+
+    air_crush_begin = Note.air_crush_begin(110, 4, 8, 80, 5)
+    air_crush_control = Note.air_crush_control(120, 8, 8, 120, 0)
+    air_crush_end = Note.air_crush_end(130, 12, 8, 80, 0)
+    assert Note.air_crush(air_crush_begin, air_crush_control, air_crush_end) is air_crush_begin
+    assert air_crush_begin.children == [air_crush_control, air_crush_end]
+
+
+def test_pair_air_adds_same_position_air_child_when_airlike_is_omitted():
+    note = Note.tap(960, 4, 2, height=700)
+
+    result = pair_air(note)
+
+    assert result is note
+    assert note.children == [Note.air(960, 4, 2, height=700)]
+
+
+def test_pair_air_adds_explicit_airlike_children_to_single_note():
+    note = Note.tap(960, 4, 2)
+    air = Note.air(960, 4, 2, direction=Direction.UP)
+    air_slide = Note.air_slide(
+        Note.air_slide_begin(960, 4, 2, 80),
+        Note.air_slide_end(1440, 8, 2, 80),
+    )
+
+    result = pair_air(note, air, air_slide)
+
+    assert result is note
+    assert note.children == [air, air_slide]
 
 
 def test_slide_segment_factories_match_long_attr():
-    assert Note.slide_begin(tick=10, x=3) == Note.slide(tick=10, x=3, long_attr=LongAttr.BEGIN)
-    assert Note.slide_step(tick=10, x=3).long_attr is LongAttr.STEP
-    assert Note.slide_control(tick=10, x=3).long_attr is LongAttr.CONTROL
-    assert Note.slide_curve_control(tick=10, x=3).long_attr is LongAttr.CURVE_CONTROL
-    assert Note.slide_end(tick=10, x=3).long_attr is LongAttr.END
+    assert Note.slide_step(10, 3, 1).long_attr is LongAttr.STEP
+    assert Note.slide_control(10, 3, 1).long_attr is LongAttr.CONTROL
+    assert Note.slide_curve_control(10, 3, 1).long_attr is LongAttr.CURVE_CONTROL
+    assert Note.slide_end(10, 3, 1).long_attr is LongAttr.END
 
 
 def test_air_slide_segment_factories_match_long_attr():
-    begin = Note.air_slide_begin(tick=11, x=4)
-    assert begin == Note.air_slide(tick=11, x=4, long_attr=LongAttr.BEGIN)
-    assert Note.air_slide_step(tick=11, x=4).long_attr is LongAttr.STEP
-    assert Note.air_slide_control(tick=11, x=4).long_attr is LongAttr.CONTROL
-    assert Note.air_slide_curve_control(tick=11, x=4).long_attr is LongAttr.CURVE_CONTROL
-    assert Note.air_slide_end(tick=11, x=4).long_attr is LongAttr.END
-    assert Note.air_slide_end_noact(tick=11, x=4).long_attr is LongAttr.END_NOACT
+    begin = Note.air_slide_begin(11, 4, 1, 80)
+    assert begin.long_attr is LongAttr.BEGIN
+    assert Note.air_slide_step(11, 4, 1, 80).long_attr is LongAttr.STEP
+    assert Note.air_slide_control(11, 4, 1, 80).long_attr is LongAttr.CONTROL
+    assert Note.air_slide_curve_control(11, 4, 1, 80).long_attr is LongAttr.CURVE_CONTROL
+    assert Note.air_slide_end(11, 4, 1, 80).long_attr is LongAttr.END
+    assert Note.air_slide_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
+
+
+def test_air_hold_segment_factories_match_long_attr():
+    assert Note.air_hold_begin(11, 4, 1, 80).long_attr is LongAttr.BEGIN
+    assert Note.air_hold_step(11, 4, 1, 80).long_attr is LongAttr.STEP
+    assert Note.air_hold_end(11, 4, 1, 80).long_attr is LongAttr.END
+    assert Note.air_hold_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
 
 
 def test_air_crush_segment_factories_match_long_attr():
-    begin = Note.air_crush_begin(tick=11, x=4, option_value=5)
-    assert begin == Note.air_crush(tick=11, x=4, long_attr=LongAttr.BEGIN, option_value=5)
+    begin = Note.air_crush_begin(11, 4, 1, 80, 5)
+    assert begin.long_attr is LongAttr.BEGIN
     assert begin.option_value == 5
-    assert Note.air_crush_control(tick=11, x=4).long_attr is LongAttr.CONTROL
-    assert Note.air_crush_end(tick=11, x=4).long_attr is LongAttr.END
+    assert Note.air_crush_control(11, 4, 1, 80, 0).long_attr is LongAttr.CONTROL
+    assert Note.air_crush_end(11, 4, 1, 80, 0).long_attr is LongAttr.END
 
 
 def test_note_defaults_and_tap_constructor_are_pythonic():
-    note = Note.tap(tick=960, x=4, width=1)
+    note = Note.tap(960, 4, 1)
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
@@ -79,12 +153,70 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
     assert note.tick == 960
     assert note.x == 4
     assert note.width == 1
+    assert note.height == 800
     assert note.id is None
     assert note.children == []
 
 
+def test_non_air_shape_factories_default_height_to_800():
+    assert Note.extap(1, 2, 1).height == 800
+    assert Note.flick(1, 2, 1).height == 800
+    assert Note.damage(1, 2, 1).height == 800
+    assert Note.hold_begin(1, 2, 1).height == 800
+    assert Note.slide_begin(1, 2, 1).height == 800
+    assert Note.air(1, 2, 1).height == 800
+
+
+def test_note_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
+    note = Note(
+        NoteType.TAP,
+        LongAttr.BEGIN,
+        Direction.UP,
+        ExAttr.HAS_NOTE,
+        2,
+        4,
+        1,
+        800,
+        960,
+        3,
+        7,
+        id=12,
+    )
+
+    assert note.type is NoteType.TAP
+    assert note.long_attr is LongAttr.BEGIN
+    assert note.direction is Direction.UP
+    assert note.ex_attr is ExAttr.HAS_NOTE
+    assert note.variation_id == 2
+    assert note.tick == 960
+    assert note.x == 4
+    assert note.width == 1
+    assert note.height == 800
+    assert note.timeline_id == 3
+    assert note.option_value == 7
+    assert note.id == 12
+
+    with pytest.raises(TypeError):
+        Note(NoteType.TAP, LongAttr.NONE, Direction.NONE, ExAttr.NONE, 0, 4, 1, 800, 960, 0, 0, [])
+
+
+def test_event_dataclasses_accept_required_fields_as_positional_arguments():
+    assert BpmEvent(0, 120.0) == BpmEvent(tick=0, bpm=120.0)
+    assert BeatChangeEvent(0, 4, 4) == BeatChangeEvent(
+        bar=0,
+        beats_per_bar=4,
+        beat_unit=4,
+    )
+    assert TimelineSpeedEvent(2, 960, 0.75) == TimelineSpeedEvent(
+        tick=960,
+        timeline_id=2,
+        speed=0.75,
+    )
+    assert NoteSpeedEvent(960, 1.25) == NoteSpeedEvent(tick=960, speed=1.25)
+
+
 def test_note_bar_getter_represents_tick_as_reduced_beat_fraction():
-    note = Note.tap(tick=240, x=4)
+    note = Note.tap(240, 4, 1)
 
     assert note.bar == (1, 8)
 
@@ -99,7 +231,7 @@ def test_note_bar_getter_represents_tick_as_reduced_beat_fraction():
 
 
 def test_note_bar_setter_updates_tick_from_beat_fraction():
-    note = Note.tap(tick=0, x=4)
+    note = Note.tap(0, 4, 1)
 
     note.bar = (1, 8)
     assert note.tick == 240
@@ -124,7 +256,7 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
         tick=120,
         timeline_id=4,
         option_value=9,
-        children=[Note.tap(tick=180, x=5, width=1)],
+        children=[Note.tap(180, 5, 1)],
     )
 
     proto = note.to_proto()
@@ -143,9 +275,7 @@ def test_chart_from_begin_edit_response_builds_event_snapshot():
         event_scan_until_tick=4800,
         event_scan_timeline_ids=[0, 2],
         bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
-        beat_change_events=[
-            messages_pb2.BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4)
-        ],
+        beat_change_events=[messages_pb2.BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4)],
         timeline_speed_events=[
             messages_pb2.TimelineSpeedEvent(tick=960, timeline_id=2, speed=0.75)
         ],
@@ -158,7 +288,7 @@ def test_chart_from_begin_edit_response_builds_event_snapshot():
     assert chart.notes == [Note(type=NoteType.TAP, tick=240, x=1)]
     assert chart.bpm_events == [BpmEvent(0, 180.0)]
     assert chart.beat_change_events == [BeatChangeEvent(0, 4, 4)]
-    assert chart.timeline_speed_events == [TimelineSpeedEvent(960, 2, 0.75)]
+    assert chart.timeline_speed_events == [TimelineSpeedEvent(2, 960, 0.75)]
     assert chart.note_speed_events == [NoteSpeedEvent(960, 1.25)]
 
 
@@ -180,5 +310,5 @@ def test_event_normalization_uses_last_write_wins_by_key():
 
     assert normalized.bpm_events == [BpmEvent(0, 180.0)]
     assert normalized.beat_change_events == [BeatChangeEvent(0, 4, 4)]
-    assert normalized.timeline_speed_events == [TimelineSpeedEvent(960, 1, 0.75)]
+    assert normalized.timeline_speed_events == [TimelineSpeedEvent(1, 960, 0.75)]
     assert normalized.note_speed_events == [NoteSpeedEvent(480, 1.25)]

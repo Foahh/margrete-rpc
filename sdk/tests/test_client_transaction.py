@@ -62,7 +62,7 @@ def test_open_append_fetches_only_current_tick_and_sends_appended_notes():
     with mg.open_append("append") as tx:
         assert tx.current_tick == 480
         assert tx.chart.notes == []
-        tx.chart.notes.append(Note.tap(tick=480, x=2, width=1))
+        tx.chart.notes.append(Note.tap(480, 2, 1))
 
     assert transport.requests[0].HasField("begin_append_request")
     request = transport.requests[1].apply_append_patch_request
@@ -82,7 +82,7 @@ def test_open_append_rejects_existing_note_ids_before_commit_request():
 
     with pytest.raises(ValueError, match="append transactions cannot send existing note ids"):
         with mg.open_append("bad") as tx:
-            tx.chart.notes.append(Note.tap(tick=480, x=2, id=99))
+            tx.chart.notes.append(Note.tap(480, 2, 1, id=99))
 
     assert len(transport.requests) == 1
 
@@ -99,7 +99,7 @@ def test_transaction_exception_skips_apply_request():
 
     with pytest.raises(RuntimeError, match="boom"):
         with mg.open_append("append") as tx:
-            tx.chart.notes.append(Note.tap(tick=480, x=2))
+            tx.chart.notes.append(Note.tap(480, 2, 1))
             raise RuntimeError("boom")
 
     assert len(transport.requests) == 1
