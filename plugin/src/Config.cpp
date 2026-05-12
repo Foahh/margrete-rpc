@@ -6,59 +6,76 @@
 #include <ranges>
 #include <stdexcept>
 
-namespace {
-std::string Trim(std::string value) {
+namespace
+{
+std::string Trim(std::string value)
+{
     const auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
     value.erase(value.begin(), std::ranges::find_if(value, notSpace));
     value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
     return value;
 }
-}  // namespace
+} // namespace
 
-ServerConfig LoadServerConfig(const std::filesystem::path& iniPath) {
+ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
+{
     ServerConfig config;
     std::ifstream in(iniPath);
-    if (!in) {
+    if (!in)
+    {
         return config;
     }
 
     bool inServer = false;
     std::string line;
-    while (std::getline(in, line)) {
+    while (std::getline(in, line))
+    {
         line = Trim(line);
-        if (line.empty() || line.starts_with(';') || line.starts_with('#')) {
+        if (line.empty() || line.starts_with(';') || line.starts_with('#'))
+        {
             continue;
         }
-        if (line.starts_with('[') && line.ends_with(']')) {
+        if (line.starts_with('[') && line.ends_with(']'))
+        {
             inServer = line == "[server]";
             continue;
         }
-        if (!inServer) {
+        if (!inServer)
+        {
             continue;
         }
         const std::size_t pos = line.find('=');
-        if (pos == std::string::npos) {
+        if (pos == std::string::npos)
+        {
             continue;
         }
         const std::string key = Trim(line.substr(0, pos));
         const std::string value = Trim(line.substr(pos + 1));
-        if (key == "host") {
+        if (key == "host")
+        {
             config.host = value;
-        } else if (key == "port") {
+        }
+        else if (key == "port")
+        {
             const int port = std::stoi(value);
-            if (port <= 0 || port > 65535) {
+            if (port <= 0 || port > 65535)
+            {
                 throw std::runtime_error("server port must be between 1 and 65535");
             }
             config.port = static_cast<std::uint16_t>(port);
-        } else if (key == "log") {
+        }
+        else if (key == "log")
+        {
             config.logPath = value;
         }
     }
 
-    if (config.host != "127.0.0.1") {
+    if (config.host != "127.0.0.1")
+    {
         throw std::runtime_error("server host must be 127.0.0.1");
     }
-    if (config.logPath.empty()) {
+    if (config.logPath.empty())
+    {
         config.logPath = "margrete-rpc.log";
     }
     return config;

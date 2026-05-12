@@ -4,7 +4,8 @@
 #include "RequestRouter.h"
 #include "margrete/rpc/v1/messages.pb.h"
 
-TEST_CASE("router responds to ping") {
+TEST_CASE("router responds to ping")
+{
     FakeContext context;
     RequestRouter router(&context);
     margrete::rpc::v1::Envelope request;
@@ -18,7 +19,8 @@ TEST_CASE("router responds to ping") {
     REQUIRE(response.ping_response().server_name() == "Margrete RPC");
 }
 
-TEST_CASE("router responds to current tick") {
+TEST_CASE("router responds to current tick")
+{
     FakeContext context;
     context.currentTick = 1234;
     RequestRouter router(&context);
@@ -31,7 +33,8 @@ TEST_CASE("router responds to current tick") {
     REQUIRE(response.get_current_tick_response().tick() == 1234);
 }
 
-TEST_CASE("router maps bad append to error response") {
+TEST_CASE("router maps bad append to error response")
+{
     FakeContext context;
     RequestRouter router(&context);
     margrete::rpc::v1::Envelope request;

@@ -11,6 +11,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3,<9",
+    "ruff>=0.9,<1",
 ]
 
 [build-system]
@@ -23,3 +24,11 @@ packages = ["src/margrete_rpc"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["**/margrete_rpc/_proto/**"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

@@ -7,11 +7,9 @@ from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 
 class Appendable(Protocol):
-    def to_append_item(self) -> messages_pb2.AppendItem:
-        ...
+    def to_append_item(self) -> messages_pb2.AppendItem: ...
 
-    def shifted(self, tick_offset: int) -> "Appendable":
-        ...
+    def shifted(self, tick_offset: int) -> Appendable: ...
 
 
 def _validate_base(tick: int, lane: int, width: int) -> None:
@@ -38,11 +36,13 @@ class Tap:
     def to_append_item(self) -> messages_pb2.AppendItem:
         return messages_pb2.AppendItem(
             note=messages_pb2.NoteObject(
-                tap=messages_pb2.Tap(base=_lane_note(self.tick, self.lane, self.width, self.timeline))
+                tap=messages_pb2.Tap(
+                    base=_lane_note(self.tick, self.lane, self.width, self.timeline)
+                )
             )
         )
 
-    def shifted(self, tick_offset: int) -> "Tap":
+    def shifted(self, tick_offset: int) -> Tap:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -64,7 +64,7 @@ class ExTap:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "ExTap":
+    def shifted(self, tick_offset: int) -> ExTap:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -73,7 +73,9 @@ class Flick(Tap):
     def to_append_item(self) -> messages_pb2.AppendItem:
         return messages_pb2.AppendItem(
             note=messages_pb2.NoteObject(
-                flick=messages_pb2.Flick(base=_lane_note(self.tick, self.lane, self.width, self.timeline))
+                flick=messages_pb2.Flick(
+                    base=_lane_note(self.tick, self.lane, self.width, self.timeline)
+                )
             )
         )
 
@@ -83,7 +85,9 @@ class Damage(Tap):
     def to_append_item(self) -> messages_pb2.AppendItem:
         return messages_pb2.AppendItem(
             note=messages_pb2.NoteObject(
-                damage=messages_pb2.Damage(base=_lane_note(self.tick, self.lane, self.width, self.timeline))
+                damage=messages_pb2.Damage(
+                    base=_lane_note(self.tick, self.lane, self.width, self.timeline)
+                )
             )
         )
 
@@ -108,7 +112,7 @@ class Hold:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "Hold":
+    def shifted(self, tick_offset: int) -> Hold:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -152,7 +156,7 @@ class Slide:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "Slide":
+    def shifted(self, tick_offset: int) -> Slide:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -176,7 +180,7 @@ class Air:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "Air":
+    def shifted(self, tick_offset: int) -> Air:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -202,7 +206,7 @@ class AirHold:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "AirHold":
+    def shifted(self, tick_offset: int) -> AirHold:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -250,7 +254,7 @@ class AirSlide:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "AirSlide":
+    def shifted(self, tick_offset: int) -> AirSlide:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -300,7 +304,7 @@ class AirCrush:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "AirCrush":
+    def shifted(self, tick_offset: int) -> AirCrush:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -315,12 +319,10 @@ class BpmEvent:
         if self.bpm <= 0:
             raise ValueError("bpm must be positive")
         return messages_pb2.AppendItem(
-            event=messages_pb2.EventObject(
-                bpm=messages_pb2.BpmEvent(tick=self.tick, bpm=self.bpm)
-            )
+            event=messages_pb2.EventObject(bpm=messages_pb2.BpmEvent(tick=self.tick, bpm=self.bpm))
         )
 
-    def shifted(self, tick_offset: int) -> "BpmEvent":
+    def shifted(self, tick_offset: int) -> BpmEvent:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -345,7 +347,7 @@ class BeatEvent:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "BeatEvent":
+    def shifted(self, tick_offset: int) -> BeatEvent:
         return self
 
 
@@ -368,7 +370,7 @@ class ScrollSpeedEvent:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "ScrollSpeedEvent":
+    def shifted(self, tick_offset: int) -> ScrollSpeedEvent:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -386,7 +388,7 @@ class NoteSpeedEvent:
             )
         )
 
-    def shifted(self, tick_offset: int) -> "NoteSpeedEvent":
+    def shifted(self, tick_offset: int) -> NoteSpeedEvent:
         return replace(self, tick=self.tick + tick_offset)
 
 
@@ -403,7 +405,7 @@ class RawNoteNode:
     tick: int = 0
     timeline_id: int = 0
     option_value: int = 0
-    children: list["RawNoteNode"] = field(default_factory=list)
+    children: list[RawNoteNode] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "children", tuple(self.children))
@@ -429,7 +431,7 @@ class RawNoteNode:
     def to_append_item(self) -> messages_pb2.AppendItem:
         return messages_pb2.AppendItem(raw_note=self.to_proto())
 
-    def shifted(self, tick_offset: int) -> "RawNoteNode":
+    def shifted(self, tick_offset: int) -> RawNoteNode:
         return replace(
             self,
             tick=self.tick + tick_offset,

@@ -6,7 +6,8 @@
 
 using Catch::Matchers::ContainsSubstring;
 
-TEST_CASE("frame protocol round trips envelope") {
+TEST_CASE("frame protocol round trips envelope")
+{
     margrete::rpc::v1::Envelope envelope;
     envelope.set_request_id(42);
     envelope.mutable_ping_request();
@@ -18,10 +19,9 @@ TEST_CASE("frame protocol round trips envelope") {
     REQUIRE(decoded.has_ping_request());
 }
 
-TEST_CASE("frame protocol rejects truncated payload") {
-    const std::vector<std::byte> frame{
-        std::byte{4}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{'a'}
-    };
+TEST_CASE("frame protocol rejects truncated payload")
+{
+    const std::vector<std::byte> frame{std::byte{4}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{'a'}};
 
     REQUIRE_THROWS_WITH(FrameProtocol::Decode(frame), ContainsSubstring("frame payload is truncated"));
 }

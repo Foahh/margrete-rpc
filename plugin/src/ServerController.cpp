@@ -1,14 +1,19 @@
 #include "ServerController.h"
 
 ServerController::ServerController(ServerConfig config)
-    : config_(std::move(config)), logger_(config_.logPath), router_(nullptr) {}
+    : config_(std::move(config)), logger_(config_.logPath), router_(nullptr)
+{
+}
 
-bool ServerController::running() const noexcept {
+bool ServerController::running() const noexcept
+{
     return server_ && server_->running();
 }
 
-void ServerController::toggle(IMargretePluginContext* context) {
-    if (running()) {
+void ServerController::toggle(IMargretePluginContext *context)
+{
+    if (running())
+    {
         stop();
         return;
     }
@@ -17,8 +22,10 @@ void ServerController::toggle(IMargretePluginContext* context) {
     server_->start();
 }
 
-void ServerController::stop() {
-    if (server_) {
+void ServerController::stop()
+{
+    if (server_)
+    {
         server_->stop();
         server_.reset();
     }

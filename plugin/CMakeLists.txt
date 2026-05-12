@@ -107,3 +107,6 @@ target_include_directories(plugin_tests PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
 target_link_libraries(plugin_tests PRIVATE MargretePluginSDK protobuf::libprotobuf Catch2::Catch2WithMain ws2_32)
+
+include(CTest)
+add_test(NAME plugin_tests COMMAND $<TARGET_FILE:plugin_tests>)

@@ -2,9 +2,12 @@
 
 #include <stdexcept>
 
-namespace {
-MP_NOTEINFO BaseInfo(const margrete::rpc::v1::LaneNote& base, MpInteger type) {
-    if (base.width() <= 0 || base.tick() < 0 || base.lane() < 0) {
+namespace
+{
+MP_NOTEINFO BaseInfo(const margrete::rpc::v1::LaneNote &base, MpInteger type)
+{
+    if (base.width() <= 0 || base.tick() < 0 || base.lane() < 0)
+    {
         throw std::runtime_error("invalid note base");
     }
     MP_NOTEINFO info{};
@@ -19,179 +22,229 @@ MP_NOTEINFO BaseInfo(const margrete::rpc::v1::LaneNote& base, MpInteger type) {
     return info;
 }
 
-MpInteger ToLongAttr(margrete::rpc::v1::LongAttr attr) {
+MpInteger ToLongAttr(margrete::rpc::v1::LongAttr attr)
+{
     return static_cast<MpInteger>(attr);
 }
 } // namespace
 
-void ChartMapper::appendItem(IMargretePluginChart& chart, const margrete::rpc::v1::AppendItem& item) const {
-    if (item.has_raw_note()) {
+void ChartMapper::appendItem(IMargretePluginChart &chart, const margrete::rpc::v1::AppendItem &item) const
+{
+    if (item.has_raw_note())
+    {
         appendRaw(chart, item.raw_note());
         return;
     }
-    if (item.has_event()) {
+    if (item.has_event())
+    {
         appendEvent(chart, item.event());
         return;
     }
-    if (!item.has_note()) {
+    if (!item.has_note())
+    {
         throw std::runtime_error("append item is empty");
     }
 
-    const auto& note = item.note();
-    if (note.has_tap()) {
+    const auto &note = item.note();
+    if (note.has_tap())
+    {
         appendLaneNote(chart, note.tap().base(), MP_NOTETYPE_TAP, MP_NOTEDIR_NONE);
-    } else if (note.has_ex_tap()) {
-        appendLaneNote(chart, note.ex_tap().base(), MP_NOTETYPE_EXTAP, static_cast<MpInteger>(note.ex_tap().direction()));
-    } else if (note.has_flick()) {
+    }
+    else if (note.has_ex_tap())
+    {
+        appendLaneNote(chart, note.ex_tap().base(), MP_NOTETYPE_EXTAP,
+                       static_cast<MpInteger>(note.ex_tap().direction()));
+    }
+    else if (note.has_flick())
+    {
         appendLaneNote(chart, note.flick().base(), MP_NOTETYPE_FLICK, MP_NOTEDIR_NONE);
-    } else if (note.has_damage()) {
+    }
+    else if (note.has_damage())
+    {
         appendLaneNote(chart, note.damage().base(), MP_NOTETYPE_DAMAGE, MP_NOTEDIR_NONE);
-    } else if (note.has_hold()) {
+    }
+    else if (note.has_hold())
+    {
         appendHold(chart, note.hold());
-    } else if (note.has_slide()) {
+    }
+    else if (note.has_slide())
+    {
         appendSlide(chart, note.slide());
-    } else if (note.has_air()) {
+    }
+    else if (note.has_air())
+    {
         appendAir(chart, note.air());
-    } else if (note.has_air_hold()) {
+    }
+    else if (note.has_air_hold())
+    {
         appendAirHold(chart, note.air_hold());
-    } else if (note.has_air_slide()) {
+    }
+    else if (note.has_air_slide())
+    {
         appendAirSlide(chart, note.air_slide());
-    } else if (note.has_air_crush()) {
+    }
+    else if (note.has_air_crush())
+    {
         appendAirCrush(chart, note.air_crush());
-    } else {
+    }
+    else
+    {
         throw std::runtime_error("unsupported note object");
     }
 }
 
-IMargretePluginNote& ChartMapper::createNote(IMargretePluginChart& chart, const MP_NOTEINFO& info) const {
-    IMargretePluginNote* note = nullptr;
-    if (chart.createNote(&note) != MP_TRUE || !note) {
+IMargretePluginNote &ChartMapper::createNote(IMargretePluginChart &chart, const MP_NOTEINFO &info) const
+{
+    IMargretePluginNote *note = nullptr;
+    if (chart.createNote(&note) != MP_TRUE || !note)
+    {
         throw std::runtime_error("failed to create note");
     }
     note->setInfo(&info);
     return *note;
 }
 
-void ChartMapper::appendLaneNote(IMargretePluginChart& chart, const margrete::rpc::v1::LaneNote& base, MpInteger type, MpInteger direction) const {
+void ChartMapper::appendLaneNote(IMargretePluginChart &chart, const margrete::rpc::v1::LaneNote &base, MpInteger type,
+                                 MpInteger direction) const
+{
     MP_NOTEINFO info = BaseInfo(base, type);
     info.direction = direction;
-    IMargretePluginNote& note = createNote(chart, info);
-    if (chart.appendNote(&note) != MP_TRUE) {
+    IMargretePluginNote &note = createNote(chart, info);
+    if (chart.appendNote(&note) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append note");
     }
 }
 
-void ChartMapper::appendHold(IMargretePluginChart& chart, const margrete::rpc::v1::Hold& hold) const {
-    if (hold.duration() <= 0) {
+void ChartMapper::appendHold(IMargretePluginChart &chart, const margrete::rpc::v1::Hold &hold) const
+{
+    if (hold.duration() <= 0)
+    {
         throw std::runtime_error("hold duration must be positive");
     }
     MP_NOTEINFO begin = BaseInfo(hold.base(), MP_NOTETYPE_HOLD);
     begin.longAttr = MP_NOTELONGATTR_BEGIN;
-    IMargretePluginNote& root = createNote(chart, begin);
+    IMargretePluginNote &root = createNote(chart, begin);
 
     MP_NOTEINFO end = begin;
     end.longAttr = MP_NOTELONGATTR_END;
     end.tick += hold.duration();
-    IMargretePluginNote& child = createNote(chart, end);
+    IMargretePluginNote &child = createNote(chart, end);
     root.appendChild(&child);
 
-    if (chart.appendNote(&root) != MP_TRUE) {
+    if (chart.appendNote(&root) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append hold");
     }
 }
 
-void ChartMapper::appendSlide(IMargretePluginChart& chart, const margrete::rpc::v1::Slide& slide) const {
-    if (slide.points_size() < 2) {
+void ChartMapper::appendSlide(IMargretePluginChart &chart, const margrete::rpc::v1::Slide &slide) const
+{
+    if (slide.points_size() < 2)
+    {
         throw std::runtime_error("slide requires at least two points");
     }
     MP_NOTEINFO begin = BaseInfo(slide.base(), MP_NOTETYPE_SLIDE);
     begin.longAttr = MP_NOTELONGATTR_BEGIN;
-    IMargretePluginNote& root = createNote(chart, begin);
-    for (int i = 1; i < slide.points_size(); ++i) {
-        const auto& point = slide.points(i);
+    IMargretePluginNote &root = createNote(chart, begin);
+    for (int i = 1; i < slide.points_size(); ++i)
+    {
+        const auto &point = slide.points(i);
         MP_NOTEINFO info = begin;
         info.longAttr = i == slide.points_size() - 1 ? MP_NOTELONGATTR_END : ToLongAttr(point.attr());
         info.tick = slide.base().tick() + point.dt();
         info.x = point.lane();
         info.width = point.width();
-        IMargretePluginNote& child = createNote(chart, info);
+        IMargretePluginNote &child = createNote(chart, info);
         root.appendChild(&child);
     }
-    if (chart.appendNote(&root) != MP_TRUE) {
+    if (chart.appendNote(&root) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append slide");
     }
 }
 
-void ChartMapper::appendAir(IMargretePluginChart& chart, const margrete::rpc::v1::Air& air) const {
+void ChartMapper::appendAir(IMargretePluginChart &chart, const margrete::rpc::v1::Air &air) const
+{
     MP_NOTEINFO info = BaseInfo(air.base(), MP_NOTETYPE_AIR);
     info.direction = static_cast<MpInteger>(air.direction());
     info.exAttr = static_cast<MpInteger>(air.ex_attr());
-    IMargretePluginNote& note = createNote(chart, info);
-    if (chart.appendNote(&note) != MP_TRUE) {
+    IMargretePluginNote &note = createNote(chart, info);
+    if (chart.appendNote(&note) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append air");
     }
 }
 
-void ChartMapper::appendAirHold(IMargretePluginChart& chart, const margrete::rpc::v1::AirHold& airHold) const {
-    if (airHold.duration() <= 0) {
+void ChartMapper::appendAirHold(IMargretePluginChart &chart, const margrete::rpc::v1::AirHold &airHold) const
+{
+    if (airHold.duration() <= 0)
+    {
         throw std::runtime_error("air hold duration must be positive");
     }
     MP_NOTEINFO begin = BaseInfo(airHold.base(), MP_NOTETYPE_AIRHOLD);
     begin.longAttr = MP_NOTELONGATTR_BEGIN;
     begin.height = airHold.height();
-    IMargretePluginNote& root = createNote(chart, begin);
+    IMargretePluginNote &root = createNote(chart, begin);
 
     MP_NOTEINFO end = begin;
     end.longAttr = MP_NOTELONGATTR_END;
     end.tick += airHold.duration();
     end.height = airHold.height();
-    IMargretePluginNote& child = createNote(chart, end);
+    IMargretePluginNote &child = createNote(chart, end);
     root.appendChild(&child);
 
-    if (chart.appendNote(&root) != MP_TRUE) {
+    if (chart.appendNote(&root) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append air hold");
     }
 }
 
-void ChartMapper::appendAirSlide(IMargretePluginChart& chart, const margrete::rpc::v1::AirSlide& airSlide) const {
-    if (airSlide.points_size() < 2) {
+void ChartMapper::appendAirSlide(IMargretePluginChart &chart, const margrete::rpc::v1::AirSlide &airSlide) const
+{
+    if (airSlide.points_size() < 2)
+    {
         throw std::runtime_error("air slide requires at least two points");
     }
-    const auto& base = airSlide.base();
+    const auto &base = airSlide.base();
     MP_NOTEINFO tap = BaseInfo(base, MP_NOTETYPE_TAP);
-    IMargretePluginNote& tapNote = createNote(chart, tap);
+    IMargretePluginNote &tapNote = createNote(chart, tap);
 
     MP_NOTEINFO air = tap;
     air.type = MP_NOTETYPE_AIR;
     air.direction = static_cast<MpInteger>(airSlide.air_direction());
     air.exAttr = static_cast<MpInteger>(airSlide.air_ex_attr());
-    IMargretePluginNote& airNote = createNote(chart, air);
+    IMargretePluginNote &airNote = createNote(chart, air);
 
     MP_NOTEINFO rootInfo = tap;
     rootInfo.type = MP_NOTETYPE_AIRSLIDE;
     rootInfo.longAttr = MP_NOTELONGATTR_BEGIN;
     rootInfo.height = airSlide.points(0).height();
-    IMargretePluginNote& root = createNote(chart, rootInfo);
-    for (int i = 1; i < airSlide.points_size(); ++i) {
-        const auto& point = airSlide.points(i);
+    IMargretePluginNote &root = createNote(chart, rootInfo);
+    for (int i = 1; i < airSlide.points_size(); ++i)
+    {
+        const auto &point = airSlide.points(i);
         MP_NOTEINFO info = rootInfo;
         info.longAttr = i == airSlide.points_size() - 1 ? MP_NOTELONGATTR_END : ToLongAttr(point.attr());
         info.tick = base.tick() + point.dt();
         info.x = point.lane();
         info.height = point.height();
-        IMargretePluginNote& child = createNote(chart, info);
+        IMargretePluginNote &child = createNote(chart, info);
         root.appendChild(&child);
     }
 
     airNote.appendChild(&root);
     tapNote.appendChild(&airNote);
-    if (chart.appendNote(&tapNote) != MP_TRUE) {
+    if (chart.appendNote(&tapNote) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append air slide");
     }
 }
 
-void ChartMapper::appendAirCrush(IMargretePluginChart& chart, const margrete::rpc::v1::AirCrush& airCrush) const {
-    if (airCrush.points_size() < 2) {
+void ChartMapper::appendAirCrush(IMargretePluginChart &chart, const margrete::rpc::v1::AirCrush &airCrush) const
+{
+    if (airCrush.points_size() < 2)
+    {
         throw std::runtime_error("air crush requires at least two points");
     }
     MP_NOTEINFO rootInfo = BaseInfo(airCrush.base(), MP_NOTETYPE_AIRCRUSH);
@@ -199,31 +252,37 @@ void ChartMapper::appendAirCrush(IMargretePluginChart& chart, const margrete::rp
     rootInfo.variationId = airCrush.variation_id();
     rootInfo.optionValue = airCrush.option_value();
     rootInfo.height = airCrush.points(0).height();
-    IMargretePluginNote& root = createNote(chart, rootInfo);
-    for (int i = 1; i < airCrush.points_size(); ++i) {
-        const auto& point = airCrush.points(i);
+    IMargretePluginNote &root = createNote(chart, rootInfo);
+    for (int i = 1; i < airCrush.points_size(); ++i)
+    {
+        const auto &point = airCrush.points(i);
         MP_NOTEINFO info = rootInfo;
         info.longAttr = i == airCrush.points_size() - 1 ? MP_NOTELONGATTR_END : ToLongAttr(point.attr());
         info.tick = airCrush.base().tick() + point.dt();
         info.x = point.lane();
         info.width = point.width();
         info.height = point.height();
-        IMargretePluginNote& child = createNote(chart, info);
+        IMargretePluginNote &child = createNote(chart, info);
         root.appendChild(&child);
     }
-    if (chart.appendNote(&root) != MP_TRUE) {
+    if (chart.appendNote(&root) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append air crush");
     }
 }
 
-void ChartMapper::appendRaw(IMargretePluginChart& chart, const margrete::rpc::v1::RawNoteNode& raw) const {
-    IMargretePluginNote& root = createRawTree(chart, raw);
-    if (chart.appendNote(&root) != MP_TRUE) {
+void ChartMapper::appendRaw(IMargretePluginChart &chart, const margrete::rpc::v1::RawNoteNode &raw) const
+{
+    IMargretePluginNote &root = createRawTree(chart, raw);
+    if (chart.appendNote(&root) != MP_TRUE)
+    {
         throw std::runtime_error("failed to append raw note");
     }
 }
 
-IMargretePluginNote& ChartMapper::createRawTree(IMargretePluginChart& chart, const margrete::rpc::v1::RawNoteNode& raw) const {
+IMargretePluginNote &ChartMapper::createRawTree(IMargretePluginChart &chart,
+                                                const margrete::rpc::v1::RawNoteNode &raw) const
+{
     // Raw nodes mirror RPC fields into MP_NOTEINFO without re-validating lane geometry.
     MP_NOTEINFO info{};
     info.type = static_cast<MpInteger>(raw.type());
@@ -237,32 +296,41 @@ IMargretePluginNote& ChartMapper::createRawTree(IMargretePluginChart& chart, con
     info.tick = raw.tick();
     info.timelineId = raw.timeline_id();
     info.optionValue = raw.option_value();
-    IMargretePluginNote& note = createNote(chart, info);
-    for (const auto& rawChild : raw.children()) {
-        IMargretePluginNote& child = createRawTree(chart, rawChild);
+    IMargretePluginNote &note = createNote(chart, info);
+    for (const auto &rawChild : raw.children())
+    {
+        IMargretePluginNote &child = createRawTree(chart, rawChild);
         note.appendChild(&child);
     }
     return note;
 }
 
-void ChartMapper::appendEvent(IMargretePluginChart& chart, const margrete::rpc::v1::EventObject& event) const {
-    if (event.has_bpm()) {
-        IMargretePluginEventBpm* bpmEvent = nullptr;
-        if (chart.createEvent(IID_IMargretePluginEventBpm, reinterpret_cast<void**>(&bpmEvent)) != MP_TRUE || !bpmEvent) {
+void ChartMapper::appendEvent(IMargretePluginChart &chart, const margrete::rpc::v1::EventObject &event) const
+{
+    if (event.has_bpm())
+    {
+        IMargretePluginEventBpm *bpmEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventBpm, reinterpret_cast<void **>(&bpmEvent)) != MP_TRUE ||
+            !bpmEvent)
+        {
             throw std::runtime_error("failed to create bpm event");
         }
         MP_EVENT_BPMINFO info{};
         info.tick = event.bpm().tick();
         info.bpm = event.bpm().bpm();
         bpmEvent->setInfo(&info);
-        if (chart.appendEvent(bpmEvent) != MP_TRUE) {
+        if (chart.appendEvent(bpmEvent) != MP_TRUE)
+        {
             throw std::runtime_error("failed to append bpm event");
         }
         return;
     }
-    if (event.has_beat()) {
-        IMargretePluginEventBeatChange* beatEvent = nullptr;
-        if (chart.createEvent(IID_IMargretePluginEventBeatChange, reinterpret_cast<void**>(&beatEvent)) != MP_TRUE || !beatEvent) {
+    if (event.has_beat())
+    {
+        IMargretePluginEventBeatChange *beatEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventBeatChange, reinterpret_cast<void **>(&beatEvent)) != MP_TRUE ||
+            !beatEvent)
+        {
             throw std::runtime_error("failed to create beat event");
         }
         MP_EVENT_BCINFO info{};
@@ -270,14 +338,19 @@ void ChartMapper::appendEvent(IMargretePluginChart& chart, const margrete::rpc::
         info.beatsPerBar = event.beat().beats_per_bar();
         info.beatUnit = event.beat().beat_unit();
         beatEvent->setInfo(&info);
-        if (chart.appendEvent(beatEvent) != MP_TRUE) {
+        if (chart.appendEvent(beatEvent) != MP_TRUE)
+        {
             throw std::runtime_error("failed to append beat event");
         }
         return;
     }
-    if (event.has_scroll_speed()) {
-        IMargretePluginEventTimelineSpeed* speedEvent = nullptr;
-        if (chart.createEvent(IID_IMargretePluginEventTimelineSpeed, reinterpret_cast<void**>(&speedEvent)) != MP_TRUE || !speedEvent) {
+    if (event.has_scroll_speed())
+    {
+        IMargretePluginEventTimelineSpeed *speedEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventTimelineSpeed, reinterpret_cast<void **>(&speedEvent)) !=
+                MP_TRUE ||
+            !speedEvent)
+        {
             throw std::runtime_error("failed to create scroll speed event");
         }
         MP_EVENT_TLSINFO info{};
@@ -285,21 +358,27 @@ void ChartMapper::appendEvent(IMargretePluginChart& chart, const margrete::rpc::
         info.tick = event.scroll_speed().tick();
         info.speed = event.scroll_speed().speed();
         speedEvent->setInfo(&info);
-        if (chart.appendEvent(speedEvent) != MP_TRUE) {
+        if (chart.appendEvent(speedEvent) != MP_TRUE)
+        {
             throw std::runtime_error("failed to append scroll speed event");
         }
         return;
     }
-    if (event.has_note_speed()) {
-        IMargretePluginEventNoteSpeedModifier* speedEvent = nullptr;
-        if (chart.createEvent(IID_IMargretePluginEventNoteSpeedModifier, reinterpret_cast<void**>(&speedEvent)) != MP_TRUE || !speedEvent) {
+    if (event.has_note_speed())
+    {
+        IMargretePluginEventNoteSpeedModifier *speedEvent = nullptr;
+        if (chart.createEvent(IID_IMargretePluginEventNoteSpeedModifier, reinterpret_cast<void **>(&speedEvent)) !=
+                MP_TRUE ||
+            !speedEvent)
+        {
             throw std::runtime_error("failed to create note speed event");
         }
         MP_EVENT_NSMINFO info{};
         info.tick = event.note_speed().tick();
         info.speed = event.note_speed().speed();
         speedEvent->setInfo(&info);
-        if (chart.appendEvent(speedEvent) != MP_TRUE) {
+        if (chart.appendEvent(speedEvent) != MP_TRUE)
+        {
             throw std::runtime_error("failed to append note speed event");
         }
         return;

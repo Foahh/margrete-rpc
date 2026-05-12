@@ -5,7 +5,9 @@ from margrete_rpc._socket import SocketRpcClient
 
 
 class Margrete:
-    def __init__(self, endpoint: str = "127.0.0.1:48731", *, timeout: float = 5.0, transport=None) -> None:
+    def __init__(
+        self, endpoint: str = "127.0.0.1:48731", *, timeout: float = 5.0, transport=None
+    ) -> None:
         self._transport = transport if transport is not None else SocketRpcClient(endpoint, timeout)
 
     def ping(self) -> str:

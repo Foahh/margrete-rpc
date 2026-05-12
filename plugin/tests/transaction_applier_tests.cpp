@@ -7,7 +7,8 @@
 
 using Catch::Matchers::ContainsSubstring;
 
-TEST_CASE("empty transaction is rejected") {
+TEST_CASE("empty transaction is rejected")
+{
     FakeContext context;
     TransactionApplier applier;
     margrete::rpc::v1::AppendTransactionRequest request;
@@ -16,13 +17,14 @@ TEST_CASE("empty transaction is rejected") {
     REQUIRE_THROWS_WITH(applier.apply(context, request), ContainsSubstring("transaction is empty"));
 }
 
-TEST_CASE("tap transaction commits one undo recording") {
+TEST_CASE("tap transaction commits one undo recording")
+{
     FakeContext context;
     TransactionApplier applier;
     margrete::rpc::v1::AppendTransactionRequest request;
     request.set_transaction_name("tap");
-    auto* item = request.add_items();
-    auto* tap = item->mutable_note()->mutable_tap();
+    auto *item = request.add_items();
+    auto *tap = item->mutable_note()->mutable_tap();
     tap->mutable_base()->set_tick(120);
     tap->mutable_base()->set_lane(4);
     tap->mutable_base()->set_width(1);

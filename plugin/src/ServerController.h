@@ -9,14 +9,15 @@
 #include "RequestRouter.h"
 #include "SocketServer.h"
 
-class ServerController {
-public:
+class ServerController
+{
+  public:
     explicit ServerController(ServerConfig config);
     bool running() const noexcept;
-    void toggle(IMargretePluginContext* context);
+    void toggle(IMargretePluginContext *context);
     void stop();
 
-private:
+  private:
     ServerConfig config_;
     Logger logger_;
     RequestRouter router_;

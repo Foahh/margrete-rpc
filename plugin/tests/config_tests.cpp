@@ -8,14 +8,16 @@
 
 using Catch::Matchers::ContainsSubstring;
 
-TEST_CASE("config uses defaults when file is missing") {
+TEST_CASE("config uses defaults when file is missing")
+{
     const ServerConfig config = LoadServerConfig("missing-file.ini");
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 48731);
     REQUIRE(config.logPath.filename().string() == "margrete-rpc.log");
 }
 
-TEST_CASE("config reads server section") {
+TEST_CASE("config reads server section")
+{
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-test.ini";
     {
         std::ofstream out(path);
@@ -32,7 +34,8 @@ TEST_CASE("config reads server section") {
     REQUIRE(config.logPath.filename().string() == "custom.log");
 }
 
-TEST_CASE("config rejects non-localhost host") {
+TEST_CASE("config rejects non-localhost host")
+{
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-bad.ini";
     {
         std::ofstream out(path);

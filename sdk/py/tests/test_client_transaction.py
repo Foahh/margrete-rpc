@@ -22,7 +22,9 @@ class FakeTransport:
         if envelope.HasField("append_transaction_request"):
             return messages_pb2.Envelope(
                 request_id=envelope.request_id,
-                append_transaction_response=messages_pb2.AppendTransactionResponse(appended_items=1),
+                append_transaction_response=messages_pb2.AppendTransactionResponse(
+                    appended_items=1
+                ),
             )
         raise AssertionError("unexpected request")
 

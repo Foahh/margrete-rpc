@@ -4,225 +4,481 @@
 
 #include <MargretePlugin.h>
 
-class FakeBase {
-public:
-    MpInteger addRef() { return ++refCount; }
-    MpInteger release() { return --refCount; }
-    MpBoolean queryInterface(const MpGuid&, void**) { return MP_FALSE; }
+class FakeBase
+{
+  public:
+    MpInteger addRef()
+    {
+        return ++refCount;
+    }
+    MpInteger release()
+    {
+        return --refCount;
+    }
+    MpBoolean queryInterface(const MpGuid &, void **)
+    {
+        return MP_FALSE;
+    }
 
-private:
+  private:
     MpInteger refCount{1};
 };
 
-class FakeNote final : public IMargretePluginNote, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid& iid, void** ppobj) override { return FakeBase::queryInterface(iid, ppobj); }
-    MpInteger getId() const override { return id; }
-    void getInfo(MP_NOTEINFO* noteInfo) const override { *noteInfo = info; }
-    void setInfo(const MP_NOTEINFO* noteInfo) override { info = *noteInfo; }
-    MpInteger getChildrenCount() const override { return static_cast<MpInteger>(children.size()); }
-    MpBoolean getChild(MpInteger index, IMargretePluginNote** ppobj) const override {
-        if (index < 0 || index >= static_cast<MpInteger>(children.size())) {
+class FakeNote final : public IMargretePluginNote, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &iid, void **ppobj) override
+    {
+        return FakeBase::queryInterface(iid, ppobj);
+    }
+    MpInteger getId() const override
+    {
+        return id;
+    }
+    void getInfo(MP_NOTEINFO *noteInfo) const override
+    {
+        *noteInfo = info;
+    }
+    void setInfo(const MP_NOTEINFO *noteInfo) override
+    {
+        info = *noteInfo;
+    }
+    MpInteger getChildrenCount() const override
+    {
+        return static_cast<MpInteger>(children.size());
+    }
+    MpBoolean getChild(MpInteger index, IMargretePluginNote **ppobj) const override
+    {
+        if (index < 0 || index >= static_cast<MpInteger>(children.size()))
+        {
             return MP_FALSE;
         }
         *ppobj = children[static_cast<std::size_t>(index)];
         return MP_TRUE;
     }
-    MpBoolean getParent(IMargretePluginNote**) const override { return MP_FALSE; }
-    MpBoolean appendChild(IMargretePluginNote* note) override {
+    MpBoolean getParent(IMargretePluginNote **) const override
+    {
+        return MP_FALSE;
+    }
+    MpBoolean appendChild(IMargretePluginNote *note) override
+    {
         children.push_back(note);
         return MP_TRUE;
     }
-    MpBoolean deleteChild(IMargretePluginNote*) override { return MP_TRUE; }
-    MpBoolean clone(IMargretePluginNote**) const override { return MP_FALSE; }
-    void replaceWith(const IMargretePluginNote*, MpBoolean) override {}
-    void copyInfoTo(IMargretePluginNote*) const override {}
-    MpBoolean getBaseNote(IMargretePluginNote**) const override { return MP_FALSE; }
-    void offsetChild(MpInteger) override {}
-    void flipH(MpBoolean) override {}
+    MpBoolean deleteChild(IMargretePluginNote *) override
+    {
+        return MP_TRUE;
+    }
+    MpBoolean clone(IMargretePluginNote **) const override
+    {
+        return MP_FALSE;
+    }
+    void replaceWith(const IMargretePluginNote *, MpBoolean) override
+    {
+    }
+    void copyInfoTo(IMargretePluginNote *) const override
+    {
+    }
+    MpBoolean getBaseNote(IMargretePluginNote **) const override
+    {
+        return MP_FALSE;
+    }
+    void offsetChild(MpInteger) override
+    {
+    }
+    void flipH(MpBoolean) override
+    {
+    }
 
     int id{1};
     MP_NOTEINFO info{};
-    std::vector<IMargretePluginNote*> children;
+    std::vector<IMargretePluginNote *> children;
 };
 
-class FakeBpmEvent final : public IMargretePluginEventBpm, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid&, void**) override { return MP_FALSE; }
-    MpInteger getId() const override { return 1; }
-    void getInfo(MP_EVENT_BPMINFO* out) const override { *out = info; }
-    void setInfo(const MP_EVENT_BPMINFO* in) override { info = *in; }
-    void replaceWith(const IMargretePluginEventBpm*) override {}
-    void copyInfoTo(IMargretePluginEventBpm*) const override {}
+class FakeBpmEvent final : public IMargretePluginEventBpm, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpInteger getId() const override
+    {
+        return 1;
+    }
+    void getInfo(MP_EVENT_BPMINFO *out) const override
+    {
+        *out = info;
+    }
+    void setInfo(const MP_EVENT_BPMINFO *in) override
+    {
+        info = *in;
+    }
+    void replaceWith(const IMargretePluginEventBpm *) override
+    {
+    }
+    void copyInfoTo(IMargretePluginEventBpm *) const override
+    {
+    }
     MP_EVENT_BPMINFO info{};
 };
 
-class FakeBeatEvent final : public IMargretePluginEventBeatChange, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid&, void**) override { return MP_FALSE; }
-    MpInteger getId() const override { return 1; }
-    void getInfo(MP_EVENT_BCINFO* out) const override { *out = info; }
-    void setInfo(const MP_EVENT_BCINFO* in) override { info = *in; }
-    void replaceWith(const IMargretePluginEventBeatChange*) override {}
-    void copyInfoTo(IMargretePluginEventBeatChange*) const override {}
+class FakeBeatEvent final : public IMargretePluginEventBeatChange, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpInteger getId() const override
+    {
+        return 1;
+    }
+    void getInfo(MP_EVENT_BCINFO *out) const override
+    {
+        *out = info;
+    }
+    void setInfo(const MP_EVENT_BCINFO *in) override
+    {
+        info = *in;
+    }
+    void replaceWith(const IMargretePluginEventBeatChange *) override
+    {
+    }
+    void copyInfoTo(IMargretePluginEventBeatChange *) const override
+    {
+    }
     MP_EVENT_BCINFO info{};
 };
 
-class FakeTimelineSpeedEvent final : public IMargretePluginEventTimelineSpeed, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid&, void**) override { return MP_FALSE; }
-    MpInteger getId() const override { return 1; }
-    void getInfo(MP_EVENT_TLSINFO* out) const override { *out = info; }
-    void setInfo(const MP_EVENT_TLSINFO* in) override { info = *in; }
-    void replaceWith(const IMargretePluginEventTimelineSpeed*) override {}
-    void copyInfoTo(IMargretePluginEventTimelineSpeed*) const override {}
+class FakeTimelineSpeedEvent final : public IMargretePluginEventTimelineSpeed, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpInteger getId() const override
+    {
+        return 1;
+    }
+    void getInfo(MP_EVENT_TLSINFO *out) const override
+    {
+        *out = info;
+    }
+    void setInfo(const MP_EVENT_TLSINFO *in) override
+    {
+        info = *in;
+    }
+    void replaceWith(const IMargretePluginEventTimelineSpeed *) override
+    {
+    }
+    void copyInfoTo(IMargretePluginEventTimelineSpeed *) const override
+    {
+    }
     MP_EVENT_TLSINFO info{};
 };
 
-class FakeNoteSpeedEvent final : public IMargretePluginEventNoteSpeedModifier, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid&, void**) override { return MP_FALSE; }
-    MpInteger getId() const override { return 1; }
-    void getInfo(MP_EVENT_NSMINFO* out) const override { *out = info; }
-    void setInfo(const MP_EVENT_NSMINFO* in) override { info = *in; }
-    void replaceWith(const IMargretePluginEventNoteSpeedModifier*) override {}
-    void copyInfoTo(IMargretePluginEventNoteSpeedModifier*) const override {}
+class FakeNoteSpeedEvent final : public IMargretePluginEventNoteSpeedModifier, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpInteger getId() const override
+    {
+        return 1;
+    }
+    void getInfo(MP_EVENT_NSMINFO *out) const override
+    {
+        *out = info;
+    }
+    void setInfo(const MP_EVENT_NSMINFO *in) override
+    {
+        info = *in;
+    }
+    void replaceWith(const IMargretePluginEventNoteSpeedModifier *) override
+    {
+    }
+    void copyInfoTo(IMargretePluginEventNoteSpeedModifier *) const override
+    {
+    }
     MP_EVENT_NSMINFO info{};
 };
 
-class FakeChart final : public IMargretePluginChart, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid& iid, void** ppobj) override { return FakeBase::queryInterface(iid, ppobj); }
-    MpBoolean createNote(IMargretePluginNote** ppobj) const override {
+class FakeChart final : public IMargretePluginChart, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &iid, void **ppobj) override
+    {
+        return FakeBase::queryInterface(iid, ppobj);
+    }
+    MpBoolean createNote(IMargretePluginNote **ppobj) const override
+    {
         createdNotes.push_back(new FakeNote());
         *ppobj = createdNotes.back();
         return MP_TRUE;
     }
-    MpInteger getNotesCount() const override { return 0; }
-    MpBoolean getNote(MpInteger, IMargretePluginNote**) override { return MP_FALSE; }
-    MpBoolean appendNote(IMargretePluginNote*) override {
+    MpInteger getNotesCount() const override
+    {
+        return 0;
+    }
+    MpBoolean getNote(MpInteger, IMargretePluginNote **) override
+    {
+        return MP_FALSE;
+    }
+    MpBoolean appendNote(IMargretePluginNote *) override
+    {
         ++appendedNotes;
         return MP_TRUE;
     }
-    MpBoolean deleteNote(IMargretePluginNote*) override { return MP_TRUE; }
-    void offsetNotes(MpInteger) override {}
-    MpBoolean createEvent(const MpGuid& iid, void** ppobj) const override {
-        if (!ppobj) {
+    MpBoolean deleteNote(IMargretePluginNote *) override
+    {
+        return MP_TRUE;
+    }
+    void offsetNotes(MpInteger) override
+    {
+    }
+    MpBoolean createEvent(const MpGuid &iid, void **ppobj) const override
+    {
+        if (!ppobj)
+        {
             return MP_FALSE;
         }
-        if (iid == IID_IMargretePluginEventBpm) {
+        if (iid == IID_IMargretePluginEventBpm)
+        {
             createdBpmEvents.push_back(new FakeBpmEvent());
             *ppobj = createdBpmEvents.back();
             return MP_TRUE;
         }
-        if (iid == IID_IMargretePluginEventBeatChange) {
+        if (iid == IID_IMargretePluginEventBeatChange)
+        {
             createdBeatEvents.push_back(new FakeBeatEvent());
             *ppobj = createdBeatEvents.back();
             return MP_TRUE;
         }
-        if (iid == IID_IMargretePluginEventTimelineSpeed) {
+        if (iid == IID_IMargretePluginEventTimelineSpeed)
+        {
             createdTimelineSpeedEvents.push_back(new FakeTimelineSpeedEvent());
             *ppobj = createdTimelineSpeedEvents.back();
             return MP_TRUE;
         }
-        if (iid == IID_IMargretePluginEventNoteSpeedModifier) {
+        if (iid == IID_IMargretePluginEventNoteSpeedModifier)
+        {
             createdNoteSpeedEvents.push_back(new FakeNoteSpeedEvent());
             *ppobj = createdNoteSpeedEvents.back();
             return MP_TRUE;
         }
         return MP_FALSE;
     }
-    MpBoolean appendEvent(IMargretePluginEvent*) override {
+    MpBoolean appendEvent(IMargretePluginEvent *) override
+    {
         ++appendedEvents;
         return MP_TRUE;
     }
-    MpBoolean deleteEvent(IMargretePluginEvent*) override { return MP_TRUE; }
-    MpBoolean findEventTimelineSpeed(MpInteger, MpInteger, void**) override { return MP_FALSE; }
-    MpBoolean findEventNoteSpeedModifier(MpInteger, void**) override { return MP_FALSE; }
-    MpBoolean findEventBpm(MpInteger, void**) override { return MP_FALSE; }
-    MpBoolean findEventBeatChange(MpInteger, void**) override { return MP_FALSE; }
+    MpBoolean deleteEvent(IMargretePluginEvent *) override
+    {
+        return MP_TRUE;
+    }
+    MpBoolean findEventTimelineSpeed(MpInteger, MpInteger, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpBoolean findEventNoteSpeedModifier(MpInteger, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpBoolean findEventBpm(MpInteger, void **) override
+    {
+        return MP_FALSE;
+    }
+    MpBoolean findEventBeatChange(MpInteger, void **) override
+    {
+        return MP_FALSE;
+    }
 
-    mutable std::vector<FakeNote*> createdNotes;
-    mutable std::vector<FakeBpmEvent*> createdBpmEvents;
-    mutable std::vector<FakeBeatEvent*> createdBeatEvents;
-    mutable std::vector<FakeTimelineSpeedEvent*> createdTimelineSpeedEvents;
-    mutable std::vector<FakeNoteSpeedEvent*> createdNoteSpeedEvents;
+    mutable std::vector<FakeNote *> createdNotes;
+    mutable std::vector<FakeBpmEvent *> createdBpmEvents;
+    mutable std::vector<FakeBeatEvent *> createdBeatEvents;
+    mutable std::vector<FakeTimelineSpeedEvent *> createdTimelineSpeedEvents;
+    mutable std::vector<FakeNoteSpeedEvent *> createdNoteSpeedEvents;
     int appendedNotes{0};
     int appendedEvents{0};
 };
 
-class FakeUndo final : public IMargretePluginUndoBuffer, public FakeBase {
-public:
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid& iid, void** ppobj) override { return FakeBase::queryInterface(iid, ppobj); }
-    MpBoolean beginRecording() override {
+class FakeUndo final : public IMargretePluginUndoBuffer, public FakeBase
+{
+  public:
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &iid, void **ppobj) override
+    {
+        return FakeBase::queryInterface(iid, ppobj);
+    }
+    MpBoolean beginRecording() override
+    {
         ++beginCount;
         return MP_TRUE;
     }
-    MpBoolean commitRecording() override {
+    MpBoolean commitRecording() override
+    {
         ++commitCount;
         return MP_TRUE;
     }
-    MpBoolean discardRecording() override {
+    MpBoolean discardRecording() override
+    {
         ++discardCount;
         return MP_TRUE;
     }
-    MpBoolean undo() override { return MP_TRUE; }
-    MpBoolean redo() override { return MP_TRUE; }
-    MpBoolean canUndo() const override { return MP_TRUE; }
-    MpBoolean canRedo() const override { return MP_FALSE; }
-    MpBoolean isRecording() const override { return beginCount > commitCount + discardCount; }
+    MpBoolean undo() override
+    {
+        return MP_TRUE;
+    }
+    MpBoolean redo() override
+    {
+        return MP_TRUE;
+    }
+    MpBoolean canUndo() const override
+    {
+        return MP_TRUE;
+    }
+    MpBoolean canRedo() const override
+    {
+        return MP_FALSE;
+    }
+    MpBoolean isRecording() const override
+    {
+        return beginCount > commitCount + discardCount;
+    }
 
     int beginCount{0};
     int commitCount{0};
     int discardCount{0};
 };
 
-class FakeDocument final : public IMargretePluginDocument, public FakeBase {
-public:
-    explicit FakeDocument(FakeChart& chartIn, FakeUndo& undoIn) : chart(chartIn), undo(undoIn) {}
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid& iid, void** ppobj) override { return FakeBase::queryInterface(iid, ppobj); }
-    MpBoolean getChart(IMargretePluginChart** ppobj) override {
+class FakeDocument final : public IMargretePluginDocument, public FakeBase
+{
+  public:
+    explicit FakeDocument(FakeChart &chartIn, FakeUndo &undoIn) : chart(chartIn), undo(undoIn)
+    {
+    }
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &iid, void **ppobj) override
+    {
+        return FakeBase::queryInterface(iid, ppobj);
+    }
+    MpBoolean getChart(IMargretePluginChart **ppobj) override
+    {
         *ppobj = &chart;
         return MP_TRUE;
     }
-    MpBoolean getUndoBuffer(IMargretePluginUndoBuffer** ppobj) override {
+    MpBoolean getUndoBuffer(IMargretePluginUndoBuffer **ppobj) override
+    {
         *ppobj = &undo;
         return MP_TRUE;
     }
 
-    FakeChart& chart;
-    FakeUndo& undo;
+    FakeChart &chart;
+    FakeUndo &undo;
 };
 
-class FakeContext final : public IMargretePluginContext, public FakeBase {
-public:
-    FakeContext() : document(chart, undo) {}
-    MpInteger addRef() override { return FakeBase::addRef(); }
-    MpInteger release() override { return FakeBase::release(); }
-    MpBoolean queryInterface(const MpGuid& iid, void** ppobj) override { return FakeBase::queryInterface(iid, ppobj); }
-    MpBoolean getDocument(IMargretePluginDocument** ppobj) override {
+class FakeContext final : public IMargretePluginContext, public FakeBase
+{
+  public:
+    FakeContext() : document(chart, undo)
+    {
+    }
+    MpInteger addRef() override
+    {
+        return FakeBase::addRef();
+    }
+    MpInteger release() override
+    {
+        return FakeBase::release();
+    }
+    MpBoolean queryInterface(const MpGuid &iid, void **ppobj) override
+    {
+        return FakeBase::queryInterface(iid, ppobj);
+    }
+    MpBoolean getDocument(IMargretePluginDocument **ppobj) override
+    {
         *ppobj = &document;
         return MP_TRUE;
     }
-    void* getMainWindowHandle() override { return nullptr; }
-    MpInteger getCurrentTick() const override { return currentTick; }
-    void update() const override { updated = true; }
+    void *getMainWindowHandle() override
+    {
+        return nullptr;
+    }
+    MpInteger getCurrentTick() const override
+    {
+        return currentTick;
+    }
+    void update() const override
+    {
+        updated = true;
+    }
 
     FakeChart chart;
     FakeUndo undo;
