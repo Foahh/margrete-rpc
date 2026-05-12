@@ -1,0 +1,9 @@
+[en_US]
+title = Margrete RPC
+desc = Local TCP/protobuf bridge for Python chart scripting
+dev = Foahh
+
+[server]
+host = 127.0.0.1
+port = 48731
+log = margrete-rpc.log

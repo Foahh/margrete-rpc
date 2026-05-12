@@ -1,0 +1,3 @@
+[submodule "MargretePluginSDK"]
+	path = MargretePluginSDK
+	url = https://github.com/MargreteSDK/MargretePluginSDK.git

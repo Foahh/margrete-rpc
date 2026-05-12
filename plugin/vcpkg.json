@@ -1,0 +1,6 @@
+{
+  "dependencies": [
+    "protobuf",
+    "catch2"
+  ]
+}
