@@ -52,6 +52,16 @@ with mg.open_append("append pattern") as tx:
 start empty in both modes and represent append-or-replace operations by event
 key; they are not complete snapshots of existing Margrete events.
 
+## Building notes
+
+Use classmethods on `Note` for common kinds (all use keyword `tick`, `x`, optional `width`, plus `**kwargs` for any other `Note` field such as `direction`, `long_attr`, `children`):
+
+- `Note.tap`, `Note.extap`, `Note.flick`, `Note.damage`
+- `Note.hold`, `Note.slide` — default `long_attr=LongAttr.BEGIN` for a long-note head; pass `long_attr=` for other segments
+- **Slide segments:** `Note.slide_begin`, `slide_step`, `slide_control`, `slide_curve_control`, `slide_end`, `slide_end_noact` (fixed `LongAttr` each)
+- `Note.air`, `Note.air_slide`, `Note.air_hold` — generic `air_slide` / `air_hold` default `long_attr=LongAttr.BEGIN`
+- **Air-slide segments:** `Note.air_slide_begin`, `air_slide_step`, `air_slide_control`, `air_slide_curve_control`, `air_slide_end`, `air_slide_end_noact`
+
 ## Client: `Margrete`
 
 ```python

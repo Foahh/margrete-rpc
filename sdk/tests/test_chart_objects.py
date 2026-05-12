@@ -28,6 +28,25 @@ def test_note_type_factories_set_kind_and_geometry():
     assert Note.air_hold(tick=1, x=2).type is NoteType.AIRHOLD
 
 
+def test_slide_segment_factories_match_long_attr():
+    assert Note.slide_begin(tick=10, x=3) == Note.slide(tick=10, x=3, long_attr=LongAttr.BEGIN)
+    assert Note.slide_step(tick=10, x=3).long_attr is LongAttr.STEP
+    assert Note.slide_control(tick=10, x=3).long_attr is LongAttr.CONTROL
+    assert Note.slide_curve_control(tick=10, x=3).long_attr is LongAttr.CURVE_CONTROL
+    assert Note.slide_end(tick=10, x=3).long_attr is LongAttr.END
+    assert Note.slide_end_noact(tick=10, x=3).long_attr is LongAttr.END_NOACT
+
+
+def test_air_slide_segment_factories_match_long_attr():
+    begin = Note.air_slide_begin(tick=11, x=4)
+    assert begin == Note.air_slide(tick=11, x=4, long_attr=LongAttr.BEGIN)
+    assert Note.air_slide_step(tick=11, x=4).long_attr is LongAttr.STEP
+    assert Note.air_slide_control(tick=11, x=4).long_attr is LongAttr.CONTROL
+    assert Note.air_slide_curve_control(tick=11, x=4).long_attr is LongAttr.CURVE_CONTROL
+    assert Note.air_slide_end(tick=11, x=4).long_attr is LongAttr.END
+    assert Note.air_slide_end_noact(tick=11, x=4).long_attr is LongAttr.END_NOACT
+
+
 def test_note_defaults_and_tap_constructor_are_pythonic():
     note = Note.tap(tick=960, x=4, width=1)
 
