@@ -6,7 +6,8 @@ namespace
 {
 MP_NOTEINFO BaseInfo(const margrete::rpc::v1::LaneNote &base, MpInteger type)
 {
-    if (base.width() <= 0 || base.tick() < 0 || base.lane() < 0)
+    // Lane (x) may be negative; still require valid tick/width.
+    if (base.width() <= 0 || base.tick() < 0)
     {
         throw std::runtime_error("invalid note base");
     }

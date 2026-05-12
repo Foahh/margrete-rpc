@@ -12,6 +12,11 @@ def test_tap_converts_to_note_object():
     assert item.note.tap.base.width == 1
 
 
+def test_tap_allows_negative_lane():
+    item = Tap(tick=0, lane=-1, width=1).to_append_item()
+    assert item.note.tap.base.lane == -1
+
+
 def test_hold_rejects_negative_duration():
     with pytest.raises(ValueError, match="duration"):
         Hold(tick=120, lane=4, width=2, duration=-1).to_append_item()

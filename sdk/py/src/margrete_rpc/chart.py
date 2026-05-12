@@ -17,8 +17,6 @@ def _validate_base(tick: int, lane: int, width: int) -> None:
         raise ValueError("tick must be non-negative")
     if width <= 0:
         raise ValueError("width must be positive")
-    if lane < 0:
-        raise ValueError("lane must be non-negative")
 
 
 def _lane_note(tick: int, lane: int, width: int, timeline: int) -> messages_pb2.LaneNote:
@@ -413,7 +411,7 @@ class RawNoteNode:
         object.__setattr__(self, "children", tuple(self.children))
 
     def to_proto(self) -> messages_pb2.RawNoteNode:
-        # x is horizontal lane position in raw editor nodes; reuse lane validation rules.
+        # x is horizontal position; tick/width follow the same rules as LaneNote bases.
         _validate_base(self.tick, self.x, self.width)
         return messages_pb2.RawNoteNode(
             type=self.type,
