@@ -1,6 +1,8 @@
 from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
 from margrete_rpc.client import Margrete
 from margrete_rpc.model import (
+    AirColor,
+    AirCrushColor,
     AirCrushOption,
     BeatChangeEvent,
     BpmEvent,
@@ -16,6 +18,8 @@ from margrete_rpc.model import (
 )
 
 __all__ = [
+    "AirColor",
+    "AirCrushColor",
     "AirCrushOption",
     "BeatChangeEvent",
     "BpmEvent",

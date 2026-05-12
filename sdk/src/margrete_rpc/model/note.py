@@ -64,6 +64,31 @@ class AirCrushOption(IntEnum):
     HEAD_ONLY = 0x7FFFFFFF
 
 
+class AirCrushColor(IntEnum):
+    DEF = 0
+    RED = 1
+    ORN = 2
+    YEL = 3
+    GRN = 4
+    AQA = 5
+    BLU = 6
+    PPL = 7
+    VLT = 8
+    PPL_ALT = 9  # same underlying color as ``PPL``
+    GRY = 10
+    BLK = 11
+    LIM = 12
+    CYN = 13
+    DGR = 14
+    PNK = 15
+    NON = 35
+
+
+class AirColor(IntEnum):
+    PNK = 2
+    GRN = 3
+
+
 @dataclass
 class Note:
     type: NoteType = NoteType.UNKNOWN

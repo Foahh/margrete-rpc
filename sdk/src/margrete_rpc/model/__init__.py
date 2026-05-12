@@ -8,6 +8,8 @@ from margrete_rpc.model.event import (
     TimelineSpeedEvent,
 )
 from margrete_rpc.model.note import (
+    AirColor,
+    AirCrushColor,
     AirCrushOption,
     Direction,
     ExAttr,
@@ -17,6 +19,8 @@ from margrete_rpc.model.note import (
 )
 
 __all__ = [
+    "AirColor",
+    "AirCrushColor",
     "AirCrushOption",
     "BeatChangeEvent",
     "BpmEvent",

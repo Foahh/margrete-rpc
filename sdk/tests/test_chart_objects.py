@@ -1,6 +1,8 @@
 import pytest
 
 from margrete_rpc import (
+    AirColor,
+    AirCrushColor,
     AirCrushOption,
     BeatChangeEvent,
     BpmEvent,
@@ -40,6 +42,33 @@ def test_note_type_factories_set_kind_and_geometry():
     head = Note.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY)
     assert head.option_value == 0x7FFFFFFF
     assert Note.air_crush_begin(1, 2, 1, 80, 120).option_value == 120
+
+
+def test_air_crush_color_values_match_variation_ids():
+    assert AirCrushColor.DEF == 0
+    assert AirCrushColor.RED == 1
+    assert AirCrushColor.ORN == 2
+    assert AirCrushColor.YEL == 3
+    assert AirCrushColor.GRN == 4
+    assert AirCrushColor.AQA == 5
+    assert AirCrushColor.BLU == 6
+    assert AirCrushColor.PPL == 7
+    assert AirCrushColor.VLT == 8
+    assert AirCrushColor.PPL_ALT == 9
+    assert AirCrushColor.GRY == 10
+    assert AirCrushColor.BLK == 11
+    assert AirCrushColor.LIM == 12
+    assert AirCrushColor.CYN == 13
+    assert AirCrushColor.DGR == 14
+    assert AirCrushColor.PNK == 15
+    assert AirCrushColor.NON == 35
+    assert Note.air_crush_begin(1, 2, 1, 80, 0, variation_id=AirCrushColor.NON).variation_id == 35
+
+
+def test_air_color_values_match_umgr_color_enum():
+    assert AirColor.PNK == 2
+    assert AirColor.GRN == 3
+    assert list(AirColor) == [AirColor.PNK, AirColor.GRN]
 
 
 def test_note_factories_require_geometry_and_specific_fields():
