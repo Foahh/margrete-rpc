@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import TypeVar
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
@@ -174,10 +173,7 @@ class Chart:
         return cls(notes=[Note.from_proto(note) for note in response.notes])
 
 
-T = TypeVar("T")
-
-
-def _last_by_key(items: list[T], key) -> list[T]:
+def _last_by_key[T](items: list[T], key) -> list[T]:
     by_key = {}
     for item in items:
         by_key[key(item)] = item

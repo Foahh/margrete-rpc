@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
+from margrete_rpc.chart import Chart
+from margrete_rpc.transaction import AppendTransaction, EditTransaction
 
 
 class Margrete:
@@ -21,3 +23,26 @@ class Margrete:
             messages_pb2.Envelope(get_current_tick_request=messages_pb2.GetCurrentTickRequest())
         )
         return response.get_current_tick_response.tick
+
+    def open_edit(self, name: str) -> EditTransaction:
+        response = self._transport.request(
+            messages_pb2.Envelope(begin_edit_request=messages_pb2.BeginEditRequest(name=name))
+        )
+        begin = response.begin_edit_response
+        return EditTransaction(
+            name=name,
+            transport=self._transport,
+            current_tick=begin.current_tick,
+            chart=Chart.from_begin_edit_response(begin),
+        )
+
+    def open_append(self, name: str) -> AppendTransaction:
+        response = self._transport.request(
+            messages_pb2.Envelope(begin_append_request=messages_pb2.BeginAppendRequest(name=name))
+        )
+        return AppendTransaction(
+            name=name,
+            transport=self._transport,
+            current_tick=response.begin_append_response.current_tick,
+            chart=Chart(),
+        )
