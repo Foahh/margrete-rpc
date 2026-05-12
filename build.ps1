@@ -12,7 +12,7 @@
   Run plugin_tests via ctest after a successful build.
 
 .PARAMETER Publish
-  Copy margrete_rpc.dll and margrete-rpc.ini into repo-root publish/ for manual install.
+  Copy margrete-rpc.dll and margrete-rpc.ini into repo-root publish/ for manual install.
 
 .PARAMETER VcpkgRoot
   vcpkg installation root. Defaults to $env:VCPKG_ROOT.
@@ -93,14 +93,14 @@ function Find-BuiltDll {
     param([string] $BuildDir)
 
     $candidates = @(
-        (Join-Path $BuildDir 'margrete_rpc.dll'),
-        (Join-Path $BuildDir "$Configuration\margrete_rpc.dll")
+        (Join-Path $BuildDir 'margrete-rpc.dll'),
+        (Join-Path $BuildDir "$Configuration\margrete-rpc.dll")
     )
     foreach ($p in $candidates) {
         if (Test-Path -LiteralPath $p) { return (Resolve-Path -LiteralPath $p).Path }
     }
 
-    $found = Get-ChildItem -Path $BuildDir -Recurse -Filter 'margrete_rpc.dll' -ErrorAction SilentlyContinue |
+    $found = Get-ChildItem -Path $BuildDir -Recurse -Filter 'margrete-rpc.dll' -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
     if ($found) { return $found.FullName }
@@ -170,14 +170,14 @@ try {
     if ($Publish) {
         $dll = Find-BuiltDll -BuildDir $BuildDir
         $ini = Find-BuiltIni -BuildDir $BuildDir
-        if (-not $dll) { throw "Could not find margrete_rpc.dll under $BuildDir" }
+        if (-not $dll) { throw "Could not find margrete-rpc.dll under $BuildDir" }
         if (-not $ini) { throw "Could not find margrete-rpc.ini under $BuildDir" }
 
         $PublishDir = Join-Path $RepoRoot 'publish'
         Write-Host "`n==> Publishing to $PublishDir"
         Remove-Item $PublishDir -Recurse -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Path $PublishDir | Out-Null
-        Copy-Item -LiteralPath $dll -Destination (Join-Path $PublishDir 'margrete_rpc.dll')
+        Copy-Item -LiteralPath $dll -Destination (Join-Path $PublishDir 'margrete-rpc.dll')
         Copy-Item -LiteralPath $ini -Destination (Join-Path $PublishDir 'margrete-rpc.ini')
         Write-Host "    Copied DLL and INI."
     }

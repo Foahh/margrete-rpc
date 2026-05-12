@@ -13,7 +13,7 @@ function(setup_metadata)
     set(TITLE "Margrete RPC" PARENT_SCOPE)
     set(DESC "TCP/protobuf bridge for Margrete\\n${REPO_URL}" PARENT_SCOPE)
     set(DEVELOPER "Foahh" PARENT_SCOPE)
-    set(DLL_NAME "margrete_rpc" PARENT_SCOPE)
+    set(DLL_NAME "margrete-rpc" PARENT_SCOPE)
 endfunction()
 
 function(generate_configurations)
