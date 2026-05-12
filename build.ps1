@@ -160,11 +160,17 @@ try {
         Invoke-Checked -Exe 'git' -Arguments @('-C', $RepoRoot, 'submodule', 'update', '--init', '--recursive')
     }
 
-    Write-Host "`n==> CMake configure (preset: $ConfigurePreset)"
-    Invoke-Checked -Exe 'cmake' -Arguments @('--preset', $ConfigurePreset, '-S', $PluginDir)
+    Push-Location -LiteralPath $PluginDir
+    try {
+        Write-Host "`n==> CMake configure (preset: $ConfigurePreset)"
+        Invoke-Checked -Exe 'cmake' -Arguments @('--preset', $ConfigurePreset)
 
-    Write-Host "`n==> CMake build (preset: $buildPreset)"
-    Invoke-Checked -Exe 'cmake' -Arguments @('--build', '--preset', $buildPreset)
+        Write-Host "`n==> CMake build (preset: $buildPreset)"
+        Invoke-Checked -Exe 'cmake' -Arguments @('--build', '--preset', $buildPreset)
+    }
+    finally {
+        Pop-Location
+    }
 
     if ($Test) {
         Write-Host "`n==> ctest ($Configuration)"

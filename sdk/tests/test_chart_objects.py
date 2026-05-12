@@ -14,6 +14,20 @@ from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart import normalize_event_operations
 
 
+def test_note_type_factories_set_kind_and_geometry():
+    assert Note.tap(tick=1, x=2).type is NoteType.TAP
+    assert Note.extap(tick=1, x=2).type is NoteType.EXTAP
+    assert Note.flick(tick=1, x=2).type is NoteType.FLICK
+    assert Note.damage(tick=1, x=2).type is NoteType.DAMAGE
+    assert Note.hold(tick=1, x=2).type is NoteType.HOLD
+    assert Note.hold(tick=1, x=2).long_attr is LongAttr.BEGIN
+    assert Note.slide(tick=1, x=2).type is NoteType.SLIDE
+    assert Note.slide(tick=1, x=2).long_attr is LongAttr.BEGIN
+    assert Note.air(tick=1, x=2).type is NoteType.AIR
+    assert Note.air_slide(tick=1, x=2).type is NoteType.AIRSLIDE
+    assert Note.air_hold(tick=1, x=2).type is NoteType.AIRHOLD
+
+
 def test_note_defaults_and_tap_constructor_are_pythonic():
     note = Note.tap(tick=960, x=4, width=1)
 

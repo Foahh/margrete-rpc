@@ -77,6 +77,84 @@ class Note:
         return cls(type=NoteType.TAP, tick=tick, x=x, width=width, **kwargs)
 
     @classmethod
+    def extap(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls(type=NoteType.EXTAP, tick=tick, x=x, width=width, **kwargs)
+
+    @classmethod
+    def flick(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls(type=NoteType.FLICK, tick=tick, x=x, width=width, **kwargs)
+
+    @classmethod
+    def damage(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls(type=NoteType.DAMAGE, tick=tick, x=x, width=width, **kwargs)
+
+    @classmethod
+    def hold(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        long_attr: LongAttr = LongAttr.BEGIN,
+        **kwargs,
+    ) -> Note:
+        return cls(type=NoteType.HOLD, tick=tick, x=x, width=width, long_attr=long_attr, **kwargs)
+
+    @classmethod
+    def slide(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        long_attr: LongAttr = LongAttr.BEGIN,
+        **kwargs,
+    ) -> Note:
+        return cls(type=NoteType.SLIDE, tick=tick, x=x, width=width, long_attr=long_attr, **kwargs)
+
+    @classmethod
+    def air(cls, *, tick: int, x: int, width: int = 1, **kwargs) -> Note:
+        return cls(type=NoteType.AIR, tick=tick, x=x, width=width, **kwargs)
+
+    @classmethod
+    def air_slide(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        long_attr: LongAttr = LongAttr.BEGIN,
+        **kwargs,
+    ) -> Note:
+        return cls(
+            type=NoteType.AIRSLIDE,
+            tick=tick,
+            x=x,
+            width=width,
+            long_attr=long_attr,
+            **kwargs,
+        )
+
+    @classmethod
+    def air_hold(
+        cls,
+        *,
+        tick: int,
+        x: int,
+        width: int = 1,
+        long_attr: LongAttr = LongAttr.BEGIN,
+        **kwargs,
+    ) -> Note:
+        return cls(
+            type=NoteType.AIRHOLD,
+            tick=tick,
+            x=x,
+            width=width,
+            long_attr=long_attr,
+            **kwargs,
+        )
+
+    @classmethod
     def from_proto(cls, proto: messages_pb2.Note) -> Note:
         return cls(
             id=proto.id if proto.HasField("id") else None,
