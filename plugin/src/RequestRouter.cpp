@@ -2,7 +2,9 @@
 
 #include <stdexcept>
 
+#include "ChartMapper.h"
 #include "MargreteSession.h"
+#include "TransactionApplier.h"
 
 RequestRouter::RequestRouter(IMargretePluginContext *context) : context_(context)
 {
@@ -34,6 +36,37 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         {
             MargreteSession session(*context_);
             response.mutable_get_current_tick_response()->set_tick(session.currentTick());
+            return response;
+        }
+        if (request.has_begin_edit_request())
+        {
+            MargreteSession session(*context_);
+            auto *begin = response.mutable_begin_edit_response();
+            begin->set_current_tick(session.currentTick());
+            for (const auto &note : ChartMapper::SnapshotNotes(session.chart()))
+            {
+                *begin->add_notes() = note;
+            }
+            return response;
+        }
+        if (request.has_begin_append_request())
+        {
+            MargreteSession session(*context_);
+            response.mutable_begin_append_response()->set_current_tick(session.currentTick());
+            return response;
+        }
+        if (request.has_apply_edit_patch_request())
+        {
+            MargreteSession session(*context_);
+            TransactionApplier::ApplyEdit(session, request.apply_edit_patch_request());
+            response.mutable_apply_edit_patch_response();
+            return response;
+        }
+        if (request.has_apply_append_patch_request())
+        {
+            MargreteSession session(*context_);
+            TransactionApplier::ApplyAppend(session, request.apply_append_patch_request());
+            response.mutable_apply_append_patch_response();
             return response;
         }
         return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INVALID_ARGUMENT, "unsupported request");
