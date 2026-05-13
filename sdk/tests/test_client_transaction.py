@@ -47,6 +47,23 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
     assert not apply_request.notes_upsert[0].HasField("id")
 
 
+def test_open_edit_sends_event_scan_note_til_only():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=0, scan=True, event_scan_note_til_only=True
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+    with mg.open_edit("til-opt", event_scan_note_til_only=True):
+        pass
+    assert transport.requests[0].begin_edit_request.event_scan_note_til_only is True
+
+
 def test_open_edit_scan_false_replaces_open_append_flow():
     transport = FakeTransport(
         [

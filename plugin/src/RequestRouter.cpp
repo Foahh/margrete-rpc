@@ -110,10 +110,12 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             }
 
             const bool scan = req.scan();
+            const bool eventScanNoteTilOnly = req.event_scan_note_til_only();
             begin->set_scan(scan);
+            begin->set_event_scan_note_til_only(eventScanNoteTilOnly);
             if (scan)
             {
-                ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, *begin);
+                ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, eventScanNoteTilOnly, *begin);
             }
             else
             {
@@ -127,7 +129,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " timeline_speed_events=" + std::to_string(begin->timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(begin->note_speed_events_size()) +
                     " scan_extra_tick=" + std::to_string(begin->event_scan_extra_tick()) + " scan_til_count=" +
-                    std::to_string(begin->event_scan_til_size()) + " scan=" + std::to_string(begin->scan()));
+                    std::to_string(begin->event_scan_til_size()) + " scan=" + std::to_string(begin->scan()) +
+                    " event_scan_note_til_only=" + std::to_string(begin->event_scan_note_til_only()));
             return response;
         }
         if (request.has_apply_edit_request())

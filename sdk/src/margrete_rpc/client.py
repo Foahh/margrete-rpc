@@ -35,10 +35,13 @@ class Margrete:
         *,
         event_scan_extra_tick: int | None = None,
         event_scan_til: list[int] | None = None,
+        event_scan_note_til_only: bool = False,
         scan: bool = True,
     ) -> EditTransaction:
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": "edit", "tx.name": name}):
-            req = messages_pb2.BeginEditRequest(name=name, scan=scan)
+            req = messages_pb2.BeginEditRequest(
+                name=name, scan=scan, event_scan_note_til_only=event_scan_note_til_only
+            )
             if event_scan_extra_tick is not None:
                 req.event_scan_extra_tick = event_scan_extra_tick
             if event_scan_til is not None:
@@ -61,10 +64,13 @@ class Margrete:
         *,
         event_scan_extra_tick: int | None = None,
         event_scan_til: list[int] | None = None,
+        event_scan_note_til_only: bool = False,
         scan: bool = True,
     ) -> EditTransaction:
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": "edit_ll", "tx.name": name}):
-            req = messages_pb2.BeginEditRequest(name=name, scan=scan)
+            req = messages_pb2.BeginEditRequest(
+                name=name, scan=scan, event_scan_note_til_only=event_scan_note_til_only
+            )
             if event_scan_extra_tick is not None:
                 req.event_scan_extra_tick = event_scan_extra_tick
             if event_scan_til is not None:

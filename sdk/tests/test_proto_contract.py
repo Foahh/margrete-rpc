@@ -61,3 +61,14 @@ def test_begin_edit_request_and_response_have_scan_field():
 def test_begin_edit_scan_fields_use_expected_numbers():
     assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["scan"].number == 4
     assert messages_pb2.BeginEditResponse.DESCRIPTOR.fields_by_name["scan"].number == 9
+
+
+def test_begin_edit_event_scan_note_til_only_field_numbers():
+    assert (
+        messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_note_til_only"].number
+        == 5
+    )
+    assert (
+        messages_pb2.BeginEditResponse.DESCRIPTOR.fields_by_name["event_scan_note_til_only"].number
+        == 10
+    )

@@ -48,7 +48,7 @@ TEST_CASE("chart mapper scans events through configured tick range")
     context.chart.addExistingBeatEvent(1, 3, 4);
 
     margrete::rpc::v1::BeginEditResponse response;
-    ChartMapper::SnapshotForEdit(context.chart, 200, {2}, response);
+    ChartMapper::SnapshotForEdit(context.chart, 200, {2}, false, response);
 
     REQUIRE(response.scan() == true);
     REQUIRE(response.event_scan_extra_tick() == 200);
@@ -63,4 +63,27 @@ TEST_CASE("chart mapper scans events through configured tick range")
     REQUIRE(response.timeline_speed_events(0).timeline_id() == 2);
     REQUIRE(response.beat_change_events_size() == 1);
     REQUIRE(response.beat_change_events(0).bar() == 1);
+}
+
+TEST_CASE("chart mapper event_scan_note_til_only skips timelines without notes")
+{
+    FakeContext context;
+    auto *root = context.chart.addExistingNote(10);
+    root->info.tick = 1000;
+    root->info.timelineId = 2;
+    context.chart.addExistingTimelineSpeedEvent(100, 0, 0.5);
+    context.chart.addExistingTimelineSpeedEvent(360, 2, 0.75);
+
+    margrete::rpc::v1::BeginEditResponse withFlag;
+    ChartMapper::SnapshotForEdit(context.chart, 200, {0, 2}, true, withFlag);
+    REQUIRE(withFlag.event_scan_til_size() == 1);
+    REQUIRE(withFlag.event_scan_til(0) == 2);
+    REQUIRE(withFlag.timeline_speed_events_size() == 1);
+    REQUIRE(withFlag.timeline_speed_events(0).timeline_id() == 2);
+    REQUIRE(withFlag.timeline_speed_events(0).tick() == 360);
+
+    margrete::rpc::v1::BeginEditResponse withoutFlag;
+    ChartMapper::SnapshotForEdit(context.chart, 200, {0, 2}, false, withoutFlag);
+    REQUIRE(withoutFlag.event_scan_til_size() == 2);
+    REQUIRE(withoutFlag.timeline_speed_events_size() == 2);
 }

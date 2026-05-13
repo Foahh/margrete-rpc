@@ -124,6 +124,7 @@ message BeginEditRequest {
   int32 event_scan_extra_tick = 2;
   repeated int32 event_scan_til = 3;
   bool scan = 4;
+  bool event_scan_note_til_only = 5;
 }
 
 message BeginEditResponse {
@@ -136,6 +137,7 @@ message BeginEditResponse {
   int32 event_scan_extra_tick = 7;
   repeated int32 event_scan_til = 8;
   bool scan = 9;
+  bool event_scan_note_til_only = 10;
 }
 
 message TimelineSpeedKey {
