@@ -29,7 +29,7 @@ class Margrete:
             current_tick=begin.current_tick,
             chart=Chart.from_begin_edit_response(begin),
             event_scan_until_tick=begin.event_scan_until_tick,
-            event_scan_timeline_ids=list(begin.event_scan_timeline_ids),
+            event_scan_max_til=begin.event_scan_max_til,
         )
 
     def open_edit_ll(self, name: str) -> EditTransaction:
@@ -43,7 +43,7 @@ class Margrete:
             current_tick=begin.current_tick,
             chart=LLChart.from_begin_edit_response(begin),
             event_scan_until_tick=begin.event_scan_until_tick,
-            event_scan_timeline_ids=list(begin.event_scan_timeline_ids),
+            event_scan_max_til=begin.event_scan_max_til,
         )
 
     def open_append(self, name: str) -> AppendTransaction:

@@ -10,4 +10,4 @@ log = margrete-rpc.log
 
 [chart_editing]
 event_scan_extra_ticks = 768000
-max_scan_til = 16384
+event_scan_max_til = 31

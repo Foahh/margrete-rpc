@@ -1033,7 +1033,7 @@ def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
             ),
         ],
         event_scan_until_tick=4800,
-        event_scan_timeline_ids=[0, 2],
+        event_scan_max_til=2,
         bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
     )
 

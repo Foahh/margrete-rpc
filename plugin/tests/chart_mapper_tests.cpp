@@ -51,8 +51,7 @@ TEST_CASE("chart mapper scans events through configured tick range")
     ChartMapper::SnapshotForEdit(context.chart, 200, 1500, response);
 
     REQUIRE(response.event_scan_until_tick() == 1200);
-    REQUIRE(response.event_scan_timeline_ids_size() == 1);
-    REQUIRE(response.event_scan_timeline_ids(0) == 2);
+    REQUIRE(response.event_scan_max_til() == 1500);
     REQUIRE(response.bpm_events_size() == 1);
     REQUIRE(response.bpm_events(0).tick() == 120);
     REQUIRE(response.bpm_events(0).bpm() == 180.0);

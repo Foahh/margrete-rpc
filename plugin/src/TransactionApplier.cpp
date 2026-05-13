@@ -166,7 +166,8 @@ void DeleteMissingBeatChangeEvents(IMargretePluginChart &chart, const margrete::
 }
 
 void DeleteMissingTimelineSpeedEvents(IMargretePluginChart &chart,
-                                      const margrete::rpc::v1::ApplyEditPatchRequest &request)
+                                      const margrete::rpc::v1::ApplyEditPatchRequest &request,
+                                      MpInteger eventScanMaxTil)
 {
     std::set<std::pair<int, int>> finalKeys;
     for (const auto &eventProto : request.timeline_speed_events())
@@ -175,7 +176,7 @@ void DeleteMissingTimelineSpeedEvents(IMargretePluginChart &chart,
     }
     for (MpInteger tick = 0; tick <= request.event_scan_until_tick(); ++tick)
     {
-        for (const MpInteger timelineId : request.event_scan_timeline_ids())
+        for (MpInteger timelineId = 0; timelineId <= eventScanMaxTil; ++timelineId)
         {
             void *existing = nullptr;
             if (!finalKeys.contains({tick, timelineId}) &&
@@ -208,16 +209,21 @@ void DeleteMissingNoteSpeedEvents(IMargretePluginChart &chart, const margrete::r
     }
 }
 
-void ReconcileEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request)
+void ReconcileEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request,
+                     MpInteger eventScanMaxTil)
 {
     if (request.event_scan_until_tick() <= 0)
     {
         ApplyEvents(chart, request);
         return;
     }
+    if (eventScanMaxTil <= 0)
+    {
+        throw std::invalid_argument("event_scan_max_til must be positive");
+    }
     DeleteMissingBpmEvents(chart, request);
     DeleteMissingBeatChangeEvents(chart, request);
-    DeleteMissingTimelineSpeedEvents(chart, request);
+    DeleteMissingTimelineSpeedEvents(chart, request, eventScanMaxTil);
     DeleteMissingNoteSpeedEvents(chart, request);
     ApplyEvents(chart, request);
 }
@@ -317,6 +323,6 @@ void TransactionApplier::ApplyEdit(MargreteSession &session, const margrete::rpc
 {
     WithUndo(session, [&]() {
         ReconcileRootNotes(session.chart(), request.notes());
-        ReconcileEvents(session.chart(), request);
+        ReconcileEvents(session.chart(), request, request.event_scan_max_til());
     });
 }

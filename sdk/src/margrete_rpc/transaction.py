@@ -36,7 +36,7 @@ class EditTransaction:
     current_tick: int
     chart: Chart | LLChart
     event_scan_until_tick: int
-    event_scan_timeline_ids: list[int]
+    event_scan_max_til: int
 
     def __enter__(self) -> EditTransaction:
         return self
@@ -51,7 +51,7 @@ class EditTransaction:
             return False
         request = messages_pb2.ApplyEditPatchRequest(name=self.name)
         request.event_scan_until_tick = self.event_scan_until_tick
-        request.event_scan_timeline_ids.extend(self.event_scan_timeline_ids)
+        request.event_scan_max_til = self.event_scan_max_til
         request.notes.extend(note.to_proto() for note in _final_notes(self.chart))
         _extend_events(request, self.chart)
         self.transport.request(messages_pb2.Envelope(apply_edit_patch_request=request))

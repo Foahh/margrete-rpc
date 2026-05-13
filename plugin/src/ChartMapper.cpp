@@ -36,15 +36,6 @@ MpInteger LastNoteTick(const margrete::rpc::v1::Note &note)
     return tick;
 }
 
-void CollectTimelineIds(const margrete::rpc::v1::Note &note, std::set<MpInteger> &timelineIds)
-{
-    timelineIds.insert(note.timeline_id());
-    for (const auto &child : note.children())
-    {
-        CollectTimelineIds(child, timelineIds);
-    }
-}
-
 void AddBpmEvent(IMargretePluginEventBpm &event, margrete::rpc::v1::BeginEditResponse &response)
 {
     MP_EVENT_BPMINFO info{};
@@ -101,28 +92,19 @@ std::vector<margrete::rpc::v1::Note> ChartMapper::SnapshotNotes(IMargretePluginC
     return notes;
 }
 
-void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventScanExtraTicks, MpInteger maxScanTil,
+void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventScanExtraTicks, MpInteger eventScanMaxTil,
                                   margrete::rpc::v1::BeginEditResponse &response)
 {
     MpInteger lastNoteTick = 0;
-    std::set<MpInteger> timelineIds;
     for (const auto &note : SnapshotNotes(chart))
     {
         lastNoteTick = std::max(lastNoteTick, LastNoteTick(note));
-        CollectTimelineIds(note, timelineIds);
         *response.add_notes() = note;
     }
-    if (timelineIds.empty())
-    {
-        timelineIds.insert(0);
-    }
 
-    const MpInteger scanUntil = std::min(lastNoteTick + eventScanExtraTicks, maxScanTil);
+    const MpInteger scanUntil = lastNoteTick + eventScanExtraTicks;
     response.set_event_scan_until_tick(scanUntil);
-    for (const MpInteger timelineId : timelineIds)
-    {
-        response.add_event_scan_timeline_ids(timelineId);
-    }
+    response.set_event_scan_max_til(eventScanMaxTil);
 
     for (MpInteger tick = 0; tick <= scanUntil; ++tick)
     {
@@ -144,7 +126,7 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
             AddBeatEvent(*static_cast<IMargretePluginEventBeatChange *>(found), response);
         }
 
-        for (const MpInteger timelineId : timelineIds)
+        for (MpInteger timelineId = 0; timelineId <= eventScanMaxTil; ++timelineId)
         {
             found = nullptr;
             if (chart.findEventTimelineSpeed(tick, timelineId, &found) == MP_TRUE && found)

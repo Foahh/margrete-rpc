@@ -66,7 +66,7 @@ TEST_CASE("router begins edit transaction with note snapshot")
     context.chart.addExistingBpmEvent(200, 180.0);
     ServerConfig config;
     config.eventScanExtraTicks = 100;
-    config.maxScanTil = 300;
+    config.eventScanMaxTil = 300;
     RequestRouter router(&context, config);
     margrete::rpc::v1::Envelope request;
     request.set_request_id(20);

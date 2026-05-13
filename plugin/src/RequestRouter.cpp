@@ -59,7 +59,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             MargreteSession session(*context);
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
-            ChartMapper::SnapshotForEdit(session.chart(), config_.eventScanExtraTicks, config_.maxScanTil, *begin);
+            ChartMapper::SnapshotForEdit(session.chart(), config_.eventScanExtraTicks, config_.eventScanMaxTil, *begin);
             return response;
         }
         if (request.has_begin_append_request())

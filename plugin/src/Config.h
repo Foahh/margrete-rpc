@@ -10,7 +10,7 @@ struct ServerConfig
     std::uint16_t port{48731};
     std::filesystem::path logPath{"margrete-rpc.log"};
     std::int32_t eventScanExtraTicks{768000};
-    std::int32_t maxScanTil{16384};
+    std::int32_t eventScanMaxTil{31};
 };
 
 ServerConfig LoadServerConfig(const std::filesystem::path &iniPath);

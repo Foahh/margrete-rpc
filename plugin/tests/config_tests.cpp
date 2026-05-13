@@ -15,7 +15,7 @@ TEST_CASE("config uses defaults when file is missing")
     REQUIRE(config.port == 48731);
     REQUIRE(config.logPath.filename().string() == "margrete-rpc.log");
     REQUIRE(config.eventScanExtraTicks == 768000);
-    REQUIRE(config.maxScanTil == 16384);
+    REQUIRE(config.eventScanMaxTil == 31);
 }
 
 TEST_CASE("config reads server section")
@@ -55,13 +55,13 @@ TEST_CASE("config reads chart editing scan limits")
         std::ofstream out(path);
         out << "[chart_editing]\n";
         out << "event_scan_extra_ticks = 2400\n";
-        out << "max_scan_til = 9600\n";
+        out << "event_scan_max_til = 9600\n";
     }
 
     const ServerConfig config = LoadServerConfig(path);
 
     REQUIRE(config.eventScanExtraTicks == 2400);
-    REQUIRE(config.maxScanTil == 9600);
+    REQUIRE(config.eventScanMaxTil == 9600);
 }
 
 TEST_CASE("config rejects non-positive chart editing scan limits")
@@ -71,7 +71,7 @@ TEST_CASE("config rejects non-positive chart editing scan limits")
         std::ofstream out(path);
         out << "[chart_editing]\n";
         out << "event_scan_extra_ticks = 0\n";
-        out << "max_scan_til = -1\n";
+        out << "event_scan_max_til = -1\n";
     }
 
     REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("chart editing scan limits must be positive"));

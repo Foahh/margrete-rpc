@@ -21,7 +21,7 @@ def test_open_edit_exposes_high_level_and_raw_notes_then_commits_both():
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
                     event_scan_until_tick=4800,
-                    event_scan_timeline_ids=[0, 2],
+                    event_scan_max_til=2,
                     notes=[
                         messages_pb2.Note(
                             id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=1, width=2
@@ -49,6 +49,8 @@ def test_open_edit_exposes_high_level_and_raw_notes_then_commits_both():
     assert request.notes[1].id == 2
     assert request.notes[1].x == 9
     assert list(request.bpm_events) == [messages_pb2.BpmEvent(tick=0, bpm=185.0)]
+    assert request.event_scan_until_tick == 4800
+    assert request.event_scan_max_til == 2
 
 
 def test_open_append_commits_high_level_notes_and_raw_notes():

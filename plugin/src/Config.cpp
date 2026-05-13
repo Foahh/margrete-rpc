@@ -68,9 +68,9 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         {
             config.eventScanExtraTicks = std::stoi(value);
         }
-        else if (section == "chart_editing" && key == "max_scan_til")
+        else if (section == "chart_editing" && key == "event_scan_max_til")
         {
-            config.maxScanTil = std::stoi(value);
+            config.eventScanMaxTil = std::stoi(value);
         }
     }
 
@@ -82,7 +82,7 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
     {
         config.logPath = "margrete-rpc.log";
     }
-    if (config.eventScanExtraTicks <= 0 || config.maxScanTil <= 0)
+    if (config.eventScanExtraTicks <= 0 || config.eventScanMaxTil <= 0)
     {
         throw std::runtime_error("chart editing scan limits must be positive");
     }
