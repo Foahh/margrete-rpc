@@ -1,135 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
-from enum import IntEnum
-from typing import Any, cast
+from dataclasses import dataclass, field
+from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.tick import Tick, tick_delta
-from margrete_rpc.model.note_types import (
-    AirCrushColor,
+
+from .types import (
     AirCrushOption,
     AirDirection,
     ExAttr,
     ExtapDirection,
     FlickDirection,
     LongAttr,
+    NoteInfo,
     NoteType,
 )
-
-
-def _enum_line(value: IntEnum) -> str:
-    return f"{type(value).__name__}.{value.name}({int(value)})"
-
-
-@dataclass
-class NoteInfo:
-    type: NoteType = NoteType.UNKNOWN
-    long_attr: LongAttr = LongAttr.NONE
-    direction: AirDirection | ExtapDirection | FlickDirection = cast(
-        AirDirection | ExtapDirection | FlickDirection, messages_pb2.DIRECTION_UP
-    )
-    ex_attr: ExAttr = ExAttr.NONE
-    variation_id: AirCrushColor | int = 0
-    x: int = 0
-    width: int = 0
-    height: int = 80
-    tick: Tick = field(default_factory=lambda: Tick(0))
-    timeline_id: int = 0
-    option_value: AirCrushOption | int = 0
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "tick":
-            if isinstance(value, Tick):
-                value = Tick(int(value))
-            elif type(value) is int:
-                value = Tick(value)
-            elif (
-                type(value) is tuple
-                and len(value) == 2
-                and type(value[0]) is int
-                and type(value[1]) is int
-            ):
-                value = Tick(tick_delta(cast(tuple[int, int], value)))
-            else:
-                raise TypeError(
-                    f"tick must be int, Tick, or (int, int) beat fraction, got {type(value)!r}"
-                )
-        super().__setattr__(name, value)
-
-    def copy(self, **changes: Any) -> NoteInfo:
-        return replace(self, **changes)
-
-    def __str__(self) -> str:
-        return _format_note_info(self)
-
-    __repr__ = __str__
-
-
-def _direction_line(info: NoteInfo) -> str:
-    d = info.direction
-    if isinstance(d, IntEnum):
-        return _enum_line(d)
-    raw = int(d)
-    if info.type is NoteType.FLICK:
-        try:
-            return _enum_line(FlickDirection(raw))
-        except ValueError:
-            return repr(raw)
-    if info.type is NoteType.EXTAP:
-        try:
-            return _enum_line(ExtapDirection(raw))
-        except ValueError:
-            return repr(raw)
-    if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
-        try:
-            return _enum_line(AirDirection(raw))
-        except ValueError:
-            return repr(raw)
-    return repr(raw)
-
-
-def _variation_line(info: NoteInfo) -> str:
-    v = info.variation_id
-    if isinstance(v, IntEnum):
-        return _enum_line(v)
-    if info.type is NoteType.AIRCRUSH:
-        try:
-            return _enum_line(AirCrushColor(int(v)))
-        except ValueError:
-            return repr(v)
-    if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
-        return repr(int(v))
-    return repr(v)
-
-
-def _option_line(info: NoteInfo) -> str:
-    o = info.option_value
-    if isinstance(o, IntEnum):
-        return _enum_line(o)
-    if info.type is NoteType.AIRCRUSH:
-        try:
-            return _enum_line(AirCrushOption(int(o)))
-        except ValueError:
-            return repr(o)
-    return repr(o)
-
-
-def _format_note_info(info: NoteInfo) -> str:
-    parts = [
-        f"type={_enum_line(info.type)}",
-        f"long_attr={_enum_line(info.long_attr)}",
-        f"tick={int(info.tick)}",
-        f"x={info.x}",
-        f"width={info.width}",
-        f"height={info.height}",
-        f"direction={_direction_line(info)}",
-        f"ex_attr={_enum_line(info.ex_attr)}",
-        f"variation_id={_variation_line(info)}",
-        f"timeline_id={info.timeline_id}",
-        f"option_value={_option_line(info)}",
-    ]
-    return "NoteInfo(" + ", ".join(parts) + ")"
 
 
 def _info_property(name: str):
@@ -212,7 +97,7 @@ class LLNote:
 def _format_ll_note(note: LLNote, *, indent: int = 0) -> str:
     prefix = "  " * indent
     id_part = f"id={note.id}, " if note.id is not None else ""
-    line = f"{prefix}LLNote({id_part}info={_format_note_info(note.info)})"
+    line = f"{prefix}LLNote({id_part}info={note.info!s})"
     if not note.children:
         return line
     return line + "\n" + "\n".join(_format_ll_note(c, indent=indent + 1) for c in note.children)

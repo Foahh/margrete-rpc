@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from margrete_rpc.model.hl_note import (
+from .hl import (
     AirCrush,
     Damage,
     Extap,
@@ -12,9 +12,9 @@ from margrete_rpc.model.hl_note import (
     UnsupportedNoteTree,
     wrap_ll_note,
 )
-from margrete_rpc.model.ll_note import L, LLNote, NoteInfo
-from margrete_rpc.model.tick import Tick, tick_delta
-from margrete_rpc.model.note_types import (
+from .ll import L, LLNote
+from .time import CrushDensity, Tick
+from .types import (
     AirCrushColor,
     AirCrushOption,
     AirDirection,
@@ -22,14 +22,16 @@ from margrete_rpc.model.note_types import (
     ExtapDirection,
     FlickDirection,
     LongAttr,
+    NoteInfo,
     NoteType,
 )
 
 __all__ = [
-    "AirDirection",
     "AirCrush",
     "AirCrushColor",
     "AirCrushOption",
+    "AirDirection",
+    "CrushDensity",
     "Damage",
     "ExAttr",
     "Extap",
@@ -41,12 +43,11 @@ __all__ = [
     "L",
     "LLNote",
     "LongAttr",
-    "Tick",
     "NoteInfo",
     "NoteType",
     "Slide",
     "Tap",
-    "tick_delta",
+    "Tick",
     "UnsupportedNoteTree",
     "wrap_ll_note",
 ]

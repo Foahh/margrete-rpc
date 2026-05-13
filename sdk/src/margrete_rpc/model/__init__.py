@@ -7,28 +7,30 @@ from margrete_rpc.model.event import (
     NoteSpeedEvent,
     TimelineSpeedEvent,
 )
-from margrete_rpc.model.hl_note import (
-    AirCrush,
-    Damage,
-    Extap,
-    Flick,
-    HLNote,
-    Hold,
-    Slide,
-    Tap,
-    UnsupportedNoteTree,
-)
-from margrete_rpc.model.ll_note import L, LLNote, NoteInfo
-from margrete_rpc.model.tick import Tick, tick_delta
 from margrete_rpc.model.note import (
+    AirCrush,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
+    CrushDensity,
+    Damage,
     ExAttr,
+    Extap,
     ExtapDirection,
+    Flick,
     FlickDirection,
+    HLNote,
+    Hold,
+    L,
+    LLNote,
     LongAttr,
+    NoteInfo,
     NoteType,
+    Slide,
+    Tap,
+    Tick,
+    UnsupportedNoteTree,
+    wrap_ll_note,
 )
 
 __all__ = [
@@ -40,6 +42,7 @@ __all__ = [
     "BpmEvent",
     "Chart",
     "ChartEvents",
+    "CrushDensity",
     "Damage",
     "ExAttr",
     "Extap",
@@ -52,14 +55,14 @@ __all__ = [
     "LLChart",
     "LLNote",
     "LongAttr",
-    "Tick",
     "NoteInfo",
     "NoteSpeedEvent",
     "NoteType",
     "Slide",
     "Tap",
-    "tick_delta",
+    "Tick",
     "TimelineSpeedEvent",
     "UnsupportedNoteTree",
     "normalize_event_operations",
+    "wrap_ll_note",
 ]

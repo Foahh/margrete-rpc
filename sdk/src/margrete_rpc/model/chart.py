@@ -10,8 +10,7 @@ from margrete_rpc.model.event import (
     TimelineSpeedEvent,
     _last_by_key,
 )
-from margrete_rpc.model.hl_note import HLNote, UnsupportedNoteTree, wrap_ll_note
-from margrete_rpc.model.ll_note import LLNote
+from margrete_rpc.model.note import HLNote, LLNote, UnsupportedNoteTree, wrap_ll_note
 
 
 @dataclass

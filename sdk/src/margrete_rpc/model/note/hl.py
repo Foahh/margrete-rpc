@@ -3,8 +3,9 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import Any, Protocol, cast, runtime_checkable
 
-from margrete_rpc.model.ll_note import LLNote, NoteInfo
-from margrete_rpc.model.note_types import (
+from .ll import LLNote
+from .time import CrushDensity, Tick, TickDelta, beats_to_ticks
+from .types import (
     AirCrushColor,
     AirCrushOption,
     AirDirection,
@@ -12,6 +13,7 @@ from margrete_rpc.model.note_types import (
     ExtapDirection,
     FlickDirection,
     LongAttr,
+    NoteInfo,
     NoteType,
 )
 
@@ -102,8 +104,79 @@ def _direction_property(enum_type: type[IntEnum], label: str):
     return property(getter, setter)
 
 
+def _coerce_hl_tick_value(value: object) -> int:
+    if isinstance(value, Tick):
+        return int(value)
+    if type(value) is int:
+        return value
+    if type(value) is tuple and len(value) == 2 and type(value[0]) is int and type(value[1]) is int:
+        return beats_to_ticks(value)  # type: ignore[arg-type]
+    raise TypeError(
+        f"tick must be int, Tick, or (int, int) beat fraction, got {type(value).__name__}"
+    )
+
+
+class _NoteTickView(Tick):
+    __slots__ = ("_info",)
+
+    def __init__(self, info: NoteInfo) -> None:
+        object.__setattr__(self, "_info", info)
+        super().__init__(_NoteTickView._raw(info))
+
+    @staticmethod
+    def _raw(info: NoteInfo) -> int:
+        return int(info.__dict__["tick"])
+
+    def __int__(self) -> int:
+        return _NoteTickView._raw(self._info)
+
+    def __index__(self) -> int:
+        return int(self)
+
+    def __repr__(self) -> str:
+        return repr(int(self))
+
+    def __iadd__(self, other: TickDelta) -> _NoteTickView:
+        new = int(self) + beats_to_ticks(other)
+        if new < 0:
+            raise ValueError("tick must be non-negative")
+        self._info.__dict__["tick"] = new
+        object.__setattr__(self, "_value", new)
+        return self
+
+    def __isub__(self, other: TickDelta) -> _NoteTickView:
+        new = int(self) - beats_to_ticks(other)
+        if new < 0:
+            raise ValueError("tick must be non-negative")
+        self._info.__dict__["tick"] = new
+        object.__setattr__(self, "_value", new)
+        return self
+
+
+def _coerce_aircrush_density_value(value: object) -> int:
+    if isinstance(value, Tick):
+        return int(value)
+    if isinstance(value, AirCrushOption):
+        return int(value)
+    if type(value) is int:
+        return value
+    if type(value) is tuple and len(value) == 2 and type(value[0]) is int and type(value[1]) is int:
+        return beats_to_ticks(value)  # type: ignore[arg-type]
+    raise TypeError(
+        f"density must be int, Tick, AirCrushOption, or (int, int), got {type(value).__name__}"
+    )
+
+
+def _geometry_tick_get(self: _GeometryInfoMixin) -> _NoteTickView:
+    return _NoteTickView(self._info)
+
+
+def _geometry_tick_set(self: _GeometryInfoMixin, value: object) -> None:
+    self._info.tick = _coerce_hl_tick_value(value)
+
+
 class _GeometryInfoMixin:
-    tick = _info_property("tick")
+    tick = property(_geometry_tick_get, _geometry_tick_set)
     x = _info_property("x")
     width = _checked_info_property("width", _check_width)
     til = _info_property("timeline_id")
@@ -220,8 +293,6 @@ class _GroundNote(_GeometryInfoMixin):
         self.tick = tick
         self.x = x
         self.width = width
-
-    def __post_init__(self) -> None:
         _check_tick(self.tick)
         _check_width(self.width)
 
@@ -619,16 +690,23 @@ class AirCrush(_LongBuilder):
         width: int,
         *,
         height: int,
-        density: AirCrushOption | int,
+        density: AirCrushOption | int | Tick | tuple[int, int],
         color: AirCrushColor = AirCrushColor.DEF,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(tick, x, width, height=height, _info=_info, _id=_id)
-        self.density = int(density)
+        self.density = density
         self.color = color
 
-    density = _info_property("option_value")
+    @property
+    def density(self) -> CrushDensity:
+        return CrushDensity(self._info)
+
+    @density.setter
+    def density(self, value: object) -> None:
+        self._info.option_value = _coerce_aircrush_density_value(value)
+
     color = _info_property("variation_id", AirCrushColor)
 
     def control(
@@ -687,11 +765,9 @@ def wrap_ll_note(note: LLNote) -> HLNote:
 
 def _wrap_ground(note: LLNote) -> HLNote:
     if note.long_attr is not LongAttr.NONE:
-        raise UnsupportedNoteTree("positive note must not have long_attr")
+        raise UnsupportedNoteTree("ground note must not have long_attr")
     if note.type is NoteType.TAP:
-        wrapped: _GroundNote = Tap(
-            int(note.tick), note.x, note.width, _info=note.info, _id=note.id
-        )
+        wrapped: _GroundNote = Tap(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
     elif note.type is NoteType.EXTAP:
         wrapped = Extap(
             int(note.tick),
@@ -713,14 +789,14 @@ def _wrap_ground(note: LLNote) -> HLNote:
     elif note.type is NoteType.DAMAGE:
         wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
     else:
-        raise UnsupportedNoteTree("unsupported positive note")
+        raise UnsupportedNoteTree("unsupported ground note")
 
     if len(note.children) > 1:
         raise UnsupportedNoteTree("only one air object may attach to one ground note")
     if note.children:
         child = note.children[0]
         if child.type is not NoteType.AIR:
-            raise UnsupportedNoteTree("positive note child must be AIR")
+            raise UnsupportedNoteTree("ground note child must be AIR")
         wrapped_air = wrapped.air(child.direction)
         wrapped_air._info = child.info.copy()
         wrapped_air._id = child.id
@@ -830,23 +906,15 @@ def _wrap_air_slide(note: LLNote) -> AirSlide:
     for child in note.children:
         _check_order(previous_tick, int(child.tick))
         if child.long_attr is LongAttr.STEP:
-            slide.step(
-                int(child.tick), x=child.x, width=child.width, height=child.height
-            )
+            slide.step(int(child.tick), x=child.x, width=child.width, height=child.height)
         elif child.long_attr is LongAttr.CONTROL:
-            slide.control(
-                int(child.tick), x=child.x, width=child.width, height=child.height
-            )
+            slide.control(int(child.tick), x=child.x, width=child.width, height=child.height)
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide.curve_control(
-                int(child.tick), x=child.x, width=child.width, height=child.height
-            )
+            slide.curve_control(int(child.tick), x=child.x, width=child.width, height=child.height)
         elif child.long_attr is LongAttr.END and child is note.children[-1]:
             slide.end(int(child.tick), x=child.x, width=child.width, height=child.height)
         elif child.long_attr is LongAttr.END_NOACT and child is note.children[-1]:
-            slide.end_noact(
-                int(child.tick), x=child.x, width=child.width, height=child.height
-            )
+            slide.end_noact(int(child.tick), x=child.x, width=child.width, height=child.height)
         else:
             raise UnsupportedNoteTree("unsupported air slide joint")
         _copy_joint(slide, child)

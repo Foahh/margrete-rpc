@@ -29,8 +29,8 @@ from margrete_rpc import (
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
-from margrete_rpc.model.hl_note import wrap_ll_note
-from margrete_rpc.model.tick import Tick, tick_delta
+from margrete_rpc.model.note import wrap_ll_note
+from margrete_rpc.model.note.time import TICKS_PER_BEAT, Tick, beats_to_ticks
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -286,13 +286,14 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
     assert NoteSpeedEvent(960, 1.25) == NoteSpeedEvent(tick=960, speed=1.25)
 
 
-def test_ll_note_tick_supports_augmented_assignment_with_beat_fractions():
+def test_ll_note_tick_uses_int_and_beats_to_ticks_for_fractions():
     note = L.tap(0, 4, 1)
-    note.tick += (1, 8)
+    assert note.tick == 0
+    note.tick = note.tick + beats_to_ticks((1, 8))
     assert note.tick == 240
-    note.tick += (1, 8)
+    note.tick = note.tick + beats_to_ticks((1, 8))
     assert note.tick == 480
-    note.tick -= (1, 4)
+    note.tick = note.tick - beats_to_ticks((1, 4))
     assert note.tick == 0
 
 
@@ -306,38 +307,36 @@ def test_ll_note_tick_augmented_assignment_matches_direct_tick_math():
     assert note.tick == 300
 
 
-def test_tick_assignment_accepts_beat_fraction_tuple():
+def test_tick_assignment_accepts_beat_fraction_tuple_on_hl_only():
     note = L.tap(0, 4, 1)
-    note.tick = (1, 8)
+    note.tick = beats_to_ticks((1, 8))
     assert note.tick == 240
     tap = Tap(tick=960, x=4, width=2)
     tap.tick = (1, 4)
     assert tap.tick == 480
 
 
-def test_tick_delta_rejects_non_whole_tick():
+def test_beats_to_ticks_rejects_non_whole_tick():
     with pytest.raises(ValueError, match="whole tick"):
-        tick_delta((1, 7))
+        beats_to_ticks((1, 7))
 
 
-def test_tick_delta_rejects_denominator_above_ticks_per_beat():
-    from margrete_rpc.model.tick import _TICKS_PER_BEAT
-
+def test_beats_to_ticks_rejects_denominator_above_ticks_per_beat():
     with pytest.raises(ValueError, match="denominator must not exceed"):
-        tick_delta((1, _TICKS_PER_BEAT + 1))
+        beats_to_ticks((1, TICKS_PER_BEAT + 1))
 
 
-def test_tick_delta_rejects_non_int_types():
+def test_beats_to_ticks_rejects_non_int_types():
     with pytest.raises(TypeError):
-        tick_delta((1, 2.0))  # type: ignore[arg-type]
+        beats_to_ticks((1, 2.0))  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        tick_delta("bad")  # type: ignore[arg-type]
+        beats_to_ticks("bad")  # type: ignore[arg-type]
 
 
 def test_tick_wraps_same_storage_for_ll_and_hl():
     note = L.tap(0, 4, 1)
-    assert isinstance(note.tick, Tick)
-    note.tick += (1, 8)
+    assert type(note.tick) is int
+    note.tick = note.tick + beats_to_ticks((1, 8))
     assert note.info.tick == 240
 
     tap = Tap(tick=0, x=4, width=2)
@@ -695,6 +694,19 @@ def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
     assert "NoteType.TAP(" in str(ll) and ")" in str(ll)
 
 
+def test_high_level_str_prints_attached_air_as_children():
+    tap = Tap(tick=0, x=4, width=2)
+    tap.air(AirDirection.DOWN).slide(height=80).end(960, x=8, width=2, height=100)
+
+    lines = str(tap).splitlines()
+
+    assert lines[0].startswith("Tap(")
+    assert lines[1].startswith("  Air(")
+    assert lines[2].startswith("    AirSlide(")
+    assert "air=" not in lines[0]
+    assert "long_action=" not in lines[1]
+
+
 def test_slide_rejects_joints_after_end_and_non_increasing_ticks():
     slide = Slide(tick=960, x=0, width=4)
 
@@ -802,11 +814,7 @@ def test_air_crush_allows_controls_only_and_requires_end():
     with pytest.raises(ValueError, match="requires an end joint"):
         crush.to_ll()
 
-    ll = (
-        crush.control(480, x=6, width=2, height=120)
-        .end(960, x=8, width=2, height=80)
-        .to_ll()
-    )
+    ll = crush.control(480, x=6, width=2, height=120).end(960, x=8, width=2, height=80).to_ll()
 
     assert ll.type is NoteType.AIRCRUSH
     assert [child.long_attr for child in ll.children] == [LongAttr.CONTROL, LongAttr.END]
@@ -832,6 +840,23 @@ def test_air_crush_density_and_color_redirect_to_ll_storage_fields():
     assert ll.variation_id == AirCrushColor.NON
     assert ll.timeline_id == 2
     assert ll.children[0].option_value == 0
+
+
+def test_air_crush_density_accepts_beat_tuple_and_iadd():
+    crush = AirCrush(tick=0, x=4, width=2, height=80, density=0)
+    crush.density = (1, 8)
+    assert crush.density == 240
+    assert isinstance(crush.density, Tick)
+    crush.density += (1, 8)
+    assert crush.density == 480
+
+
+def test_air_crush_density_rejects_iadd_when_head_only():
+    crush = AirCrush(
+        tick=0, x=4, width=2, height=80, density=AirCrushOption.HEAD_ONLY, color=AirCrushColor.DEF
+    )
+    with pytest.raises(ValueError, match="HEAD_ONLY"):
+        crush.density += (1, 8)
 
 
 def test_long_note_begin_geometry_is_backed_by_note_info():
