@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from margrete_rpc._errors import MargreteProtocolError, MargreteRemoteError
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.trace import NoopTracer, Tracer
 
 MAX_FRAME_SIZE = 16 * 1024 * 1024
 
@@ -48,30 +49,49 @@ def _recv_exact(sock: socket.socket, size: int) -> bytes:
 class SocketRpcClient:
     endpoint: str
     timeout: float = 60.0
+    tracer: Tracer | None = None
 
     def __post_init__(self) -> None:
         host, port_text = self.endpoint.rsplit(":", 1)
         self._host = host
         self._port = int(port_text)
         self._request_ids = itertools.count(1)
+        if self.tracer is None:
+            self.tracer = NoopTracer()
 
     def request(self, envelope: messages_pb2.Envelope) -> messages_pb2.Envelope:
+        span_name = next(
+            (
+                field_desc.name
+                for field_desc, _ in envelope.ListFields()
+                if field_desc.name != "request_id"
+            ),
+            "unknown",
+        )
         request_id = next(self._request_ids)
         envelope.request_id = request_id
-        with socket.create_connection((self._host, self._port), timeout=self.timeout) as sock:
-            sock.settimeout(self.timeout)
-            sock.sendall(encode_frame(envelope))
-            header = _recv_exact(sock, 4)
-            size = struct.unpack("<I", header)[0]
-            if size > MAX_FRAME_SIZE:
-                raise MargreteProtocolError(f"frame too large: {size} bytes")
-            response = messages_pb2.Envelope()
-            response.ParseFromString(_recv_exact(sock, size))
-        if response.request_id != request_id:
-            raise MargreteProtocolError(
-                f"response request_id {response.request_id} did not match {request_id}"
-            )
-        if response.HasField("error_response"):
-            error = response.error_response
-            raise MargreteRemoteError(error.code, error.message)
-        return response
+        with self.tracer.span(
+            "margrete.rpc",
+            attrs={
+                "rpc.message": span_name,
+                "rpc.request_id": request_id,
+                "rpc.endpoint": self.endpoint,
+            },
+        ):
+            with socket.create_connection((self._host, self._port), timeout=self.timeout) as sock:
+                sock.settimeout(self.timeout)
+                sock.sendall(encode_frame(envelope))
+                header = _recv_exact(sock, 4)
+                size = struct.unpack("<I", header)[0]
+                if size > MAX_FRAME_SIZE:
+                    raise MargreteProtocolError(f"frame too large: {size} bytes")
+                response = messages_pb2.Envelope()
+                response.ParseFromString(_recv_exact(sock, size))
+            if response.request_id != request_id:
+                raise MargreteProtocolError(
+                    f"response request_id {response.request_id} did not match {request_id}"
+                )
+            if response.HasField("error_response"):
+                error = response.error_response
+                raise MargreteRemoteError(error.code, error.message)
+            return response

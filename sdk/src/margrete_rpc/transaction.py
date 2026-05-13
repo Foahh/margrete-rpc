@@ -5,6 +5,7 @@ from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import Chart, LLChart, LLNote, normalize_event_operations
+from margrete_rpc.trace import NoopTracer, Tracer
 
 
 def _extend_events(request, chart: Chart | LLChart) -> None:
@@ -37,8 +38,18 @@ class EditTransaction:
     chart: Chart | LLChart
     event_scan_until_tick: int
     event_scan_max_til: int
+    tracer: Tracer | None = None
+    tx_type: str = "edit"
+    _span_active: object | None = None
 
     def __enter__(self) -> EditTransaction:
+        if self.tracer is None:
+            self.tracer = NoopTracer()
+        self._span_active = self.tracer.span(
+            "margrete.tx",
+            attrs={"tx.type": self.tx_type, "tx.name": self.name},
+        )
+        self._span_active.__enter__()
         return self
 
     def __exit__(
@@ -47,15 +58,25 @@ class EditTransaction:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> bool:
-        if exc_type is not None:
+        if self.tracer is None:
+            self.tracer = NoopTracer()
+        try:
+            if exc_type is None:
+                request = messages_pb2.ApplyEditPatchRequest(name=self.name)
+                request.event_scan_until_tick = self.event_scan_until_tick
+                request.event_scan_max_til = self.event_scan_max_til
+                request.notes.extend(note.to_proto() for note in _final_notes(self.chart))
+                _extend_events(request, self.chart)
+                with self.tracer.span(
+                    "margrete.tx.apply",
+                    attrs={"tx.type": self.tx_type, "tx.name": self.name},
+                ):
+                    self.transport.request(messages_pb2.Envelope(apply_edit_patch_request=request))
             return False
-        request = messages_pb2.ApplyEditPatchRequest(name=self.name)
-        request.event_scan_until_tick = self.event_scan_until_tick
-        request.event_scan_max_til = self.event_scan_max_til
-        request.notes.extend(note.to_proto() for note in _final_notes(self.chart))
-        _extend_events(request, self.chart)
-        self.transport.request(messages_pb2.Envelope(apply_edit_patch_request=request))
-        return False
+        finally:
+            if self._span_active is not None:
+                self._span_active.__exit__(exc_type, exc, tb)
+                self._span_active = None
 
 
 @dataclass
@@ -64,8 +85,18 @@ class AppendTransaction:
     transport: object
     current_tick: int
     chart: Chart
+    tracer: Tracer | None = None
+    tx_type: str = "append"
+    _span_active: object | None = None
 
     def __enter__(self) -> AppendTransaction:
+        if self.tracer is None:
+            self.tracer = NoopTracer()
+        self._span_active = self.tracer.span(
+            "margrete.tx",
+            attrs={"tx.type": self.tx_type, "tx.name": self.name},
+        )
+        self._span_active.__enter__()
         return self
 
     def __exit__(
@@ -74,13 +105,25 @@ class AppendTransaction:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> bool:
-        if exc_type is not None:
+        if self.tracer is None:
+            self.tracer = NoopTracer()
+        try:
+            if exc_type is None:
+                final_notes = _final_notes(self.chart)
+                if _has_existing_note_id(final_notes):
+                    raise ValueError("append transactions cannot send existing note ids")
+                request = messages_pb2.ApplyAppendPatchRequest(name=self.name)
+                request.notes.extend(note.to_proto() for note in final_notes)
+                _extend_events(request, self.chart)
+                with self.tracer.span(
+                    "margrete.tx.apply",
+                    attrs={"tx.type": self.tx_type, "tx.name": self.name},
+                ):
+                    self.transport.request(
+                        messages_pb2.Envelope(apply_append_patch_request=request)
+                    )
             return False
-        final_notes = _final_notes(self.chart)
-        if _has_existing_note_id(final_notes):
-            raise ValueError("append transactions cannot send existing note ids")
-        request = messages_pb2.ApplyAppendPatchRequest(name=self.name)
-        request.notes.extend(note.to_proto() for note in final_notes)
-        _extend_events(request, self.chart)
-        self.transport.request(messages_pb2.Envelope(apply_append_patch_request=request))
-        return False
+        finally:
+            if self._span_active is not None:
+                self._span_active.__exit__(exc_type, exc, tb)
+                self._span_active = None

@@ -29,6 +29,7 @@ from margrete_rpc.model import (
     TimelineSpeedEvent,
     UnsupportedNoteTree,
 )
+from margrete_rpc.trace import CallbackTracer, TraceEvent, Tracer
 
 __all__ = [
     "AirDirection",
@@ -61,5 +62,8 @@ __all__ = [
     "Slide",
     "Tap",
     "TimelineSpeedEvent",
+    "Tracer",
+    "CallbackTracer",
+    "TraceEvent",
     "UnsupportedNoteTree",
 ]
