@@ -21,6 +21,6 @@ The Margrete plugin SDK currently **does not support iterating through events by
 
 Events like `scroll speed change` are scanned from tick `0` to `last_note_tick`.
 
-This method is very inefficient, but I have to do it until the SDK support event iterating.
+This method is very inefficient, but I have to do it until the SDK supports event iteration.
 
 Event scan limits are set by the request (see `event_scan_extra_tick` / `event_scan_til` in the SDK).

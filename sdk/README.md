@@ -56,7 +56,7 @@ Use `open_edit(scan=False)` for append-style workflows. It fetches only the curr
 
 `open_edit_ll()` keeps all notes as raw `LLNote` trees for direct low-level editing. It also accepts `scan=False`.
 
-See [`example`](../example/) for more complex usage.
+See [`example`](example/) for more complex usage.
 
 ## Client: `Margrete`
 
