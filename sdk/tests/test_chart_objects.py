@@ -2,6 +2,7 @@ import pytest
 
 from margrete_rpc import (
     AirColor,
+    AirCrush,
     AirCrushColor,
     AirCrushOption,
     BeatChangeEvent,
@@ -10,38 +11,45 @@ from margrete_rpc import (
     ChartEvents,
     Direction,
     ExAttr,
+    Hold,
+    L,
+    LLNote,
     LongAttr,
-    Note,
+    NoteInfo,
     NoteSpeedEvent,
     NoteType,
+    Slide,
+    Tap,
     TimelineSpeedEvent,
+    UnsupportedNoteTree,
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
+from margrete_rpc.model.hl_note import wrap_ll_note
 
 
 def test_note_type_factories_set_kind_and_geometry():
-    assert Note.tap(1, 2, 1).type is NoteType.TAP
-    assert Note.extap(1, 2, 1).type is NoteType.EXTAP
-    assert Note.flick(1, 2, 1).type is NoteType.FLICK
-    assert Note.damage(1, 2, 1).type is NoteType.DAMAGE
-    assert Note.hold_begin(1, 2, 1).type is NoteType.HOLD
-    assert Note.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
-    assert Note.hold_end(1, 2, 1).long_attr is LongAttr.END
-    assert Note.slide_begin(1, 2, 1).type is NoteType.SLIDE
-    assert Note.slide_begin(1, 2, 1).long_attr is LongAttr.BEGIN
-    assert Note.air(1, 2, 1).type is NoteType.AIR
-    assert Note.air_slide_begin(1, 2, 1, 80).type is NoteType.AIRSLIDE
-    assert Note.air_hold_begin(1, 2, 1, 80).type is NoteType.AIRHOLD
-    assert Note.air_hold_begin(1, 2, 1, 80).long_attr is LongAttr.BEGIN
-    assert Note.air_hold_end(1, 2, 1, 80).long_attr is LongAttr.END
-    crush0 = Note.air_crush_begin(1, 2, 1, 80, AirCrushOption.TRACELIKE)
+    assert L.tap(1, 2, 1).type is NoteType.TAP
+    assert L.extap(1, 2, 1).type is NoteType.EXTAP
+    assert L.flick(1, 2, 1).type is NoteType.FLICK
+    assert L.damage(1, 2, 1).type is NoteType.DAMAGE
+    assert L.hold_begin(1, 2, 1).type is NoteType.HOLD
+    assert L.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
+    assert L.hold_end(1, 2, 1).long_attr is LongAttr.END
+    assert L.slide_begin(1, 2, 1).type is NoteType.SLIDE
+    assert L.slide_begin(1, 2, 1).long_attr is LongAttr.BEGIN
+    assert L.air(1, 2, 1).type is NoteType.AIR
+    assert L.air_slide_begin(1, 2, 1, 80).type is NoteType.AIRSLIDE
+    assert L.air_hold_begin(1, 2, 1, 80).type is NoteType.AIRHOLD
+    assert L.air_hold_begin(1, 2, 1, 80).long_attr is LongAttr.BEGIN
+    assert L.air_hold_end(1, 2, 1, 80).long_attr is LongAttr.END
+    crush0 = L.air_crush_begin(1, 2, 1, 80, AirCrushOption.TRACELIKE)
     assert crush0.type is NoteType.AIRCRUSH
     assert crush0.long_attr is LongAttr.BEGIN
     assert crush0.option_value == AirCrushOption.TRACELIKE
-    head = Note.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY)
+    head = L.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY)
     assert head.option_value == 0x7FFFFFFF
-    assert Note.air_crush_begin(1, 2, 1, 80, 120).option_value == 120
+    assert L.air_crush_begin(1, 2, 1, 80, 120).option_value == 120
 
 
 def test_air_crush_color_values_match_variation_ids():
@@ -62,7 +70,7 @@ def test_air_crush_color_values_match_variation_ids():
     assert AirCrushColor.DGR == 14
     assert AirCrushColor.PNK == 15
     assert AirCrushColor.NON == 35
-    assert Note.air_crush_begin(1, 2, 1, 80, 0, variation_id=AirCrushColor.NON).variation_id == 35
+    assert L.air_crush_begin(1, 2, 1, 80, 0, variation_id=AirCrushColor.NON).variation_id == 35
 
 
 def test_air_color_values_match_umgr_color_enum():
@@ -71,62 +79,104 @@ def test_air_color_values_match_umgr_color_enum():
     assert list(AirColor) == [AirColor.PNK, AirColor.GRN]
 
 
+def test_note_enums_remain_public_exports():
+    from margrete_rpc import (
+        AirColor,
+        AirCrushColor,
+        AirCrushOption,
+        Direction,
+        ExAttr,
+        LongAttr,
+        NoteType,
+    )
+
+    assert NoteType.TAP.value == messages_pb2.NOTE_TYPE_TAP
+    assert LongAttr.END_NOACT.value == messages_pb2.LONG_ATTR_END_NOACT
+    assert Direction.UP.value == messages_pb2.DIRECTION_UP
+    assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
+    assert AirCrushOption.HEAD_ONLY == 0x7FFFFFFF
+    assert AirCrushColor.NON == 35
+    assert list(AirColor) == [AirColor.PNK, AirColor.GRN]
+
+
+def test_new_note_api_is_exported_from_root_package():
+    from margrete_rpc import (
+        AirCrush,
+        HLNote,
+        Hold,
+        L,
+        LLNote,
+        NoteInfo,
+        Slide,
+        Tap,
+        UnsupportedNoteTree,
+    )
+
+    assert L.tap(0, 4, 2).type is NoteType.TAP
+    assert LLNote().info == NoteInfo()
+    assert isinstance(Tap(0, 4, 2), HLNote)
+    assert Hold is not None
+    assert Slide is not None
+    assert AirCrush is not None
+    assert issubclass(UnsupportedNoteTree, ValueError)
+
+
 def test_note_factories_require_geometry_and_specific_fields():
     with pytest.raises(TypeError):
-        Note.tap(tick=1, x=2)
+        L.tap(tick=1, x=2)
     with pytest.raises(TypeError):
-        Note.air_crush_begin(1, 2, 1)
+        L.air_crush_begin(1, 2, 1)
     with pytest.raises(TypeError):
-        Note.air_slide_begin(1, 2, 1)
+        L.air_slide_begin(1, 2, 1)
     with pytest.raises(TypeError):
-        Note.air_hold_begin(1, 2, 1)
+        L.air_hold_begin(1, 2, 1)
 
 
 def test_child_builds_long_note_chains():
-    slide_begin = Note.slide_begin(10, 0, 4)
-    slide_step = Note.slide_step(20, 6, 4)
-    slide_end = Note.slide_end(30, 12, 4)
+    slide_begin = L.slide_begin(10, 0, 4)
+    slide_step = L.slide_step(20, 6, 4)
+    slide_end = L.slide_end(30, 12, 4)
 
     slide = slide_begin.child(slide_step, slide_end)
 
     assert slide is slide_begin
     assert slide.children == [slide_step, slide_end]
 
-    hold_begin = Note.hold_begin(40, 2, 4)
-    hold_end = Note.hold_end(50, 2, 4)
+    hold_begin = L.hold_begin(40, 2, 4)
+    hold_end = L.hold_end(50, 2, 4)
     assert hold_begin.child(hold_end) is hold_begin
     assert hold_begin.children == [hold_end]
 
-    air_slide_begin = Note.air_slide_begin(60, 4, 8, 80)
-    air_slide_step = Note.air_slide_step(70, 8, 8, 120)
-    air_slide_end = Note.air_slide_end(80, 12, 8, 80)
+    air_slide_begin = L.air_slide_begin(60, 4, 8, 80)
+    air_slide_step = L.air_slide_step(70, 8, 8, 120)
+    air_slide_end = L.air_slide_end(80, 12, 8, 80)
     assert air_slide_begin.child(air_slide_step, air_slide_end) is air_slide_begin
     assert air_slide_begin.children == [air_slide_step, air_slide_end]
 
-    air_hold_begin = Note.air_hold_begin(90, 4, 8, 80)
-    air_hold_end = Note.air_hold_end(100, 4, 8, 80)
+    air_hold_begin = L.air_hold_begin(90, 4, 8, 80)
+    air_hold_end = L.air_hold_end(100, 4, 8, 80)
     assert air_hold_begin.child(air_hold_end) is air_hold_begin
     assert air_hold_begin.children == [air_hold_end]
 
-    air_crush_begin = Note.air_crush_begin(110, 4, 8, 80, 5)
-    air_crush_control = Note.air_crush_control(120, 8, 8, 120, 0)
-    air_crush_end = Note.air_crush_end(130, 12, 8, 80, 0)
+    air_crush_begin = L.air_crush_begin(110, 4, 8, 80, 5)
+    air_crush_control = L.air_crush_control(120, 8, 8, 120, 0)
+    air_crush_end = L.air_crush_end(130, 12, 8, 80, 0)
     assert air_crush_begin.child(air_crush_control, air_crush_end) is air_crush_begin
     assert air_crush_begin.children == [air_crush_control, air_crush_end]
 
 
 def test_child_with_no_arguments_clears_children():
-    note = Note.tap(960, 4, 2, height=700)
+    note = L.tap(960, 4, 2, height=700)
 
     assert note.child() is note
     assert note.children == []
 
 
 def test_child_adds_airlike_children_to_single_note():
-    note = Note.tap(960, 4, 2)
-    air = Note.air(960, 4, 2, direction=Direction.UP)
-    air_slide = Note.air_slide_begin(960, 4, 2, 80).child(
-        Note.air_slide_end(1440, 8, 2, 80),
+    note = L.tap(960, 4, 2)
+    air = L.air(960, 4, 2, direction=Direction.UP)
+    air_slide = L.air_slide_begin(960, 4, 2, 80).child(
+        L.air_slide_end(1440, 8, 2, 80),
     )
 
     assert note.child(air, air_slide) is note
@@ -134,39 +184,39 @@ def test_child_adds_airlike_children_to_single_note():
 
 
 def test_slide_segment_factories_match_long_attr():
-    assert Note.slide_step(10, 3, 1).long_attr is LongAttr.STEP
-    assert Note.slide_control(10, 3, 1).long_attr is LongAttr.CONTROL
-    assert Note.slide_curve_control(10, 3, 1).long_attr is LongAttr.CURVE_CONTROL
-    assert Note.slide_end(10, 3, 1).long_attr is LongAttr.END
+    assert L.slide_step(10, 3, 1).long_attr is LongAttr.STEP
+    assert L.slide_control(10, 3, 1).long_attr is LongAttr.CONTROL
+    assert L.slide_curve_control(10, 3, 1).long_attr is LongAttr.CURVE_CONTROL
+    assert L.slide_end(10, 3, 1).long_attr is LongAttr.END
 
 
 def test_air_slide_segment_factories_match_long_attr():
-    begin = Note.air_slide_begin(11, 4, 1, 80)
+    begin = L.air_slide_begin(11, 4, 1, 80)
     assert begin.long_attr is LongAttr.BEGIN
-    assert Note.air_slide_step(11, 4, 1, 80).long_attr is LongAttr.STEP
-    assert Note.air_slide_control(11, 4, 1, 80).long_attr is LongAttr.CONTROL
-    assert Note.air_slide_curve_control(11, 4, 1, 80).long_attr is LongAttr.CURVE_CONTROL
-    assert Note.air_slide_end(11, 4, 1, 80).long_attr is LongAttr.END
-    assert Note.air_slide_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
+    assert L.air_slide_step(11, 4, 1, 80).long_attr is LongAttr.STEP
+    assert L.air_slide_control(11, 4, 1, 80).long_attr is LongAttr.CONTROL
+    assert L.air_slide_curve_control(11, 4, 1, 80).long_attr is LongAttr.CURVE_CONTROL
+    assert L.air_slide_end(11, 4, 1, 80).long_attr is LongAttr.END
+    assert L.air_slide_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
 
 
 def test_air_hold_segment_factories_match_long_attr():
-    assert Note.air_hold_begin(11, 4, 1, 80).long_attr is LongAttr.BEGIN
-    assert Note.air_hold_step(11, 4, 1, 80).long_attr is LongAttr.STEP
-    assert Note.air_hold_end(11, 4, 1, 80).long_attr is LongAttr.END
-    assert Note.air_hold_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
+    assert L.air_hold_begin(11, 4, 1, 80).long_attr is LongAttr.BEGIN
+    assert L.air_hold_step(11, 4, 1, 80).long_attr is LongAttr.STEP
+    assert L.air_hold_end(11, 4, 1, 80).long_attr is LongAttr.END
+    assert L.air_hold_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
 
 
 def test_air_crush_segment_factories_match_long_attr():
-    begin = Note.air_crush_begin(11, 4, 1, 80, 5)
+    begin = L.air_crush_begin(11, 4, 1, 80, 5)
     assert begin.long_attr is LongAttr.BEGIN
     assert begin.option_value == 5
-    assert Note.air_crush_control(11, 4, 1, 80, 0).long_attr is LongAttr.CONTROL
-    assert Note.air_crush_end(11, 4, 1, 80, 0).long_attr is LongAttr.END
+    assert L.air_crush_control(11, 4, 1, 80, 0).long_attr is LongAttr.CONTROL
+    assert L.air_crush_end(11, 4, 1, 80, 0).long_attr is LongAttr.END
 
 
 def test_note_defaults_and_tap_constructor_are_pythonic():
-    note = Note.tap(960, 4, 1)
+    note = L.tap(960, 4, 1)
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
@@ -181,16 +231,16 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
 
 
 def test_non_air_shape_factories_default_height_to_800():
-    assert Note.extap(1, 2, 1).height == 800
-    assert Note.flick(1, 2, 1).height == 800
-    assert Note.damage(1, 2, 1).height == 800
-    assert Note.hold_begin(1, 2, 1).height == 800
-    assert Note.slide_begin(1, 2, 1).height == 800
-    assert Note.air(1, 2, 1).height == 800
+    assert L.extap(1, 2, 1).height == 800
+    assert L.flick(1, 2, 1).height == 800
+    assert L.damage(1, 2, 1).height == 800
+    assert L.hold_begin(1, 2, 1).height == 800
+    assert L.slide_begin(1, 2, 1).height == 800
+    assert L.air(1, 2, 1).height == 800
 
 
-def test_note_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
-    note = Note(
+def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
+    info = NoteInfo(
         NoteType.TAP,
         LongAttr.BEGIN,
         Direction.UP,
@@ -202,8 +252,8 @@ def test_note_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
         960,
         3,
         7,
-        id=12,
     )
+    note = LLNote(info=info, id=12)
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.BEGIN
@@ -217,9 +267,6 @@ def test_note_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
     assert note.timeline_id == 3
     assert note.option_value == 7
     assert note.id == 12
-
-    with pytest.raises(TypeError):
-        Note(NoteType.TAP, LongAttr.NONE, Direction.NONE, ExAttr.NONE, 0, 4, 1, 800, 960, 0, 0, [])
 
 
 def test_event_dataclasses_accept_required_fields_as_positional_arguments():
@@ -238,7 +285,7 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
 
 
 def test_note_bar_getter_represents_tick_as_reduced_beat_fraction():
-    note = Note.tap(240, 4, 1)
+    note = L.tap(240, 4, 1)
 
     assert note.bar == (1, 8)
 
@@ -253,7 +300,7 @@ def test_note_bar_getter_represents_tick_as_reduced_beat_fraction():
 
 
 def test_note_bar_setter_updates_tick_from_beat_fraction():
-    note = Note.tap(0, 4, 1)
+    note = L.tap(0, 4, 1)
 
     note.bar = (1, 8)
     assert note.tick == 240
@@ -265,24 +312,26 @@ def test_note_bar_setter_updates_tick_from_beat_fraction():
 
 
 def test_note_round_trips_to_protobuf_with_children_and_id():
-    note = Note(
+    note = LLNote(
         id=10,
-        type=NoteType.SLIDE,
-        long_attr=LongAttr.BEGIN,
-        direction=Direction.UPLEFT,
-        ex_attr=ExAttr.HAS_NOTE,
-        variation_id=2,
-        x=3,
-        width=2,
-        height=1,
-        tick=120,
-        timeline_id=4,
-        option_value=9,
-        children=[Note.tap(180, 5, 1)],
+        info=NoteInfo(
+            type=NoteType.SLIDE,
+            long_attr=LongAttr.BEGIN,
+            direction=Direction.UPLEFT,
+            ex_attr=ExAttr.HAS_NOTE,
+            variation_id=2,
+            x=3,
+            width=2,
+            height=1,
+            tick=120,
+            timeline_id=4,
+            option_value=9,
+        ),
+        children=[L.tap(180, 5, 1)],
     )
 
     proto = note.to_proto()
-    restored = Note.from_proto(proto)
+    restored = LLNote.from_proto(proto)
 
     assert proto.id == 10
     assert proto.type == messages_pb2.NOTE_TYPE_SLIDE
@@ -290,28 +339,284 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
     assert restored == note
 
 
-def test_chart_from_begin_edit_response_builds_event_snapshot():
+def test_llnote_info_properties_delegate_to_info():
+    note = LLNote()
+
+    note.type = NoteType.TAP
+    note.long_attr = LongAttr.BEGIN
+    note.direction = Direction.UP
+    note.ex_attr = ExAttr.HAS_NOTE
+    note.variation_id = 2
+    note.x = 4
+    note.width = 1
+    note.height = 800
+    note.tick = 960
+    note.timeline_id = 3
+    note.option_value = 7
+
+    assert note.info == NoteInfo(
+        type=NoteType.TAP,
+        long_attr=LongAttr.BEGIN,
+        direction=Direction.UP,
+        ex_attr=ExAttr.HAS_NOTE,
+        variation_id=2,
+        x=4,
+        width=1,
+        height=800,
+        tick=960,
+        timeline_id=3,
+        option_value=7,
+    )
+
+
+def test_l_factory_methods_build_low_level_notes():
+    assert L.tap(1, 2, 1).type is NoteType.TAP
+    assert L.extap(1, 2, 1).type is NoteType.EXTAP
+    assert L.flick(1, 2, 1).type is NoteType.FLICK
+    assert L.damage(1, 2, 1).type is NoteType.DAMAGE
+    assert L.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
+    assert L.hold_end(2, 2, 1).long_attr is LongAttr.END
+    assert L.slide_begin(1, 2, 1).type is NoteType.SLIDE
+    assert L.air(1, 2, 1, direction=Direction.UP).direction is Direction.UP
+    assert L.air_slide_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
+    assert L.air_hold_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
+    assert L.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY).option_value == 0x7FFFFFFF
+
+
+def test_llnote_round_trips_to_protobuf_with_children_and_id():
+    note = LLNote(
+        id=10,
+        info=NoteInfo(
+            type=NoteType.SLIDE,
+            long_attr=LongAttr.BEGIN,
+            direction=Direction.UPLEFT,
+            ex_attr=ExAttr.HAS_NOTE,
+            variation_id=2,
+            x=3,
+            width=2,
+            height=1,
+            tick=120,
+            timeline_id=4,
+            option_value=9,
+        ),
+        children=[L.tap(180, 5, 1)],
+    )
+
+    proto = note.to_proto()
+    restored = LLNote.from_proto(proto)
+
+    assert proto.id == 10
+    assert proto.type == messages_pb2.NOTE_TYPE_SLIDE
+    assert proto.long_attr == messages_pb2.LONG_ATTR_BEGIN
+    assert restored == note
+
+
+def test_tap_exposes_only_semantic_fields_and_converts_to_ll():
+    tap = Tap(tick=960, x=4, width=2)
+    tap.x = 5
+
+    ll = tap.to_ll()
+
+    assert tap.tick == 960
+    assert tap.x == 5
+    assert tap.width == 2
+    assert not hasattr(tap, "height")
+    assert ll.type is NoteType.TAP
+    assert ll.long_attr is LongAttr.NONE
+    assert ll.tick == 960
+    assert ll.x == 5
+    assert ll.width == 2
+    assert ll.children == []
+
+
+def test_tap_air_adds_single_air_child():
+    tap = Tap(tick=0, x=4, width=2)
+
+    air = tap.air(Direction.DOWN)
+    ll = tap.to_ll()
+
+    assert air.direction is Direction.DOWN
+    assert len(ll.children) == 1
+    assert ll.children[0].type is NoteType.AIR
+    assert ll.children[0].direction is Direction.DOWN
+
+
+def test_positive_note_rejects_multiple_air_objects():
+    tap = Tap(tick=0, x=4, width=2)
+    tap.air(Direction.UP)
+
+    with pytest.raises(ValueError, match="only one air"):
+        tap.air(Direction.DOWN)
+
+
+def test_high_level_short_notes_validate_tick_and_width():
+    with pytest.raises(ValueError, match="tick must be non-negative"):
+        Tap(tick=-1, x=4, width=2)
+
+    with pytest.raises(ValueError, match="width must be at least 1"):
+        Tap(tick=0, x=4, width=0)
+
+
+def test_slide_requires_end_and_converts_ordered_joints():
+    slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=4).control(1680, x=8, width=4)
+
+    with pytest.raises(ValueError, match="requires an end joint"):
+        slide.to_ll()
+
+    ll = slide.end(1920, x=12, width=4).to_ll()
+
+    assert ll.type is NoteType.SLIDE
+    assert ll.long_attr is LongAttr.BEGIN
+    assert [child.long_attr for child in ll.children] == [
+        LongAttr.STEP,
+        LongAttr.CONTROL,
+        LongAttr.END,
+    ]
+
+
+def test_slide_rejects_joints_after_end_and_non_increasing_ticks():
+    slide = Slide(tick=960, x=0, width=4)
+
+    with pytest.raises(ValueError, match="must be later"):
+        slide.step(960, x=6, width=4)
+
+    slide.step(1440, x=6, width=4).end(1920, x=12, width=4)
+
+    with pytest.raises(ValueError, match="already ended"):
+        slide.control(2160, x=8, width=4)
+
+
+def test_hold_requires_end_and_defaults_end_geometry_to_begin():
+    hold = Hold(tick=0, x=4, width=2)
+
+    with pytest.raises(ValueError, match="requires an end joint"):
+        hold.to_ll()
+
+    ll = hold.end(960).to_ll()
+
+    assert ll.type is NoteType.HOLD
+    assert len(ll.children) == 1
+    assert ll.children[0].long_attr is LongAttr.END
+    assert ll.children[0].x == 4
+    assert ll.children[0].width == 2
+
+
+def test_air_slide_forces_upward_air_and_supports_end_noact():
+    tap = Tap(tick=0, x=4, width=2)
+    air_slide = tap.air(Direction.DOWN).slide(height=80)
+
+    with pytest.raises(ValueError, match="requires an end joint"):
+        tap.to_ll()
+
+    air_slide.control(480, x=6, width=2, height=120).end_noact(960, x=8, width=2, height=80)
+    ll = tap.to_ll()
+
+    air = ll.children[0]
+    air_long = air.children[0]
+    assert air.direction is Direction.UP
+    assert air_long.type is NoteType.AIRSLIDE
+    assert air_long.children[-1].long_attr is LongAttr.END_NOACT
+
+
+def test_air_crush_allows_controls_only_and_requires_end():
+    crush = AirCrush(tick=0, x=4, width=2, height=80, option_value=5)
+
+    with pytest.raises(ValueError, match="requires an end joint"):
+        crush.to_ll()
+
+    ll = (
+        crush.control(480, x=6, width=2, height=120, option_value=0)
+        .end(960, x=8, width=2, height=80, option_value=0)
+        .to_ll()
+    )
+
+    assert ll.type is NoteType.AIRCRUSH
+    assert [child.long_attr for child in ll.children] == [LongAttr.CONTROL, LongAttr.END]
+
+
+def test_wrap_ll_note_wraps_tap_and_preserves_noop_info():
+    ll = L.tap(240, 1, 2, height=123, timeline_id=4)
+
+    wrapped = wrap_ll_note(ll)
+    wrapped.x = 5
+    restored = wrapped.to_ll()
+
+    assert isinstance(wrapped, Tap)
+    assert restored.x == 5
+    assert restored.height == 123
+    assert restored.timeline_id == 4
+
+
+def test_wrap_ll_note_wraps_slide_with_ordered_joints():
+    ll = L.slide_begin(960, 0, 4, timeline_id=2).child(
+        L.slide_step(1440, 6, 4),
+        L.slide_control(1680, 8, 4),
+        L.slide_end(1920, 12, 4),
+    )
+
+    wrapped = wrap_ll_note(ll)
+    restored = wrapped.to_ll()
+
+    assert isinstance(wrapped, Slide)
+    assert restored == ll
+
+
+def test_wrap_ll_note_rejects_invalid_begin_end_placement():
+    invalid = L.slide_begin(960, 0, 4).child(
+        L.slide_step(1440, 6, 4),
+        L.slide_control(1200, 8, 4),
+        L.slide_end(1920, 12, 4),
+    )
+
+    with pytest.raises(UnsupportedNoteTree):
+        wrap_ll_note(invalid)
+
+
+def test_wrap_ll_note_rejects_many_air_children():
+    invalid = L.tap(0, 4, 2).child(
+        L.air(0, 4, 2, direction=Direction.UP),
+        L.air(0, 4, 2, direction=Direction.DOWN),
+    )
+
+    with pytest.raises(UnsupportedNoteTree):
+        wrap_ll_note(invalid)
+
+
+def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
     response = messages_pb2.BeginEditResponse(
         current_tick=240,
-        notes=[messages_pb2.Note(type=messages_pb2.NOTE_TYPE_TAP, tick=240, x=1)],
+        notes=[
+            messages_pb2.Note(id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=240, x=1, width=2),
+            messages_pb2.Note(
+                id=2,
+                type=messages_pb2.NOTE_TYPE_SLIDE,
+                long_attr=messages_pb2.LONG_ATTR_BEGIN,
+                tick=960,
+                x=0,
+                width=4,
+                children=[
+                    messages_pb2.Note(
+                        type=messages_pb2.NOTE_TYPE_TAP,
+                        long_attr=messages_pb2.LONG_ATTR_NONE,
+                        tick=1440,
+                        x=6,
+                        width=4,
+                    )
+                ],
+            ),
+        ],
         event_scan_until_tick=4800,
         event_scan_timeline_ids=[0, 2],
         bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
-        beat_change_events=[messages_pb2.BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4)],
-        timeline_speed_events=[
-            messages_pb2.TimelineSpeedEvent(tick=960, timeline_id=2, speed=0.75)
-        ],
-        note_speed_events=[messages_pb2.NoteSpeedEvent(tick=960, speed=1.25)],
     )
 
     chart = Chart.from_begin_edit_response(response)
-    chart.events.bpm[0].bpm = 180.0
 
-    assert chart.notes == [Note(type=NoteType.TAP, tick=240, x=1)]
-    assert chart.events.bpm == [BpmEvent(0, 180.0)]
-    assert chart.events.beat == [BeatChangeEvent(0, 4, 4)]
-    assert chart.events.til == [TimelineSpeedEvent(2, 960, 0.75)]
-    assert chart.events.note_speed == [NoteSpeedEvent(960, 1.25)]
+    assert len(chart.notes) == 1
+    assert isinstance(chart.notes[0], Tap)
+    assert len(chart.raw_notes) == 1
+    assert chart.raw_notes[0].id == 2
+    assert chart.events.bpm == [BpmEvent(0, 120.0)]
 
 
 def test_event_normalization_uses_last_write_wins_by_key():
