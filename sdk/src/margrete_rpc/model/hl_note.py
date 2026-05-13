@@ -1,10 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
+from enum import IntEnum
+from typing import Any, Protocol, runtime_checkable
 
 from margrete_rpc.model.ll_note import LLNote, NoteInfo
-from margrete_rpc.model.note_types import Direction, LongAttr, NoteType
+from margrete_rpc.model.note_types import (
+    AirColor,
+    AirCrushColor,
+    AirDirection,
+    ExAttr,
+    ExtapDirection,
+    FlickDirection,
+    LongAttr,
+    NoteType,
+)
 
 
 class UnsupportedNoteTree(ValueError):
@@ -13,6 +22,9 @@ class UnsupportedNoteTree(ValueError):
 
 @runtime_checkable
 class HLNote(Protocol):
+    @property
+    def bar(self) -> tuple[int, int]: ...
+
     def to_ll(self) -> LLNote:
         raise NotImplementedError
 
@@ -31,20 +43,118 @@ def _copy_info(info: NoteInfo | None) -> NoteInfo:
     return info.copy() if info is not None else NoteInfo()
 
 
-@dataclass
-class Air:
-    tick: int
-    x: int
-    width: int
-    direction: Direction
-    _info: NoteInfo = field(default_factory=NoteInfo)
-    _id: int | None = None
-    _parent_id: int | None = None
-    _long_action: object | None = None
+def _stored_value(value: Any) -> Any:
+    return int(value) if isinstance(value, IntEnum) else value
+
+
+def _enum_value(enum_type: type[IntEnum], value: int) -> IntEnum | int:
+    try:
+        return enum_type(value)
+    except ValueError:
+        return value
+
+
+def _info_value(value: Any, enum_type: type[IntEnum] | None) -> Any:
+    if enum_type is None:
+        return _stored_value(value)
+    try:
+        return enum_type(value)
+    except ValueError:
+        return _stored_value(value)
+
+
+def _info_property(name: str, enum_type: type[IntEnum] | None = None):
+    def getter(self):
+        value = getattr(self._info, name)
+        return _enum_value(enum_type, value) if enum_type is not None else value
+
+    def setter(self, value):
+        setattr(self._info, name, _info_value(value, enum_type))
+
+    return property(getter, setter)
+
+
+def _checked_info_property(name: str, check):
+    def getter(self):
+        return getattr(self._info, name)
+
+    def setter(self, value):
+        check(value)
+        setattr(self._info, name, value)
+
+    return property(getter, setter)
+
+
+def _direction_property(enum_type: type[IntEnum], label: str):
+    def getter(self):
+        return enum_type(int(self._info.direction))
+
+    def setter(self, value):
+        try:
+            direction = enum_type(int(value))
+        except ValueError as exc:
+            raise ValueError(f"invalid {label} direction") from exc
+        self._info.direction = direction
+
+    return property(getter, setter)
+
+
+def _required_density(density: int | None, option_value: int | None) -> int:
+    if density is None:
+        if option_value is None:
+            raise TypeError("missing required keyword-only argument: 'density'")
+        return int(option_value)
+    if option_value is not None and int(density) != int(option_value):
+        raise ValueError("density and option_value must match when both are provided")
+    return int(density)
+
+
+class _GeometryInfoMixin:
+    tick = _checked_info_property("tick", _check_tick)
+    x = _info_property("x")
+    width = _checked_info_property("width", _check_width)
+    til = _info_property("timeline_id")
+    bar = _info_property("bar")
+    ex_attr = _info_property("ex_attr", ExAttr)
+
+
+class Air(_GeometryInfoMixin):
+    def __init__(
+        self,
+        tick: int,
+        x: int,
+        width: int,
+        direction: AirDirection,
+        *,
+        _info: NoteInfo | None = None,
+        _id: int | None = None,
+    ) -> None:
+        self._info = _copy_info(_info)
+        self._id = _id
+        self._parent_id: int | None = None
+        self._long_action: object | None = None
+        self._info.type = NoteType.AIR
+        self._info.long_attr = LongAttr.NONE
+        self.tick = tick
+        self.x = x
+        self.width = width
+        self.direction = direction
+
+    direction = _direction_property(AirDirection, "air")
+    height = _info_property("height")
+    color = _info_property("variation_id", AirColor)
 
     def __post_init__(self) -> None:
         _check_tick(self.tick)
         _check_width(self.width)
+
+    @property
+    def type(self) -> NoteType:
+        return NoteType.AIR
+
+    @property
+    def long_attr(self) -> LongAttr:
+        return LongAttr.NONE
 
     def _attach_to(self, parent: object) -> None:
         parent_id = id(parent)
@@ -55,47 +165,59 @@ class Air:
     def slide(self, *, height: int) -> AirSlide:
         if self._long_action is not None:
             raise ValueError("only one air long action may attach to one air")
-        self.direction = Direction.UP
+        self.direction = AirDirection.UP
         self._long_action = AirSlide(self.tick, self.x, self.width, height=height)
         return self._long_action
 
     def hold(self, *, height: int) -> AirHold:
         if self._long_action is not None:
             raise ValueError("only one air long action may attach to one air")
-        self.direction = Direction.UP
+        self.direction = AirDirection.UP
         self._long_action = AirHold(self.tick, self.x, self.width, height=height)
         return self._long_action
 
     def to_ll(self) -> LLNote:
-        info = self._info.copy(
-            type=NoteType.AIR,
-            long_attr=LongAttr.NONE,
-            direction=self.direction,
-            tick=self.tick,
-            x=self.x,
-            width=self.width,
-        )
-        note = LLNote(info=info, id=self._id)
+        note = LLNote(info=self._info.copy(), id=self._id)
         if self._long_action is not None:
             note.children.append(self._long_action.to_ll())
         return note
 
 
-@dataclass
-class _GroundNote:
-    tick: int
-    x: int
-    width: int
-    _type: NoteType
-    _info: NoteInfo = field(default_factory=NoteInfo)
-    _id: int | None = None
-    _air: Air | None = None
+class _GroundNote(_GeometryInfoMixin):
+    def __init__(
+        self,
+        tick: int,
+        x: int,
+        width: int,
+        _type: NoteType,
+        _info: NoteInfo | None = None,
+        _id: int | None = None,
+    ) -> None:
+        self._type = _type
+        self._info = _copy_info(_info)
+        self._id = _id
+        self._air: Air | None = None
+        self._info.type = _type
+        self._info.long_attr = LongAttr.NONE
+        self.tick = tick
+        self.x = x
+        self.width = width
 
     def __post_init__(self) -> None:
         _check_tick(self.tick)
         _check_width(self.width)
 
-    def air(self, direction: Direction) -> Air:
+    @property
+    def type(self) -> NoteType:
+        return self._type
+
+    @property
+    def long_attr(self) -> LongAttr:
+        return LongAttr.NONE
+
+    height = _info_property("height")
+
+    def air(self, direction: AirDirection) -> Air:
         if self._air is not None:
             raise ValueError("only one air object may attach to one ground note")
         self._air = Air(self.tick, self.x, self.width, direction)
@@ -103,16 +225,7 @@ class _GroundNote:
         return self._air
 
     def _base_ll(self) -> LLNote:
-        return LLNote(
-            info=self._info.copy(
-                type=self._type,
-                long_attr=LongAttr.NONE,
-                tick=self.tick,
-                x=self.x,
-                width=self.width,
-            ),
-            id=self._id,
-        )
+        return LLNote(info=self._info.copy(), id=self._id)
 
     def to_ll(self) -> LLNote:
         note = self._base_ll()
@@ -148,13 +261,15 @@ class Damage(_GroundNote):
 
 
 class Extap(_GroundNote):
+    direction = _direction_property(ExtapDirection, "extap")
+
     def __init__(
         self,
         tick: int,
         x: int,
         width: int,
         *,
-        direction: Direction = Direction.NONE,
+        direction: ExtapDirection | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -167,36 +282,68 @@ class Extap(_GroundNote):
         return note
 
 
-class Flick(_GroundNote):
+class Flick(Extap):
+    direction = _direction_property(FlickDirection, "flick")
+
     def __init__(
         self,
         tick: int,
         x: int,
         width: int,
         *,
-        direction: Direction = Direction.NONE,
+        direction: FlickDirection | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(tick, x, width, direction=direction, _info=_info, _id=_id)
         self._type = NoteType.FLICK
+        self._info.type = NoteType.FLICK
 
 
-@dataclass
-class _Joint:
-    tick: int
-    x: int
-    width: int
-    long_attr: LongAttr
-    height: int = 800
-    option_value: int = 0
-    info: NoteInfo = field(default_factory=NoteInfo)
-    id: int | None = None
-    air: Air | None = None
+class _Joint(_GeometryInfoMixin):
+    long_attr = _info_property("long_attr", LongAttr)
+    height = _info_property("height")
+    option_value = _info_property("option_value")
+
+    @property
+    def info(self) -> NoteInfo:
+        return self._info
+
+    @info.setter
+    def info(self, value: NoteInfo) -> None:
+        self._info = value
+
+    def __init__(
+        self,
+        tick: int,
+        x: int,
+        width: int,
+        long_attr: LongAttr,
+        height: int = 800,
+        option_value: int = 0,
+        info: NoteInfo | None = None,
+        id: int | None = None,
+        air: Air | None = None,
+    ) -> None:
+        self.info = _copy_info(info)
+        self.id = id
+        self.air = air
+        self.tick = tick
+        self.x = x
+        self.width = width
+        self.long_attr = long_attr
+        self.height = height
+        self.option_value = option_value
 
 
-class _LongBuilder:
+class _LongBuilder(_GeometryInfoMixin):
     _note_type: NoteType
+
+    bar = _info_property("bar")
+    ex_attr = _info_property("ex_attr", ExAttr)
+    til = _info_property("timeline_id")
+    direction = _info_property("direction")
+    height = _info_property("height")
 
     def __init__(
         self,
@@ -210,14 +357,24 @@ class _LongBuilder:
     ) -> None:
         _check_tick(tick)
         _check_width(width)
-        self.tick = tick
-        self.x = x
-        self.width = width
-        self.height = height
         self._info = _copy_info(_info)
         self._id = _id
         self._joints: list[_Joint] = []
         self._ended = False
+        self._info.type = self._note_type
+        self._info.long_attr = LongAttr.BEGIN
+        self.tick = tick
+        self.x = x
+        self.width = width
+        self.height = height
+
+    @property
+    def type(self) -> NoteType:
+        return self._note_type
+
+    @property
+    def long_attr(self) -> LongAttr:
+        return LongAttr.BEGIN
 
     def _add_joint(self, joint: _Joint) -> None:
         if self._ended:
@@ -242,27 +399,12 @@ class _LongBuilder:
     def _to_ll_tree(self, begin_attr: LongAttr = LongAttr.BEGIN) -> LLNote:
         self._require_end()
         root = LLNote(
-            info=self._info.copy(
-                type=self._note_type,
-                long_attr=begin_attr,
-                tick=self.tick,
-                x=self.x,
-                width=self.width,
-                height=self.height,
-            ),
+            info=self._info.copy(long_attr=begin_attr),
             id=self._id,
         )
         for joint in self._joints:
             child = LLNote(
-                info=joint.info.copy(
-                    type=self._note_type,
-                    long_attr=joint.long_attr,
-                    tick=joint.tick,
-                    x=joint.x,
-                    width=joint.width,
-                    height=joint.height,
-                    option_value=joint.option_value,
-                ),
+                info=joint.info.copy(type=self._note_type),
                 id=joint.id,
             )
             if joint.air is not None:
@@ -290,7 +432,7 @@ class Slide(_LongBuilder):
         self._add_joint(_Joint(tick=tick, x=x, width=width, long_attr=LongAttr.END))
         return self
 
-    def air(self, direction: Direction) -> Air:
+    def air(self, direction: AirDirection) -> Air:
         end = self._require_end()
         if end.air is not None:
             raise ValueError("only one air object may attach to one ground note")
@@ -316,7 +458,7 @@ class Hold(_LongBuilder):
         )
         return self
 
-    def air(self, direction: Direction) -> Air:
+    def air(self, direction: AirDirection) -> Air:
         end = self._require_end()
         if end.air is not None:
             raise ValueError("only one air object may attach to one ground note")
@@ -330,6 +472,8 @@ class Hold(_LongBuilder):
 
 class AirSlide(_LongBuilder):
     _note_type = NoteType.AIRSLIDE
+
+    color = _info_property("variation_id", AirColor)
 
     def step(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
         self._add_joint(_Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.STEP))
@@ -370,6 +514,8 @@ class AirSlide(_LongBuilder):
 class AirHold(_LongBuilder):
     _note_type = NoteType.AIRHOLD
 
+    color = _info_property("variation_id", AirColor)
+
     def end(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
         self._add_joint(_Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END))
         return self
@@ -394,46 +540,68 @@ class AirCrush(_LongBuilder):
         width: int,
         *,
         height: int,
-        option_value: int,
-        variation_id: int = 0,
+        density: int | None = None,
+        color: int = 0,
+        option_value: int | None = None,
+        variation_id: int | None = None,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(tick, x, width, height=height, _info=_info, _id=_id)
-        self.option_value = int(option_value)
-        self.variation_id = int(variation_id)
+        self.density = _required_density(density, option_value)
+        self.color = variation_id if variation_id is not None else color
 
-    def control(self, tick: int, *, x: int, width: int, height: int, option_value: int) -> AirCrush:
+    density = _info_property("option_value")
+    option_value = density
+    color = _info_property("variation_id", AirCrushColor)
+    variation_id = color
+
+    def control(
+        self,
+        tick: int,
+        *,
+        x: int,
+        width: int,
+        height: int,
+        density: int | None = None,
+        option_value: int | None = None,
+    ) -> AirCrush:
         self._add_joint(
             _Joint(
                 tick=tick,
                 x=x,
                 width=width,
                 height=height,
-                option_value=int(option_value),
+                option_value=_required_density(density, option_value),
                 long_attr=LongAttr.CONTROL,
             )
         )
         return self
 
-    def end(self, tick: int, *, x: int, width: int, height: int, option_value: int) -> AirCrush:
+    def end(
+        self,
+        tick: int,
+        *,
+        x: int,
+        width: int,
+        height: int,
+        density: int | None = None,
+        option_value: int | None = None,
+    ) -> AirCrush:
         self._add_joint(
             _Joint(
                 tick=tick,
                 x=x,
                 width=width,
                 height=height,
-                option_value=int(option_value),
+                option_value=_required_density(density, option_value),
                 long_attr=LongAttr.END,
             )
         )
         return self
 
     def to_ll(self) -> LLNote:
-        note = self._to_ll_tree()
-        note.option_value = self.option_value
-        note.variation_id = self.variation_id
-        return note
+        return self._to_ll_tree()
 
 
 def wrap_ll_note(note: LLNote) -> HLNote:
@@ -449,6 +617,8 @@ def wrap_ll_note(note: LLNote) -> HLNote:
 
 
 def _wrap_ground(note: LLNote) -> HLNote:
+    if note.long_attr is not LongAttr.NONE:
+        raise UnsupportedNoteTree("positive note must not have long_attr")
     if note.type is NoteType.TAP:
         wrapped: _GroundNote = Tap(note.tick, note.x, note.width, _info=note.info, _id=note.id)
     elif note.type is NoteType.EXTAP:
@@ -472,14 +642,14 @@ def _wrap_ground(note: LLNote) -> HLNote:
     elif note.type is NoteType.DAMAGE:
         wrapped = Damage(note.tick, note.x, note.width, _info=note.info, _id=note.id)
     else:
-        raise UnsupportedNoteTree("unsupported ground note")
+        raise UnsupportedNoteTree("unsupported positive note")
 
     if len(note.children) > 1:
         raise UnsupportedNoteTree("only one air object may attach to one ground note")
     if note.children:
         child = note.children[0]
         if child.type is not NoteType.AIR:
-            raise UnsupportedNoteTree("ground note child must be AIR")
+            raise UnsupportedNoteTree("positive note child must be AIR")
         wrapped_air = wrapped.air(child.direction)
         wrapped_air._info = child.info.copy()
         wrapped_air._id = child.id

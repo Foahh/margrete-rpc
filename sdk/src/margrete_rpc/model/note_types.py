@@ -32,22 +32,31 @@ class LongAttr(IntEnum):
     END_NOACT = messages_pb2.LONG_ATTR_END_NOACT
 
 
-class Direction(IntEnum):
-    NONE = messages_pb2.DIRECTION_NONE
-    AUTO = messages_pb2.DIRECTION_AUTO
+class AirDirection(IntEnum):
+    UP = messages_pb2.DIRECTION_UP
+    DOWN = messages_pb2.DIRECTION_DOWN
+    UPLEFT = messages_pb2.DIRECTION_UPLEFT
+    UPRIGHT = messages_pb2.DIRECTION_UPRIGHT
+    DOWNLEFT = messages_pb2.DIRECTION_DOWNLEFT
+    DOWNRIGHT = messages_pb2.DIRECTION_DOWNRIGHT
+
+
+class ExtapDirection(IntEnum):
     UP = messages_pb2.DIRECTION_UP
     DOWN = messages_pb2.DIRECTION_DOWN
     CENTER = messages_pb2.DIRECTION_CENTER
     LEFT = messages_pb2.DIRECTION_LEFT
     RIGHT = messages_pb2.DIRECTION_RIGHT
-    UPLEFT = messages_pb2.DIRECTION_UPLEFT
-    UPRIGHT = messages_pb2.DIRECTION_UPRIGHT
-    DOWNLEFT = messages_pb2.DIRECTION_DOWNLEFT
-    DOWNRIGHT = messages_pb2.DIRECTION_DOWNRIGHT
     ROTATE_LEFT = messages_pb2.DIRECTION_ROTATE_LEFT
     ROTATE_RIGHT = messages_pb2.DIRECTION_ROTATE_RIGHT
     INOUT = messages_pb2.DIRECTION_INOUT
     OUTIN = messages_pb2.DIRECTION_OUTIN
+
+
+class FlickDirection(IntEnum):
+    AUTO = messages_pb2.DIRECTION_AUTO
+    LEFT = messages_pb2.DIRECTION_LEFT
+    RIGHT = messages_pb2.DIRECTION_RIGHT
 
 
 class ExAttr(IntEnum):

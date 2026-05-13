@@ -5,12 +5,17 @@ from margrete_rpc import (
     AirCrush,
     AirCrushColor,
     AirCrushOption,
+    AirDirection,
     BeatChangeEvent,
     BpmEvent,
     Chart,
     ChartEvents,
-    Direction,
+    Damage,
     ExAttr,
+    Extap,
+    ExtapDirection,
+    Flick,
+    FlickDirection,
     Hold,
     L,
     LLNote,
@@ -84,15 +89,20 @@ def test_note_enums_remain_public_exports():
         AirColor,
         AirCrushColor,
         AirCrushOption,
-        Direction,
+        AirDirection,
         ExAttr,
+        ExtapDirection,
+        FlickDirection,
         LongAttr,
         NoteType,
     )
 
     assert NoteType.TAP.value == messages_pb2.NOTE_TYPE_TAP
     assert LongAttr.END_NOACT.value == messages_pb2.LONG_ATTR_END_NOACT
-    assert Direction.UP.value == messages_pb2.DIRECTION_UP
+    assert ExtapDirection.UP.value == messages_pb2.DIRECTION_UP
+    assert AirDirection.DOWNRIGHT.value == messages_pb2.DIRECTION_DOWNRIGHT
+    assert ExtapDirection.OUTIN.value == messages_pb2.DIRECTION_OUTIN
+    assert FlickDirection.RIGHT.value == messages_pb2.DIRECTION_RIGHT
     assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
     assert AirCrushOption.HEAD_ONLY == 0x7FFFFFFF
     assert AirCrushColor.NON == 35
@@ -174,7 +184,7 @@ def test_child_with_no_arguments_clears_children():
 
 def test_child_adds_airlike_children_to_single_note():
     note = L.tap(960, 4, 2)
-    air = L.air(960, 4, 2, direction=Direction.UP)
+    air = L.air(960, 4, 2, direction=AirDirection.UP)
     air_slide = L.air_slide_begin(960, 4, 2, 80).child(
         L.air_slide_end(1440, 8, 2, 80),
     )
@@ -220,7 +230,7 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
-    assert note.direction is Direction.NONE
+    assert note.direction == messages_pb2.DIRECTION_NONE
     assert note.ex_attr is ExAttr.NONE
     assert note.tick == 960
     assert note.x == 4
@@ -243,7 +253,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
     info = NoteInfo(
         NoteType.TAP,
         LongAttr.BEGIN,
-        Direction.UP,
+        ExtapDirection.UP,
         ExAttr.HAS_NOTE,
         2,
         4,
@@ -257,7 +267,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.BEGIN
-    assert note.direction is Direction.UP
+    assert note.direction == ExtapDirection.UP
     assert note.ex_attr is ExAttr.HAS_NOTE
     assert note.variation_id == 2
     assert note.tick == 960
@@ -317,7 +327,7 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
-            direction=Direction.UPLEFT,
+            direction=AirDirection.UPLEFT,
             ex_attr=ExAttr.HAS_NOTE,
             variation_id=2,
             x=3,
@@ -344,7 +354,7 @@ def test_llnote_info_properties_delegate_to_info():
 
     note.type = NoteType.TAP
     note.long_attr = LongAttr.BEGIN
-    note.direction = Direction.UP
+    note.direction = ExtapDirection.UP
     note.ex_attr = ExAttr.HAS_NOTE
     note.variation_id = 2
     note.x = 4
@@ -357,7 +367,7 @@ def test_llnote_info_properties_delegate_to_info():
     assert note.info == NoteInfo(
         type=NoteType.TAP,
         long_attr=LongAttr.BEGIN,
-        direction=Direction.UP,
+        direction=ExtapDirection.UP,
         ex_attr=ExAttr.HAS_NOTE,
         variation_id=2,
         x=4,
@@ -377,7 +387,7 @@ def test_l_factory_methods_build_low_level_notes():
     assert L.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
     assert L.hold_end(2, 2, 1).long_attr is LongAttr.END
     assert L.slide_begin(1, 2, 1).type is NoteType.SLIDE
-    assert L.air(1, 2, 1, direction=Direction.UP).direction is Direction.UP
+    assert L.air(1, 2, 1, direction=AirDirection.UP).direction == AirDirection.UP
     assert L.air_slide_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
     assert L.air_hold_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
     assert L.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY).option_value == 0x7FFFFFFF
@@ -389,7 +399,7 @@ def test_llnote_round_trips_to_protobuf_with_children_and_id():
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
-            direction=Direction.UPLEFT,
+            direction=AirDirection.UPLEFT,
             ex_attr=ExAttr.HAS_NOTE,
             variation_id=2,
             x=3,
@@ -411,42 +421,92 @@ def test_llnote_round_trips_to_protobuf_with_children_and_id():
     assert restored == note
 
 
-def test_tap_exposes_only_semantic_fields_and_converts_to_ll():
+def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     tap = Tap(tick=960, x=4, width=2)
     tap.x = 5
+    tap.height = 700
+    tap.til = 3
+    tap.ex_attr = ExAttr.HAS_NOTE
+    tap.bar = (1, 4)
 
     ll = tap.to_ll()
 
-    assert tap.tick == 960
+    assert tap.tick == 480
+    assert tap.bar == (1, 4)
     assert tap.x == 5
     assert tap.width == 2
-    assert not hasattr(tap, "height")
+    assert tap.height == 700
+    assert tap.til == 3
+    assert tap.ex_attr is ExAttr.HAS_NOTE
     assert ll.type is NoteType.TAP
     assert ll.long_attr is LongAttr.NONE
-    assert ll.tick == 960
+    assert ll.tick == 480
     assert ll.x == 5
     assert ll.width == 2
+    assert ll.height == 700
+    assert ll.timeline_id == 3
+    assert ll.ex_attr is ExAttr.HAS_NOTE
     assert ll.children == []
+
+
+def test_high_level_to_ll_copies_note_info_instead_of_aliasing():
+    tap = Tap(tick=960, x=4, width=2)
+
+    ll = tap.to_ll()
+    ll.tick = 480
+    ll.x = 8
+
+    assert tap.tick == 960
+    assert tap.x == 4
+
+
+def test_high_level_ground_note_geometry_is_backed_by_note_info():
+    extap = Extap(tick=960, x=4, width=2, direction=ExtapDirection.UP)
+
+    assert extap._info.tick == 960
+    assert extap._info.x == 4
+    assert extap._info.width == 2
+    assert extap._info.direction == ExtapDirection.UP
+
+    extap.tick = 480
+    extap.x = 5
+    extap.width = 3
+    extap.direction = ExtapDirection.DOWN
+
+    assert extap._info.tick == 480
+    assert extap._info.x == 5
+    assert extap._info.width == 3
+    assert extap._info.direction == ExtapDirection.DOWN
+
+    extap._info.tick = 240
+    extap._info.x = 6
+    extap._info.width = 4
+    extap._info.direction = ExtapDirection.CENTER
+
+    assert extap.tick == 240
+    assert extap.x == 6
+    assert extap.width == 4
+    assert extap.direction is ExtapDirection.CENTER
 
 
 def test_tap_air_adds_single_air_child():
     tap = Tap(tick=0, x=4, width=2)
 
-    air = tap.air(Direction.DOWN)
+    air = tap.air(AirDirection.DOWN)
     ll = tap.to_ll()
 
-    assert air.direction is Direction.DOWN
+    assert air.direction is AirDirection.DOWN
     assert len(ll.children) == 1
     assert ll.children[0].type is NoteType.AIR
-    assert ll.children[0].direction is Direction.DOWN
+    assert ll.children[0].direction == AirDirection.DOWN
 
 
 def test_ground_note_rejects_multiple_air_objects():
     tap = Tap(tick=0, x=4, width=2)
-    tap.air(Direction.UP)
+    tap.air(AirDirection.UP)
 
     with pytest.raises(ValueError, match="only one air"):
-        tap.air(Direction.DOWN)
+        tap.air(AirDirection.DOWN)
 
 
 def test_high_level_short_notes_validate_tick_and_width():
@@ -455,6 +515,125 @@ def test_high_level_short_notes_validate_tick_and_width():
 
     with pytest.raises(ValueError, match="width must be at least 1"):
         Tap(tick=0, x=4, width=0)
+
+
+def test_ground_note_direction_is_available_only_on_extap_and_flick():
+    tap = Tap(tick=0, x=4, width=2)
+    damage = Damage(tick=0, x=4, width=2)
+
+    assert not hasattr(tap, "direction")
+    assert not hasattr(damage, "direction")
+    assert Extap(tick=0, x=4, width=2).direction is ExtapDirection.UP
+    assert Flick(tick=0, x=4, width=2).direction is FlickDirection.AUTO
+
+
+@pytest.mark.parametrize(
+    "direction",
+    [
+        ExtapDirection.UP,
+        ExtapDirection.DOWN,
+        ExtapDirection.CENTER,
+        ExtapDirection.LEFT,
+        ExtapDirection.RIGHT,
+        ExtapDirection.ROTATE_LEFT,
+        ExtapDirection.ROTATE_RIGHT,
+        ExtapDirection.INOUT,
+        ExtapDirection.OUTIN,
+    ],
+)
+def test_extap_accepts_only_extap_directions(direction):
+    extap = Extap(tick=0, x=4, width=2, direction=direction)
+
+    assert extap.direction is direction
+
+    extap.direction = direction
+    assert extap._info.direction == direction
+
+
+@pytest.mark.parametrize(
+    "direction",
+    [
+        messages_pb2.DIRECTION_NONE,
+        messages_pb2.DIRECTION_AUTO,
+        messages_pb2.DIRECTION_UPLEFT,
+    ],
+)
+def test_extap_rejects_invalid_directions(direction):
+    with pytest.raises(ValueError, match="invalid extap direction"):
+        Extap(tick=0, x=4, width=2, direction=direction)
+
+    extap = Extap(tick=0, x=4, width=2)
+    with pytest.raises(ValueError, match="invalid extap direction"):
+        extap.direction = direction
+
+
+@pytest.mark.parametrize(
+    "direction", [FlickDirection.AUTO, FlickDirection.LEFT, FlickDirection.RIGHT]
+)
+def test_flick_accepts_only_flick_directions(direction):
+    flick = Flick(tick=0, x=4, width=2, direction=direction)
+
+    assert flick.direction is direction
+
+    flick.direction = direction
+    assert flick._info.direction == direction
+
+
+@pytest.mark.parametrize(
+    "direction",
+    [
+        messages_pb2.DIRECTION_NONE,
+        messages_pb2.DIRECTION_UP,
+        messages_pb2.DIRECTION_DOWN,
+    ],
+)
+def test_flick_rejects_invalid_directions(direction):
+    with pytest.raises(ValueError, match="invalid flick direction"):
+        Flick(tick=0, x=4, width=2, direction=direction)
+
+    flick = Flick(tick=0, x=4, width=2)
+    with pytest.raises(ValueError, match="invalid flick direction"):
+        flick.direction = direction
+
+
+@pytest.mark.parametrize(
+    "direction",
+    [
+        AirDirection.UP,
+        AirDirection.DOWN,
+        AirDirection.UPLEFT,
+        AirDirection.UPRIGHT,
+        AirDirection.DOWNLEFT,
+        AirDirection.DOWNRIGHT,
+    ],
+)
+def test_air_accepts_only_air_directions(direction):
+    air = Tap(tick=0, x=4, width=2).air(direction)
+
+    assert air.direction is direction
+
+    air.direction = direction
+    assert air._info.direction == direction
+
+
+@pytest.mark.parametrize(
+    "direction",
+    [
+        messages_pb2.DIRECTION_NONE,
+        messages_pb2.DIRECTION_AUTO,
+        messages_pb2.DIRECTION_LEFT,
+        messages_pb2.DIRECTION_RIGHT,
+    ],
+)
+def test_air_rejects_invalid_directions(direction):
+    tap = Tap(tick=0, x=4, width=2)
+
+    with pytest.raises(ValueError, match="invalid air direction"):
+        tap.air(direction)
+
+    air = tap.air(AirDirection.UP)
+    with pytest.raises(ValueError, match="invalid air direction"):
+        air.direction = direction
 
 
 def test_slide_requires_end_and_converts_ordered_joints():
@@ -503,7 +682,7 @@ def test_hold_requires_end_and_defaults_end_geometry_to_begin():
 
 def test_air_slide_forces_upward_air_and_supports_end_noact():
     tap = Tap(tick=0, x=4, width=2)
-    air_slide = tap.air(Direction.DOWN).slide(height=80)
+    air_slide = tap.air(AirDirection.DOWN).slide(height=80)
 
     with pytest.raises(ValueError, match="requires an end joint"):
         tap.to_ll()
@@ -513,25 +692,192 @@ def test_air_slide_forces_upward_air_and_supports_end_noact():
 
     air = ll.children[0]
     air_long = air.children[0]
-    assert air.direction is Direction.UP
+    assert air.direction is AirDirection.UP
     assert air_long.type is NoteType.AIRSLIDE
     assert air_long.children[-1].long_attr is LongAttr.END_NOACT
 
 
+def test_air_color_redirects_to_variation_id():
+    tap = Tap(tick=0, x=4, width=2)
+    air = tap.air(AirDirection.DOWN)
+    air.color = AirColor.GRN
+    air.til = 3
+    air.bar = (1, 4)
+
+    ll = tap.to_ll().children[0]
+
+    assert air.color is AirColor.GRN
+    assert air.tick == 480
+    assert ll.variation_id == AirColor.GRN
+    assert ll.timeline_id == 3
+    assert ll.tick == 480
+
+
+def test_air_geometry_and_direction_are_backed_by_note_info():
+    air = Tap(tick=0, x=4, width=2).air(AirDirection.DOWN)
+
+    assert air._info.tick == 0
+    assert air._info.x == 4
+    assert air._info.width == 2
+    assert air._info.direction == AirDirection.DOWN
+
+    air.tick = 480
+    air.x = 5
+    air.width = 3
+    air.direction = AirDirection.UP
+
+    assert air._info.tick == 480
+    assert air._info.x == 5
+    assert air._info.width == 3
+    assert air._info.direction == AirDirection.UP
+
+    air._info.tick = 240
+    air._info.x = 6
+    air._info.width = 4
+    air._info.direction = AirDirection.DOWNLEFT
+
+    assert air.tick == 240
+    assert air.x == 6
+    assert air.width == 4
+    assert air.direction is AirDirection.DOWNLEFT
+
+
+def test_air_slide_and_air_hold_color_redirects_to_variation_id():
+    tap = Tap(tick=0, x=4, width=2)
+    air_slide = tap.air(AirDirection.DOWN).slide(height=80)
+    air_slide.color = AirColor.PNK
+    air_slide.end(960, x=8, width=2, height=100)
+
+    hold = Tap(tick=1200, x=4, width=2).air(AirDirection.UP).hold(height=120)
+    hold.color = AirColor.GRN
+    hold.end_noact(1680, x=4, width=2, height=140)
+
+    assert tap.to_ll().children[0].children[0].variation_id == AirColor.PNK
+    assert hold.to_ll().variation_id == AirColor.GRN
+
+
 def test_air_crush_allows_controls_only_and_requires_end():
-    crush = AirCrush(tick=0, x=4, width=2, height=80, option_value=5)
+    crush = AirCrush(tick=0, x=4, width=2, height=80, density=5)
 
     with pytest.raises(ValueError, match="requires an end joint"):
         crush.to_ll()
 
     ll = (
-        crush.control(480, x=6, width=2, height=120, option_value=0)
-        .end(960, x=8, width=2, height=80, option_value=0)
+        crush.control(480, x=6, width=2, height=120, density=0)
+        .end(960, x=8, width=2, height=80, density=0)
         .to_ll()
     )
 
     assert ll.type is NoteType.AIRCRUSH
     assert [child.long_attr for child in ll.children] == [LongAttr.CONTROL, LongAttr.END]
+
+
+def test_air_crush_density_and_color_redirect_to_ll_storage_fields():
+    crush = AirCrush(
+        tick=0,
+        x=4,
+        width=2,
+        height=80,
+        density=AirCrushOption.TRACELIKE,
+        color=AirCrushColor.RED,
+    )
+    crush.density = 120
+    crush.color = AirCrushColor.NON
+    crush.til = 2
+    ll = crush.end(960, x=8, width=2, height=100, density=0).to_ll()
+
+    assert crush.density == 120
+    assert crush.color is AirCrushColor.NON
+    assert ll.option_value == 120
+    assert ll.variation_id == AirCrushColor.NON
+    assert ll.timeline_id == 2
+    assert ll.children[0].option_value == 0
+
+
+def test_long_note_begin_geometry_is_backed_by_note_info():
+    slide = Slide(tick=960, x=0, width=4, height=800)
+
+    assert slide._info.tick == 960
+    assert slide._info.x == 0
+    assert slide._info.width == 4
+    assert slide._info.height == 800
+
+    slide.tick = 480
+    slide.x = 2
+    slide.width = 3
+    slide.height = 700
+
+    assert slide._info.tick == 480
+    assert slide._info.x == 2
+    assert slide._info.width == 3
+    assert slide._info.height == 700
+
+    slide._info.tick = 240
+    slide._info.x = 1
+    slide._info.width = 2
+    slide._info.height = 600
+
+    assert slide.tick == 240
+    assert slide.x == 1
+    assert slide.width == 2
+    assert slide.height == 600
+
+
+def test_long_note_joint_geometry_is_backed_by_note_info():
+    slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=3)
+    joint = slide._joints[0]
+
+    assert joint.info.tick == 1440
+    assert joint.info.x == 6
+    assert joint.info.width == 3
+    assert joint.info.height == 800
+    assert joint.info.long_attr is LongAttr.STEP
+
+    joint.tick = 1680
+    joint.x = 7
+    joint.width = 2
+    joint.height = 700
+    joint.long_attr = LongAttr.CONTROL
+    joint.option_value = 9
+
+    assert joint.info.tick == 1680
+    assert joint.info.x == 7
+    assert joint.info.width == 2
+    assert joint.info.height == 700
+    assert joint.info.long_attr is LongAttr.CONTROL
+    assert joint.info.option_value == 9
+
+    joint.info.tick = 1920
+    joint.info.x = 8
+    joint.info.width = 1
+    joint.info.height = 600
+    joint.info.long_attr = LongAttr.END
+    joint.info.option_value = 5
+
+    assert joint.tick == 1920
+    assert joint.x == 8
+    assert joint.width == 1
+    assert joint.height == 600
+    assert joint.long_attr is LongAttr.END
+    assert joint.option_value == 5
+
+
+def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
+    ll = L.slide_begin(960, 0, 4).child(
+        L.slide_step(1440, 6, 3, timeline_id=2, ex_attr=ExAttr.HAS_NOTE),
+        L.slide_end(1920, 12, 4),
+    )
+
+    wrapped = wrap_ll_note(ll)
+    joint = wrapped._joints[0]
+    joint.tick = 1680
+    restored = wrapped.to_ll()
+
+    assert isinstance(wrapped, Slide)
+    assert joint.info.tick == 1680
+    assert restored.children[0].tick == 1680
+    assert restored.children[0].timeline_id == 2
+    assert restored.children[0].ex_attr is ExAttr.HAS_NOTE
 
 
 def test_wrap_ll_note_wraps_tap_and_preserves_noop_info():
@@ -574,8 +920,8 @@ def test_wrap_ll_note_rejects_invalid_begin_end_placement():
 
 def test_wrap_ll_note_rejects_many_air_children():
     invalid = L.tap(0, 4, 2).child(
-        L.air(0, 4, 2, direction=Direction.UP),
-        L.air(0, 4, 2, direction=Direction.DOWN),
+        L.air(0, 4, 2, direction=AirDirection.UP),
+        L.air(0, 4, 2, direction=AirDirection.DOWN),
     )
 
     with pytest.raises(UnsupportedNoteTree):

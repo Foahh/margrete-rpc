@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from fractions import Fraction
-from typing import Any
+from typing import Any, cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model.note_types import (
     _TICKS_PER_BEAT,
-    Direction,
+    AirColor,
+    AirCrushColor,
+    AirCrushOption,
+    AirDirection,
     ExAttr,
+    ExtapDirection,
+    FlickDirection,
     LongAttr,
     NoteType,
 )
@@ -18,15 +23,30 @@ from margrete_rpc.model.note_types import (
 class NoteInfo:
     type: NoteType = NoteType.UNKNOWN
     long_attr: LongAttr = LongAttr.NONE
-    direction: Direction = Direction.NONE
+    direction: AirDirection | ExtapDirection | FlickDirection = cast(
+        AirDirection | ExtapDirection | FlickDirection, messages_pb2.DIRECTION_NONE
+    )
     ex_attr: ExAttr = ExAttr.NONE
-    variation_id: int = 0
+    variation_id: AirColor | AirCrushColor | int = 0
     x: int = 0
     width: int = 0
     height: int = 0
     tick: int = 0
     timeline_id: int = 0
-    option_value: int = 0
+    option_value: AirCrushOption | int = 0
+
+    @property
+    def bar(self) -> tuple[int, int]:
+        fraction = Fraction(self.tick, _TICKS_PER_BEAT)
+        return fraction.numerator, fraction.denominator
+
+    @bar.setter
+    def bar(self, value: tuple[int, int]) -> None:
+        numerator, denominator = value
+        tick = Fraction(numerator * _TICKS_PER_BEAT, denominator)
+        if tick.denominator != 1:
+            raise ValueError("beat division must resolve to a whole tick")
+        self.tick = tick.numerator
 
     def copy(self, **changes: Any) -> NoteInfo:
         return replace(self, **changes)
@@ -59,19 +79,7 @@ class LLNote:
     tick = _info_property("tick")
     timeline_id = _info_property("timeline_id")
     option_value = _info_property("option_value")
-
-    @property
-    def bar(self) -> tuple[int, int]:
-        fraction = Fraction(self.tick, _TICKS_PER_BEAT)
-        return fraction.numerator, fraction.denominator
-
-    @bar.setter
-    def bar(self, value: tuple[int, int]) -> None:
-        numerator, denominator = value
-        tick = Fraction(numerator * _TICKS_PER_BEAT, denominator)
-        if tick.denominator != 1:
-            raise ValueError("beat division must resolve to a whole tick")
-        self.tick = tick.numerator
+    bar = _info_property("bar")
 
     def child(self, *children: LLNote) -> LLNote:
         self.children = list(children)
@@ -84,7 +92,7 @@ class LLNote:
             info=NoteInfo(
                 type=NoteType(proto.type),
                 long_attr=LongAttr(proto.long_attr),
-                direction=Direction(proto.direction),
+                direction=cast(AirDirection | ExtapDirection | FlickDirection, proto.direction),
                 ex_attr=ExAttr(proto.ex_attr),
                 variation_id=proto.variation_id,
                 x=proto.x,
@@ -103,13 +111,13 @@ class LLNote:
             long_attr=int(self.long_attr),
             direction=int(self.direction),
             ex_attr=int(self.ex_attr),
-            variation_id=self.variation_id,
+            variation_id=int(self.variation_id),
             x=self.x,
             width=self.width,
             height=self.height,
             tick=self.tick,
             timeline_id=self.timeline_id,
-            option_value=self.option_value,
+            option_value=int(self.option_value),
         )
         if self.id is not None:
             proto.id = self.id
@@ -246,7 +254,13 @@ class L:
 
     @staticmethod
     def _air_crush_segment(
-        long_attr: LongAttr, tick: int, x: int, width: int, height: int, option_value: int, **kwargs
+        long_attr: LongAttr,
+        tick: int,
+        x: int,
+        width: int,
+        height: int,
+        option_value: AirCrushOption | int,
+        **kwargs,
     ) -> LLNote:
         return LLNote(
             info=NoteInfo(
@@ -263,13 +277,13 @@ class L:
 
     @staticmethod
     def air_crush_begin(
-        tick: int, x: int, width: int, height: int, option_value: int, **kwargs
+        tick: int, x: int, width: int, height: int, option_value: AirCrushOption | int, **kwargs
     ) -> LLNote:
         return L._air_crush_segment(LongAttr.BEGIN, tick, x, width, height, option_value, **kwargs)
 
     @staticmethod
     def air_crush_control(
-        tick: int, x: int, width: int, height: int, option_value: int, **kwargs
+        tick: int, x: int, width: int, height: int, option_value: AirCrushOption | int, **kwargs
     ) -> LLNote:
         return L._air_crush_segment(
             LongAttr.CONTROL, tick, x, width, height, option_value, **kwargs
@@ -277,6 +291,6 @@ class L:
 
     @staticmethod
     def air_crush_end(
-        tick: int, x: int, width: int, height: int, option_value: int, **kwargs
+        tick: int, x: int, width: int, height: int, option_value: AirCrushOption | int, **kwargs
     ) -> LLNote:
         return L._air_crush_segment(LongAttr.END, tick, x, width, height, option_value, **kwargs)
