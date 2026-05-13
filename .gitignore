@@ -1,5 +1,4 @@
 .worktrees/
 __pycache__/
-docs/superpowers/
 .ruff_cache/
 publish/
