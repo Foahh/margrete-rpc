@@ -9,6 +9,7 @@ def test_ticks_to_beats_reduced_fraction():
     assert ticks_to_beats(1920) == (1, 1)
     assert ticks_to_beats(300) == (5, 32)
 
+
 def test_ticks_to_beats_zero():
     assert ticks_to_beats(0) == (0, 1)
 

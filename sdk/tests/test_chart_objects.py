@@ -859,6 +859,22 @@ def test_air_crush_density_rejects_iadd_when_head_only():
         crush.density += (1, 8)
 
 
+def test_wrap_ll_note_supports_air_hold_with_steps_attached_to_air():
+    ll = L.tap(19200, 4, 8).child(
+        L.air(19200, 4, 8, direction=AirDirection.UP).child(
+            L.air_hold_begin(19200, 4, 8, 80).child(
+                L.air_hold_step(19680, 4, 8, 800),
+                L.air_hold_end(20160, 4, 8, 800),
+            )
+        )
+    )
+
+    wrapped = wrap_ll_note(ll)
+    restored = wrapped.to_ll()
+
+    assert restored == ll
+
+
 def test_long_note_begin_geometry_is_backed_by_note_info():
     slide = Slide(tick=960, x=0, width=4, height=800)
 

@@ -261,7 +261,7 @@ class Air(_GeometryInfoMixin):
         head = ", ".join(parts)
         if self._long_action is None:
             return f"Air({head})"
-        return f"Air({head}, long_action={self._long_action!s})"
+        return f"Air({head})\n  {self._long_action!s}"
 
     __repr__ = __str__
 
@@ -327,7 +327,8 @@ class _GroundNote(_GeometryInfoMixin):
         head = ", ".join(parts)
         if self._air is None:
             return f"{self.__class__.__name__}({head})"
-        return f"{self.__class__.__name__}({head}, air={self._air!s})"
+        air_lines = str(self._air).splitlines()
+        return f"{self.__class__.__name__}({head})\n" + "\n".join(f"  {line}" for line in air_lines)
 
     __repr__ = __str__
 
@@ -397,7 +398,8 @@ class Extap(_GroundNote):
         head = ", ".join(parts)
         if self._air is None:
             return f"{self.__class__.__name__}({head})"
-        return f"{self.__class__.__name__}({head}, air={self._air!s})"
+        air_lines = str(self._air).splitlines()
+        return f"{self.__class__.__name__}({head})\n" + "\n".join(f"  {line}" for line in air_lines)
 
 
 class Flick(Extap):
@@ -666,6 +668,10 @@ class AirSlide(_LongBuilder):
 class AirHold(_LongBuilder):
     _note_type = NoteType.AIRHOLD
 
+    def step(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
+        self._add_joint(_Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.STEP))
+        return self
+
     def end(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
         self._add_joint(_Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END))
         return self
@@ -924,21 +930,23 @@ def _wrap_air_slide(note: LLNote) -> AirSlide:
 
 def _wrap_air_hold(note: LLNote) -> AirHold:
     _check_ll_root_begin(note, NoteType.AIRHOLD)
-    if len(note.children) != 1 or note.children[0].long_attr not in (
-        LongAttr.END,
-        LongAttr.END_NOACT,
-    ):
-        raise UnsupportedNoteTree("air hold must have exactly one end joint")
-    child = note.children[0]
-    _check_order(int(note.tick), int(child.tick))
+    _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     hold = AirHold(
         int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
     )
-    if child.long_attr is LongAttr.END:
-        hold.end(int(child.tick), x=child.x, width=child.width, height=child.height)
-    else:
-        hold.end_noact(int(child.tick), x=child.x, width=child.width, height=child.height)
-    _copy_joint(hold, child)
+    previous_tick = int(note.tick)
+    for child in note.children:
+        _check_order(previous_tick, int(child.tick))
+        if child.long_attr is LongAttr.STEP:
+            hold.step(int(child.tick), x=child.x, width=child.width, height=child.height)
+        elif child.long_attr is LongAttr.END and child is note.children[-1]:
+            hold.end(int(child.tick), x=child.x, width=child.width, height=child.height)
+        elif child.long_attr is LongAttr.END_NOACT and child is note.children[-1]:
+            hold.end_noact(int(child.tick), x=child.x, width=child.width, height=child.height)
+        else:
+            raise UnsupportedNoteTree("unsupported air hold joint")
+        _copy_joint(hold, child)
+        previous_tick = int(child.tick)
     return hold
 
 

@@ -55,6 +55,7 @@ def beats_to_ticks(value: TickDelta) -> int:
         raise ValueError("beat division must resolve to a whole tick")
     return frac.numerator
 
+
 class Tick:
     """Integer tick with in-place ``+=`` / ``-=`` using int or beat-fraction ``(int, int)``."""
 
