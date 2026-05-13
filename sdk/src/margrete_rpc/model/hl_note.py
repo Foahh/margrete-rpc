@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from margrete_rpc.model.ll_note import LLNote, NoteInfo
 from margrete_rpc.model.note_types import (
-    AirColor,
     AirCrushColor,
+    AirCrushOption,
     AirDirection,
     ExAttr,
     ExtapDirection,
@@ -102,22 +102,11 @@ def _direction_property(enum_type: type[IntEnum], label: str):
     return property(getter, setter)
 
 
-def _required_density(density: int | None, option_value: int | None) -> int:
-    if density is None:
-        if option_value is None:
-            raise TypeError("missing required keyword-only argument: 'density'")
-        return int(option_value)
-    if option_value is not None and int(density) != int(option_value):
-        raise ValueError("density and option_value must match when both are provided")
-    return int(density)
-
-
 class _GeometryInfoMixin:
     tick = _info_property("tick")
     x = _info_property("x")
     width = _checked_info_property("width", _check_width)
     til = _info_property("timeline_id")
-    ex_attr = _info_property("ex_attr", ExAttr)
 
 
 class Air(_GeometryInfoMixin):
@@ -144,7 +133,14 @@ class Air(_GeometryInfoMixin):
 
     direction = _direction_property(AirDirection, "air")
     height = _info_property("height")
-    color = _info_property("variation_id", AirColor)
+
+    @property
+    def inverted(self) -> bool:
+        return self._info.ex_attr == ExAttr.INVERT
+
+    @inverted.setter
+    def inverted(self, value: bool) -> None:
+        self._info.ex_attr = ExAttr.INVERT if value else ExAttr.NONE
 
     def __post_init__(self) -> None:
         _check_tick(self.tick)
@@ -187,6 +183,8 @@ class Air(_GeometryInfoMixin):
         ]
         if self._id is not None:
             parts.append(f"id={self._id}")
+        if self.inverted:
+            parts.append("inverted=True")
         head = ", ".join(parts)
         if self._long_action is None:
             return f"Air({head})"
@@ -352,7 +350,6 @@ class Flick(Extap):
 class _Joint(_GeometryInfoMixin):
     long_attr = _info_property("long_attr", LongAttr)
     height = _info_property("height")
-    option_value = _info_property("option_value")
 
     @property
     def info(self) -> NoteInfo:
@@ -369,7 +366,6 @@ class _Joint(_GeometryInfoMixin):
         width: int,
         long_attr: LongAttr,
         height: int = 800,
-        option_value: int = 0,
         info: NoteInfo | None = None,
         id: int | None = None,
         air: Air | None = None,
@@ -382,14 +378,11 @@ class _Joint(_GeometryInfoMixin):
         self.width = width
         self.long_attr = long_attr
         self.height = height
-        self.option_value = option_value
 
 
 class _LongBuilder(_GeometryInfoMixin):
     _note_type: NoteType
 
-    ex_attr = _info_property("ex_attr", ExAttr)
-    til = _info_property("timeline_id")
     direction = _info_property("direction")
     height = _info_property("height")
 
@@ -454,8 +447,11 @@ class _LongBuilder(_GeometryInfoMixin):
             id=self._id,
         )
         for joint in self._joints:
+            jinfo = joint.info.copy(type=self._note_type)
+            if self._note_type is NoteType.AIRCRUSH:
+                jinfo = jinfo.copy(option_value=0)
             child = LLNote(
-                info=joint.info.copy(type=self._note_type),
+                info=jinfo,
                 id=joint.id,
             )
             if joint.air is not None:
@@ -476,8 +472,6 @@ class _LongBuilder(_GeometryInfoMixin):
         if isinstance(self, AirCrush):
             parts.append(f"density={self.density}")
             parts.append(f"color={_hl_enum_line(self.color)}")
-        elif isinstance(self, (AirSlide, AirHold)) and int(self.color) != 0:
-            parts.append(f"color={_hl_enum_line(self.color)}")
         head = ", ".join(parts)
         if not self._joints:
             return f"{cls}({head})"
@@ -490,8 +484,8 @@ class _LongBuilder(_GeometryInfoMixin):
                 f"width={j.width}",
                 f"height={j.height}",
             ]
-            if j.option_value != 0:
-                jbits.append(f"option_value={j.option_value}")
+            if j.info.option_value != 0:
+                jbits.append(f"option_value={j.info.option_value}")
             jinner = ", ".join(jbits)
             if j.air is None:
                 joint_strs.append(f"Joint({jinner})")
@@ -562,8 +556,6 @@ class Hold(_LongBuilder):
 class AirSlide(_LongBuilder):
     _note_type = NoteType.AIRSLIDE
 
-    color = _info_property("variation_id", AirColor)
-
     def step(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
         self._add_joint(_Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.STEP))
         return self
@@ -603,8 +595,6 @@ class AirSlide(_LongBuilder):
 class AirHold(_LongBuilder):
     _note_type = NoteType.AIRHOLD
 
-    color = _info_property("variation_id", AirColor)
-
     def end(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
         self._add_joint(_Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END))
         return self
@@ -629,21 +619,17 @@ class AirCrush(_LongBuilder):
         width: int,
         *,
         height: int,
-        density: int | None = None,
-        color: int = 0,
-        option_value: int | None = None,
-        variation_id: int | None = None,
+        density: AirCrushOption | int,
+        color: AirCrushColor = AirCrushColor.DEF,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(tick, x, width, height=height, _info=_info, _id=_id)
-        self.density = _required_density(density, option_value)
-        self.color = variation_id if variation_id is not None else color
+        self.density = int(density)
+        self.color = color
 
     density = _info_property("option_value")
-    option_value = density
     color = _info_property("variation_id", AirCrushColor)
-    variation_id = color
 
     def control(
         self,
@@ -652,8 +638,6 @@ class AirCrush(_LongBuilder):
         x: int,
         width: int,
         height: int,
-        density: int | None = None,
-        option_value: int | None = None,
     ) -> AirCrush:
         self._add_joint(
             _Joint(
@@ -661,7 +645,6 @@ class AirCrush(_LongBuilder):
                 x=x,
                 width=width,
                 height=height,
-                option_value=_required_density(density, option_value),
                 long_attr=LongAttr.CONTROL,
             )
         )
@@ -674,8 +657,6 @@ class AirCrush(_LongBuilder):
         x: int,
         width: int,
         height: int,
-        density: int | None = None,
-        option_value: int | None = None,
     ) -> AirCrush:
         self._add_joint(
             _Joint(
@@ -683,7 +664,6 @@ class AirCrush(_LongBuilder):
                 x=x,
                 width=width,
                 height=height,
-                option_value=_required_density(density, option_value),
                 long_attr=LongAttr.END,
             )
         )
@@ -902,8 +882,8 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
         note.x,
         note.width,
         height=note.height,
-        option_value=note.option_value,
-        variation_id=note.variation_id,
+        density=note.option_value,
+        color=cast(AirCrushColor, note.variation_id),
         _info=note.info,
         _id=note.id,
     )
@@ -916,7 +896,6 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
                 x=child.x,
                 width=child.width,
                 height=child.height,
-                option_value=child.option_value,
             )
         elif child.long_attr is LongAttr.END and child is note.children[-1]:
             crush.end(
@@ -924,7 +903,6 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
                 x=child.x,
                 width=child.width,
                 height=child.height,
-                option_value=child.option_value,
             )
         else:
             raise UnsupportedNoteTree("unsupported air crush joint")

@@ -13,10 +13,8 @@ from margrete_rpc.model.hl_note import (
     wrap_ll_note,
 )
 from margrete_rpc.model.ll_note import L, LLNote, NoteInfo
-from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
+from margrete_rpc.model.tick import Tick, tick_delta
 from margrete_rpc.model.note_types import (
-    _TICKS_PER_BEAT,
-    AirColor,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
@@ -28,8 +26,6 @@ from margrete_rpc.model.note_types import (
 )
 
 __all__ = [
-    "_TICKS_PER_BEAT",
-    "AirColor",
     "AirDirection",
     "AirCrush",
     "AirCrushColor",
@@ -45,7 +41,7 @@ __all__ = [
     "L",
     "LLNote",
     "LongAttr",
-    "MusicalTick",
+    "Tick",
     "NoteInfo",
     "NoteType",
     "Slide",

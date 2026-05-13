@@ -4,8 +4,6 @@ from enum import IntEnum
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-_TICKS_PER_BEAT = 1920
-
 
 class NoteType(IntEnum):
     UNKNOWN = messages_pb2.NOTE_TYPE_UNKNOWN
@@ -91,6 +89,3 @@ class AirCrushColor(IntEnum):
     NON = 35
 
 
-class AirColor(IntEnum):
-    PNK = 2
-    GRN = 3

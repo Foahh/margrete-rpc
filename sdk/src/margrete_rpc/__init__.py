@@ -1,7 +1,6 @@
 from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
 from margrete_rpc.client import Margrete
 from margrete_rpc.model import (
-    AirColor,
     AirCrush,
     AirCrushColor,
     AirCrushOption,
@@ -32,7 +31,6 @@ from margrete_rpc.model import (
 )
 
 __all__ = [
-    "AirColor",
     "AirDirection",
     "AirCrush",
     "AirCrushColor",

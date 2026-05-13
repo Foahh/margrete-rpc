@@ -5,9 +5,8 @@ from enum import IntEnum
 from typing import Any, cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
+from margrete_rpc.model.tick import Tick, tick_delta
 from margrete_rpc.model.note_types import (
-    AirColor,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
@@ -31,30 +30,30 @@ class NoteInfo:
         AirDirection | ExtapDirection | FlickDirection, messages_pb2.DIRECTION_UP
     )
     ex_attr: ExAttr = ExAttr.NONE
-    variation_id: AirColor | AirCrushColor | int = 0
+    variation_id: AirCrushColor | int = 0
     x: int = 0
     width: int = 0
     height: int = 80
-    tick: MusicalTick = field(default_factory=lambda: MusicalTick(0))
+    tick: Tick = field(default_factory=lambda: Tick(0))
     timeline_id: int = 0
     option_value: AirCrushOption | int = 0
 
     def __setattr__(self, name: str, value: object) -> None:
         if name == "tick":
-            if isinstance(value, MusicalTick):
-                value = MusicalTick(int(value))
+            if isinstance(value, Tick):
+                value = Tick(int(value))
             elif type(value) is int:
-                value = MusicalTick(value)
+                value = Tick(value)
             elif (
                 type(value) is tuple
                 and len(value) == 2
                 and type(value[0]) is int
                 and type(value[1]) is int
             ):
-                value = MusicalTick(tick_delta(cast(tuple[int, int], value)))
+                value = Tick(tick_delta(cast(tuple[int, int], value)))
             else:
                 raise TypeError(
-                    f"tick must be int, MusicalTick, or (int, int) beat fraction, got {type(value)!r}"
+                    f"tick must be int, Tick, or (int, int) beat fraction, got {type(value)!r}"
                 )
         super().__setattr__(name, value)
 
@@ -100,10 +99,7 @@ def _variation_line(info: NoteInfo) -> str:
         except ValueError:
             return repr(v)
     if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
-        try:
-            return _enum_line(AirColor(int(v)))
-        except ValueError:
-            return repr(v)
+        return repr(int(v))
     return repr(v)
 
 

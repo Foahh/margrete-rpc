@@ -1,7 +1,6 @@
 import pytest
 
 from margrete_rpc import (
-    AirColor,
     AirCrush,
     AirCrushColor,
     AirCrushOption,
@@ -31,7 +30,7 @@ from margrete_rpc import (
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
 from margrete_rpc.model.hl_note import wrap_ll_note
-from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
+from margrete_rpc.model.tick import Tick, tick_delta
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -79,15 +78,8 @@ def test_air_crush_color_values_match_variation_ids():
     assert L.air_crush_begin(1, 2, 1, 80, 0, variation_id=AirCrushColor.NON).variation_id == 35
 
 
-def test_air_color_values_match_umgr_color_enum():
-    assert AirColor.PNK == 2
-    assert AirColor.GRN == 3
-    assert list(AirColor) == [AirColor.PNK, AirColor.GRN]
-
-
 def test_note_enums_remain_public_exports():
     from margrete_rpc import (
-        AirColor,
         AirCrushColor,
         AirCrushOption,
         AirDirection,
@@ -107,7 +99,6 @@ def test_note_enums_remain_public_exports():
     assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
     assert AirCrushOption.HEAD_ONLY == 0x7FFFFFFF
     assert AirCrushColor.NON == 35
-    assert list(AirColor) == [AirColor.PNK, AirColor.GRN]
 
 
 def test_new_note_api_is_exported_from_root_package():
@@ -330,7 +321,7 @@ def test_tick_delta_rejects_non_whole_tick():
 
 
 def test_tick_delta_rejects_denominator_above_ticks_per_beat():
-    from margrete_rpc.model.note_types import _TICKS_PER_BEAT
+    from margrete_rpc.model.tick import _TICKS_PER_BEAT
 
     with pytest.raises(ValueError, match="denominator must not exceed"):
         tick_delta((1, _TICKS_PER_BEAT + 1))
@@ -343,14 +334,14 @@ def test_tick_delta_rejects_non_int_types():
         tick_delta("bad")  # type: ignore[arg-type]
 
 
-def test_musical_tick_wraps_same_storage_for_ll_and_hl():
+def test_tick_wraps_same_storage_for_ll_and_hl():
     note = L.tap(0, 4, 1)
-    assert isinstance(note.tick, MusicalTick)
+    assert isinstance(note.tick, Tick)
     note.tick += (1, 8)
     assert note.info.tick == 240
 
     tap = Tap(tick=0, x=4, width=2)
-    assert isinstance(tap.tick, MusicalTick)
+    assert isinstance(tap.tick, Tick)
     tap.tick += (1, 4)
     assert int(tap.tick) == 480
 
@@ -460,7 +451,7 @@ def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     tap.x = 5
     tap.height = 700
     tap.til = 3
-    tap.ex_attr = ExAttr.HAS_NOTE
+    tap._info.ex_attr = ExAttr.HAS_NOTE
     tap.tick = 480
 
     ll = tap.to_ll()
@@ -470,7 +461,7 @@ def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     assert tap.width == 2
     assert tap.height == 700
     assert tap.til == 3
-    assert tap.ex_attr is ExAttr.HAS_NOTE
+    assert tap._info.ex_attr is ExAttr.HAS_NOTE
     assert ll.type is NoteType.TAP
     assert ll.long_attr is LongAttr.NONE
     assert ll.tick == 480
@@ -748,18 +739,18 @@ def test_air_slide_forces_upward_air_and_supports_end_noact():
     assert air_long.children[-1].long_attr is LongAttr.END_NOACT
 
 
-def test_air_color_redirects_to_variation_id():
+def test_air_invert_maps_to_ex_attr_invert_on_ll():
     tap = Tap(tick=0, x=4, width=2)
     air = tap.air(AirDirection.DOWN)
-    air.color = AirColor.GRN
+    air.inverted = True
     air.til = 3
     air.tick += (1, 4)
 
     ll = tap.to_ll().children[0]
 
-    assert air.color is AirColor.GRN
+    assert air.inverted is True
     assert air.tick == 480
-    assert ll.variation_id == AirColor.GRN
+    assert ll.ex_attr is ExAttr.INVERT
     assert ll.timeline_id == 3
     assert ll.tick == 480
 
@@ -793,18 +784,16 @@ def test_air_geometry_and_direction_are_backed_by_note_info():
     assert air.direction is AirDirection.DOWNLEFT
 
 
-def test_air_slide_and_air_hold_color_redirects_to_variation_id():
+def test_air_slide_and_air_hold_do_not_expose_color_on_hl_builder():
     tap = Tap(tick=0, x=4, width=2)
     air_slide = tap.air(AirDirection.DOWN).slide(height=80)
-    air_slide.color = AirColor.PNK
     air_slide.end(960, x=8, width=2, height=100)
 
     hold = Tap(tick=1200, x=4, width=2).air(AirDirection.UP).hold(height=120)
-    hold.color = AirColor.GRN
     hold.end_noact(1680, x=4, width=2, height=140)
 
-    assert tap.to_ll().children[0].children[0].variation_id == AirColor.PNK
-    assert hold.to_ll().variation_id == AirColor.GRN
+    assert tap.to_ll().children[0].children[0].variation_id == 0
+    assert hold.to_ll().variation_id == 0
 
 
 def test_air_crush_allows_controls_only_and_requires_end():
@@ -814,8 +803,8 @@ def test_air_crush_allows_controls_only_and_requires_end():
         crush.to_ll()
 
     ll = (
-        crush.control(480, x=6, width=2, height=120, density=0)
-        .end(960, x=8, width=2, height=80, density=0)
+        crush.control(480, x=6, width=2, height=120)
+        .end(960, x=8, width=2, height=80)
         .to_ll()
     )
 
@@ -835,7 +824,7 @@ def test_air_crush_density_and_color_redirect_to_ll_storage_fields():
     crush.density = 120
     crush.color = AirCrushColor.NON
     crush.til = 2
-    ll = crush.end(960, x=8, width=2, height=100, density=0).to_ll()
+    ll = crush.end(960, x=8, width=2, height=100).to_ll()
 
     assert crush.density == 120
     assert crush.color is AirCrushColor.NON
@@ -889,7 +878,7 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
     joint.width = 2
     joint.height = 700
     joint.long_attr = LongAttr.CONTROL
-    joint.option_value = 9
+    joint.info.option_value = 9
 
     assert joint.info.tick == 1680
     assert joint.info.x == 7
@@ -910,7 +899,7 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
     assert joint.width == 1
     assert joint.height == 600
     assert joint.long_attr is LongAttr.END
-    assert joint.option_value == 5
+    assert joint.info.option_value == 5
 
 
 def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
