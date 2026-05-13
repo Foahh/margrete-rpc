@@ -167,7 +167,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
     {
         logError("request exception id=" + std::to_string(request.request_id()) + " kind=" + requestKind(request) +
                  " type=runtime_error msg=\"" + std::string(ex.what()) + "\"");
-        return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INVALID_ARGUMENT, ex.what());
+        return error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INTERNAL, ex.what());
     }
     catch (...)
     {

@@ -1,6 +1,5 @@
 #include "TransactionApplier.h"
 
-#include <set>
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
@@ -107,46 +106,6 @@ void ApplyNoteSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v1::N
     Check(chart.appendEvent(event), "failed to append note speed event");
 }
 
-template <typename Request> void ApplyEvents(IMargretePluginChart &chart, const Request &request)
-{
-    for (const auto &eventProto : request.bpm_events())
-    {
-        ApplyBpmEvent(chart, eventProto);
-    }
-    for (const auto &eventProto : request.beat_change_events())
-    {
-        ApplyBeatChangeEvent(chart, eventProto);
-    }
-    for (const auto &eventProto : request.timeline_speed_events())
-    {
-        ApplyTimelineSpeedEvent(chart, eventProto);
-    }
-    for (const auto &eventProto : request.note_speed_events())
-    {
-        ApplyNoteSpeedEvent(chart, eventProto);
-    }
-}
-
-MpInteger LastNoteTick(const margrete::rpc::v1::Note &note)
-{
-    MpInteger tick = note.tick();
-    for (const auto &child : note.children())
-    {
-        tick = std::max(tick, LastNoteTick(child));
-    }
-    return tick;
-}
-
-MpInteger LastNoteTick(const google::protobuf::RepeatedPtrField<margrete::rpc::v1::Note> &notes)
-{
-    MpInteger tick = 0;
-    for (const auto &note : notes)
-    {
-        tick = std::max(tick, LastNoteTick(note));
-    }
-    return tick;
-}
-
 std::vector<IMargretePluginNote *> CurrentRootNotes(IMargretePluginChart &chart)
 {
     std::vector<IMargretePluginNote *> notes;
@@ -158,50 +117,6 @@ std::vector<IMargretePluginNote *> CurrentRootNotes(IMargretePluginChart &chart)
         notes.push_back(note);
     }
     return notes;
-}
-
-void ReconcileRootNotes(IMargretePluginChart &chart,
-                        const google::protobuf::RepeatedPtrField<margrete::rpc::v1::Note> &finalNotes)
-{
-    std::unordered_map<int, IMargretePluginNote *> existingById;
-    for (auto *note : CurrentRootNotes(chart))
-    {
-        existingById.emplace(note->getId(), note);
-    }
-
-    std::unordered_set<int> keptIds;
-    std::vector<IMargretePluginNote *> newRootsToAppend;
-    for (const auto &proto : finalNotes)
-    {
-        if (proto.has_id())
-        {
-            auto found = existingById.find(proto.id());
-            if (found == existingById.end())
-            {
-                throw std::invalid_argument("final note tree references unknown note id");
-            }
-            const MP_NOTEINFO info = ChartMapper::ProtoToNoteInfo(proto);
-            found->second->setInfo(&info);
-            keptIds.insert(proto.id());
-        }
-        else
-        {
-            newRootsToAppend.push_back(CreateNoteTree(chart, proto));
-        }
-    }
-
-    for (const auto &[id, note] : existingById)
-    {
-        if (!keptIds.contains(id))
-        {
-            Check(chart.deleteNote(note), "failed to delete note");
-        }
-    }
-
-    for (auto *note : newRootsToAppend)
-    {
-        Check(chart.appendNote(note), "failed to append desired root note");
-    }
 }
 
 template <typename Fn> void WithUndo(MargreteSession &session, Fn fn)
