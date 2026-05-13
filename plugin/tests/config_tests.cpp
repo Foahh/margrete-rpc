@@ -16,8 +16,6 @@ TEST_CASE("config uses defaults when file is missing")
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 48731);
     REQUIRE(config.logPath.filename().string() == "margrete-rpc.log");
-    REQUIRE(config.eventScanExtraTicks == 19200);
-    REQUIRE(config.eventScanMaxTil == 15);
 }
 
 TEST_CASE("config reads server section")
@@ -52,31 +50,3 @@ TEST_CASE("config rejects non-localhost host")
     REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server host must be 127.0.0.1"));
 }
 
-TEST_CASE("config reads chart editing scan limits")
-{
-    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-chart-editing.ini";
-    {
-        std::ofstream out(path);
-        out << "[chart_editing]\n";
-        out << "event_scan_extra_ticks = 2400\n";
-        out << "event_scan_max_til = 9600\n";
-    }
-
-    const ServerConfig config = LoadServerConfig(path);
-
-    REQUIRE(config.eventScanExtraTicks == 2400);
-    REQUIRE(config.eventScanMaxTil == 9600);
-}
-
-TEST_CASE("config rejects non-positive chart editing scan limits")
-{
-    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-chart-editing-bad.ini";
-    {
-        std::ofstream out(path);
-        out << "[chart_editing]\n";
-        out << "event_scan_extra_ticks = 0\n";
-        out << "event_scan_max_til = -1\n";
-    }
-
-    REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("chart editing scan limits must be positive"));
-}

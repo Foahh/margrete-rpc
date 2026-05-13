@@ -64,10 +64,7 @@ TEST_CASE("router begins edit transaction with note snapshot")
     context.currentTick = 777;
     context.chart.addExistingNote(10)->info.tick = 123;
     context.chart.addExistingBpmEvent(200, 180.0);
-    ServerConfig config;
-    config.eventScanExtraTicks = 100;
-    config.eventScanMaxTil = 300;
-    RequestRouter router(&context, config);
+    RequestRouter router(&context);
     margrete::rpc::v1::Envelope request;
     request.set_request_id(20);
     request.mutable_begin_edit_request()->set_name("edit");
@@ -79,7 +76,7 @@ TEST_CASE("router begins edit transaction with note snapshot")
     REQUIRE(response.begin_edit_response().current_tick() == 777);
     REQUIRE(response.begin_edit_response().notes_size() == 1);
     REQUIRE(response.begin_edit_response().notes(0).id() == 10);
-    REQUIRE(response.begin_edit_response().event_scan_until_tick() == 223);
+    REQUIRE(response.begin_edit_response().event_scan_until_tick() == 19323);
     REQUIRE(response.begin_edit_response().bpm_events_size() == 1);
     REQUIRE(response.begin_edit_response().bpm_events(0).tick() == 200);
 }

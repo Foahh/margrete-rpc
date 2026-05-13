@@ -8,6 +8,12 @@
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
 
+namespace
+{
+constexpr MpInteger kDefaultEventScanExtraTicks = 19200;
+constexpr MpInteger kDefaultEventScanMaxTil = 15;
+} // namespace
+
 RequestRouter::RequestRouter(IMargretePluginContext *context) : RequestRouter(context, ServerConfig{})
 {
 }
@@ -71,7 +77,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             MargreteSession session(*context);
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
-            ChartMapper::SnapshotForEdit(session.chart(), config_.eventScanExtraTicks, config_.eventScanMaxTil, *begin);
+            ChartMapper::SnapshotForEdit(session.chart(), kDefaultEventScanExtraTicks, kDefaultEventScanMaxTil, *begin);
             logInfo("begin_edit ok id=" + std::to_string(request.request_id()) + " current_tick=" +
                     std::to_string(begin->current_tick()) + " notes=" + std::to_string(begin->notes_size()) +
                     " bpm_events=" + std::to_string(begin->bpm_events_size()) +
@@ -104,6 +110,27 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             TransactionApplier::ApplyEdit(session, request.apply_edit_patch_request());
             response.mutable_apply_edit_patch_response();
             logInfo("apply_edit ok id=" + std::to_string(request.request_id()));
+            return response;
+        }
+        if (request.has_apply_edit_delta_request())
+        {
+            MargreteSession session(*context);
+            const auto &req = request.apply_edit_delta_request();
+            logInfo("apply_edit_delta start id=" + std::to_string(request.request_id()) +
+                    " replace_all_notes=" + std::to_string(req.replace_all_notes()) +
+                    " notes_upsert=" + std::to_string(req.notes_upsert_size()) +
+                    " note_ids_delete=" + std::to_string(req.note_ids_delete_size()) +
+                    " bpm_upsert=" + std::to_string(req.bpm_upsert_size()) +
+                    " beat_upsert=" + std::to_string(req.beat_upsert_size()) +
+                    " til_upsert=" + std::to_string(req.til_upsert_size()) +
+                    " note_speed_upsert=" + std::to_string(req.note_speed_upsert_size()) +
+                    " bpm_ticks_delete=" + std::to_string(req.bpm_ticks_delete_size()) +
+                    " beat_bars_delete=" + std::to_string(req.beat_bars_delete_size()) +
+                    " til_keys_delete=" + std::to_string(req.til_keys_delete_size()) +
+                    " note_speed_ticks_delete=" + std::to_string(req.note_speed_ticks_delete_size()));
+            TransactionApplier::ApplyEditDelta(session, req);
+            response.mutable_apply_edit_delta_response();
+            logInfo("apply_edit_delta ok id=" + std::to_string(request.request_id()));
             return response;
         }
         if (request.has_apply_append_patch_request())
@@ -195,6 +222,8 @@ const char *RequestRouter::requestKind(const margrete::rpc::v1::Envelope &reques
         return "begin_append";
     if (request.has_apply_edit_patch_request())
         return "apply_edit";
+    if (request.has_apply_edit_delta_request())
+        return "apply_edit_delta";
     if (request.has_apply_append_patch_request())
         return "apply_append";
     if (request.has_error_response())

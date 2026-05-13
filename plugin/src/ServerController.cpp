@@ -12,8 +12,7 @@ ServerController::ServerController(ServerConfig config)
                      (config_.loadedFromFile ? " (loaded)" : " (not found; using defaults)"));
     }
     logger_.info("config loaded host=" + config_.host + " port=" + std::to_string(config_.port) + " log=" +
-                 config_.logPath.string() + " event_scan_extra_ticks=" + std::to_string(config_.eventScanExtraTicks) +
-                 " event_scan_max_til=" + std::to_string(config_.eventScanMaxTil));
+                 config_.logPath.string());
 }
 
 bool ServerController::running() const noexcept
