@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from fractions import Fraction
+from enum import IntEnum
 from typing import Any, cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
 from margrete_rpc.model.note_types import (
-    _TICKS_PER_BEAT,
     AirColor,
     AirCrushColor,
     AirCrushOption,
@@ -19,37 +19,121 @@ from margrete_rpc.model.note_types import (
 )
 
 
+def _enum_line(value: IntEnum) -> str:
+    return f"{type(value).__name__}.{value.name}({int(value)})"
+
+
 @dataclass
 class NoteInfo:
     type: NoteType = NoteType.UNKNOWN
     long_attr: LongAttr = LongAttr.NONE
     direction: AirDirection | ExtapDirection | FlickDirection = cast(
-        AirDirection | ExtapDirection | FlickDirection, messages_pb2.DIRECTION_NONE
+        AirDirection | ExtapDirection | FlickDirection, messages_pb2.DIRECTION_UP
     )
     ex_attr: ExAttr = ExAttr.NONE
     variation_id: AirColor | AirCrushColor | int = 0
     x: int = 0
     width: int = 0
-    height: int = 0
-    tick: int = 0
+    height: int = 80
+    tick: MusicalTick = field(default_factory=lambda: MusicalTick(0))
     timeline_id: int = 0
     option_value: AirCrushOption | int = 0
 
-    @property
-    def bar(self) -> tuple[int, int]:
-        fraction = Fraction(self.tick, _TICKS_PER_BEAT)
-        return fraction.numerator, fraction.denominator
-
-    @bar.setter
-    def bar(self, value: tuple[int, int]) -> None:
-        numerator, denominator = value
-        tick = Fraction(numerator * _TICKS_PER_BEAT, denominator)
-        if tick.denominator != 1:
-            raise ValueError("beat division must resolve to a whole tick")
-        self.tick = tick.numerator
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == "tick":
+            if isinstance(value, MusicalTick):
+                value = MusicalTick(int(value))
+            elif type(value) is int:
+                value = MusicalTick(value)
+            elif (
+                type(value) is tuple
+                and len(value) == 2
+                and type(value[0]) is int
+                and type(value[1]) is int
+            ):
+                value = MusicalTick(tick_delta(cast(tuple[int, int], value)))
+            else:
+                raise TypeError(
+                    f"tick must be int, MusicalTick, or (int, int) beat fraction, got {type(value)!r}"
+                )
+        super().__setattr__(name, value)
 
     def copy(self, **changes: Any) -> NoteInfo:
         return replace(self, **changes)
+
+    def __str__(self) -> str:
+        return _format_note_info(self)
+
+    __repr__ = __str__
+
+
+def _direction_line(info: NoteInfo) -> str:
+    d = info.direction
+    if isinstance(d, IntEnum):
+        return _enum_line(d)
+    raw = int(d)
+    if info.type is NoteType.FLICK:
+        try:
+            return _enum_line(FlickDirection(raw))
+        except ValueError:
+            return repr(raw)
+    if info.type is NoteType.EXTAP:
+        try:
+            return _enum_line(ExtapDirection(raw))
+        except ValueError:
+            return repr(raw)
+    if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
+        try:
+            return _enum_line(AirDirection(raw))
+        except ValueError:
+            return repr(raw)
+    return repr(raw)
+
+
+def _variation_line(info: NoteInfo) -> str:
+    v = info.variation_id
+    if isinstance(v, IntEnum):
+        return _enum_line(v)
+    if info.type is NoteType.AIRCRUSH:
+        try:
+            return _enum_line(AirCrushColor(int(v)))
+        except ValueError:
+            return repr(v)
+    if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
+        try:
+            return _enum_line(AirColor(int(v)))
+        except ValueError:
+            return repr(v)
+    return repr(v)
+
+
+def _option_line(info: NoteInfo) -> str:
+    o = info.option_value
+    if isinstance(o, IntEnum):
+        return _enum_line(o)
+    if info.type is NoteType.AIRCRUSH:
+        try:
+            return _enum_line(AirCrushOption(int(o)))
+        except ValueError:
+            return repr(o)
+    return repr(o)
+
+
+def _format_note_info(info: NoteInfo) -> str:
+    parts = [
+        f"type={_enum_line(info.type)}",
+        f"long_attr={_enum_line(info.long_attr)}",
+        f"tick={int(info.tick)}",
+        f"x={info.x}",
+        f"width={info.width}",
+        f"height={info.height}",
+        f"direction={_direction_line(info)}",
+        f"ex_attr={_enum_line(info.ex_attr)}",
+        f"variation_id={_variation_line(info)}",
+        f"timeline_id={info.timeline_id}",
+        f"option_value={_option_line(info)}",
+    ]
+    return "NoteInfo(" + ", ".join(parts) + ")"
 
 
 def _info_property(name: str):
@@ -79,7 +163,11 @@ class LLNote:
     tick = _info_property("tick")
     timeline_id = _info_property("timeline_id")
     option_value = _info_property("option_value")
-    bar = _info_property("bar")
+
+    def __str__(self) -> str:
+        return _format_ll_note(self, indent=0)
+
+    __repr__ = __str__
 
     def child(self, *children: LLNote) -> LLNote:
         self.children = list(children)
@@ -115,7 +203,7 @@ class LLNote:
             x=self.x,
             width=self.width,
             height=self.height,
-            tick=self.tick,
+            tick=int(self.tick),
             timeline_id=self.timeline_id,
             option_value=int(self.option_value),
         )
@@ -123,6 +211,15 @@ class LLNote:
             proto.id = self.id
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
+
+
+def _format_ll_note(note: LLNote, *, indent: int = 0) -> str:
+    prefix = "  " * indent
+    id_part = f"id={note.id}, " if note.id is not None else ""
+    line = f"{prefix}LLNote({id_part}info={_format_note_info(note.info)})"
+    if not note.children:
+        return line
+    return line + "\n" + "\n".join(_format_ll_note(c, indent=indent + 1) for c in note.children)
 
 
 class L:

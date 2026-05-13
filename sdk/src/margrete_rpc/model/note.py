@@ -13,6 +13,7 @@ from margrete_rpc.model.hl_note import (
     wrap_ll_note,
 )
 from margrete_rpc.model.ll_note import L, LLNote, NoteInfo
+from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
 from margrete_rpc.model.note_types import (
     _TICKS_PER_BEAT,
     AirColor,
@@ -44,10 +45,12 @@ __all__ = [
     "L",
     "LLNote",
     "LongAttr",
+    "MusicalTick",
     "NoteInfo",
     "NoteType",
     "Slide",
     "Tap",
+    "tick_delta",
     "UnsupportedNoteTree",
     "wrap_ll_note",
 ]

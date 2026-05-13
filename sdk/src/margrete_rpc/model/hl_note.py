@@ -22,15 +22,18 @@ class UnsupportedNoteTree(ValueError):
 
 @runtime_checkable
 class HLNote(Protocol):
-    @property
-    def bar(self) -> tuple[int, int]: ...
-
-    def to_ll(self) -> LLNote:
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
         raise NotImplementedError
 
 
+def _hl_enum_line(value: IntEnum | int) -> str:
+    if isinstance(value, IntEnum):
+        return f"{type(value).__name__}.{value.name}({int(value)})"
+    return repr(value)
+
+
 def _check_tick(tick: int) -> None:
-    if tick < 0:
+    if int(tick) < 0:
         raise ValueError("tick must be non-negative")
 
 
@@ -110,11 +113,10 @@ def _required_density(density: int | None, option_value: int | None) -> int:
 
 
 class _GeometryInfoMixin:
-    tick = _checked_info_property("tick", _check_tick)
+    tick = _info_property("tick")
     x = _info_property("x")
     width = _checked_info_property("width", _check_width)
     til = _info_property("timeline_id")
-    bar = _info_property("bar")
     ex_attr = _info_property("ex_attr", ExAttr)
 
 
@@ -176,10 +178,28 @@ class Air(_GeometryInfoMixin):
         self._long_action = AirHold(self.tick, self.x, self.width, height=height)
         return self._long_action
 
-    def to_ll(self) -> LLNote:
+    def __str__(self) -> str:
+        parts = [
+            f"tick={int(self.tick)}",
+            f"x={self.x}",
+            f"width={self.width}",
+            f"direction={_hl_enum_line(self.direction)}",
+        ]
+        if self._id is not None:
+            parts.append(f"id={self._id}")
+        head = ", ".join(parts)
+        if self._long_action is None:
+            return f"Air({head})"
+        return f"Air({head}, long_action={self._long_action!s})"
+
+    __repr__ = __str__
+
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
         note = LLNote(info=self._info.copy(), id=self._id)
         if self._long_action is not None:
-            note.children.append(self._long_action.to_ll())
+            note.children.append(
+                self._long_action.to_ll(skip_validation=skip_validation)  # type: ignore[union-attr]
+            )
         return note
 
 
@@ -227,10 +247,25 @@ class _GroundNote(_GeometryInfoMixin):
     def _base_ll(self) -> LLNote:
         return LLNote(info=self._info.copy(), id=self._id)
 
-    def to_ll(self) -> LLNote:
+    def __str__(self) -> str:
+        parts = [
+            f"tick={int(self.tick)}",
+            f"x={self.x}",
+            f"width={self.width}",
+        ]
+        if self._id is not None:
+            parts.append(f"id={self._id}")
+        head = ", ".join(parts)
+        if self._air is None:
+            return f"{self.__class__.__name__}({head})"
+        return f"{self.__class__.__name__}({head}, air={self._air!s})"
+
+    __repr__ = __str__
+
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
         note = self._base_ll()
         if self._air is not None:
-            note.children.append(self._air.to_ll())
+            note.children.append(self._air.to_ll(skip_validation=skip_validation))
         return note
 
 
@@ -280,6 +315,20 @@ class Extap(_GroundNote):
         note = super()._base_ll()
         note.direction = self.direction
         return note
+
+    def __str__(self) -> str:
+        parts = [
+            f"tick={int(self.tick)}",
+            f"x={self.x}",
+            f"width={self.width}",
+            f"direction={_hl_enum_line(self.direction)}",
+        ]
+        if self._id is not None:
+            parts.append(f"id={self._id}")
+        head = ", ".join(parts)
+        if self._air is None:
+            return f"{self.__class__.__name__}({head})"
+        return f"{self.__class__.__name__}({head}, air={self._air!s})"
 
 
 class Flick(Extap):
@@ -339,7 +388,6 @@ class _Joint(_GeometryInfoMixin):
 class _LongBuilder(_GeometryInfoMixin):
     _note_type: NoteType
 
-    bar = _info_property("bar")
     ex_attr = _info_property("ex_attr", ExAttr)
     til = _info_property("timeline_id")
     direction = _info_property("direction")
@@ -381,8 +429,8 @@ class _LongBuilder(_GeometryInfoMixin):
             raise ValueError("long note already ended")
         _check_tick(joint.tick)
         _check_width(joint.width)
-        previous_tick = self._joints[-1].tick if self._joints else self.tick
-        if joint.tick <= previous_tick:
+        previous_tick = int(self._joints[-1].tick if self._joints else self.tick)
+        if int(joint.tick) <= previous_tick:
             raise ValueError("joint tick must be later than previous joint")
         self._joints.append(joint)
         if joint.long_attr in (LongAttr.END, LongAttr.END_NOACT):
@@ -396,8 +444,11 @@ class _LongBuilder(_GeometryInfoMixin):
             raise ValueError("long note requires an end joint")
         return self._joints[-1]
 
-    def _to_ll_tree(self, begin_attr: LongAttr = LongAttr.BEGIN) -> LLNote:
-        self._require_end()
+    def _to_ll_tree(
+        self, begin_attr: LongAttr = LongAttr.BEGIN, *, skip_validation: bool = False
+    ) -> LLNote:
+        if not skip_validation:
+            self._require_end()
         root = LLNote(
             info=self._info.copy(long_attr=begin_attr),
             id=self._id,
@@ -408,9 +459,47 @@ class _LongBuilder(_GeometryInfoMixin):
                 id=joint.id,
             )
             if joint.air is not None:
-                child.children.append(joint.air.to_ll())
+                child.children.append(joint.air.to_ll(skip_validation=skip_validation))
             root.children.append(child)
         return root
+
+    def __str__(self) -> str:
+        cls = self.__class__.__name__
+        parts = [
+            f"tick={int(self.tick)}",
+            f"x={self.x}",
+            f"width={self.width}",
+            f"height={self.height}",
+        ]
+        if self._id is not None:
+            parts.append(f"id={self._id}")
+        if isinstance(self, AirCrush):
+            parts.append(f"density={self.density}")
+            parts.append(f"color={_hl_enum_line(self.color)}")
+        elif isinstance(self, (AirSlide, AirHold)) and int(self.color) != 0:
+            parts.append(f"color={_hl_enum_line(self.color)}")
+        head = ", ".join(parts)
+        if not self._joints:
+            return f"{cls}({head})"
+        joint_strs: list[str] = []
+        for j in self._joints:
+            jbits = [
+                f"tick={int(j.tick)}",
+                f"long_attr={_hl_enum_line(j.long_attr)}",
+                f"x={j.x}",
+                f"width={j.width}",
+                f"height={j.height}",
+            ]
+            if j.option_value != 0:
+                jbits.append(f"option_value={j.option_value}")
+            jinner = ", ".join(jbits)
+            if j.air is None:
+                joint_strs.append(f"Joint({jinner})")
+            else:
+                joint_strs.append(f"Joint({jinner}, air={j.air!s})")
+        return f"{cls}({head}, joints=[{', '.join(joint_strs)}])"
+
+    __repr__ = __str__
 
 
 class Slide(_LongBuilder):
@@ -440,8 +529,8 @@ class Slide(_LongBuilder):
         end.air._attach_to(self)
         return end.air
 
-    def to_ll(self) -> LLNote:
-        return self._to_ll_tree()
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
+        return self._to_ll_tree(skip_validation=skip_validation)
 
 
 class Hold(_LongBuilder):
@@ -466,8 +555,8 @@ class Hold(_LongBuilder):
         end.air._attach_to(self)
         return end.air
 
-    def to_ll(self) -> LLNote:
-        return self._to_ll_tree()
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
+        return self._to_ll_tree(skip_validation=skip_validation)
 
 
 class AirSlide(_LongBuilder):
@@ -507,8 +596,8 @@ class AirSlide(_LongBuilder):
         )
         return self
 
-    def to_ll(self) -> LLNote:
-        return self._to_ll_tree()
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
+        return self._to_ll_tree(skip_validation=skip_validation)
 
 
 class AirHold(_LongBuilder):
@@ -526,8 +615,8 @@ class AirHold(_LongBuilder):
         )
         return self
 
-    def to_ll(self) -> LLNote:
-        return self._to_ll_tree()
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
+        return self._to_ll_tree(skip_validation=skip_validation)
 
 
 class AirCrush(_LongBuilder):
@@ -600,8 +689,8 @@ class AirCrush(_LongBuilder):
         )
         return self
 
-    def to_ll(self) -> LLNote:
-        return self._to_ll_tree()
+    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
+        return self._to_ll_tree(skip_validation=skip_validation)
 
 
 def wrap_ll_note(note: LLNote) -> HLNote:
@@ -620,10 +709,12 @@ def _wrap_ground(note: LLNote) -> HLNote:
     if note.long_attr is not LongAttr.NONE:
         raise UnsupportedNoteTree("positive note must not have long_attr")
     if note.type is NoteType.TAP:
-        wrapped: _GroundNote = Tap(note.tick, note.x, note.width, _info=note.info, _id=note.id)
+        wrapped: _GroundNote = Tap(
+            int(note.tick), note.x, note.width, _info=note.info, _id=note.id
+        )
     elif note.type is NoteType.EXTAP:
         wrapped = Extap(
-            note.tick,
+            int(note.tick),
             note.x,
             note.width,
             direction=note.direction,
@@ -632,7 +723,7 @@ def _wrap_ground(note: LLNote) -> HLNote:
         )
     elif note.type is NoteType.FLICK:
         wrapped = Flick(
-            note.tick,
+            int(note.tick),
             note.x,
             note.width,
             direction=note.direction,
@@ -640,7 +731,7 @@ def _wrap_ground(note: LLNote) -> HLNote:
             _id=note.id,
         )
     elif note.type is NoteType.DAMAGE:
-        wrapped = Damage(note.tick, note.x, note.width, _info=note.info, _id=note.id)
+        wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
     else:
         raise UnsupportedNoteTree("unsupported positive note")
 
@@ -666,7 +757,7 @@ def _check_ll_root_begin(note: LLNote, expected: NoteType) -> None:
 
 
 def _check_order(previous_tick: int, tick: int) -> None:
-    if tick <= previous_tick:
+    if int(tick) <= int(previous_tick):
         raise UnsupportedNoteTree("long note joints must be strictly chronological")
 
 
@@ -689,7 +780,12 @@ def _wrap_attached_air(children: list[LLNote]) -> Air:
     if child.type is not NoteType.AIR:
         raise UnsupportedNoteTree("long note joint child must be AIR")
     air = Air(
-        child.tick, child.x, child.width, child.direction, _info=child.info.copy(), _id=child.id
+        int(child.tick),
+        child.x,
+        child.width,
+        child.direction,
+        _info=child.info.copy(),
+        _id=child.id,
     )
     if len(child.children) > 1:
         raise UnsupportedNoteTree("air may have only one long action")
@@ -701,22 +797,24 @@ def _wrap_attached_air(children: list[LLNote]) -> Air:
 def _wrap_slide(note: LLNote) -> Slide:
     _check_ll_root_begin(note, NoteType.SLIDE)
     _require_final_end(note.children, {LongAttr.END})
-    slide = Slide(note.tick, note.x, note.width, height=note.height, _info=note.info, _id=note.id)
-    previous_tick = note.tick
+    slide = Slide(
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+    )
+    previous_tick = int(note.tick)
     for child in note.children:
-        _check_order(previous_tick, child.tick)
+        _check_order(previous_tick, int(child.tick))
         if child.long_attr is LongAttr.STEP:
-            slide.step(child.tick, x=child.x, width=child.width)
+            slide.step(int(child.tick), x=child.x, width=child.width)
         elif child.long_attr is LongAttr.CONTROL:
-            slide.control(child.tick, x=child.x, width=child.width)
+            slide.control(int(child.tick), x=child.x, width=child.width)
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide.curve_control(child.tick, x=child.x, width=child.width)
+            slide.curve_control(int(child.tick), x=child.x, width=child.width)
         elif child.long_attr is LongAttr.END and child is note.children[-1]:
-            slide.end(child.tick, x=child.x, width=child.width)
+            slide.end(int(child.tick), x=child.x, width=child.width)
         else:
             raise UnsupportedNoteTree("unsupported slide joint")
         _copy_joint(slide, child)
-        previous_tick = child.tick
+        previous_tick = int(child.tick)
     return slide
 
 
@@ -725,9 +823,11 @@ def _wrap_hold(note: LLNote) -> Hold:
     if len(note.children) != 1 or note.children[0].long_attr is not LongAttr.END:
         raise UnsupportedNoteTree("hold must have exactly one end joint")
     child = note.children[0]
-    _check_order(note.tick, child.tick)
-    hold = Hold(note.tick, note.x, note.width, height=note.height, _info=note.info, _id=note.id)
-    hold.end(child.tick, x=child.x, width=child.width)
+    _check_order(int(note.tick), int(child.tick))
+    hold = Hold(
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+    )
+    hold.end(int(child.tick), x=child.x, width=child.width)
     _copy_joint(hold, child)
     return hold
 
@@ -744,25 +844,33 @@ def _wrap_air_slide(note: LLNote) -> AirSlide:
     _check_ll_root_begin(note, NoteType.AIRSLIDE)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     slide = AirSlide(
-        note.tick, note.x, note.width, height=note.height, _info=note.info, _id=note.id
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
     )
-    previous_tick = note.tick
+    previous_tick = int(note.tick)
     for child in note.children:
-        _check_order(previous_tick, child.tick)
+        _check_order(previous_tick, int(child.tick))
         if child.long_attr is LongAttr.STEP:
-            slide.step(child.tick, x=child.x, width=child.width, height=child.height)
+            slide.step(
+                int(child.tick), x=child.x, width=child.width, height=child.height
+            )
         elif child.long_attr is LongAttr.CONTROL:
-            slide.control(child.tick, x=child.x, width=child.width, height=child.height)
+            slide.control(
+                int(child.tick), x=child.x, width=child.width, height=child.height
+            )
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide.curve_control(child.tick, x=child.x, width=child.width, height=child.height)
+            slide.curve_control(
+                int(child.tick), x=child.x, width=child.width, height=child.height
+            )
         elif child.long_attr is LongAttr.END and child is note.children[-1]:
-            slide.end(child.tick, x=child.x, width=child.width, height=child.height)
+            slide.end(int(child.tick), x=child.x, width=child.width, height=child.height)
         elif child.long_attr is LongAttr.END_NOACT and child is note.children[-1]:
-            slide.end_noact(child.tick, x=child.x, width=child.width, height=child.height)
+            slide.end_noact(
+                int(child.tick), x=child.x, width=child.width, height=child.height
+            )
         else:
             raise UnsupportedNoteTree("unsupported air slide joint")
         _copy_joint(slide, child)
-        previous_tick = child.tick
+        previous_tick = int(child.tick)
     return slide
 
 
@@ -774,12 +882,14 @@ def _wrap_air_hold(note: LLNote) -> AirHold:
     ):
         raise UnsupportedNoteTree("air hold must have exactly one end joint")
     child = note.children[0]
-    _check_order(note.tick, child.tick)
-    hold = AirHold(note.tick, note.x, note.width, height=note.height, _info=note.info, _id=note.id)
+    _check_order(int(note.tick), int(child.tick))
+    hold = AirHold(
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+    )
     if child.long_attr is LongAttr.END:
-        hold.end(child.tick, x=child.x, width=child.width, height=child.height)
+        hold.end(int(child.tick), x=child.x, width=child.width, height=child.height)
     else:
-        hold.end_noact(child.tick, x=child.x, width=child.width, height=child.height)
+        hold.end_noact(int(child.tick), x=child.x, width=child.width, height=child.height)
     _copy_joint(hold, child)
     return hold
 
@@ -788,7 +898,7 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
     _check_ll_root_begin(note, NoteType.AIRCRUSH)
     _require_final_end(note.children, {LongAttr.END})
     crush = AirCrush(
-        note.tick,
+        int(note.tick),
         note.x,
         note.width,
         height=note.height,
@@ -797,12 +907,12 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
         _info=note.info,
         _id=note.id,
     )
-    previous_tick = note.tick
+    previous_tick = int(note.tick)
     for child in note.children:
-        _check_order(previous_tick, child.tick)
+        _check_order(previous_tick, int(child.tick))
         if child.long_attr is LongAttr.CONTROL:
             crush.control(
-                child.tick,
+                int(child.tick),
                 x=child.x,
                 width=child.width,
                 height=child.height,
@@ -810,7 +920,7 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
             )
         elif child.long_attr is LongAttr.END and child is note.children[-1]:
             crush.end(
-                child.tick,
+                int(child.tick),
                 x=child.x,
                 width=child.width,
                 height=child.height,
@@ -819,5 +929,5 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
         else:
             raise UnsupportedNoteTree("unsupported air crush joint")
         _copy_joint(crush, child)
-        previous_tick = child.tick
+        previous_tick = int(child.tick)
     return crush

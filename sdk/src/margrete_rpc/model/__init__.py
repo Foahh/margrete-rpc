@@ -19,6 +19,7 @@ from margrete_rpc.model.hl_note import (
     UnsupportedNoteTree,
 )
 from margrete_rpc.model.ll_note import L, LLNote, NoteInfo
+from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
 from margrete_rpc.model.note import (
     AirColor,
     AirCrushColor,
@@ -53,11 +54,13 @@ __all__ = [
     "LLChart",
     "LLNote",
     "LongAttr",
+    "MusicalTick",
     "NoteInfo",
     "NoteSpeedEvent",
     "NoteType",
     "Slide",
     "Tap",
+    "tick_delta",
     "TimelineSpeedEvent",
     "UnsupportedNoteTree",
     "normalize_event_operations",

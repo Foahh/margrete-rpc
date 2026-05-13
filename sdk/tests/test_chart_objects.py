@@ -31,6 +31,7 @@ from margrete_rpc import (
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
 from margrete_rpc.model.hl_note import wrap_ll_note
+from margrete_rpc.model.musical_tick import MusicalTick, tick_delta
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -230,7 +231,7 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
-    assert note.direction == messages_pb2.DIRECTION_NONE
+    assert note.direction == messages_pb2.DIRECTION_UP
     assert note.ex_attr is ExAttr.NONE
     assert note.tick == 960
     assert note.x == 4
@@ -294,31 +295,64 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
     assert NoteSpeedEvent(960, 1.25) == NoteSpeedEvent(tick=960, speed=1.25)
 
 
-def test_note_bar_getter_represents_tick_as_reduced_beat_fraction():
-    note = L.tap(240, 4, 1)
-
-    assert note.bar == (1, 8)
-
-    note.tick = 480
-    assert note.bar == (1, 4)
-
-    note.tick = 1920
-    assert note.bar == (1, 1)
-
-    note.tick = 300
-    assert note.bar == (5, 32)
-
-
-def test_note_bar_setter_updates_tick_from_beat_fraction():
+def test_ll_note_tick_supports_augmented_assignment_with_beat_fractions():
     note = L.tap(0, 4, 1)
-
-    note.bar = (1, 8)
+    note.tick += (1, 8)
     assert note.tick == 240
-    assert note.bar == (1, 8)
-
-    note.bar = (1, 4)
+    note.tick += (1, 8)
     assert note.tick == 480
-    assert note.bar == (1, 4)
+    note.tick -= (1, 4)
+    assert note.tick == 0
+
+
+def test_ll_note_tick_augmented_assignment_matches_direct_tick_math():
+    note = L.tap(240, 4, 1)
+    note.tick = 480
+    assert note.tick == 480
+    note.tick = 1920
+    assert note.tick == 1920
+    note.tick = 300
+    assert note.tick == 300
+
+
+def test_tick_assignment_accepts_beat_fraction_tuple():
+    note = L.tap(0, 4, 1)
+    note.tick = (1, 8)
+    assert note.tick == 240
+    tap = Tap(tick=960, x=4, width=2)
+    tap.tick = (1, 4)
+    assert tap.tick == 480
+
+
+def test_tick_delta_rejects_non_whole_tick():
+    with pytest.raises(ValueError, match="whole tick"):
+        tick_delta((1, 7))
+
+
+def test_tick_delta_rejects_denominator_above_ticks_per_beat():
+    from margrete_rpc.model.note_types import _TICKS_PER_BEAT
+
+    with pytest.raises(ValueError, match="denominator must not exceed"):
+        tick_delta((1, _TICKS_PER_BEAT + 1))
+
+
+def test_tick_delta_rejects_non_int_types():
+    with pytest.raises(TypeError):
+        tick_delta((1, 2.0))  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        tick_delta("bad")  # type: ignore[arg-type]
+
+
+def test_musical_tick_wraps_same_storage_for_ll_and_hl():
+    note = L.tap(0, 4, 1)
+    assert isinstance(note.tick, MusicalTick)
+    note.tick += (1, 8)
+    assert note.info.tick == 240
+
+    tap = Tap(tick=0, x=4, width=2)
+    assert isinstance(tap.tick, MusicalTick)
+    tap.tick += (1, 4)
+    assert int(tap.tick) == 480
 
 
 def test_note_round_trips_to_protobuf_with_children_and_id():
@@ -427,12 +461,11 @@ def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     tap.height = 700
     tap.til = 3
     tap.ex_attr = ExAttr.HAS_NOTE
-    tap.bar = (1, 4)
+    tap.tick = 480
 
     ll = tap.to_ll()
 
     assert tap.tick == 480
-    assert tap.bar == (1, 4)
     assert tap.x == 5
     assert tap.width == 2
     assert tap.height == 700
@@ -642,6 +675,13 @@ def test_slide_requires_end_and_converts_ordered_joints():
     with pytest.raises(ValueError, match="requires an end joint"):
         slide.to_ll()
 
+    partial = slide.to_ll(skip_validation=True)
+    assert partial.type is NoteType.SLIDE
+    assert [c.long_attr for c in partial.children] == [
+        LongAttr.STEP,
+        LongAttr.CONTROL,
+    ]
+
     ll = slide.end(1920, x=12, width=4).to_ll()
 
     assert ll.type is NoteType.SLIDE
@@ -651,6 +691,17 @@ def test_slide_requires_end_and_converts_ordered_joints():
         LongAttr.CONTROL,
         LongAttr.END,
     ]
+
+
+def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
+    tap = Tap(tick=1920, x=1, width=2)
+    assert str(tap) == repr(tap)
+    assert "Tap(" in str(tap)
+    assert "tick=1920" in str(tap)
+    ll = L.tap(1920, 1, 2)
+    assert str(ll) == repr(ll)
+    assert "tick=1920" in str(ll)
+    assert "NoteType.TAP(" in str(ll) and ")" in str(ll)
 
 
 def test_slide_rejects_joints_after_end_and_non_increasing_ticks():
@@ -702,7 +753,7 @@ def test_air_color_redirects_to_variation_id():
     air = tap.air(AirDirection.DOWN)
     air.color = AirColor.GRN
     air.til = 3
-    air.bar = (1, 4)
+    air.tick += (1, 4)
 
     ll = tap.to_ll().children[0]
 
