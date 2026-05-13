@@ -103,6 +103,26 @@ TEST_CASE("event operation creates beat change and note speed events")
     REQUIRE(context.chart.createdNoteSpeedEvents[0]->info.speed == 1.25);
 }
 
+TEST_CASE("edit patch in-place update does not duplicate root notes")
+{
+    FakeContext context;
+    auto *existing = context.chart.addExistingNote(10);
+    existing->info.type = MP_NOTETYPE_TAP;
+    existing->info.x = 1;
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditPatchRequest request;
+    auto *updated = request.add_notes();
+    updated->set_id(10);
+    updated->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
+    updated->set_x(9);
+
+    TransactionApplier::ApplyEdit(session, request);
+
+    REQUIRE(context.chart.notes.size() == 1);
+    REQUIRE(context.chart.notes[0]->info.x == 9);
+    REQUIRE(context.chart.appendedNotes == 0);
+}
+
 TEST_CASE("edit patch updates existing note and creates new note")
 {
     FakeContext context;
@@ -125,6 +145,7 @@ TEST_CASE("edit patch updates existing note and creates new note")
     REQUIRE(context.chart.notes[0]->id == 10);
     REQUIRE(context.chart.notes[0]->info.x == 9);
     REQUIRE(context.chart.createdNotes.size() == 1);
+    REQUIRE(context.chart.appendedNotes == 1);
 }
 
 TEST_CASE("edit patch deletes existing note missing from final tree")

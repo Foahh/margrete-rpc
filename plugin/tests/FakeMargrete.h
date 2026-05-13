@@ -304,11 +304,7 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
     {
         ++appendedNotes;
         auto *fake = static_cast<FakeNote *>(note);
-        const auto found = std::find(notes.begin(), notes.end(), fake);
-        if (found == notes.end())
-        {
-            notes.push_back(fake);
-        }
+        notes.push_back(fake);
         return MP_TRUE;
     }
     MpBoolean deleteNote(IMargretePluginNote *note) override

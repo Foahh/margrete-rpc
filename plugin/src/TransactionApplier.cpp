@@ -245,7 +245,7 @@ void ReconcileRootNotes(IMargretePluginChart &chart,
     }
 
     std::unordered_set<int> keptIds;
-    std::vector<IMargretePluginNote *> desiredRoots;
+    std::vector<IMargretePluginNote *> newRootsToAppend;
     for (const auto &proto : finalNotes)
     {
         if (proto.has_id())
@@ -258,11 +258,10 @@ void ReconcileRootNotes(IMargretePluginChart &chart,
             const MP_NOTEINFO info = ChartMapper::ProtoToNoteInfo(proto);
             found->second->setInfo(&info);
             keptIds.insert(proto.id());
-            desiredRoots.push_back(found->second);
         }
         else
         {
-            desiredRoots.push_back(CreateNoteTree(chart, proto));
+            newRootsToAppend.push_back(CreateNoteTree(chart, proto));
         }
     }
 
@@ -274,7 +273,7 @@ void ReconcileRootNotes(IMargretePluginChart &chart,
         }
     }
 
-    for (auto *note : desiredRoots)
+    for (auto *note : newRootsToAppend)
     {
         Check(chart.appendNote(note), "failed to append desired root note");
     }
