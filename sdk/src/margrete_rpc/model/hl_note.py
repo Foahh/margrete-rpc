@@ -82,7 +82,7 @@ class Air:
 
 
 @dataclass
-class _PositiveNote:
+class _GroundNote:
     tick: int
     x: int
     width: int
@@ -121,7 +121,7 @@ class _PositiveNote:
         return note
 
 
-class Tap(_PositiveNote):
+class Tap(_GroundNote):
     def __init__(
         self,
         tick: int,
@@ -134,7 +134,7 @@ class Tap(_PositiveNote):
         super().__init__(tick, x, width, NoteType.TAP, _copy_info(_info), _id)
 
 
-class Damage(_PositiveNote):
+class Damage(_GroundNote):
     def __init__(
         self,
         tick: int,
@@ -147,7 +147,7 @@ class Damage(_PositiveNote):
         super().__init__(tick, x, width, NoteType.DAMAGE, _copy_info(_info), _id)
 
 
-class Extap(_PositiveNote):
+class Extap(_GroundNote):
     def __init__(
         self,
         tick: int,
@@ -167,7 +167,7 @@ class Extap(_PositiveNote):
         return note
 
 
-class Flick(Extap):
+class Flick(_GroundNote):
     def __init__(
         self,
         tick: int,
@@ -438,7 +438,7 @@ class AirCrush(_LongBuilder):
 
 def wrap_ll_note(note: LLNote) -> HLNote:
     if note.type in (NoteType.TAP, NoteType.EXTAP, NoteType.FLICK, NoteType.DAMAGE):
-        return _wrap_positive(note)
+        return _wrap_ground(note)
     if note.type is NoteType.HOLD:
         return _wrap_hold(note)
     if note.type is NoteType.SLIDE:
@@ -448,11 +448,9 @@ def wrap_ll_note(note: LLNote) -> HLNote:
     raise UnsupportedNoteTree(f"unsupported root note type: {note.type.name}")
 
 
-def _wrap_positive(note: LLNote) -> HLNote:
-    if note.long_attr is not LongAttr.NONE:
-        raise UnsupportedNoteTree("positive note must not have long_attr")
+def _wrap_ground(note: LLNote) -> HLNote:
     if note.type is NoteType.TAP:
-        wrapped: _PositiveNote = Tap(note.tick, note.x, note.width, _info=note.info, _id=note.id)
+        wrapped: _GroundNote = Tap(note.tick, note.x, note.width, _info=note.info, _id=note.id)
     elif note.type is NoteType.EXTAP:
         wrapped = Extap(
             note.tick,
@@ -474,14 +472,14 @@ def _wrap_positive(note: LLNote) -> HLNote:
     elif note.type is NoteType.DAMAGE:
         wrapped = Damage(note.tick, note.x, note.width, _info=note.info, _id=note.id)
     else:
-        raise UnsupportedNoteTree("unsupported positive note")
+        raise UnsupportedNoteTree("unsupported ground note")
 
     if len(note.children) > 1:
         raise UnsupportedNoteTree("only one air object may attach to one ground note")
     if note.children:
         child = note.children[0]
         if child.type is not NoteType.AIR:
-            raise UnsupportedNoteTree("positive note child must be AIR")
+            raise UnsupportedNoteTree("ground note child must be AIR")
         wrapped_air = wrapped.air(child.direction)
         wrapped_air._info = child.info.copy()
         wrapped_air._id = child.id

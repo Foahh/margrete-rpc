@@ -441,7 +441,7 @@ def test_tap_air_adds_single_air_child():
     assert ll.children[0].direction is Direction.DOWN
 
 
-def test_positive_note_rejects_multiple_air_objects():
+def test_ground_note_rejects_multiple_air_objects():
     tap = Tap(tick=0, x=4, width=2)
     tap.air(Direction.UP)
 
