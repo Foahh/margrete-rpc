@@ -96,6 +96,8 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
                                   const std::vector<std::int32_t> &eventScanTil,
                                   margrete::rpc::v1::BeginEditResponse &response)
 {
+    response.set_scan(true);
+
     MpInteger lastNoteTick = 0;
     for (const auto &note : SnapshotNotes(chart))
     {

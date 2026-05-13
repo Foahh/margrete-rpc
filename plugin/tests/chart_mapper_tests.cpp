@@ -50,6 +50,7 @@ TEST_CASE("chart mapper scans events through configured tick range")
     margrete::rpc::v1::BeginEditResponse response;
     ChartMapper::SnapshotForEdit(context.chart, 200, {2}, response);
 
+    REQUIRE(response.scan() == true);
     REQUIRE(response.event_scan_extra_tick() == 200);
     REQUIRE(response.event_scan_til_size() == 1);
     REQUIRE(response.event_scan_til(0) == 2);

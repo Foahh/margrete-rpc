@@ -109,7 +109,17 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                 scanTil = DefaultEventScanTil();
             }
 
-            ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, *begin);
+            const bool scan = req.scan();
+            begin->set_scan(scan);
+            if (scan)
+            {
+                ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, *begin);
+            }
+            else
+            {
+                begin->set_event_scan_extra_tick(scanExtraTick);
+                begin->mutable_event_scan_til()->Assign(scanTil.begin(), scanTil.end());
+            }
             logInfo("begin_edit ok id=" + std::to_string(request.request_id()) + " current_tick=" +
                     std::to_string(begin->current_tick()) + " notes=" + std::to_string(begin->notes_size()) +
                     " bpm_events=" + std::to_string(begin->bpm_events_size()) +
@@ -117,7 +127,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " timeline_speed_events=" + std::to_string(begin->timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(begin->note_speed_events_size()) +
                     " scan_extra_tick=" + std::to_string(begin->event_scan_extra_tick()) +
-                    " scan_til_count=" + std::to_string(begin->event_scan_til_size()));
+                    " scan_til_count=" + std::to_string(begin->event_scan_til_size()) +
+                    " scan=" + std::to_string(begin->scan()));
             return response;
         }
         if (request.has_begin_append_request())
