@@ -147,116 +147,6 @@ MpInteger LastNoteTick(const google::protobuf::RepeatedPtrField<margrete::rpc::v
     return tick;
 }
 
-MpInteger ScanUntilTick(const margrete::rpc::v1::ApplyEditPatchRequest &request)
-{
-    return LastNoteTick(request.notes()) + request.event_scan_extra_tick();
-}
-
-void DeleteMissingBpmEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request,
-                           MpInteger scanUntilTick)
-{
-    std::unordered_set<int> finalTicks;
-    for (const auto &eventProto : request.bpm_events())
-    {
-        finalTicks.insert(eventProto.tick());
-    }
-    for (MpInteger tick = 0; tick <= scanUntilTick; ++tick)
-    {
-        void *existing = nullptr;
-        if (!finalTicks.contains(tick) && chart.findEventBpm(tick, &existing) == MP_TRUE && existing)
-        {
-            Check(chart.deleteEvent(
-                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
-                  "failed to delete bpm event");
-        }
-    }
-}
-
-void DeleteMissingBeatChangeEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request,
-                                  MpInteger scanUntilTick)
-{
-    std::unordered_set<int> finalBars;
-    for (const auto &eventProto : request.beat_change_events())
-    {
-        finalBars.insert(eventProto.bar());
-    }
-    for (MpInteger bar = 0; bar <= scanUntilTick; ++bar)
-    {
-        void *existing = nullptr;
-        if (!finalBars.contains(bar) && chart.findEventBeatChange(bar, &existing) == MP_TRUE && existing)
-        {
-            Check(chart.deleteEvent(
-                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBeatChange *>(existing))),
-                  "failed to delete beat change event");
-        }
-    }
-}
-
-void DeleteMissingTimelineSpeedEvents(IMargretePluginChart &chart,
-                                      const margrete::rpc::v1::ApplyEditPatchRequest &request,
-                                      const google::protobuf::RepeatedField<int> &eventScanTil,
-                                      MpInteger scanUntilTick)
-{
-    std::set<std::pair<int, int>> finalKeys;
-    for (const auto &eventProto : request.timeline_speed_events())
-    {
-        finalKeys.emplace(eventProto.tick(), eventProto.timeline_id());
-    }
-    for (MpInteger tick = 0; tick <= scanUntilTick; ++tick)
-    {
-        for (const int timelineId : eventScanTil)
-        {
-            void *existing = nullptr;
-            if (!finalKeys.contains({tick, timelineId}) &&
-                chart.findEventTimelineSpeed(tick, timelineId, &existing) == MP_TRUE && existing)
-            {
-                Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(
-                          static_cast<IMargretePluginEventTimelineSpeed *>(existing))),
-                      "failed to delete timeline speed event");
-            }
-        }
-    }
-}
-
-void DeleteMissingNoteSpeedEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request,
-                                 MpInteger scanUntilTick)
-{
-    std::unordered_set<int> finalTicks;
-    for (const auto &eventProto : request.note_speed_events())
-    {
-        finalTicks.insert(eventProto.tick());
-    }
-    for (MpInteger tick = 0; tick <= scanUntilTick; ++tick)
-    {
-        void *existing = nullptr;
-        if (!finalTicks.contains(tick) && chart.findEventNoteSpeedModifier(tick, &existing) == MP_TRUE && existing)
-        {
-            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(
-                      static_cast<IMargretePluginEventNoteSpeedModifier *>(existing))),
-                  "failed to delete note speed event");
-        }
-    }
-}
-
-void ReconcileEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditPatchRequest &request,
-                     const google::protobuf::RepeatedField<int> &eventScanTil)
-{
-    if (request.event_scan_extra_tick() <= 0)
-    {
-        ApplyEvents(chart, request);
-        return;
-    }
-    const MpInteger scanUntilTick = ScanUntilTick(request);
-    DeleteMissingBpmEvents(chart, request, scanUntilTick);
-    DeleteMissingBeatChangeEvents(chart, request, scanUntilTick);
-    if (!eventScanTil.empty())
-    {
-        DeleteMissingTimelineSpeedEvents(chart, request, eventScanTil, scanUntilTick);
-    }
-    DeleteMissingNoteSpeedEvents(chart, request, scanUntilTick);
-    ApplyEvents(chart, request);
-}
-
 std::vector<IMargretePluginNote *> CurrentRootNotes(IMargretePluginChart &chart)
 {
     std::vector<IMargretePluginNote *> notes;
@@ -341,7 +231,7 @@ void DeleteAllRootNotes(IMargretePluginChart &chart)
     }
 }
 
-void ApplyEditDeltaNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditDeltaRequest &request)
+void ApplyEditNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditRequest &request)
 {
     if (request.replace_all_notes())
     {
@@ -404,7 +294,7 @@ void ApplyEditDeltaNotes(IMargretePluginChart &chart, const margrete::rpc::v1::A
     }
 }
 
-void ApplyEditDeltaEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditDeltaRequest &request)
+void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyEditRequest &request)
 {
     for (const int tick : request.bpm_ticks_delete())
     {
@@ -465,35 +355,10 @@ void ApplyEditDeltaEvents(IMargretePluginChart &chart, const margrete::rpc::v1::
 }
 } // namespace
 
-void TransactionApplier::ApplyAppend(MargreteSession &session,
-                                     const margrete::rpc::v1::ApplyAppendPatchRequest &request)
+void TransactionApplier::ApplyEdit(MargreteSession &session, const margrete::rpc::v1::ApplyEditRequest &request)
 {
     WithUndo(session, [&]() {
-        for (const auto &noteProto : request.notes())
-        {
-            if (noteProto.has_id())
-            {
-                throw std::invalid_argument("append patch cannot contain existing note ids");
-            }
-            IMargretePluginNote *note = CreateNoteTree(session.chart(), noteProto);
-            Check(session.chart().appendNote(note), "failed to append note");
-        }
-        ApplyEvents(session.chart(), request);
-    });
-}
-
-void TransactionApplier::ApplyEdit(MargreteSession &session, const margrete::rpc::v1::ApplyEditPatchRequest &request)
-{
-    WithUndo(session, [&]() {
-        ReconcileRootNotes(session.chart(), request.notes());
-        ReconcileEvents(session.chart(), request, request.event_scan_til());
-    });
-}
-
-void TransactionApplier::ApplyEditDelta(MargreteSession &session, const margrete::rpc::v1::ApplyEditDeltaRequest &request)
-{
-    WithUndo(session, [&]() {
-        ApplyEditDeltaNotes(session.chart(), request);
-        ApplyEditDeltaEvents(session.chart(), request);
+        ApplyEditNotes(session.chart(), request);
+        ApplyEditEvents(session.chart(), request);
     });
 }

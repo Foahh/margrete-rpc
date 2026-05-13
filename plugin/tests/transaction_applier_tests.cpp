@@ -4,12 +4,12 @@
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
 
-TEST_CASE("append patch appends notes and child trees inside undo recording")
+TEST_CASE("apply edit appends notes and child trees inside undo recording")
 {
     FakeContext context;
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyAppendPatchRequest request;
-    auto *note = request.add_notes();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *note = request.add_notes_upsert();
     note->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
     note->set_tick(960);
     note->set_x(4);
@@ -18,7 +18,7 @@ TEST_CASE("append patch appends notes and child trees inside undo recording")
     child->set_type(margrete::rpc::v1::NOTE_TYPE_AIR);
     child->set_tick(970);
 
-    TransactionApplier::ApplyAppend(session, request);
+    TransactionApplier::ApplyEdit(session, request);
 
     REQUIRE(context.undo.beginCount == 1);
     REQUIRE(context.undo.commitCount == 1);
@@ -32,12 +32,12 @@ TEST_CASE("event operation creates bpm event when key is empty")
 {
     FakeContext context;
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyAppendPatchRequest request;
-    auto *event = request.add_bpm_events();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *event = request.add_bpm_upsert();
     event->set_tick(0);
     event->set_bpm(180.0);
 
-    TransactionApplier::ApplyAppend(session, request);
+    TransactionApplier::ApplyEdit(session, request);
 
     REQUIRE(context.chart.createdBpmEvents.size() == 1);
     REQUIRE(context.chart.createdBpmEvents[0]->info.tick == 0);
@@ -50,12 +50,12 @@ TEST_CASE("event operation replaces bpm event when key overlaps")
     FakeContext context;
     auto *existing = context.chart.addExistingBpmEvent(0, 120.0);
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyAppendPatchRequest request;
-    auto *event = request.add_bpm_events();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *event = request.add_bpm_upsert();
     event->set_tick(0);
     event->set_bpm(185.0);
 
-    TransactionApplier::ApplyAppend(session, request);
+    TransactionApplier::ApplyEdit(session, request);
 
     REQUIRE(existing->info.bpm == 185.0);
     REQUIRE(context.chart.appendedEvents == 0);
@@ -65,13 +65,13 @@ TEST_CASE("event operation creates timeline speed by tick and timeline id")
 {
     FakeContext context;
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyAppendPatchRequest request;
-    auto *event = request.add_timeline_speed_events();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *event = request.add_til_upsert();
     event->set_tick(960);
     event->set_timeline_id(2);
     event->set_speed(0.75);
 
-    TransactionApplier::ApplyAppend(session, request);
+    TransactionApplier::ApplyEdit(session, request);
 
     REQUIRE(context.chart.createdTimelineSpeedEvents.size() == 1);
     REQUIRE(context.chart.createdTimelineSpeedEvents[0]->info.tick == 960);
@@ -83,16 +83,16 @@ TEST_CASE("event operation creates beat change and note speed events")
 {
     FakeContext context;
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyAppendPatchRequest request;
-    auto *beat = request.add_beat_change_events();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *beat = request.add_beat_upsert();
     beat->set_bar(4);
     beat->set_beats_per_bar(3);
     beat->set_beat_unit(8);
-    auto *speed = request.add_note_speed_events();
+    auto *speed = request.add_note_speed_upsert();
     speed->set_tick(1200);
     speed->set_speed(1.25);
 
-    TransactionApplier::ApplyAppend(session, request);
+    TransactionApplier::ApplyEdit(session, request);
 
     REQUIRE(context.chart.createdBeatEvents.size() == 1);
     REQUIRE(context.chart.createdBeatEvents[0]->info.bar == 4);
@@ -103,15 +103,15 @@ TEST_CASE("event operation creates beat change and note speed events")
     REQUIRE(context.chart.createdNoteSpeedEvents[0]->info.speed == 1.25);
 }
 
-TEST_CASE("edit patch in-place update does not duplicate root notes")
+TEST_CASE("apply edit in-place update does not duplicate root notes")
 {
     FakeContext context;
     auto *existing = context.chart.addExistingNote(10);
     existing->info.type = MP_NOTETYPE_TAP;
     existing->info.x = 1;
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyEditPatchRequest request;
-    auto *updated = request.add_notes();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *updated = request.add_notes_upsert();
     updated->set_id(10);
     updated->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
     updated->set_x(9);
@@ -123,19 +123,19 @@ TEST_CASE("edit patch in-place update does not duplicate root notes")
     REQUIRE(context.chart.appendedNotes == 0);
 }
 
-TEST_CASE("edit patch updates existing note and creates new note")
+TEST_CASE("apply edit updates existing note and creates new note")
 {
     FakeContext context;
     auto *existing = context.chart.addExistingNote(10);
     existing->info.type = MP_NOTETYPE_TAP;
     existing->info.x = 1;
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyEditPatchRequest request;
-    auto *updated = request.add_notes();
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *updated = request.add_notes_upsert();
     updated->set_id(10);
     updated->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
     updated->set_x(9);
-    auto *created = request.add_notes();
+    auto *created = request.add_notes_upsert();
     created->set_type(margrete::rpc::v1::NOTE_TYPE_AIR);
     created->set_tick(1200);
 
@@ -148,14 +148,14 @@ TEST_CASE("edit patch updates existing note and creates new note")
     REQUIRE(context.chart.appendedNotes == 1);
 }
 
-TEST_CASE("edit patch deletes existing note missing from final tree")
+TEST_CASE("apply edit deletes existing note by id")
 {
     FakeContext context;
     context.chart.addExistingNote(10);
     context.chart.addExistingNote(11);
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyEditPatchRequest request;
-    request.add_notes()->set_id(11);
+    margrete::rpc::v1::ApplyEditRequest request;
+    request.add_note_ids_delete(10);
 
     TransactionApplier::ApplyEdit(session, request);
 
@@ -164,27 +164,17 @@ TEST_CASE("edit patch deletes existing note missing from final tree")
     REQUIRE(context.chart.deletedNotes == 1);
 }
 
-TEST_CASE("edit patch reconciles scanned bpm events to final list")
+TEST_CASE("apply edit deletes bpm event by tick")
 {
     FakeContext context;
     auto *deleted = context.chart.addExistingBpmEvent(120, 150.0);
-    auto *updated = context.chart.addExistingBpmEvent(240, 160.0);
+    context.chart.addExistingBpmEvent(240, 160.0);
     MargreteSession session(context);
-    margrete::rpc::v1::ApplyEditPatchRequest request;
-    request.set_event_scan_extra_tick(300);
-    request.add_event_scan_til(0);
-    auto *event = request.add_bpm_events();
-    event->set_tick(240);
-    event->set_bpm(180.0);
-    auto *created = request.add_bpm_events();
-    created->set_tick(280);
-    created->set_bpm(190.0);
+    margrete::rpc::v1::ApplyEditRequest request;
+    request.add_bpm_ticks_delete(120);
 
     TransactionApplier::ApplyEdit(session, request);
 
-    REQUIRE(updated->info.bpm == 180.0);
-    REQUIRE(context.chart.createdBpmEvents.size() == 1);
-    REQUIRE(context.chart.createdBpmEvents[0]->info.tick == 280);
     REQUIRE(context.chart.deletedEvents == 1);
     REQUIRE(context.chart.deletedEventPointers.size() == 1);
     REQUIRE(context.chart.deletedEventPointers[0] == deleted);

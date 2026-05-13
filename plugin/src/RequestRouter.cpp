@@ -131,35 +131,11 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " scan=" + std::to_string(begin->scan()));
             return response;
         }
-        if (request.has_begin_append_request())
+        if (request.has_apply_edit_request())
         {
             MargreteSession session(*context);
-            response.mutable_begin_append_response()->set_current_tick(session.currentTick());
-            logInfo("begin_append ok id=" + std::to_string(request.request_id()) +
-                    " current_tick=" + std::to_string(response.begin_append_response().current_tick()));
-            return response;
-        }
-        if (request.has_apply_edit_patch_request())
-        {
-            MargreteSession session(*context);
-            const auto &req = request.apply_edit_patch_request();
-            logInfo("apply_edit start id=" + std::to_string(request.request_id()) + " notes=" +
-                    std::to_string(req.notes_size()) + " bpm_events=" + std::to_string(req.bpm_events_size()) +
-                    " beat_change_events=" + std::to_string(req.beat_change_events_size()) +
-                    " timeline_speed_events=" + std::to_string(req.timeline_speed_events_size()) +
-                    " note_speed_events=" + std::to_string(req.note_speed_events_size()) +
-                    " scan_extra_tick=" + std::to_string(req.event_scan_extra_tick()) +
-                    " scan_til_count=" + std::to_string(req.event_scan_til_size()));
-            TransactionApplier::ApplyEdit(session, request.apply_edit_patch_request());
-            response.mutable_apply_edit_patch_response();
-            logInfo("apply_edit ok id=" + std::to_string(request.request_id()));
-            return response;
-        }
-        if (request.has_apply_edit_delta_request())
-        {
-            MargreteSession session(*context);
-            const auto &req = request.apply_edit_delta_request();
-            logInfo("apply_edit_delta start id=" + std::to_string(request.request_id()) +
+            const auto &req = request.apply_edit_request();
+            logInfo("apply_edit start id=" + std::to_string(request.request_id()) +
                     " replace_all_notes=" + std::to_string(req.replace_all_notes()) +
                     " notes_upsert=" + std::to_string(req.notes_upsert_size()) +
                     " note_ids_delete=" + std::to_string(req.note_ids_delete_size()) +
@@ -171,23 +147,9 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " beat_bars_delete=" + std::to_string(req.beat_bars_delete_size()) +
                     " til_keys_delete=" + std::to_string(req.til_keys_delete_size()) +
                     " note_speed_ticks_delete=" + std::to_string(req.note_speed_ticks_delete_size()));
-            TransactionApplier::ApplyEditDelta(session, req);
-            response.mutable_apply_edit_delta_response();
-            logInfo("apply_edit_delta ok id=" + std::to_string(request.request_id()));
-            return response;
-        }
-        if (request.has_apply_append_patch_request())
-        {
-            MargreteSession session(*context);
-            const auto &req = request.apply_append_patch_request();
-            logInfo("apply_append start id=" + std::to_string(request.request_id()) + " notes=" +
-                    std::to_string(req.notes_size()) + " bpm_events=" + std::to_string(req.bpm_events_size()) +
-                    " beat_change_events=" + std::to_string(req.beat_change_events_size()) +
-                    " timeline_speed_events=" + std::to_string(req.timeline_speed_events_size()) +
-                    " note_speed_events=" + std::to_string(req.note_speed_events_size()));
-            TransactionApplier::ApplyAppend(session, request.apply_append_patch_request());
-            response.mutable_apply_append_patch_response();
-            logInfo("apply_append ok id=" + std::to_string(request.request_id()));
+            TransactionApplier::ApplyEdit(session, req);
+            response.mutable_apply_edit_response();
+            logInfo("apply_edit ok id=" + std::to_string(request.request_id()));
             return response;
         }
         auto resp = error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INVALID_ARGUMENT, "unsupported request");
@@ -261,14 +223,8 @@ const char *RequestRouter::requestKind(const margrete::rpc::v1::Envelope &reques
         return "ping";
     if (request.has_begin_edit_request())
         return "begin_edit";
-    if (request.has_begin_append_request())
-        return "begin_append";
-    if (request.has_apply_edit_patch_request())
+    if (request.has_apply_edit_request())
         return "apply_edit";
-    if (request.has_apply_edit_delta_request())
-        return "apply_edit_delta";
-    if (request.has_apply_append_patch_request())
-        return "apply_append";
     if (request.has_error_response())
         return "error_response";
     return "unknown";

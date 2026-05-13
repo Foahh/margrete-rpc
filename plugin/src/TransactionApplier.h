@@ -6,7 +6,5 @@
 class TransactionApplier
 {
   public:
-    static void ApplyAppend(MargreteSession &session, const margrete::rpc::v1::ApplyAppendPatchRequest &request);
-    static void ApplyEdit(MargreteSession &session, const margrete::rpc::v1::ApplyEditPatchRequest &request);
-    static void ApplyEditDelta(MargreteSession &session, const margrete::rpc::v1::ApplyEditDeltaRequest &request);
+    static void ApplyEdit(MargreteSession &session, const margrete::rpc::v1::ApplyEditRequest &request);
 };
