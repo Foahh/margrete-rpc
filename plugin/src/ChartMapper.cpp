@@ -1,7 +1,6 @@
 #include "ChartMapper.h"
 
 #include <algorithm>
-#include <set>
 #include <stdexcept>
 
 namespace

@@ -1,6 +1,5 @@
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-
 OLD_ENVELOPE_BODY_FIELDS = {
     "begin_append_request",
     "begin_append_response",

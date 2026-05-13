@@ -216,7 +216,8 @@ void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::Apply
         void *existing = nullptr;
         if (chart.findEventBpm(tick, &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
+            Check(chart.deleteEvent(
+                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
                   "failed to delete bpm event");
         }
     }
@@ -235,8 +236,8 @@ void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::Apply
         void *existing = nullptr;
         if (chart.findEventTimelineSpeed(key.tick(), key.timeline_id(), &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(
-                      static_cast<IMargretePluginEventTimelineSpeed *>(existing))),
+            Check(chart.deleteEvent(
+                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventTimelineSpeed *>(existing))),
                   "failed to delete timeline speed event");
         }
     }

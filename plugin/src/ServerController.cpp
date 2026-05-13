@@ -11,8 +11,8 @@ ServerController::ServerController(ServerConfig config)
         logger_.info("config path=" + config_.sourcePath.string() +
                      (config_.loadedFromFile ? " (loaded)" : " (not found; using defaults)"));
     }
-    logger_.info("config loaded host=" + config_.host + " port=" + std::to_string(config_.port) + " log=" +
-                 config_.logPath.string());
+    logger_.info("config loaded host=" + config_.host + " port=" + std::to_string(config_.port) +
+                 " log=" + config_.logPath.string());
 }
 
 bool ServerController::running() const noexcept

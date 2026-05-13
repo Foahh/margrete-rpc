@@ -49,4 +49,3 @@ TEST_CASE("config rejects non-localhost host")
 
     REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server host must be 127.0.0.1"));
 }
-

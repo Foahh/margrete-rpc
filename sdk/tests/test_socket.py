@@ -90,5 +90,7 @@ def test_generated_chart_transaction_messages_exist():
 
     assert begin_edit.HasField("begin_edit_request")
     assert apply_edit.HasField("apply_edit_request")
-    assert apply_edit.apply_edit_request.notes_upsert[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
+    assert (
+        apply_edit.apply_edit_request.notes_upsert[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
+    )
     assert apply_edit.apply_edit_request.bpm_upsert[0].bpm == 180.0
