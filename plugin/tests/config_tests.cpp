@@ -16,8 +16,8 @@ TEST_CASE("config uses defaults when file is missing")
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 48731);
     REQUIRE(config.logPath.filename().string() == "margrete-rpc.log");
-    REQUIRE(config.eventScanExtraTicks == 768000);
-    REQUIRE(config.eventScanMaxTil == 31);
+    REQUIRE(config.eventScanExtraTicks == 19200);
+    REQUIRE(config.eventScanMaxTil == 15);
 }
 
 TEST_CASE("config reads server section")
