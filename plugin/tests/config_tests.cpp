@@ -11,6 +11,8 @@ using Catch::Matchers::ContainsSubstring;
 TEST_CASE("config uses defaults when file is missing")
 {
     const ServerConfig config = LoadServerConfig("missing-file.ini");
+    REQUIRE(config.sourcePath.filename().string() == "missing-file.ini");
+    REQUIRE(config.loadedFromFile == false);
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 48731);
     REQUIRE(config.logPath.filename().string() == "margrete-rpc.log");
@@ -31,6 +33,8 @@ TEST_CASE("config reads server section")
 
     const ServerConfig config = LoadServerConfig(path);
 
+    REQUIRE(config.sourcePath == path);
+    REQUIRE(config.loadedFromFile == true);
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 49000);
     REQUIRE(config.logPath.filename().string() == "custom.log");

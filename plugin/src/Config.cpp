@@ -20,11 +20,13 @@ std::string Trim(std::string value)
 ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
 {
     ServerConfig config;
+    config.sourcePath = iniPath;
     std::ifstream in(iniPath);
     if (!in)
     {
         return config;
     }
+    config.loadedFromFile = true;
 
     std::string section;
     std::string line;

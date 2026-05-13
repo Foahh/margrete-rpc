@@ -6,6 +6,11 @@ ServerController::ServerController(ServerConfig config)
     : config_(std::move(config)), logger_(config_.logPath), router_(nullptr, config_)
 {
     router_.setLogger(&logger_);
+    if (!config_.sourcePath.empty())
+    {
+        logger_.info("config path=" + config_.sourcePath.string() +
+                     (config_.loadedFromFile ? " (loaded)" : " (not found; using defaults)"));
+    }
     logger_.info("config loaded host=" + config_.host + " port=" + std::to_string(config_.port) +
                  " log=" + config_.logPath.string() +
                  " event_scan_extra_ticks=" + std::to_string(config_.eventScanExtraTicks) +
