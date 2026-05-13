@@ -80,14 +80,15 @@ def test_generated_chart_transaction_messages_exist():
     begin_edit = messages_pb2.Envelope(
         begin_edit_request=messages_pb2.BeginEditRequest(name="edit")
     )
-    append = messages_pb2.Envelope(
-        apply_append_patch_request=messages_pb2.ApplyAppendPatchRequest(
-            name="append",
-            notes=[note],
-            bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=180.0)],
+    apply_edit = messages_pb2.Envelope(
+        apply_edit_request=messages_pb2.ApplyEditRequest(
+            name="edit",
+            notes_upsert=[note],
+            bpm_upsert=[messages_pb2.BpmEvent(tick=0, bpm=180.0)],
         )
     )
 
     assert begin_edit.HasField("begin_edit_request")
-    assert append.apply_append_patch_request.notes[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
-    assert append.apply_append_patch_request.bpm_events[0].bpm == 180.0
+    assert apply_edit.HasField("apply_edit_request")
+    assert apply_edit.apply_edit_request.notes_upsert[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
+    assert apply_edit.apply_edit_request.bpm_upsert[0].bpm == 180.0

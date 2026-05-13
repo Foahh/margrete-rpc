@@ -69,14 +69,8 @@ message Envelope {
     PingResponse ping_response = 3;
     BeginEditRequest begin_edit_request = 4;
     BeginEditResponse begin_edit_response = 5;
-    BeginAppendRequest begin_append_request = 6;
-    BeginAppendResponse begin_append_response = 7;
-    ApplyEditPatchRequest apply_edit_patch_request = 8;
-    ApplyEditPatchResponse apply_edit_patch_response = 9;
-    ApplyAppendPatchRequest apply_append_patch_request = 10;
-    ApplyAppendPatchResponse apply_append_patch_response = 11;
-    ApplyEditDeltaRequest apply_edit_delta_request = 13;
-    ApplyEditDeltaResponse apply_edit_delta_response = 14;
+    ApplyEditRequest apply_edit_request = 13;
+    ApplyEditResponse apply_edit_response = 14;
     ErrorResponse error_response = 12;
   }
 }
@@ -129,6 +123,7 @@ message BeginEditRequest {
   string name = 1;
   int32 event_scan_extra_tick = 2;
   repeated int32 event_scan_til = 3;
+  bool scan = 4;
 }
 
 message BeginEditResponse {
@@ -140,35 +135,15 @@ message BeginEditResponse {
   repeated NoteSpeedEvent note_speed_events = 6;
   int32 event_scan_extra_tick = 7;
   repeated int32 event_scan_til = 8;
+  bool scan = 9;
 }
-
-message BeginAppendRequest {
-  string name = 1;
-}
-
-message BeginAppendResponse {
-  int32 current_tick = 1;
-}
-
-message ApplyEditPatchRequest {
-  string name = 1;
-  repeated Note notes = 2;
-  repeated BpmEvent bpm_events = 3;
-  repeated BeatChangeEvent beat_change_events = 4;
-  repeated TimelineSpeedEvent timeline_speed_events = 5;
-  repeated NoteSpeedEvent note_speed_events = 6;
-  int32 event_scan_extra_tick = 7;
-  repeated int32 event_scan_til = 8;
-}
-
-message ApplyEditPatchResponse {}
 
 message TimelineSpeedKey {
   int32 tick = 1;
   int32 timeline_id = 2;
 }
 
-message ApplyEditDeltaRequest {
+message ApplyEditRequest {
   string name = 1;
 
   bool replace_all_notes = 2;
@@ -186,18 +161,7 @@ message ApplyEditDeltaRequest {
   repeated int32 note_speed_ticks_delete = 23;
 }
 
-message ApplyEditDeltaResponse {}
-
-message ApplyAppendPatchRequest {
-  string name = 1;
-  repeated Note notes = 2;
-  repeated BpmEvent bpm_events = 3;
-  repeated BeatChangeEvent beat_change_events = 4;
-  repeated TimelineSpeedEvent timeline_speed_events = 5;
-  repeated NoteSpeedEvent note_speed_events = 6;
-}
-
-message ApplyAppendPatchResponse {}
+message ApplyEditResponse {}
 
 message ErrorResponse {
   ErrorCode code = 1;
