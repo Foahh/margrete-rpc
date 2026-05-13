@@ -5,7 +5,7 @@
 #include "Config.h"
 #include "meta.h"
 
-Plugin::Plugin() : controller_(std::make_unique<ServerController>(LoadServerConfig("margrete-rpc.ini")))
+Plugin::Plugin() : controller_(std::make_unique<ServerController>(LoadServerConfig("plugins/margrete-rpc.ini")))
 {
 }
 
