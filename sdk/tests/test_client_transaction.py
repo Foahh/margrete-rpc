@@ -1,6 +1,6 @@
 import pytest
 
-from margrete_rpc import L, Margrete, Tap
+from margrete_rpc import L, LLChart, Margrete, Tap
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 
@@ -92,6 +92,12 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     assert begin_request.scan is False
     assert apply_request.replace_all_notes is False
     assert [note.tick for note in apply_request.notes_upsert] == [480, 720]
+
+
+def test_open_edit_ll_is_removed():
+    mg = Margrete(transport=FakeTransport([]))
+
+    assert not hasattr(mg, "open_edit_ll")
 
 
 def test_open_append_is_removed():
@@ -221,7 +227,8 @@ def test_scanned_replace_all_notes_strips_root_and_child_note_ids():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit_ll("ids") as tx:
+    with mg.open_edit("ids", raw_only=True) as tx:
+        assert isinstance(tx.chart, LLChart)
         tx.chart.raw_notes[0].x = 3
 
     apply_request = transport.requests[1].apply_edit_request
