@@ -64,7 +64,7 @@ See [`example`](../example/) for more complex usage.
 from margrete_rpc import Margrete
 ```
 
-- `Margrete(endpoint="127.0.0.1:48731", timeout=5.0)`
+- `Margrete(endpoint="127.0.0.1:48731", timeout=60.0)`
 - `ping() -> str`
 - `open_edit(name: str) -> EditTransaction` — context manager; snapshot note tree, commit on success
 - `open_append(name: str) -> AppendTransaction` — context manager; current tick only, append-only notes

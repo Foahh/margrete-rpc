@@ -47,7 +47,7 @@ def _recv_exact(sock: socket.socket, size: int) -> bytes:
 @dataclass
 class SocketRpcClient:
     endpoint: str
-    timeout: float = 5.0
+    timeout: float = 60.0
 
     def __post_init__(self) -> None:
         host, port_text = self.endpoint.rsplit(":", 1)

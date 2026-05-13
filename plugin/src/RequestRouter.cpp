@@ -72,9 +72,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
             ChartMapper::SnapshotForEdit(session.chart(), config_.eventScanExtraTicks, config_.eventScanMaxTil, *begin);
-            logInfo("begin_edit ok id=" + std::to_string(request.request_id()) +
-                    " current_tick=" + std::to_string(begin->current_tick()) +
-                    " notes=" + std::to_string(begin->notes_size()) +
+            logInfo("begin_edit ok id=" + std::to_string(request.request_id()) + " current_tick=" +
+                    std::to_string(begin->current_tick()) + " notes=" + std::to_string(begin->notes_size()) +
                     " bpm_events=" + std::to_string(begin->bpm_events_size()) +
                     " beat_change_events=" + std::to_string(begin->beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(begin->timeline_speed_events_size()) +
@@ -95,9 +94,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         {
             MargreteSession session(*context);
             const auto &req = request.apply_edit_patch_request();
-            logInfo("apply_edit start id=" + std::to_string(request.request_id()) +
-                    " notes=" + std::to_string(req.notes_size()) +
-                    " bpm_events=" + std::to_string(req.bpm_events_size()) +
+            logInfo("apply_edit start id=" + std::to_string(request.request_id()) + " notes=" +
+                    std::to_string(req.notes_size()) + " bpm_events=" + std::to_string(req.bpm_events_size()) +
                     " beat_change_events=" + std::to_string(req.beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(req.timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(req.note_speed_events_size()) +
@@ -112,9 +110,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         {
             MargreteSession session(*context);
             const auto &req = request.apply_append_patch_request();
-            logInfo("apply_append start id=" + std::to_string(request.request_id()) +
-                    " notes=" + std::to_string(req.notes_size()) +
-                    " bpm_events=" + std::to_string(req.bpm_events_size()) +
+            logInfo("apply_append start id=" + std::to_string(request.request_id()) + " notes=" +
+                    std::to_string(req.notes_size()) + " bpm_events=" + std::to_string(req.bpm_events_size()) +
                     " beat_change_events=" + std::to_string(req.beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(req.timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(req.note_speed_events_size()));

@@ -8,7 +8,7 @@ from margrete_rpc.transaction import AppendTransaction, EditTransaction
 
 class Margrete:
     def __init__(
-        self, endpoint: str = "127.0.0.1:48731", *, timeout: float = 5.0, transport=None
+        self, endpoint: str = "127.0.0.1:48731", *, timeout: float = 60.0, transport=None
     ) -> None:
         self._transport = transport if transport is not None else SocketRpcClient(endpoint, timeout)
 
