@@ -20,8 +20,8 @@ def test_open_edit_exposes_high_level_and_raw_notes_then_commits_both():
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    event_scan_until_tick=4800,
-                    event_scan_max_til=2,
+                    event_scan_extra_tick=19200,
+                    event_scan_til=[0, 2],
                     notes=[
                         messages_pb2.Note(
                             id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=1, width=2
@@ -49,8 +49,40 @@ def test_open_edit_exposes_high_level_and_raw_notes_then_commits_both():
     assert request.notes[1].id == 2
     assert request.notes[1].x == 9
     assert list(request.bpm_events) == [messages_pb2.BpmEvent(tick=0, bpm=185.0)]
-    assert request.event_scan_until_tick == 4800
-    assert request.event_scan_max_til == 2
+    assert request.event_scan_extra_tick == 19200
+    assert list(request.event_scan_til) == [0, 2]
+
+
+def test_open_edit_allows_overriding_event_scan_limits_sent_on_commit():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=960,
+                    event_scan_extra_tick=19200,
+                    event_scan_til=[0, 2],
+                    notes=[
+                        messages_pb2.Note(
+                            id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=1, width=2
+                        ),
+                    ],
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_patch_response=messages_pb2.ApplyEditPatchResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit(
+        "move",
+        event_scan_extra_tick=1,
+        event_scan_til=[1],
+    ) as tx:
+        tx.chart.notes[0].x = 5
+
+    request = transport.requests[1].apply_edit_patch_request
+    assert request.event_scan_extra_tick == 1
+    assert list(request.event_scan_til) == [1]
 
 
 def test_open_append_commits_high_level_notes_and_raw_notes():
@@ -80,6 +112,8 @@ def test_open_edit_ll_exposes_only_raw_notes():
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
+                    event_scan_extra_tick=19200,
+                    event_scan_til=[0, 2],
                     notes=[
                         messages_pb2.Note(
                             id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=1, width=2
@@ -98,6 +132,8 @@ def test_open_edit_ll_exposes_only_raw_notes():
 
     request = transport.requests[1].apply_edit_patch_request
     assert request.notes[0].x == 8
+    assert request.event_scan_extra_tick == 19200
+    assert list(request.event_scan_til) == [0, 2]
 
 
 def test_open_append_rejects_existing_note_ids_before_commit_request():

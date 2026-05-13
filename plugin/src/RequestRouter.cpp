@@ -11,7 +11,17 @@
 namespace
 {
 constexpr MpInteger kDefaultEventScanExtraTicks = 19200;
-constexpr MpInteger kDefaultEventScanMaxTil = 15;
+
+std::vector<std::int32_t> DefaultEventScanTil()
+{
+    std::vector<std::int32_t> tils;
+    tils.reserve(16);
+    for (std::int32_t til = 0; til <= 15; ++til)
+    {
+        tils.push_back(til);
+    }
+    return tils;
+}
 } // namespace
 
 RequestRouter::RequestRouter(IMargretePluginContext *context) : RequestRouter(context, ServerConfig{})
@@ -75,17 +85,39 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         if (request.has_begin_edit_request())
         {
             MargreteSession session(*context);
+            const auto &req = request.begin_edit_request();
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
-            ChartMapper::SnapshotForEdit(session.chart(), kDefaultEventScanExtraTicks, kDefaultEventScanMaxTil, *begin);
+
+            MpInteger scanExtraTick = req.event_scan_extra_tick();
+            if (scanExtraTick <= 0)
+            {
+                scanExtraTick = kDefaultEventScanExtraTicks;
+            }
+
+            std::vector<std::int32_t> scanTil;
+            if (req.event_scan_til_size() > 0)
+            {
+                scanTil.reserve(static_cast<std::size_t>(req.event_scan_til_size()));
+                for (const auto til : req.event_scan_til())
+                {
+                    scanTil.push_back(til);
+                }
+            }
+            else
+            {
+                scanTil = DefaultEventScanTil();
+            }
+
+            ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, *begin);
             logInfo("begin_edit ok id=" + std::to_string(request.request_id()) + " current_tick=" +
                     std::to_string(begin->current_tick()) + " notes=" + std::to_string(begin->notes_size()) +
                     " bpm_events=" + std::to_string(begin->bpm_events_size()) +
                     " beat_change_events=" + std::to_string(begin->beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(begin->timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(begin->note_speed_events_size()) +
-                    " scan_until_tick=" + std::to_string(begin->event_scan_until_tick()) +
-                    " scan_max_til=" + std::to_string(begin->event_scan_max_til()));
+                    " scan_extra_tick=" + std::to_string(begin->event_scan_extra_tick()) +
+                    " scan_til_count=" + std::to_string(begin->event_scan_til_size()));
             return response;
         }
         if (request.has_begin_append_request())
@@ -105,8 +137,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " beat_change_events=" + std::to_string(req.beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(req.timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(req.note_speed_events_size()) +
-                    " scan_until_tick=" + std::to_string(req.event_scan_until_tick()) +
-                    " scan_max_til=" + std::to_string(req.event_scan_max_til()));
+                    " scan_extra_tick=" + std::to_string(req.event_scan_extra_tick()) +
+                    " scan_til_count=" + std::to_string(req.event_scan_til_size()));
             TransactionApplier::ApplyEdit(session, request.apply_edit_patch_request());
             response.mutable_apply_edit_patch_response();
             logInfo("apply_edit ok id=" + std::to_string(request.request_id()));

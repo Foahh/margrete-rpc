@@ -76,7 +76,8 @@ TEST_CASE("router begins edit transaction with note snapshot")
     REQUIRE(response.begin_edit_response().current_tick() == 777);
     REQUIRE(response.begin_edit_response().notes_size() == 1);
     REQUIRE(response.begin_edit_response().notes(0).id() == 10);
-    REQUIRE(response.begin_edit_response().event_scan_until_tick() == 19323);
+    REQUIRE(response.begin_edit_response().event_scan_extra_tick() == 19200);
+    REQUIRE(response.begin_edit_response().event_scan_til_size() == 16);
     REQUIRE(response.begin_edit_response().bpm_events_size() == 1);
     REQUIRE(response.begin_edit_response().bpm_events(0).tick() == 200);
 }
@@ -96,5 +97,31 @@ TEST_CASE("router applies append patch")
     REQUIRE(response.request_id() == 21);
     REQUIRE(response.has_apply_append_patch_response());
     REQUIRE(context.chart.appendedNotes == 1);
+    REQUIRE(context.undo.commitCount == 1);
+}
+
+TEST_CASE("router applies edit delta patch without scan")
+{
+    FakeContext context;
+    context.chart.addExistingNote(10)->info.tick = 123;
+    context.chart.addExistingBpmEvent(200, 180.0);
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(22);
+    auto *delta = request.mutable_apply_edit_delta_request();
+    delta->set_name("edit_delta");
+    delta->set_replace_all_notes(true);
+    delta->add_notes_upsert()->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
+    delta->add_bpm_ticks_delete(200);
+    delta->add_bpm_upsert()->set_tick(240);
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 22);
+    REQUIRE(response.has_apply_edit_delta_response());
+    REQUIRE(context.chart.deletedNotes >= 1);
+    REQUIRE(context.chart.appendedNotes >= 1);
+    REQUIRE(context.chart.deletedEvents >= 1);
     REQUIRE(context.undo.commitCount == 1);
 }

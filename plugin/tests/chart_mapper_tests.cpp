@@ -48,10 +48,11 @@ TEST_CASE("chart mapper scans events through configured tick range")
     context.chart.addExistingBeatEvent(1, 3, 4);
 
     margrete::rpc::v1::BeginEditResponse response;
-    ChartMapper::SnapshotForEdit(context.chart, 200, 1500, response);
+    ChartMapper::SnapshotForEdit(context.chart, 200, {2}, response);
 
-    REQUIRE(response.event_scan_until_tick() == 1200);
-    REQUIRE(response.event_scan_max_til() == 1500);
+    REQUIRE(response.event_scan_extra_tick() == 200);
+    REQUIRE(response.event_scan_til_size() == 1);
+    REQUIRE(response.event_scan_til(0) == 2);
     REQUIRE(response.bpm_events_size() == 1);
     REQUIRE(response.bpm_events(0).tick() == 120);
     REQUIRE(response.bpm_events(0).bpm() == 180.0);

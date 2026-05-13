@@ -171,8 +171,8 @@ TEST_CASE("edit patch reconciles scanned bpm events to final list")
     auto *updated = context.chart.addExistingBpmEvent(240, 160.0);
     MargreteSession session(context);
     margrete::rpc::v1::ApplyEditPatchRequest request;
-    request.set_event_scan_until_tick(300);
-    request.set_event_scan_max_til(16384);
+    request.set_event_scan_extra_tick(300);
+    request.add_event_scan_til(0);
     auto *event = request.add_bpm_events();
     event->set_tick(240);
     event->set_bpm(180.0);

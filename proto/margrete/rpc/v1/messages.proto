@@ -75,6 +75,8 @@ message Envelope {
     ApplyEditPatchResponse apply_edit_patch_response = 9;
     ApplyAppendPatchRequest apply_append_patch_request = 10;
     ApplyAppendPatchResponse apply_append_patch_response = 11;
+    ApplyEditDeltaRequest apply_edit_delta_request = 13;
+    ApplyEditDeltaResponse apply_edit_delta_response = 14;
     ErrorResponse error_response = 12;
   }
 }
@@ -125,6 +127,8 @@ message NoteSpeedEvent {
 
 message BeginEditRequest {
   string name = 1;
+  int32 event_scan_extra_tick = 2;
+  repeated int32 event_scan_til = 3;
 }
 
 message BeginEditResponse {
@@ -134,8 +138,8 @@ message BeginEditResponse {
   repeated BeatChangeEvent beat_change_events = 4;
   repeated TimelineSpeedEvent timeline_speed_events = 5;
   repeated NoteSpeedEvent note_speed_events = 6;
-  int32 event_scan_until_tick = 7;
-  int32 event_scan_max_til = 8;
+  int32 event_scan_extra_tick = 7;
+  repeated int32 event_scan_til = 8;
 }
 
 message BeginAppendRequest {
@@ -153,11 +157,36 @@ message ApplyEditPatchRequest {
   repeated BeatChangeEvent beat_change_events = 4;
   repeated TimelineSpeedEvent timeline_speed_events = 5;
   repeated NoteSpeedEvent note_speed_events = 6;
-  int32 event_scan_until_tick = 7;
-  int32 event_scan_max_til = 8;
+  int32 event_scan_extra_tick = 7;
+  repeated int32 event_scan_til = 8;
 }
 
 message ApplyEditPatchResponse {}
+
+message TimelineSpeedKey {
+  int32 tick = 1;
+  int32 timeline_id = 2;
+}
+
+message ApplyEditDeltaRequest {
+  string name = 1;
+
+  bool replace_all_notes = 2;
+  repeated Note notes_upsert = 3;
+  repeated int32 note_ids_delete = 4;
+
+  repeated BpmEvent bpm_upsert = 10;
+  repeated BeatChangeEvent beat_upsert = 11;
+  repeated TimelineSpeedEvent til_upsert = 12;
+  repeated NoteSpeedEvent note_speed_upsert = 13;
+
+  repeated int32 bpm_ticks_delete = 20;
+  repeated int32 beat_bars_delete = 21;
+  repeated TimelineSpeedKey til_keys_delete = 22;
+  repeated int32 note_speed_ticks_delete = 23;
+}
+
+message ApplyEditDeltaResponse {}
 
 message ApplyAppendPatchRequest {
   string name = 1;
