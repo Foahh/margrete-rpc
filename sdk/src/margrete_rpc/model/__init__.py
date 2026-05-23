@@ -2,7 +2,7 @@
 
 from margrete_rpc.model.chart import Chart, ChartEvents, LLChart, normalize_event_operations
 from margrete_rpc.model.event import (
-    BeatChangeEvent,
+    BeatEvent,
     BpmEvent,
     NoteSpeedEvent,
     TimelineSpeedEvent,
@@ -38,7 +38,7 @@ __all__ = [
     "AirCrush",
     "AirCrushColor",
     "AirCrushOption",
-    "BeatChangeEvent",
+    "BeatEvent",
     "BpmEvent",
     "Chart",
     "ChartEvents",

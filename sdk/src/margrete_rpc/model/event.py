@@ -19,13 +19,13 @@ class BpmEvent:
 
 
 @dataclass
-class BeatChangeEvent:
+class BeatEvent:
     bar: int
     beats_per_bar: int
     beat_unit: int
 
     @classmethod
-    def from_proto(cls, proto: messages_pb2.BeatChangeEvent) -> BeatChangeEvent:
+    def from_proto(cls, proto: messages_pb2.BeatChangeEvent) -> BeatEvent:
         return cls(bar=proto.bar, beats_per_bar=proto.beats_per_bar, beat_unit=proto.beat_unit)
 
     def to_proto(self) -> messages_pb2.BeatChangeEvent:

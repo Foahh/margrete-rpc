@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model.event import (
-    BeatChangeEvent,
+    BeatEvent,
     BpmEvent,
     NoteSpeedEvent,
     TimelineSpeedEvent,
@@ -16,7 +16,7 @@ from margrete_rpc.model.note import HLNote, LLNote, UnsupportedNoteTree, wrap_ll
 @dataclass
 class ChartEvents:
     bpm: list[BpmEvent] = field(default_factory=list)
-    beat: list[BeatChangeEvent] = field(default_factory=list)
+    beat: list[BeatEvent] = field(default_factory=list)
     til: list[TimelineSpeedEvent] = field(default_factory=list)
     note_speed: list[NoteSpeedEvent] = field(default_factory=list)
 
@@ -60,7 +60,7 @@ class LLChart:
 def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEvents:
     return ChartEvents(
         bpm=[BpmEvent.from_proto(event) for event in response.bpm_events],
-        beat=[BeatChangeEvent.from_proto(event) for event in response.beat_change_events],
+        beat=[BeatEvent.from_proto(event) for event in response.beat_change_events],
         til=[TimelineSpeedEvent.from_proto(event) for event in response.timeline_speed_events],
         note_speed=[NoteSpeedEvent.from_proto(event) for event in response.note_speed_events],
     )

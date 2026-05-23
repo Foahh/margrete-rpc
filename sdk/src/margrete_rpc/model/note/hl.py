@@ -775,23 +775,29 @@ def _wrap_ground(note: LLNote) -> HLNote:
     if note.type is NoteType.TAP:
         wrapped: _GroundNote = Tap(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
     elif note.type is NoteType.EXTAP:
-        wrapped = Extap(
-            int(note.tick),
-            note.x,
-            note.width,
-            direction=note.direction,
-            _info=note.info,
-            _id=note.id,
-        )
+        try:
+            wrapped = Extap(
+                int(note.tick),
+                note.x,
+                note.width,
+                direction=note.direction,
+                _info=note.info,
+                _id=note.id,
+            )
+        except ValueError as exc:
+            raise UnsupportedNoteTree("unsupported extap direction") from exc
     elif note.type is NoteType.FLICK:
-        wrapped = Flick(
-            int(note.tick),
-            note.x,
-            note.width,
-            direction=note.direction,
-            _info=note.info,
-            _id=note.id,
-        )
+        try:
+            wrapped = Flick(
+                int(note.tick),
+                note.x,
+                note.width,
+                direction=note.direction,
+                _info=note.info,
+                _id=note.id,
+            )
+        except ValueError as exc:
+            raise UnsupportedNoteTree("unsupported flick direction") from exc
     elif note.type is NoteType.DAMAGE:
         wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
     else:
@@ -803,7 +809,10 @@ def _wrap_ground(note: LLNote) -> HLNote:
         child = note.children[0]
         if child.type is not NoteType.AIR:
             raise UnsupportedNoteTree("ground note child must be AIR")
-        wrapped_air = wrapped.air(child.direction)
+        try:
+            wrapped_air = wrapped.air(child.direction)
+        except ValueError as exc:
+            raise UnsupportedNoteTree("unsupported air direction") from exc
         wrapped_air._info = child.info.copy()
         wrapped_air._id = child.id
         if len(child.children) > 1:
@@ -841,14 +850,17 @@ def _wrap_attached_air(children: list[LLNote]) -> Air:
     child = children[0]
     if child.type is not NoteType.AIR:
         raise UnsupportedNoteTree("long note joint child must be AIR")
-    air = Air(
-        int(child.tick),
-        child.x,
-        child.width,
-        child.direction,
-        _info=child.info.copy(),
-        _id=child.id,
-    )
+    try:
+        air = Air(
+            int(child.tick),
+            child.x,
+            child.width,
+            child.direction,
+            _info=child.info.copy(),
+            _id=child.id,
+        )
+    except ValueError as exc:
+        raise UnsupportedNoteTree("unsupported air direction") from exc
     if len(child.children) > 1:
         raise UnsupportedNoteTree("air may have only one long action")
     if child.children:

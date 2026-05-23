@@ -5,7 +5,7 @@ from margrete_rpc import (
     AirCrushColor,
     AirCrushOption,
     AirDirection,
-    BeatChangeEvent,
+    BeatEvent,
     BpmEvent,
     Chart,
     ChartEvents,
@@ -92,6 +92,7 @@ def test_note_enums_remain_public_exports():
 
     assert NoteType.TAP.value == messages_pb2.NOTE_TYPE_TAP
     assert LongAttr.END_NOACT.value == messages_pb2.LONG_ATTR_END_NOACT
+    assert ExtapDirection.NONE.value == messages_pb2.DIRECTION_NONE
     assert ExtapDirection.UP.value == messages_pb2.DIRECTION_UP
     assert AirDirection.DOWNRIGHT.value == messages_pb2.DIRECTION_DOWNRIGHT
     assert ExtapDirection.OUTIN.value == messages_pb2.DIRECTION_OUTIN
@@ -273,7 +274,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
 
 def test_event_dataclasses_accept_required_fields_as_positional_arguments():
     assert BpmEvent(0, 120.0) == BpmEvent(tick=0, bpm=120.0)
-    assert BeatChangeEvent(0, 4, 4) == BeatChangeEvent(
+    assert BeatEvent(0, 4, 4) == BeatEvent(
         bar=0,
         beats_per_bar=4,
         beat_unit=4,
@@ -553,6 +554,7 @@ def test_ground_note_direction_is_available_only_on_extap_and_flick():
 @pytest.mark.parametrize(
     "direction",
     [
+        ExtapDirection.NONE,
         ExtapDirection.UP,
         ExtapDirection.DOWN,
         ExtapDirection.CENTER,
@@ -576,7 +578,6 @@ def test_extap_accepts_only_extap_directions(direction):
 @pytest.mark.parametrize(
     "direction",
     [
-        messages_pb2.DIRECTION_NONE,
         messages_pb2.DIRECTION_AUTO,
         messages_pb2.DIRECTION_UPLEFT,
     ],
@@ -1009,6 +1010,15 @@ def test_wrap_ll_note_rejects_many_air_children():
         wrap_ll_note(invalid)
 
 
+def test_wrap_ll_note_wraps_extap_with_none_direction():
+    ll = L.extap(0, 4, 2, direction=messages_pb2.DIRECTION_NONE)
+
+    wrapped = wrap_ll_note(ll)
+
+    assert isinstance(wrapped, Extap)
+    assert wrapped.direction is ExtapDirection.NONE
+
+
 def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
     response = messages_pb2.BeginEditResponse(
         current_tick=240,
@@ -1046,13 +1056,36 @@ def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
     assert chart.events.bpm == [BpmEvent(0, 120.0)]
 
 
+def test_chart_from_begin_edit_response_wraps_extap_with_none_direction():
+    response = messages_pb2.BeginEditResponse(
+        current_tick=240,
+        notes=[
+            messages_pb2.Note(
+                id=1,
+                type=messages_pb2.NOTE_TYPE_EXTAP,
+                direction=messages_pb2.DIRECTION_NONE,
+                tick=240,
+                x=1,
+                width=2,
+            ),
+        ],
+    )
+
+    chart = Chart.from_begin_edit_response(response)
+
+    assert len(chart.notes) == 1
+    assert chart.raw_notes == []
+    assert isinstance(chart.notes[0], Extap)
+    assert chart.notes[0].direction is ExtapDirection.NONE
+
+
 def test_event_normalization_uses_last_write_wins_by_key():
     chart = Chart(
         events=ChartEvents(
             bpm=[BpmEvent(0, 120.0), BpmEvent(0, 180.0)],
             beat=[
-                BeatChangeEvent(bar=0, beats_per_bar=3, beat_unit=4),
-                BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4),
+                BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
+                BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
             ],
             til=[
                 TimelineSpeedEvent(tick=960, timeline_id=1, speed=0.5),
@@ -1065,6 +1098,6 @@ def test_event_normalization_uses_last_write_wins_by_key():
     normalized = normalize_event_operations(chart)
 
     assert normalized.events.bpm == [BpmEvent(0, 180.0)]
-    assert normalized.events.beat == [BeatChangeEvent(0, 4, 4)]
+    assert normalized.events.beat == [BeatEvent(0, 4, 4)]
     assert normalized.events.til == [TimelineSpeedEvent(1, 960, 0.75)]
     assert normalized.events.note_speed == [NoteSpeedEvent(480, 1.25)]
