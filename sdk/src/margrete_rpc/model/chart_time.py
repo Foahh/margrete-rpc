@@ -29,11 +29,20 @@ def _require_int(name: str, value: object) -> int:
     return value
 
 
+def _assert_unique_beat_bars(events: list[BeatEvent]) -> None:
+    seen: set[int] = set()
+    for event in events:
+        if event.bar in seen:
+            raise ValueError(f"duplicate BeatEvent bar {event.bar}")
+        seen.add(event.bar)
+
+
 def _build_time_signatures(beat_events: Iterable[BeatEvent]) -> list[_TimeSignature]:
     ordered = sorted(
         (e for e in beat_events if e.bar >= 0),
         key=lambda e: e.bar,
     )
+    _assert_unique_beat_bars(ordered)
     segments: list[_TimeSignature] = []
     if ordered and ordered[0].bar == 0:
         first = ordered[0]

@@ -78,3 +78,28 @@ def test_chart_p2t_pos_and_three_int():
     chart = LLChart()
     assert chart.p2t(Pos(1, 0, 0)) == TICKS_PER_BEAT
     assert chart.p2t(0, 1, 0) == 480
+
+
+def test_t2p_rejects_duplicate_beat_bar():
+    events = [
+        BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
+        BeatEvent(bar=4, beats_per_bar=3, beat_unit=4),
+        BeatEvent(bar=4, beats_per_bar=6, beat_unit=8),
+    ]
+    with pytest.raises(ValueError, match="duplicate BeatEvent bar 4"):
+        t2p(0, beat_events=events)
+
+
+def test_chart_t2p_rejects_duplicate_beat_bar():
+    from margrete_rpc.model.chart import Chart, ChartEvents
+
+    chart = Chart(
+        events=ChartEvents(
+            beat=[
+                BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
+                BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
+            ]
+        )
+    )
+    with pytest.raises(ValueError, match="duplicate BeatEvent bar 0"):
+        chart.t2p(0)
