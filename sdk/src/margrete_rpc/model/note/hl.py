@@ -4,7 +4,6 @@ from enum import IntEnum
 from typing import Any, Protocol, cast, runtime_checkable
 
 from .ll import LLNote
-from .time import CrushDensity, Tick, TickDelta, beats_to_ticks
 from .types import (
     AirCrushColor,
     AirCrushOption,
@@ -104,79 +103,18 @@ def _direction_property(enum_type: type[IntEnum], label: str):
     return property(getter, setter)
 
 
-def _coerce_hl_tick_value(value: object) -> int:
-    if isinstance(value, Tick):
-        return int(value)
-    if type(value) is int:
-        return value
-    if type(value) is tuple and len(value) == 2 and type(value[0]) is int and type(value[1]) is int:
-        return beats_to_ticks(value)  # type: ignore[arg-type]
-    raise TypeError(
-        f"tick must be int, Tick, or (int, int) beat fraction, got {type(value).__name__}"
-    )
-
-
-class _NoteTickView(Tick):
-    __slots__ = ("_info",)
-
-    def __init__(self, info: NoteInfo) -> None:
-        object.__setattr__(self, "_info", info)
-        super().__init__(_NoteTickView._raw(info))
-
-    @staticmethod
-    def _raw(info: NoteInfo) -> int:
-        return int(info.__dict__["tick"])
-
-    def __int__(self) -> int:
-        return _NoteTickView._raw(self._info)
-
-    def __index__(self) -> int:
-        return int(self)
-
-    def __repr__(self) -> str:
-        return repr(int(self))
-
-    def __iadd__(self, other: TickDelta) -> _NoteTickView:
-        new = int(self) + beats_to_ticks(other)
-        if new < 0:
-            raise ValueError("tick must be non-negative")
-        self._info.__dict__["tick"] = new
-        object.__setattr__(self, "_value", new)
-        return self
-
-    def __isub__(self, other: TickDelta) -> _NoteTickView:
-        new = int(self) - beats_to_ticks(other)
-        if new < 0:
-            raise ValueError("tick must be non-negative")
-        self._info.__dict__["tick"] = new
-        object.__setattr__(self, "_value", new)
-        return self
-
-
 def _coerce_aircrush_density_value(value: object) -> int:
-    if isinstance(value, Tick):
-        return int(value)
     if isinstance(value, AirCrushOption):
         return int(value)
     if type(value) is int:
         return value
-    if type(value) is tuple and len(value) == 2 and type(value[0]) is int and type(value[1]) is int:
-        return beats_to_ticks(value)  # type: ignore[arg-type]
     raise TypeError(
-        f"density must be int, Tick, AirCrushOption, or (int, int), got {type(value).__name__}"
+        f"density must be int or AirCrushOption, got {type(value).__name__}"
     )
 
 
-def _geometry_tick_get(self: _GeometryInfoMixin) -> _NoteTickView:
-    return _NoteTickView(self._info)
-
-
-def _geometry_tick_set(self: _GeometryInfoMixin, value: object) -> None:
-    self._info.tick = _coerce_hl_tick_value(value)
-
-
 class _GeometryInfoMixin:
-    tick = property(_geometry_tick_get, _geometry_tick_set)
+    tick = _checked_info_property("tick", _check_tick)
     x = _info_property("x")
     width = _checked_info_property("width", _check_width)
     til = _info_property("timeline_id")
@@ -700,7 +638,7 @@ class AirCrush(_LongBuilder):
         width: int,
         *,
         height: int,
-        density: AirCrushOption | int | Tick | tuple[int, int],
+        density: AirCrushOption | int,
         color: AirCrushColor = AirCrushColor.DEF,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -710,8 +648,8 @@ class AirCrush(_LongBuilder):
         self.color = color
 
     @property
-    def density(self) -> CrushDensity:
-        return CrushDensity(self._info)
+    def density(self) -> int:
+        return int(self._info.option_value)
 
     @density.setter
     def density(self, value: object) -> None:

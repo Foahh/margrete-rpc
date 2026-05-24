@@ -30,7 +30,7 @@ from margrete_rpc import (
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
 from margrete_rpc.model.note import wrap_ll_note
-from margrete_rpc.model.note.time import TICKS_PER_BEAT, Tick, beats_to_ticks
+from margrete_rpc.model.note.time import TICKS_PER_BEAT, beats_to_ticks
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -308,15 +308,6 @@ def test_ll_note_tick_augmented_assignment_matches_direct_tick_math():
     assert note.tick == 300
 
 
-def test_tick_assignment_accepts_beat_fraction_tuple_on_hl_only():
-    note = L.tap(0, 4, 1)
-    note.tick = beats_to_ticks((1, 8))
-    assert note.tick == 240
-    tap = Tap(tick=960, x=4, width=2)
-    tap.tick = (1, 4)
-    assert tap.tick == 480
-
-
 def test_beats_to_ticks_rejects_non_whole_tick():
     with pytest.raises(ValueError, match="whole tick"):
         beats_to_ticks((1, 7))
@@ -334,16 +325,22 @@ def test_beats_to_ticks_rejects_non_int_types():
         beats_to_ticks("bad")  # type: ignore[arg-type]
 
 
-def test_tick_wraps_same_storage_for_ll_and_hl():
+def test_hl_and_ll_note_tick_are_plain_int():
     note = L.tap(0, 4, 1)
     assert type(note.tick) is int
     note.tick = note.tick + beats_to_ticks((1, 8))
     assert note.info.tick == 240
 
     tap = Tap(tick=0, x=4, width=2)
-    assert isinstance(tap.tick, Tick)
-    tap.tick += (1, 4)
-    assert int(tap.tick) == 480
+    assert type(tap.tick) is int
+    tap.tick = beats_to_ticks((1, 4))
+    assert tap.tick == 480
+
+
+def test_tick_subtracts_between_int_ticks():
+    crush = AirCrush(tick=100, x=4, width=2, height=80, density=5)
+    crush.control(105, x=6, width=2, height=120).end(110, x=8, width=2, height=80)
+    assert crush.joints[-1].tick - crush.tick == 10
 
 
 def test_note_round_trips_to_protobuf_with_children_and_id():
@@ -757,7 +754,7 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
     air = tap.air(AirDirection.DOWN)
     air.inverted = True
     air.til = 3
-    air.tick += (1, 4)
+    air.tick = air.tick + beats_to_ticks((1, 4))
 
     ll = tap.to_ll().children[0]
 
@@ -843,21 +840,13 @@ def test_air_crush_density_and_color_redirect_to_ll_storage_fields():
     assert ll.children[0].option_value == 0
 
 
-def test_air_crush_density_accepts_beat_tuple_and_iadd():
+def test_air_crush_density_is_plain_int():
     crush = AirCrush(tick=0, x=4, width=2, height=80, density=0)
-    crush.density = (1, 8)
+    crush.density = beats_to_ticks((1, 8))
     assert crush.density == 240
-    assert isinstance(crush.density, Tick)
-    crush.density += (1, 8)
+    assert type(crush.density) is int
+    crush.density = crush.density + beats_to_ticks((1, 8))
     assert crush.density == 480
-
-
-def test_air_crush_density_rejects_iadd_when_head_only():
-    crush = AirCrush(
-        tick=0, x=4, width=2, height=80, density=AirCrushOption.HEAD_ONLY, color=AirCrushColor.DEF
-    )
-    with pytest.raises(ValueError, match="HEAD_ONLY"):
-        crush.density += (1, 8)
 
 
 def test_wrap_ll_note_supports_air_hold_with_steps_attached_to_air():

@@ -1,6 +1,6 @@
 import pytest
 
-from margrete_rpc.model.note.time import TICKS_PER_BEAT, ticks_to_beats
+from margrete_rpc.model.note.time import TICKS_PER_BEAT, b2t, beats_to_ticks, t2b, ticks_to_beats
 
 
 def test_ticks_to_beats_reduced_fraction():
@@ -48,3 +48,10 @@ def test_ticks_to_beats_rejects_non_int_tick():
 def test_ticks_to_beats_rejects_non_int_denominator():
     with pytest.raises(TypeError, match="denominator must be int"):
         ticks_to_beats(240, denominator=8.0)  # type: ignore[arg-type]
+
+
+def test_b2t_and_t2b_aliases():
+    assert b2t((1, 8)) == 240
+    assert t2b(240) == (1, 8)
+    assert b2t is beats_to_ticks
+    assert t2b is ticks_to_beats
