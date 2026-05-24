@@ -432,6 +432,10 @@ class _LongBuilder(_GeometryInfoMixin):
     def joints(self) -> list[Joint]:
         return self._joints
 
+    @property
+    def duration(self) -> int:
+        return int(self._joints[-1].tick) - int(self.tick)
+
     def _add_joint(self, joint: Joint) -> None:
         if self._ended:
             raise ValueError("long note already ended")
