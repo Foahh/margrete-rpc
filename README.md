@@ -1,6 +1,6 @@
 # Margrete RPC
 
-**Margrete RPC** is a Margrete plugin + client SDKs that let you script **charting**.
+**Margrete RPC** is a Margrete plugin + client Python SDK that let you script **charting**.
 
 ## Motivation
 
@@ -10,20 +10,19 @@ specific transforms, but it can also feel brittle when you want to:
 - generate / adjust **complex pattern**
 - apply **chart edits** programmatically
 - iterate quickly with small patterns instead of manual editing
+- leverage agentic charting using Codex / Claude Code
 
-## Repository layout
+## Core repository content
 
 - **[`plugin/`](plugin/)**: the Margrete plugin that hosts the localhost RPC server  
   See [`plugin/README.md`](plugin/README.md) for server behavior and default configuration.
 - **[`sdk/`](sdk/)**: Python client for the supported RPC calls  
   See [`sdk/README.md`](sdk/README.md) for installation and usage.
-- **[`proto/`](proto/)**: protobuf schema shared by the plugin and SDKs.
 
 ## How it works (high level)
 
 - You start the server from inside Margrete by running the plugin command.
-- Your script connects to `127.0.0.1:48731` (by default).
-- Supported calls are defined in [`proto/margrete/rpc/v1/messages.proto`](proto/margrete/rpc/v1/messages.proto).
+- Your script communicates to Margrete by connecting to `127.0.0.1:48731` (by default).
 
 ## Quick start
 
