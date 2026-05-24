@@ -58,6 +58,32 @@ Use `open_edit(raw_only=True)` to work entirely with raw `LLNote` trees (`LLChar
 
 See [`example`](example/) for more complex usage.
 
+## Chart position (`t2p` / `p2t`)
+
+Convert absolute ticks to bar/beat/offset (and back), including time signature changes from `BeatEvent` data:
+
+```python
+from margrete_rpc import Margrete, Pos
+
+with Margrete().open_edit("…") as tx:
+    p = tx.chart.t2p(tx.current_tick)       # Pos(bar=…, beat=…, offset=…)
+    tick = tx.chart.p2t(p)
+    tick = tx.chart.p2t(0, 2, 0)           # bar, beat, offset
+```
+
+Module-level (no transaction):
+
+```python
+from margrete_rpc import Pos, t2p, p2t
+
+p = t2p(960, beat_events=chart.events.beat)
+```
+
+| API | Meaning |
+|-----|---------|
+| `b2t` / `beats_to_ticks` | Fractional beat tuple → tick offset within one beat |
+| `t2p` / `p2t` | Absolute tick ↔ `Pos` with measures and time signatures |
+
 ## Client: `Margrete`
 
 ```python
