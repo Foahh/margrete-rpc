@@ -93,6 +93,11 @@ class LLNote:
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
 
+    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> LLNote:
+        from .shift import _shift_ll
+
+        return _shift_ll(self, t=t, x=x, w=w, h=h)
+
 
 def _format_ll_note(note: LLNote, *, indent: int = 0) -> str:
     prefix = "  " * indent
