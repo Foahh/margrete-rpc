@@ -5,12 +5,9 @@ from fractions import Fraction
 from margrete_rpc.model.constant import TICKS_PER_BEAT
 
 
-def beats_to_ticks(beat: tuple[int, int]) -> int:
-    if type(beat) is not tuple or len(beat) != 2:
-        raise TypeError("beat must be a tuple of two ints")
-    numerator, denominator = beat
+def beats_to_ticks(numerator: int, denominator: int) -> int:
     if type(numerator) is not int or type(denominator) is not int:
-        raise TypeError("beat tuple must be (int, int)")
+        raise TypeError("numerator and denominator must be ints")
     if denominator <= 0:
         raise ValueError("denominator must be positive")
     if denominator > TICKS_PER_BEAT:

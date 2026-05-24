@@ -134,8 +134,8 @@ def test_new_note_api_is_exported_from_root_package():
     assert AirHold is not None
     assert issubclass(UnsupportedNoteTree, ValueError)
     assert TICKS_PER_BEAT == 1920
-    assert b2t((1, 4)) == 480
-    assert beats_to_ticks((1, 4)) == 480
+    assert b2t(1, 4) == 480
+    assert beats_to_ticks(1, 4) == 480
     assert NoopTracer() is not None
 
 
@@ -305,11 +305,11 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
 def test_ll_note_tick_uses_int_and_beats_to_ticks_for_fractions():
     note = L.tap(0, 4, 1)
     assert note.tick == 0
-    note.tick = note.tick + beats_to_ticks((1, 8))
+    note.tick = note.tick + beats_to_ticks(1, 8)
     assert note.tick == 240
-    note.tick = note.tick + beats_to_ticks((1, 8))
+    note.tick = note.tick + beats_to_ticks(1, 8)
     assert note.tick == 480
-    note.tick = note.tick - beats_to_ticks((1, 4))
+    note.tick = note.tick - beats_to_ticks(1, 4)
     assert note.tick == 0
 
 
@@ -325,30 +325,30 @@ def test_ll_note_tick_augmented_assignment_matches_direct_tick_math():
 
 def test_beats_to_ticks_rejects_non_whole_tick():
     with pytest.raises(ValueError, match="whole tick"):
-        beats_to_ticks((1, 7))
+        beats_to_ticks(1, 7)
 
 
 def test_beats_to_ticks_rejects_denominator_above_ticks_per_beat():
     with pytest.raises(ValueError, match="denominator must not exceed"):
-        beats_to_ticks((1, TICKS_PER_BEAT + 1))
+        beats_to_ticks(1, TICKS_PER_BEAT + 1)
 
 
 def test_beats_to_ticks_rejects_non_int_types():
     with pytest.raises(TypeError):
-        beats_to_ticks((1, 2.0))  # type: ignore[arg-type]
+        beats_to_ticks(1, 2.0)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        beats_to_ticks("bad")  # type: ignore[arg-type]
+        beats_to_ticks("bad", 4)  # type: ignore[arg-type]
 
 
 def test_hl_and_ll_note_tick_are_plain_int():
     note = L.tap(0, 4, 1)
     assert type(note.tick) is int
-    note.tick = note.tick + beats_to_ticks((1, 8))
+    note.tick = note.tick + beats_to_ticks(1, 8)
     assert note.info.tick == 240
 
     tap = Tap(tick=0, x=4, width=2)
     assert type(tap.tick) is int
-    tap.tick = beats_to_ticks((1, 4))
+    tap.tick = beats_to_ticks(1, 4)
     assert tap.tick == 480
 
 
@@ -769,7 +769,7 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
     air = tap.air(AirDirection.DOWN)
     air.inverted = True
     air.til = 3
-    air.tick = air.tick + beats_to_ticks((1, 4))
+    air.tick = air.tick + beats_to_ticks(1, 4)
 
     ll = tap.to_ll().children[0]
 
@@ -857,10 +857,10 @@ def test_air_crush_density_and_color_redirect_to_ll_storage_fields():
 
 def test_air_crush_density_is_plain_int():
     crush = AirCrush(tick=0, x=4, width=2, height=80, density=0)
-    crush.density = beats_to_ticks((1, 8))
+    crush.density = beats_to_ticks(1, 8)
     assert crush.density == 240
     assert type(crush.density) is int
-    crush.density = crush.density + beats_to_ticks((1, 8))
+    crush.density = crush.density + beats_to_ticks(1, 8)
     assert crush.density == 480
 
 
