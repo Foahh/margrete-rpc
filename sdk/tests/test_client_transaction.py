@@ -42,9 +42,11 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
     apply_request = transport.requests[1].apply_edit_request
     assert begin_request.scan is True
     assert apply_request.name == "move"
-    assert apply_request.replace_all_notes is True
+    assert apply_request.replace_all_notes is False
     assert len(apply_request.notes_upsert) == 1
-    assert not apply_request.notes_upsert[0].HasField("id")
+    assert apply_request.notes_upsert[0].id == 1
+    assert apply_request.notes_upsert[0].x == 5
+    assert apply_request.bpm_ticks_delete == []
 
 
 def test_open_edit_sends_event_scan_note_til_only():
@@ -195,7 +197,7 @@ def test_scanned_timeline_speed_value_edit_with_same_key_sends_apply_request():
     assert apply_request.til_upsert[0].speed == 1.5
 
 
-def test_scanned_replace_all_notes_strips_root_and_child_note_ids():
+def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
@@ -232,6 +234,78 @@ def test_scanned_replace_all_notes_strips_root_and_child_note_ids():
         tx.chart.raw_notes[0].x = 3
 
     apply_request = transport.requests[1].apply_edit_request
-    assert apply_request.replace_all_notes is True
+    assert apply_request.replace_all_notes is False
+    assert apply_request.notes_upsert[0].id == 1
+    assert apply_request.notes_upsert[0].x == 3
+    assert apply_request.note_ids_delete == []
+
+
+def test_scanned_note_edit_rebuilds_tree_when_children_change():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=960,
+                    scan=True,
+                    notes=[
+                        messages_pb2.Note(
+                            id=1,
+                            type=messages_pb2.NOTE_TYPE_HOLD,
+                            tick=0,
+                            x=1,
+                            width=2,
+                            children=[
+                                messages_pb2.Note(
+                                    id=2,
+                                    type=messages_pb2.NOTE_TYPE_HOLD,
+                                    tick=480,
+                                    x=1,
+                                    width=2,
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit("child", raw_only=True) as tx:
+        tx.chart.raw_notes[0].children[0].tick = 500
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.replace_all_notes is False
+    assert apply_request.note_ids_delete == [1]
+    assert len(apply_request.notes_upsert) == 1
     assert not apply_request.notes_upsert[0].HasField("id")
-    assert not apply_request.notes_upsert[0].children[0].HasField("id")
+    assert apply_request.notes_upsert[0].children[0].tick == 500
+
+
+def test_scanned_unchanged_events_send_no_deletes():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=960,
+                    scan=True,
+                    notes=[
+                        messages_pb2.Note(
+                            id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=0, width=1
+                        )
+                    ],
+                    bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit("note-only") as tx:
+        tx.chart.notes[0].x = 5
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.bpm_ticks_delete == []
+    assert apply_request.bpm_upsert == []

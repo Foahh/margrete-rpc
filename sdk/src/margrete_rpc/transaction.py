@@ -5,6 +5,7 @@ from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import Chart, LLChart, LLNote, normalize_event_operations
+from margrete_rpc.model.chart import ChartEvents
 from margrete_rpc.trace import NoopTracer, Tracer
 
 
@@ -46,22 +47,110 @@ def _event_signature_from_chart(chart: Chart | LLChart) -> bytes:
     )
 
 
-def _event_keys_from_chart(
-    chart: Chart | LLChart,
-) -> tuple[set[int], set[int], set[tuple[int, int]], set[int]]:
-    ev = chart.events
-    bpm_ticks = {int(e.tick) for e in ev.bpm}
-    beat_bars = {int(e.bar) for e in ev.beat}
-    til_keys = {(int(e.tick), int(e.timeline_id)) for e in ev.til}
-    note_speed_ticks = {int(e.tick) for e in ev.note_speed}
-    return bpm_ticks, beat_bars, til_keys, note_speed_ticks
-
-
 def _has_existing_note_id(notes: list[LLNote]) -> bool:
     for note in notes:
         if note.id is not None or _has_existing_note_id(note.children):
             return True
     return False
+
+
+def _clone_ll_note(note: LLNote) -> LLNote:
+    return LLNote.from_proto(note.to_proto())
+
+
+def _clone_chart_events(events: ChartEvents) -> ChartEvents:
+    from margrete_rpc.model.event import BeatEvent, BpmEvent, NoteSpeedEvent, TimelineSpeedEvent
+
+    return ChartEvents(
+        bpm=[BpmEvent.from_proto(event.to_proto()) for event in events.bpm],
+        beat=[BeatEvent.from_proto(event.to_proto()) for event in events.beat],
+        til=[TimelineSpeedEvent.from_proto(event.to_proto()) for event in events.til],
+        note_speed=[NoteSpeedEvent.from_proto(event.to_proto()) for event in events.note_speed],
+    )
+
+
+def _note_tree_sig(note: LLNote) -> bytes:
+    return _strip_note_ids(note).to_proto().SerializeToString()
+
+
+def _children_tree_sig(note: LLNote) -> bytes:
+    return b"\n".join(_note_tree_sig(child) for child in note.children)
+
+
+def _append_scanned_note_diffs(
+    request: messages_pb2.ApplyEditRequest,
+    orig_notes: list[LLNote],
+    final_notes: list[LLNote],
+) -> None:
+    orig_by_id = {note.id: note for note in orig_notes if note.id is not None}
+    final_ids = {note.id for note in final_notes if note.id is not None}
+
+    for note_id in orig_by_id:
+        if note_id not in final_ids:
+            request.note_ids_delete.append(note_id)
+
+    for note in final_notes:
+        if note.id is None:
+            request.notes_upsert.append(_strip_note_ids(note).to_proto())
+            continue
+        orig = orig_by_id.get(note.id)
+        if orig is None:
+            request.notes_upsert.append(_strip_note_ids(note).to_proto())
+            continue
+        if _note_tree_sig(orig) == _note_tree_sig(note):
+            continue
+        if _children_tree_sig(orig) == _children_tree_sig(note):
+            request.notes_upsert.append(note.to_proto())
+        else:
+            request.note_ids_delete.append(note.id)
+            request.notes_upsert.append(_strip_note_ids(note).to_proto())
+
+
+def _append_scanned_event_diffs(
+    request: messages_pb2.ApplyEditRequest,
+    orig_events: ChartEvents,
+    final_events: ChartEvents,
+) -> None:
+    orig_bpm = {int(event.tick): event for event in orig_events.bpm}
+    final_bpm = {int(event.tick): event for event in final_events.bpm}
+    for tick in orig_bpm:
+        if tick not in final_bpm:
+            request.bpm_ticks_delete.append(tick)
+    for tick, event in final_bpm.items():
+        if tick not in orig_bpm or event.to_proto().SerializeToString() != orig_bpm[tick].to_proto().SerializeToString():
+            request.bpm_upsert.append(event.to_proto())
+
+    orig_beat = {int(event.bar): event for event in orig_events.beat}
+    final_beat = {int(event.bar): event for event in final_events.beat}
+    for bar in orig_beat:
+        if bar not in final_beat:
+            request.beat_bars_delete.append(bar)
+    for bar, event in final_beat.items():
+        if bar not in orig_beat or event.to_proto().SerializeToString() != orig_beat[bar].to_proto().SerializeToString():
+            request.beat_upsert.append(event.to_proto())
+
+    orig_til = {(int(event.tick), int(event.timeline_id)): event for event in orig_events.til}
+    final_til = {(int(event.tick), int(event.timeline_id)): event for event in final_events.til}
+    for key in orig_til:
+        if key not in final_til:
+            tick, timeline_id = key
+            request.til_keys_delete.append(
+                messages_pb2.TimelineSpeedKey(tick=tick, timeline_id=timeline_id)
+            )
+    for key, event in final_til.items():
+        if key not in orig_til or event.to_proto().SerializeToString() != orig_til[key].to_proto().SerializeToString():
+            request.til_upsert.append(event.to_proto())
+
+    orig_note_speed = {int(event.tick): event for event in orig_events.note_speed}
+    final_note_speed = {int(event.tick): event for event in final_events.note_speed}
+    for tick in orig_note_speed:
+        if tick not in final_note_speed:
+            request.note_speed_ticks_delete.append(tick)
+    for tick, event in final_note_speed.items():
+        if tick not in orig_note_speed or event.to_proto().SerializeToString() != orig_note_speed[
+            tick
+        ].to_proto().SerializeToString():
+            request.note_speed_upsert.append(event.to_proto())
 
 
 @dataclass
@@ -77,10 +166,8 @@ class EditTransaction:
 
     _orig_notes_sig: bytes = b""
     _orig_events_sig: bytes = b""
-    _orig_bpm_ticks: set[int] | None = None
-    _orig_beat_bars: set[int] | None = None
-    _orig_til_keys: set[tuple[int, int]] | None = None
-    _orig_note_speed_ticks: set[int] | None = None
+    _orig_notes: list[LLNote] | None = None
+    _orig_events: ChartEvents | None = None
 
     def __enter__(self) -> EditTransaction:
         if self.tracer is None:
@@ -92,14 +179,11 @@ class EditTransaction:
         self._span_active.__enter__()
 
         if self.scan:
+            self._orig_notes = [_clone_ll_note(note) for note in _final_notes(self.chart)]
             self._orig_notes_sig = _notes_signature(_final_notes_without_ids(self.chart))
             normalized = normalize_event_operations(self.chart)
+            self._orig_events = _clone_chart_events(normalized.events)
             self._orig_events_sig = _event_signature_from_chart(normalized)
-            bpm, beat, til, note_speed = _event_keys_from_chart(normalized)
-            self._orig_bpm_ticks = bpm
-            self._orig_beat_bars = beat
-            self._orig_til_keys = til
-            self._orig_note_speed_ticks = note_speed
         return self
 
     def __exit__(
@@ -124,16 +208,16 @@ class EditTransaction:
                     ):
                         return False
 
-                    request.replace_all_notes = True
-                    request.notes_upsert.extend(note.to_proto() for note in final_notes)
-                    request.bpm_ticks_delete.extend(sorted(self._orig_bpm_ticks or set()))
-                    request.beat_bars_delete.extend(sorted(self._orig_beat_bars or set()))
-                    request.til_keys_delete.extend(
-                        messages_pb2.TimelineSpeedKey(tick=tick, timeline_id=timeline_id)
-                        for (tick, timeline_id) in sorted(self._orig_til_keys or set())
+                    request.replace_all_notes = False
+                    _append_scanned_note_diffs(
+                        request,
+                        self._orig_notes or [],
+                        _final_notes(self.chart),
                     )
-                    request.note_speed_ticks_delete.extend(
-                        sorted(self._orig_note_speed_ticks or set())
+                    _append_scanned_event_diffs(
+                        request,
+                        self._orig_events or ChartEvents(),
+                        normalized.events,
                     )
                 else:
                     final_notes = _final_notes(self.chart)
@@ -141,13 +225,12 @@ class EditTransaction:
                         raise ValueError("scan=false transactions cannot send existing note ids")
                     request.replace_all_notes = False
                     request.notes_upsert.extend(note.to_proto() for note in final_notes)
-
-                request.bpm_upsert.extend(event.to_proto() for event in normalized.events.bpm)
-                request.beat_upsert.extend(event.to_proto() for event in normalized.events.beat)
-                request.til_upsert.extend(event.to_proto() for event in normalized.events.til)
-                request.note_speed_upsert.extend(
-                    event.to_proto() for event in normalized.events.note_speed
-                )
+                    request.bpm_upsert.extend(event.to_proto() for event in normalized.events.bpm)
+                    request.beat_upsert.extend(event.to_proto() for event in normalized.events.beat)
+                    request.til_upsert.extend(event.to_proto() for event in normalized.events.til)
+                    request.note_speed_upsert.extend(
+                        event.to_proto() for event in normalized.events.note_speed
+                    )
 
                 with self.tracer.span(
                     "margrete.tx.apply",
