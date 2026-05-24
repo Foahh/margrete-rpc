@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Any, Protocol, cast, runtime_checkable
+from typing import Any, Protocol, Self, cast, runtime_checkable
 
 from .ll import LLNote
 from .types import (
@@ -25,6 +25,9 @@ class UnsupportedNoteTree(ValueError):
 class HLNote(Protocol):
     def to_ll(self, *, skip_validation: bool = False) -> LLNote:
         raise NotImplementedError
+
+    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self:
+        ...
 
 
 def _hl_enum_line(value: IntEnum | int) -> str:
@@ -120,7 +123,14 @@ class _GeometryInfoMixin:
     til = _info_property("timeline_id")
 
 
-class Air(_GeometryInfoMixin):
+class _ShiftMixin:
+    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self:
+        from .shift import _shift_hl
+
+        return _shift_hl(self, t=t, x=x, w=w, h=h)
+
+
+class Air(_GeometryInfoMixin, _ShiftMixin):
     def __init__(
         self,
         tick: int,
@@ -212,7 +222,7 @@ class Air(_GeometryInfoMixin):
         return note
 
 
-class _GroundNote(_GeometryInfoMixin):
+class _GroundNote(_GeometryInfoMixin, _ShiftMixin):
     def __init__(
         self,
         tick: int,
@@ -391,7 +401,7 @@ class Joint(_GeometryInfoMixin):
         self.height = height
 
 
-class _LongBuilder(_GeometryInfoMixin):
+class _LongBuilder(_GeometryInfoMixin, _ShiftMixin):
     _note_type: NoteType
 
     direction = _info_property("direction")

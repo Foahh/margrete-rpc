@@ -26,3 +26,24 @@ def test_llnote_shift_noop_when_all_zero():
     assert note.shift() is note
     assert note.info is before
     assert note.tick == 10
+
+
+from margrete_rpc import AirDirection, Tap
+
+
+def test_hl_ground_with_air_and_air_slide_shifts_all_nodes():
+    tap = Tap(tick=100, x=4, width=2)
+    tap.air(AirDirection.DOWN).slide(height=80).end(200, x=8, width=2, height=100)
+
+    tap.shift(t=5, h=10)
+
+    assert tap.tick == 105
+    assert tap.height == 90
+    air = tap._air
+    assert air.tick == 105
+    assert air.height == 90
+    slide = air._long_action
+    assert slide.tick == 105
+    assert slide.height == 90
+    assert slide.joints[-1].tick == 205
+    assert slide.joints[-1].height == 110
