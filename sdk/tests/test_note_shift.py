@@ -1,4 +1,4 @@
-from margrete_rpc import L, LLNote, NoteType
+from margrete_rpc import L, LLNote
 
 
 def _collect_geometry(note: LLNote) -> list[tuple[int, int, int, int]]:
