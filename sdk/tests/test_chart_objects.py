@@ -30,7 +30,8 @@ from margrete_rpc import (
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
 from margrete_rpc.model.note import wrap_ll_note
-from margrete_rpc.model.note.time import TICKS_PER_BEAT, beats_to_ticks
+from margrete_rpc.model.constant import TICKS_PER_BEAT
+from margrete_rpc.util.time import beats_to_ticks
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -120,8 +121,6 @@ def test_new_note_api_is_exported_from_root_package():
         UnsupportedNoteTree,
         b2t,
         beats_to_ticks,
-        t2b,
-        ticks_to_beats,
     )
 
     assert L.tap(0, 4, 2).type is NoteType.TAP
@@ -136,9 +135,7 @@ def test_new_note_api_is_exported_from_root_package():
     assert issubclass(UnsupportedNoteTree, ValueError)
     assert TICKS_PER_BEAT == 1920
     assert b2t((1, 4)) == 480
-    assert t2b(480) == (1, 4)
     assert beats_to_ticks((1, 4)) == 480
-    assert ticks_to_beats(480) == (1, 4)
     assert NoopTracer() is not None
 
 

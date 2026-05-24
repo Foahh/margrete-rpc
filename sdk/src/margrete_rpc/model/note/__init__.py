@@ -17,7 +17,6 @@ from .hl import (
     wrap_ll_note,
 )
 from .ll import L, LLNote
-from .time import TICKS_PER_BEAT, b2t, beats_to_ticks, t2b, ticks_to_beats
 from .types import (
     AirCrushColor,
     AirCrushOption,
@@ -54,11 +53,6 @@ __all__ = [
     "NoteType",
     "Slide",
     "Tap",
-    "TICKS_PER_BEAT",
     "UnsupportedNoteTree",
-    "b2t",
-    "beats_to_ticks",
-    "t2b",
-    "ticks_to_beats",
     "wrap_ll_note",
 ]

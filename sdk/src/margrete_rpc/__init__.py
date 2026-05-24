@@ -33,12 +33,9 @@ from margrete_rpc.model import (
     TICKS_PER_BEAT,
     TimelineSpeedEvent,
     UnsupportedNoteTree,
-    b2t,
-    beats_to_ticks,
-    t2b,
-    ticks_to_beats,
 )
 from margrete_rpc.trace import CallbackTracer, NoopTracer, TraceEvent, Tracer
+from margrete_rpc.util import b2t, beats_to_ticks
 
 __all__ = [
     "Air",
@@ -83,6 +80,4 @@ __all__ = [
     "UnsupportedNoteTree",
     "b2t",
     "beats_to_ticks",
-    "t2b",
-    "ticks_to_beats",
 ]

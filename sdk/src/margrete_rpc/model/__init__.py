@@ -1,6 +1,7 @@
 """Domain models."""
 
 from margrete_rpc.model.chart import Chart, ChartEvents, LLChart, normalize_event_operations
+from margrete_rpc.model.constant import TICKS_PER_BEAT
 from margrete_rpc.model.event import (
     BeatEvent,
     BpmEvent,
@@ -31,12 +32,7 @@ from margrete_rpc.model.note import (
     NoteType,
     Slide,
     Tap,
-    TICKS_PER_BEAT,
     UnsupportedNoteTree,
-    b2t,
-    beats_to_ticks,
-    t2b,
-    ticks_to_beats,
     wrap_ll_note,
 )
 
@@ -72,10 +68,6 @@ __all__ = [
     "Tap",
     "TICKS_PER_BEAT",
     "TimelineSpeedEvent",
-    "b2t",
-    "beats_to_ticks",
-    "t2b",
-    "ticks_to_beats",
     "UnsupportedNoteTree",
     "normalize_event_operations",
     "wrap_ll_note",
