@@ -63,3 +63,18 @@ def test_p2t_rejects_beat_out_of_range():
 def test_p2t_rejects_offset_out_of_range():
     with pytest.raises(ValueError, match="offset"):
         p2t(Pos(0, 0, 480), beat_events=[])
+
+
+def test_chart_t2p_delegates_to_module():
+    from margrete_rpc.model.chart import Chart, ChartEvents
+
+    chart = Chart(events=ChartEvents(beat=[BeatEvent(0, 4, 4)]))
+    assert chart.t2p(480) == Pos(0, 1, 0)
+
+
+def test_chart_p2t_pos_and_three_int():
+    from margrete_rpc.model.chart import LLChart
+
+    chart = LLChart()
+    assert chart.p2t(Pos(1, 0, 0)) == TICKS_PER_BEAT
+    assert chart.p2t(0, 1, 0) == 480
