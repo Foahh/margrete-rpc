@@ -8,7 +8,10 @@ from margrete_rpc.model.event import (
     TimelineSpeedEvent,
 )
 from margrete_rpc.model.note import (
+    Air,
     AirCrush,
+    AirHold,
+    AirSlide,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
@@ -38,8 +41,11 @@ from margrete_rpc.model.note import (
 )
 
 __all__ = [
+    "Air",
     "AirDirection",
     "AirCrush",
+    "AirHold",
+    "AirSlide",
     "AirCrushColor",
     "AirCrushOption",
     "BeatEvent",

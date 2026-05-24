@@ -1,7 +1,10 @@
 from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
 from margrete_rpc.client import Margrete
 from margrete_rpc.model import (
+    Air,
     AirCrush,
+    AirHold,
+    AirSlide,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
@@ -27,14 +30,22 @@ from margrete_rpc.model import (
     NoteType,
     Slide,
     Tap,
+    TICKS_PER_BEAT,
     TimelineSpeedEvent,
     UnsupportedNoteTree,
+    b2t,
+    beats_to_ticks,
+    t2b,
+    ticks_to_beats,
 )
-from margrete_rpc.trace import CallbackTracer, TraceEvent, Tracer
+from margrete_rpc.trace import CallbackTracer, NoopTracer, TraceEvent, Tracer
 
 __all__ = [
+    "Air",
     "AirDirection",
     "AirCrush",
+    "AirHold",
+    "AirSlide",
     "AirCrushColor",
     "AirCrushOption",
     "BeatEvent",
@@ -61,11 +72,17 @@ __all__ = [
     "NoteInfo",
     "NoteSpeedEvent",
     "NoteType",
+    "NoopTracer",
     "Slide",
     "Tap",
+    "TICKS_PER_BEAT",
     "TimelineSpeedEvent",
     "Tracer",
     "CallbackTracer",
     "TraceEvent",
     "UnsupportedNoteTree",
+    "b2t",
+    "beats_to_ticks",
+    "t2b",
+    "ticks_to_beats",
 ]

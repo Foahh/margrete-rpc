@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from .hl import (
+    Air,
     AirCrush,
+    AirHold,
+    AirSlide,
     Damage,
     Extap,
     Flick,
@@ -28,7 +31,10 @@ from .types import (
 )
 
 __all__ = [
+    "Air",
     "AirCrush",
+    "AirHold",
+    "AirSlide",
     "AirCrushColor",
     "AirCrushOption",
     "AirDirection",

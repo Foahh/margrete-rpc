@@ -104,15 +104,24 @@ def test_note_enums_remain_public_exports():
 
 def test_new_note_api_is_exported_from_root_package():
     from margrete_rpc import (
+        Air,
         AirCrush,
+        AirHold,
+        AirSlide,
         HLNote,
         Hold,
         L,
         LLNote,
+        NoopTracer,
         NoteInfo,
         Slide,
         Tap,
+        TICKS_PER_BEAT,
         UnsupportedNoteTree,
+        b2t,
+        beats_to_ticks,
+        t2b,
+        ticks_to_beats,
     )
 
     assert L.tap(0, 4, 2).type is NoteType.TAP
@@ -121,7 +130,16 @@ def test_new_note_api_is_exported_from_root_package():
     assert Hold is not None
     assert Slide is not None
     assert AirCrush is not None
+    assert Air is not None
+    assert AirSlide is not None
+    assert AirHold is not None
     assert issubclass(UnsupportedNoteTree, ValueError)
+    assert TICKS_PER_BEAT == 1920
+    assert b2t((1, 4)) == 480
+    assert t2b(480) == (1, 4)
+    assert beats_to_ticks((1, 4)) == 480
+    assert ticks_to_beats(480) == (1, 4)
+    assert NoopTracer() is not None
 
 
 def test_note_factories_require_geometry_and_specific_fields():
