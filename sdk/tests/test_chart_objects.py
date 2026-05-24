@@ -907,7 +907,7 @@ def test_long_note_begin_geometry_is_backed_by_note_info():
 
 def test_long_note_joint_geometry_is_backed_by_note_info():
     slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=3)
-    joint = slide._joints[0]
+    joint = slide.joints[0]
 
     assert joint.info.tick == 1440
     assert joint.info.x == 6
@@ -944,6 +944,21 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
     assert joint.info.option_value == 5
 
 
+def test_long_note_exposes_joints_for_iteration():
+    slide = (
+        Slide(tick=960, x=0, width=4)
+        .step(1440, x=6, width=3)
+        .end(1920, x=12, width=4)
+    )
+
+    assert slide.joints is slide._joints
+    assert [joint.long_attr for joint in slide.joints] == [
+        LongAttr.STEP,
+        LongAttr.END,
+    ]
+    assert slide.joints[-1].tick == 1920
+
+
 def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
     ll = L.slide_begin(960, 0, 4).child(
         L.slide_step(1440, 6, 3, timeline_id=2, ex_attr=ExAttr.HAS_NOTE),
@@ -951,7 +966,7 @@ def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
     )
 
     wrapped = wrap_ll_note(ll)
-    joint = wrapped._joints[0]
+    joint = wrapped.joints[0]
     joint.tick = 1680
     restored = wrapped.to_ll()
 
