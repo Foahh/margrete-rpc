@@ -1,4 +1,4 @@
-from margrete_rpc import L, LLNote
+from margrete_rpc import AirDirection, L, LLNote, Tap
 
 
 def _collect_geometry(note: LLNote) -> list[tuple[int, int, int, int]]:
@@ -26,9 +26,6 @@ def test_llnote_shift_noop_when_all_zero():
     assert note.shift() is note
     assert note.info is before
     assert note.tick == 10
-
-
-from margrete_rpc import AirDirection, Tap
 
 
 def test_hl_ground_with_air_and_air_slide_shifts_all_nodes():
