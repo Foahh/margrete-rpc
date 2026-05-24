@@ -1,3 +1,5 @@
+import copy
+
 from margrete_rpc import (
     AirCrush,
     AirCrushColor,
@@ -5,9 +7,11 @@ from margrete_rpc import (
     Hold,
     L,
     LLNote,
+    NoteType,
     Slide,
     Tap,
 )
+from margrete_rpc.model.note import wrap_ll_note
 
 
 def _collect_geometry(note: LLNote) -> list[tuple[int, int, int, int]]:
@@ -104,3 +108,42 @@ def test_hl_air_crush_shifts_begin_controls_and_end():
     assert crush.joints[1].height == 73
     assert crush.density == 5
     assert crush.color is AirCrushColor.RED
+
+
+def test_hl_shift_then_to_ll_matches_ll_shift_on_wrapped_tree():
+    tap = Tap(tick=100, x=4, width=2)
+    tap.air(AirDirection.DOWN).slide(height=80).end(200, x=8, width=2, height=100)
+
+    hl_path = copy.deepcopy(tap)
+    hl_path.shift(t=5, x=1, w=0, h=10)
+    hl_geom = _collect_geometry(hl_path.to_ll(skip_validation=True))
+
+    ll_path = wrap_ll_note(tap.to_ll(skip_validation=True))
+    ll_path.shift(t=5, x=1, w=0, h=10)
+    ll_geom = _collect_geometry(ll_path.to_ll(skip_validation=True))
+
+    assert hl_geom == ll_geom
+
+
+def test_shift_chaining_returns_same_object_and_composes():
+    tap = Tap(tick=10, x=4, width=2)
+    result = tap.shift(t=5).shift(x=2)
+    assert result is tap
+    assert tap.tick == 15
+    assert tap.x == 6
+
+
+def test_shift_does_not_validate_negative_tick_or_width():
+    tap = Tap(tick=5, x=0, width=2)
+    tap.shift(t=-10_000, w=-5)
+    assert tap.tick == -9995
+    assert tap.width == -3
+
+
+def test_shift_preserves_id_and_timeline_id():
+    note = L.tap(1, 2, 1, timeline_id=42)
+    note.id = 99
+    note.shift(t=3)
+    assert note.id == 99
+    assert note.timeline_id == 42
+    assert note.type is NoteType.TAP
