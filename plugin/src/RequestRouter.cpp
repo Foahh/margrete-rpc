@@ -198,6 +198,10 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         {
             MargreteSession session(*context);
             const bool success = session.undo().canUndo() == MP_TRUE && session.undo().undo() == MP_TRUE;
+            if (success)
+            {
+                session.update();
+            }
             response.mutable_undo_response()->set_success(success);
             logInfo("undo ok id=" + std::to_string(request.request_id()) + " success=" + std::to_string(success));
             return response;
@@ -206,6 +210,10 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         {
             MargreteSession session(*context);
             const bool success = session.undo().canRedo() == MP_TRUE && session.undo().redo() == MP_TRUE;
+            if (success)
+            {
+                session.update();
+            }
             response.mutable_redo_response()->set_success(success);
             logInfo("redo ok id=" + std::to_string(request.request_id()) + " success=" + std::to_string(success));
             return response;
