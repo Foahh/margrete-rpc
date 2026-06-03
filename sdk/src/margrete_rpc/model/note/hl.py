@@ -820,7 +820,9 @@ def _wrap_ground(note: LLNote) -> HLNote:
     if note.long_attr is not LongAttr.NONE:
         raise UnsupportedNoteTree("ground note must not have long_attr")
     if note.type is NoteType.TAP:
-        wrapped: _GroundNote = Tap(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
+        wrapped: _GroundNote = Tap(
+            int(note.tick), note.x, note.width, _info=note.info, _id=note._id
+        )
     elif note.type is NoteType.EXTAP:
         try:
             wrapped = Extap(

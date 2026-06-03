@@ -50,9 +50,7 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
 
 
 def test_ping_sends_request():
-    transport = FakeTransport(
-        [messages_pb2.Envelope(ping_response=messages_pb2.PingResponse())]
-    )
+    transport = FakeTransport([messages_pb2.Envelope(ping_response=messages_pb2.PingResponse())])
     mg = Margrete(transport=transport)
 
     assert mg.ping() is None

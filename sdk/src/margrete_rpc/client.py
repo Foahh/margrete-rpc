@@ -46,9 +46,7 @@ class Margrete:
 
     def ping(self) -> None:
         with self._tracer.span("margrete.client.ping"):
-            self._transport.request(
-                messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
-            )
+            self._transport.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
 
     def status(self) -> ServerStatus:
         with self._tracer.span("margrete.client.status"):
