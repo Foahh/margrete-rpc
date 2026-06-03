@@ -9,12 +9,12 @@ class MargreteSession
 
     MpInteger currentTick() const;
     IMargretePluginChart &chart() const;
-    IMargretePluginUndoBuffer &undo() const;
+    IMargretePluginUndoBuffer &undoBuffer() const;
     void update() const;
 
   private:
     IMargretePluginContext &context_;
     IMargretePluginDocument *document_{nullptr};
     IMargretePluginChart *chart_{nullptr};
-    IMargretePluginUndoBuffer *undo_{nullptr};
+    IMargretePluginUndoBuffer *undoBuffer_{nullptr};
 };

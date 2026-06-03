@@ -12,9 +12,9 @@ MargreteSession::MargreteSession(IMargretePluginContext &context) : context_(con
     {
         throw std::runtime_error("chart is unavailable");
     }
-    if (document_->getUndoBuffer(&undo_) != MP_TRUE || !undo_)
+    if (document_->getUndoBuffer(&undoBuffer_) != MP_TRUE || !undoBuffer_)
     {
-        throw std::runtime_error("undo buffer is unavailable");
+        throw std::runtime_error("undoBuffer buffer is unavailable");
     }
 }
 
@@ -28,9 +28,9 @@ IMargretePluginChart &MargreteSession::chart() const
     return *chart_;
 }
 
-IMargretePluginUndoBuffer &MargreteSession::undo() const
+IMargretePluginUndoBuffer &MargreteSession::undoBuffer() const
 {
-    return *undo_;
+    return *undoBuffer_;
 }
 
 void MargreteSession::update() const

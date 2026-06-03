@@ -197,7 +197,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         if (request.has_undo_request())
         {
             MargreteSession session(*context);
-            const bool success = session.undo().canUndo() == MP_TRUE && session.undo().undo() == MP_TRUE;
+            const bool success = session.undoBuffer().canUndo() == MP_TRUE && session.undoBuffer().undo() == MP_TRUE;
             if (success)
             {
                 session.update();
@@ -209,7 +209,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         if (request.has_redo_request())
         {
             MargreteSession session(*context);
-            const bool success = session.undo().canRedo() == MP_TRUE && session.undo().redo() == MP_TRUE;
+            const bool success = session.undoBuffer().canRedo() == MP_TRUE && session.undoBuffer().redo() == MP_TRUE;
             if (success)
             {
                 session.update();

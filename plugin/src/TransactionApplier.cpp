@@ -121,16 +121,16 @@ std::vector<IMargretePluginNote *> CurrentRootNotes(IMargretePluginChart &chart)
 
 template <typename Fn> void WithUndo(MargreteSession &session, Fn fn)
 {
-    Check(session.undo().beginRecording(), "failed to begin undo recording");
+    Check(session.undoBuffer().beginRecording(), "failed to begin undo recording");
     try
     {
         fn();
-        Check(session.undo().commitRecording(), "failed to commit undo recording");
+        Check(session.undoBuffer().commitRecording(), "failed to commit undo recording");
         session.update();
     }
     catch (...)
     {
-        session.undo().discardRecording();
+        session.undoBuffer().discardRecording();
         throw;
     }
 }
