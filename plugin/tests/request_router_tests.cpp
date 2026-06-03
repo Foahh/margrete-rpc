@@ -4,11 +4,13 @@
 #include "FakeMargrete.h"
 #include "RequestRouter.h"
 #include "margrete/rpc/v1/messages.pb.h"
+#include "meta.h"
 
 TEST_CASE("router responds to ping")
 {
     FakeContext context;
     RequestRouter router(&context);
+    router.setInstanceId("test-instance");
     margrete::rpc::v1::Envelope request;
     request.set_request_id(11);
     request.mutable_ping_request();
@@ -18,6 +20,10 @@ TEST_CASE("router responds to ping")
     REQUIRE(response.request_id() == 11);
     REQUIRE(response.has_ping_response());
     REQUIRE(response.ping_response().server_name() == "Margrete RPC");
+    REQUIRE(response.ping_response().server_version() == PRODUCT_VERSION);
+    REQUIRE(response.ping_response().server_build_time() == BUILD_TIME);
+    REQUIRE_FALSE(response.ping_response().server_build_time().empty());
+    REQUIRE(response.ping_response().instance_id() == "test-instance");
 }
 
 TEST_CASE("router retains context while it may be used by background requests")

@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
 from margrete_rpc.discovery import resolve_endpoint
 from margrete_rpc.model import Chart, LLChart
 from margrete_rpc.trace import NoopTracer, Tracer
 from margrete_rpc.transaction import EditTransaction
+
+
+@dataclass(frozen=True)
+class PingInfo:
+    server_name: str
+    server_version: str
+    server_build_time: str
+    instance_id: str
 
 
 class Margrete:
@@ -30,12 +40,18 @@ class Margrete:
                 endpoint = resolve_endpoint(instance_id, timeout=min(timeout, 1.0))
             self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
 
-    def ping(self) -> str:
+    def ping(self) -> PingInfo:
         with self._tracer.span("margrete.client.ping"):
             response = self._transport.request(
                 messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
             )
-        return response.ping_response.server_name
+        ping = response.ping_response
+        return PingInfo(
+            server_name=ping.server_name,
+            server_version=ping.server_version,
+            server_build_time=ping.server_build_time,
+            instance_id=ping.instance_id,
+        )
 
     def undo(self) -> bool:
         with self._tracer.span("margrete.client.undo"):

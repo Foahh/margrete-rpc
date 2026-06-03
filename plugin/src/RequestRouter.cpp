@@ -7,6 +7,7 @@
 #include "ChartMapper.h"
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
+#include "meta.h"
 
 namespace
 {
@@ -58,6 +59,12 @@ void RequestRouter::setConfig(ServerConfig config)
     config_ = std::move(config);
 }
 
+void RequestRouter::setInstanceId(std::string instanceId)
+{
+    std::scoped_lock lock(contextMutex_);
+    instanceId_ = std::move(instanceId);
+}
+
 void RequestRouter::setLogger(Logger *logger)
 {
     std::scoped_lock lock(contextMutex_);
@@ -74,7 +81,11 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         logInfo("request received id=" + std::to_string(request.request_id()) + " kind=" + requestKind(request));
         if (request.has_ping_request())
         {
-            response.mutable_ping_response()->set_server_name("Margrete RPC");
+            auto *ping = response.mutable_ping_response();
+            ping->set_server_name("Margrete RPC");
+            ping->set_server_version(PRODUCT_VERSION);
+            ping->set_server_build_time(BUILD_TIME);
+            ping->set_instance_id(instanceId_);
             logInfo("request handled id=" + std::to_string(request.request_id()) + " kind=ping ok");
             return response;
         }

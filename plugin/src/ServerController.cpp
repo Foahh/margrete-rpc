@@ -22,6 +22,7 @@ ServerController::ServerController(ServerConfig config)
       logPath_(ResolveLogPath(instanceId_)), logger_(logPath_), router_(nullptr, config_)
 {
     router_.setLogger(&logger_);
+    router_.setInstanceId(instanceId_);
     logConfig(config_, "config initialized");
     logger_.info("instance id=" + instanceId_);
 }

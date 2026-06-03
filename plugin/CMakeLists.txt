@@ -21,6 +21,8 @@ function(setup_metadata)
 endfunction()
 
 function(generate_configurations)
+    string(TIMESTAMP BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
+
     configure_file(config/margrete-rpc.ini.in ${CMAKE_CURRENT_BINARY_DIR}/margrete-rpc.ini @ONLY)
     configure_file(config/meta.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/meta.h @ONLY)
     configure_file(config/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/include/version.rc @ONLY)

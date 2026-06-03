@@ -1,5 +1,7 @@
 #include "Dialog.h"
 
+#include "meta.h"
+
 #include <exception>
 #include <iterator>
 #include <sstream>
@@ -243,7 +245,7 @@ struct ServerStatusWindow
         EnsureWindowClass();
 
         hwnd =
-            CreateWindowExW(WS_EX_DLGMODALFRAME, kDialogClassName, L"Margrete RPC", WS_CAPTION | WS_SYSMENU,
+            CreateWindowExW(WS_EX_DLGMODALFRAME, kDialogClassName, W_DIALOG_TITLE, WS_CAPTION | WS_SYSMENU,
                             CW_USEDEFAULT, CW_USEDEFAULT, 620, 390, parent, nullptr, GetModuleHandleW(nullptr), this);
         if (!hwnd)
         {

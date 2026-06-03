@@ -85,6 +85,9 @@ message PingRequest {}
 
 message PingResponse {
   string server_name = 1;
+  string server_version = 2;
+  string server_build_time = 3;
+  string instance_id = 4;
 }
 
 message Note {

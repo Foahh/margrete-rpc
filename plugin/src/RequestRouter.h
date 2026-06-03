@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <string>
 
 #include <MargretePlugin.h>
 
@@ -20,6 +21,7 @@ class RequestRouter
     margrete::rpc::v1::Envelope route(const margrete::rpc::v1::Envelope &request);
     void setContext(IMargretePluginContext *context);
     void setConfig(ServerConfig config);
+    void setInstanceId(std::string instanceId);
     void setLogger(Logger *logger);
 
   private:
@@ -34,4 +36,5 @@ class RequestRouter
     IMargretePluginContext *context_{nullptr};
     Logger *logger_{nullptr};
     ServerConfig config_;
+    std::string instanceId_;
 };
