@@ -138,7 +138,7 @@ HFONT CreateMessageFont(int pointSizeDelta = 0, LONG weight = FW_NORMAL)
     metrics.cbSize = sizeof(metrics);
     if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0) == 0)
     {
-        return static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+        return nullptr;
     }
 
     LOGFONTW font = metrics.lfMessageFont;

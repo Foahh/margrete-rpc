@@ -14,7 +14,7 @@ class MargreteSession
 
   private:
     IMargretePluginContext &context_;
-    IMargretePluginDocument *document_{nullptr};
-    IMargretePluginChart *chart_{nullptr};
-    IMargretePluginUndoBuffer *undoBuffer_{nullptr};
+    MargreteComPtr<IMargretePluginDocument> document_;
+    MargreteComPtr<IMargretePluginChart> chart_;
+    MargreteComPtr<IMargretePluginUndoBuffer> undoBuffer_;
 };

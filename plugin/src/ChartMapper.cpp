@@ -152,19 +152,23 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
         void *found = nullptr;
         if (chart.findEventBpm(tick, &found) == MP_TRUE && found)
         {
-            AddBpmEvent(*static_cast<IMargretePluginEventBpm *>(found), response);
+            MargreteComPtr<IMargretePluginEventBpm> event(static_cast<IMargretePluginEventBpm *>(found));
+            AddBpmEvent(*event, response);
         }
 
         found = nullptr;
         if (chart.findEventNoteSpeedModifier(tick, &found) == MP_TRUE && found)
         {
-            AddNoteSpeedEvent(*static_cast<IMargretePluginEventNoteSpeedModifier *>(found), response);
+            MargreteComPtr<IMargretePluginEventNoteSpeedModifier> event(
+                static_cast<IMargretePluginEventNoteSpeedModifier *>(found));
+            AddNoteSpeedEvent(*event, response);
         }
 
         found = nullptr;
         if (chart.findEventBeatChange(tick, &found) == MP_TRUE && found)
         {
-            AddBeatEvent(*static_cast<IMargretePluginEventBeatChange *>(found), response);
+            MargreteComPtr<IMargretePluginEventBeatChange> event(static_cast<IMargretePluginEventBeatChange *>(found));
+            AddBeatEvent(*event, response);
         }
 
         for (const std::int32_t timelineId : scanTil)
@@ -172,7 +176,9 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
             found = nullptr;
             if (chart.findEventTimelineSpeed(tick, timelineId, &found) == MP_TRUE && found)
             {
-                AddTimelineSpeedEvent(*static_cast<IMargretePluginEventTimelineSpeed *>(found), response);
+                MargreteComPtr<IMargretePluginEventTimelineSpeed> event(
+                    static_cast<IMargretePluginEventTimelineSpeed *>(found));
+                AddTimelineSpeedEvent(*event, response);
             }
         }
     }

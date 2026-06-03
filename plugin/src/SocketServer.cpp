@@ -34,11 +34,12 @@ void SocketServer::start()
 void SocketServer::stop()
 {
     running_.store(false);
-    if (listenSocket_ != ~uintptr_t{0})
+    const uintptr_t listenSocket = listenSocket_.exchange(InvalidSocketHandle);
+    if (listenSocket != InvalidSocketHandle)
     {
-        closesocket(static_cast<SOCKET>(listenSocket_));
-        listenSocket_ = ~uintptr_t{0};
+        closesocket(static_cast<SOCKET>(listenSocket));
     }
+    shutdownClients();
     if (thread_.joinable())
     {
         thread_.request_stop();
@@ -74,7 +75,14 @@ void SocketServer::run()
         WSACleanup();
         return;
     }
-    listenSocket_ = static_cast<uintptr_t>(srv);
+    listenSocket_.store(static_cast<uintptr_t>(srv));
+    const auto closeListenSocket = [&]() {
+        const uintptr_t previousListenSocket = listenSocket_.exchange(InvalidSocketHandle);
+        if (previousListenSocket == static_cast<uintptr_t>(srv))
+        {
+            closesocket(srv);
+        }
+    };
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -83,8 +91,7 @@ void SocketServer::run()
     {
         running_.store(false);
         logger_.error("invalid bind host=" + host_);
-        closesocket(srv);
-        listenSocket_ = ~uintptr_t{0};
+        closeListenSocket();
         WSACleanup();
         return;
     }
@@ -93,8 +100,7 @@ void SocketServer::run()
     {
         running_.store(false);
         logger_.error("bind failed");
-        closesocket(srv);
-        listenSocket_ = ~uintptr_t{0};
+        closeListenSocket();
         WSACleanup();
         return;
     }
@@ -103,8 +109,7 @@ void SocketServer::run()
     {
         running_.store(false);
         logger_.error("listen failed");
-        closesocket(srv);
-        listenSocket_ = ~uintptr_t{0};
+        closeListenSocket();
         WSACleanup();
         return;
     }
@@ -115,8 +120,7 @@ void SocketServer::run()
     {
         running_.store(false);
         logger_.error("getsockname failed");
-        closesocket(srv);
-        listenSocket_ = ~uintptr_t{0};
+        closeListenSocket();
         WSACleanup();
         return;
     }
@@ -129,6 +133,27 @@ void SocketServer::run()
     }
     while (running_.load())
     {
+        reapClientThreads(false);
+        fd_set readSet{};
+        FD_ZERO(&readSet);
+        FD_SET(srv, &readSet);
+        timeval timeout{};
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 250000;
+        const int ready = select(0, &readSet, nullptr, nullptr, &timeout);
+        if (ready == SOCKET_ERROR)
+        {
+            if (running_.load())
+            {
+                logger_.error("select failed");
+            }
+            break;
+        }
+        if (ready == 0)
+        {
+            continue;
+        }
+
         SOCKET client = accept(srv, nullptr, nullptr);
         if (client == INVALID_SOCKET)
         {
@@ -138,16 +163,58 @@ void SocketServer::run()
             }
             break;
         }
-        std::thread([this, client] { handleClient(static_cast<uintptr_t>(client)); }).detach();
+        const auto socketHandle = static_cast<uintptr_t>(client);
+        registerClient(socketHandle);
+        auto done = std::make_shared<std::atomic_bool>(false);
+        try
+        {
+            {
+                std::scoped_lock lock(clientMutex_);
+                clientThreads_.push_back(ClientThread{std::thread{}, done});
+            }
+            std::thread clientThread([this, socketHandle, done] {
+                handleClient(socketHandle);
+                done->store(true);
+            });
+            {
+                std::scoped_lock lock(clientMutex_);
+                for (auto &entry : clientThreads_)
+                {
+                    if (entry.done == done)
+                    {
+                        entry.thread = std::move(clientThread);
+                        break;
+                    }
+                }
+            }
+        }
+        catch (const std::exception &ex)
+        {
+            logger_.error(std::string("client thread creation failed: ") + ex.what());
+            {
+                std::scoped_lock lock(clientMutex_);
+                auto it = clientThreads_.begin();
+                while (it != clientThreads_.end())
+                {
+                    if (it->done == done)
+                    {
+                        it = clientThreads_.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+            }
+            closeClient(socketHandle);
+        }
     }
 
     running_.store(false);
     actualPort_.store(0);
-    if (listenSocket_ == static_cast<uintptr_t>(srv))
-    {
-        closesocket(srv);
-        listenSocket_ = ~uintptr_t{0};
-    }
+    closeListenSocket();
+    shutdownClients();
+    reapClientThreads(true);
     WSACleanup();
     logger_.info("server stopped");
 }
@@ -195,5 +262,56 @@ void SocketServer::handleClient(uintptr_t socketHandle)
     {
         logger_.error(std::string(ex.what()));
     }
-    closesocket(client);
+    closeClient(socketHandle);
+}
+
+void SocketServer::registerClient(uintptr_t socketHandle)
+{
+    std::scoped_lock lock(clientMutex_);
+    clientSockets_.insert(socketHandle);
+}
+
+void SocketServer::closeClient(uintptr_t socketHandle)
+{
+    std::scoped_lock lock(clientMutex_);
+    clientSockets_.erase(socketHandle);
+    closesocket(static_cast<SOCKET>(socketHandle));
+}
+
+void SocketServer::shutdownClients()
+{
+    std::scoped_lock lock(clientMutex_);
+    for (const uintptr_t socketHandle : clientSockets_)
+    {
+        shutdown(static_cast<SOCKET>(socketHandle), SD_BOTH);
+    }
+}
+
+void SocketServer::reapClientThreads(bool joinAll)
+{
+    std::vector<std::thread> threadsToJoin;
+    {
+        std::scoped_lock lock(clientMutex_);
+        auto it = clientThreads_.begin();
+        while (it != clientThreads_.end())
+        {
+            if (joinAll || it->done->load())
+            {
+                threadsToJoin.push_back(std::move(it->thread));
+                it = clientThreads_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
+    for (auto &thread : threadsToJoin)
+    {
+        if (thread.joinable())
+        {
+            thread.join();
+        }
+    }
 }

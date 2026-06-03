@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "ChartMapper.h"
@@ -17,18 +18,76 @@ void Check(MpBoolean ok, const char *message)
     }
 }
 
-IMargretePluginNote *CreateNoteTree(IMargretePluginChart &chart, const margrete::rpc::v1::Note &proto)
+template <typename T> class ScopedMargretePtr
+{
+  public:
+    explicit ScopedMargretePtr(T *ptr = nullptr) : ptr_(ptr)
+    {
+    }
+
+    ScopedMargretePtr(const ScopedMargretePtr &) = delete;
+    ScopedMargretePtr &operator=(const ScopedMargretePtr &) = delete;
+
+    ScopedMargretePtr(ScopedMargretePtr &&other) noexcept : ptr_(std::exchange(other.ptr_, nullptr))
+    {
+    }
+
+    ScopedMargretePtr &operator=(ScopedMargretePtr &&other) noexcept
+    {
+        if (this != &other)
+        {
+            reset(std::exchange(other.ptr_, nullptr));
+        }
+        return *this;
+    }
+
+    ~ScopedMargretePtr()
+    {
+        reset();
+    }
+
+    T *get() const
+    {
+        return ptr_;
+    }
+
+    T *operator->() const
+    {
+        return ptr_;
+    }
+
+    T *detach()
+    {
+        return std::exchange(ptr_, nullptr);
+    }
+
+    void reset(T *ptr = nullptr)
+    {
+        if (ptr_)
+        {
+            ptr_->release();
+        }
+        ptr_ = ptr;
+    }
+
+  private:
+    T *ptr_{nullptr};
+};
+
+ScopedMargretePtr<IMargretePluginNote> CreateNoteTree(IMargretePluginChart &chart, const margrete::rpc::v1::Note &proto)
 {
     IMargretePluginNote *note = nullptr;
     Check(chart.createNote(&note), "failed to create note");
+    ScopedMargretePtr<IMargretePluginNote> owned(note);
     const MP_NOTEINFO info = ChartMapper::ProtoToNoteInfo(proto);
-    note->setInfo(&info);
+    owned->setInfo(&info);
     for (const auto &childProto : proto.children())
     {
-        IMargretePluginNote *child = CreateNoteTree(chart, childProto);
-        Check(note->appendChild(child), "failed to append child note");
+        auto child = CreateNoteTree(chart, childProto);
+        Check(owned->appendChild(child.get()), "failed to append child note");
+        child.detach();
     }
-    return note;
+    return owned;
 }
 
 void UpsertNoteTree(IMargretePluginNote &existing, const margrete::rpc::v1::Note &proto)
@@ -75,15 +134,16 @@ void ApplyBpmEvent(IMargretePluginChart &chart, const margrete::rpc::v1::BpmEven
     info.bpm = proto.bpm();
     if (chart.findEventBpm(proto.tick(), &existing) == MP_TRUE && existing)
     {
-        auto *event = static_cast<IMargretePluginEventBpm *>(existing);
+        MargreteComPtr<IMargretePluginEventBpm> event(static_cast<IMargretePluginEventBpm *>(existing));
         event->setInfo(&info);
         return;
     }
     void *created = nullptr;
     Check(chart.createEvent(IID_IMargretePluginEventBpm, &created), "failed to create bpm event");
-    auto *event = static_cast<IMargretePluginEventBpm *>(created);
+    ScopedMargretePtr<IMargretePluginEventBpm> event(static_cast<IMargretePluginEventBpm *>(created));
     event->setInfo(&info);
-    Check(chart.appendEvent(event), "failed to append bpm event");
+    Check(chart.appendEvent(event.get()), "failed to append bpm event");
+    event.detach();
 }
 
 void ApplyBeatChangeEvent(IMargretePluginChart &chart, const margrete::rpc::v1::BeatChangeEvent &proto)
@@ -95,14 +155,16 @@ void ApplyBeatChangeEvent(IMargretePluginChart &chart, const margrete::rpc::v1::
     info.beatUnit = proto.beat_unit();
     if (chart.findEventBeatChange(proto.bar(), &existing) == MP_TRUE && existing)
     {
-        static_cast<IMargretePluginEventBeatChange *>(existing)->setInfo(&info);
+        MargreteComPtr<IMargretePluginEventBeatChange> event(static_cast<IMargretePluginEventBeatChange *>(existing));
+        event->setInfo(&info);
         return;
     }
     void *created = nullptr;
     Check(chart.createEvent(IID_IMargretePluginEventBeatChange, &created), "failed to create beat event");
-    auto *event = static_cast<IMargretePluginEventBeatChange *>(created);
+    ScopedMargretePtr<IMargretePluginEventBeatChange> event(static_cast<IMargretePluginEventBeatChange *>(created));
     event->setInfo(&info);
-    Check(chart.appendEvent(event), "failed to append beat event");
+    Check(chart.appendEvent(event.get()), "failed to append beat event");
+    event.detach();
 }
 
 void ApplyTimelineSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v1::TimelineSpeedEvent &proto)
@@ -114,14 +176,18 @@ void ApplyTimelineSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v
     info.speed = proto.speed();
     if (chart.findEventTimelineSpeed(proto.tick(), proto.timeline_id(), &existing) == MP_TRUE && existing)
     {
-        static_cast<IMargretePluginEventTimelineSpeed *>(existing)->setInfo(&info);
+        MargreteComPtr<IMargretePluginEventTimelineSpeed> event(
+            static_cast<IMargretePluginEventTimelineSpeed *>(existing));
+        event->setInfo(&info);
         return;
     }
     void *created = nullptr;
     Check(chart.createEvent(IID_IMargretePluginEventTimelineSpeed, &created), "failed to create timeline speed event");
-    auto *event = static_cast<IMargretePluginEventTimelineSpeed *>(created);
+    ScopedMargretePtr<IMargretePluginEventTimelineSpeed> event(
+        static_cast<IMargretePluginEventTimelineSpeed *>(created));
     event->setInfo(&info);
-    Check(chart.appendEvent(event), "failed to append timeline speed event");
+    Check(chart.appendEvent(event.get()), "failed to append timeline speed event");
+    event.detach();
 }
 
 void ApplyNoteSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v1::NoteSpeedEvent &proto)
@@ -132,14 +198,18 @@ void ApplyNoteSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v1::N
     info.speed = proto.speed();
     if (chart.findEventNoteSpeedModifier(proto.tick(), &existing) == MP_TRUE && existing)
     {
-        static_cast<IMargretePluginEventNoteSpeedModifier *>(existing)->setInfo(&info);
+        MargreteComPtr<IMargretePluginEventNoteSpeedModifier> event(
+            static_cast<IMargretePluginEventNoteSpeedModifier *>(existing));
+        event->setInfo(&info);
         return;
     }
     void *created = nullptr;
     Check(chart.createEvent(IID_IMargretePluginEventNoteSpeedModifier, &created), "failed to create note speed event");
-    auto *event = static_cast<IMargretePluginEventNoteSpeedModifier *>(created);
+    ScopedMargretePtr<IMargretePluginEventNoteSpeedModifier> event(
+        static_cast<IMargretePluginEventNoteSpeedModifier *>(created));
     event->setInfo(&info);
-    Check(chart.appendEvent(event), "failed to append note speed event");
+    Check(chart.appendEvent(event.get()), "failed to append note speed event");
+    event.detach();
 }
 
 std::vector<MargreteComPtr<IMargretePluginNote>> CurrentRootNotes(IMargretePluginChart &chart)
@@ -203,8 +273,9 @@ void ApplyEditNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyE
             {
                 throw std::invalid_argument("replace_all_notes cannot contain existing note ids");
             }
-            IMargretePluginNote *note = CreateNoteTree(chart, noteProto);
-            Check(chart.appendNote(note), "failed to append desired root note");
+            auto note = CreateNoteTree(chart, noteProto);
+            Check(chart.appendNote(note.get()), "failed to append desired root note");
+            note.detach();
         }
         return;
     }
@@ -261,8 +332,9 @@ void ApplyEditNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyE
             }
             else
             {
-                IMargretePluginNote *note = CreateNoteTree(chart, proto);
-                Check(chart.appendNote(note), "failed to append desired root note");
+                auto note = CreateNoteTree(chart, proto);
+                Check(chart.appendNote(note.get()), "failed to append desired root note");
+                note.detach();
             }
         }
     }
@@ -275,9 +347,8 @@ void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::Apply
         void *existing = nullptr;
         if (chart.findEventBpm(tick, &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(
-                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBpm *>(existing))),
-                  "failed to delete bpm event");
+            MargreteComPtr<IMargretePluginEventBpm> event(static_cast<IMargretePluginEventBpm *>(existing));
+            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(event.get())), "failed to delete bpm event");
         }
     }
     for (const int bar : request.beat_bars_delete())
@@ -285,8 +356,9 @@ void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::Apply
         void *existing = nullptr;
         if (chart.findEventBeatChange(bar, &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(
-                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventBeatChange *>(existing))),
+            MargreteComPtr<IMargretePluginEventBeatChange> event(
+                static_cast<IMargretePluginEventBeatChange *>(existing));
+            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(event.get())),
                   "failed to delete beat change event");
         }
     }
@@ -295,8 +367,9 @@ void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::Apply
         void *existing = nullptr;
         if (chart.findEventTimelineSpeed(key.tick(), key.timeline_id(), &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(
-                      static_cast<IMargretePluginEvent *>(static_cast<IMargretePluginEventTimelineSpeed *>(existing))),
+            MargreteComPtr<IMargretePluginEventTimelineSpeed> event(
+                static_cast<IMargretePluginEventTimelineSpeed *>(existing));
+            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(event.get())),
                   "failed to delete timeline speed event");
         }
     }
@@ -305,8 +378,9 @@ void ApplyEditEvents(IMargretePluginChart &chart, const margrete::rpc::v1::Apply
         void *existing = nullptr;
         if (chart.findEventNoteSpeedModifier(tick, &existing) == MP_TRUE && existing)
         {
-            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(
-                      static_cast<IMargretePluginEventNoteSpeedModifier *>(existing))),
+            MargreteComPtr<IMargretePluginEventNoteSpeedModifier> event(
+                static_cast<IMargretePluginEventNoteSpeedModifier *>(existing));
+            Check(chart.deleteEvent(static_cast<IMargretePluginEvent *>(event.get())),
                   "failed to delete note speed event");
         }
     }

@@ -4,18 +4,26 @@
 
 MargreteSession::MargreteSession(IMargretePluginContext &context) : context_(context)
 {
-    if (context_.getDocument(&document_) != MP_TRUE || !document_)
+    IMargretePluginDocument *document = nullptr;
+    if (context_.getDocument(&document) != MP_TRUE || !document)
     {
         throw std::runtime_error("document is unavailable");
     }
-    if (document_->getChart(&chart_) != MP_TRUE || !chart_)
+    document_.reset(document);
+
+    IMargretePluginChart *chart = nullptr;
+    if (document_->getChart(&chart) != MP_TRUE || !chart)
     {
         throw std::runtime_error("chart is unavailable");
     }
-    if (document_->getUndoBuffer(&undoBuffer_) != MP_TRUE || !undoBuffer_)
+    chart_.reset(chart);
+
+    IMargretePluginUndoBuffer *undoBuffer = nullptr;
+    if (document_->getUndoBuffer(&undoBuffer) != MP_TRUE || !undoBuffer)
     {
         throw std::runtime_error("undoBuffer buffer is unavailable");
     }
+    undoBuffer_.reset(undoBuffer);
 }
 
 MpInteger MargreteSession::currentTick() const

@@ -66,7 +66,9 @@ class FakeNote final : public IMargretePluginNote, public FakeBase
         {
             return MP_FALSE;
         }
-        *ppobj = children[static_cast<std::size_t>(index)];
+        auto *child = children[static_cast<std::size_t>(index)];
+        child->addRef();
+        *ppobj = child;
         return MP_TRUE;
     }
     MpBoolean getParent(IMargretePluginNote **) const override
@@ -75,6 +77,10 @@ class FakeNote final : public IMargretePluginNote, public FakeBase
     }
     MpBoolean appendChild(IMargretePluginNote *note) override
     {
+        if (appendChildResult != MP_TRUE)
+        {
+            return appendChildResult;
+        }
         children.push_back(note);
         return MP_TRUE;
     }
@@ -106,6 +112,7 @@ class FakeNote final : public IMargretePluginNote, public FakeBase
     int id{1};
     MP_NOTEINFO info{};
     std::vector<IMargretePluginNote *> children;
+    inline static MpBoolean appendChildResult{MP_TRUE};
 };
 
 class FakeBpmEvent final : public IMargretePluginEventBpm, public FakeBase
@@ -255,6 +262,30 @@ class FakeNoteSpeedEvent final : public IMargretePluginEventNoteSpeedModifier, p
 class FakeChart final : public IMargretePluginChart, public FakeBase
 {
   public:
+    ~FakeChart()
+    {
+        for (auto *note : allocatedNotes)
+        {
+            delete note;
+        }
+        for (auto *event : allocatedBpmEvents)
+        {
+            delete event;
+        }
+        for (auto *event : allocatedBeatEvents)
+        {
+            delete event;
+        }
+        for (auto *event : allocatedTimelineSpeedEvents)
+        {
+            delete event;
+        }
+        for (auto *event : allocatedNoteSpeedEvents)
+        {
+            delete event;
+        }
+    }
+
     MpInteger addRef() override
     {
         return FakeBase::addRef();
@@ -269,22 +300,28 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
     }
     MpBoolean createNote(IMargretePluginNote **ppobj) const override
     {
-        createdNotes.push_back(new FakeNote());
-        *ppobj = createdNotes.back();
+        auto *note = new FakeNote();
+        allocatedNotes.push_back(note);
+        createdNotes.push_back(note);
+        *ppobj = note;
         return MP_TRUE;
     }
     FakeNote *addExistingNote(int id)
     {
-        notes.push_back(new FakeNote());
-        notes.back()->id = id;
-        return notes.back();
+        auto *note = new FakeNote();
+        allocatedNotes.push_back(note);
+        notes.push_back(note);
+        note->id = id;
+        return note;
     }
 
     FakeNote *addDetachedNote(int id)
     {
-        detachedNotes.push_back(new FakeNote());
-        detachedNotes.back()->id = id;
-        return detachedNotes.back();
+        auto *note = new FakeNote();
+        allocatedNotes.push_back(note);
+        detachedNotes.push_back(note);
+        note->id = id;
+        return note;
     }
 
     MpInteger getNotesCount() const override
@@ -297,12 +334,18 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         {
             return MP_FALSE;
         }
-        *ppobj = notes[static_cast<std::size_t>(index)];
+        auto *note = notes[static_cast<std::size_t>(index)];
+        note->addRef();
+        *ppobj = note;
         return MP_TRUE;
     }
     MpBoolean appendNote(IMargretePluginNote *note) override
     {
         ++appendedNotes;
+        if (appendNoteResult != MP_TRUE)
+        {
+            return appendNoteResult;
+        }
         auto *fake = static_cast<FakeNote *>(note);
         notes.push_back(fake);
         return MP_TRUE;
@@ -311,7 +354,12 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
     {
         ++deletedNotes;
         auto *fake = static_cast<FakeNote *>(note);
+        const auto oldSize = notes.size();
         notes.erase(std::remove(notes.begin(), notes.end(), fake), notes.end());
+        if (notes.size() != oldSize)
+        {
+            fake->release();
+        }
         return MP_TRUE;
     }
     void offsetNotes(MpInteger) override
@@ -325,83 +373,123 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         }
         if (iid == IID_IMargretePluginEventBpm)
         {
-            createdBpmEvents.push_back(new FakeBpmEvent());
-            *ppobj = createdBpmEvents.back();
+            auto *event = new FakeBpmEvent();
+            allocatedBpmEvents.push_back(event);
+            createdBpmEvents.push_back(event);
+            *ppobj = event;
             return MP_TRUE;
         }
         if (iid == IID_IMargretePluginEventBeatChange)
         {
-            createdBeatEvents.push_back(new FakeBeatEvent());
-            *ppobj = createdBeatEvents.back();
+            auto *event = new FakeBeatEvent();
+            allocatedBeatEvents.push_back(event);
+            createdBeatEvents.push_back(event);
+            *ppobj = event;
             return MP_TRUE;
         }
         if (iid == IID_IMargretePluginEventTimelineSpeed)
         {
-            createdTimelineSpeedEvents.push_back(new FakeTimelineSpeedEvent());
-            *ppobj = createdTimelineSpeedEvents.back();
+            auto *event = new FakeTimelineSpeedEvent();
+            allocatedTimelineSpeedEvents.push_back(event);
+            createdTimelineSpeedEvents.push_back(event);
+            *ppobj = event;
             return MP_TRUE;
         }
         if (iid == IID_IMargretePluginEventNoteSpeedModifier)
         {
-            createdNoteSpeedEvents.push_back(new FakeNoteSpeedEvent());
-            *ppobj = createdNoteSpeedEvents.back();
+            auto *event = new FakeNoteSpeedEvent();
+            allocatedNoteSpeedEvents.push_back(event);
+            createdNoteSpeedEvents.push_back(event);
+            *ppobj = event;
             return MP_TRUE;
         }
         return MP_FALSE;
     }
-    MpBoolean appendEvent(IMargretePluginEvent *) override
+    MpBoolean appendEvent(IMargretePluginEvent *event) override
     {
         ++appendedEvents;
+        if (appendEventResult != MP_TRUE)
+        {
+            return appendEventResult;
+        }
+        if (auto *typed = dynamic_cast<FakeBpmEvent *>(event))
+        {
+            existingBpmEvents.push_back(typed);
+        }
+        else if (auto *typed = dynamic_cast<FakeBeatEvent *>(event))
+        {
+            existingBeatEvents.push_back(typed);
+        }
+        else if (auto *typed = dynamic_cast<FakeTimelineSpeedEvent *>(event))
+        {
+            existingTimelineSpeedEvents.push_back(typed);
+        }
+        else if (auto *typed = dynamic_cast<FakeNoteSpeedEvent *>(event))
+        {
+            existingNoteSpeedEvents.push_back(typed);
+        }
         return MP_TRUE;
     }
     MpBoolean deleteEvent(IMargretePluginEvent *event) override
     {
         ++deletedEvents;
         deletedEventPointers.push_back(event);
-        existingBpmEvents.erase(std::remove(existingBpmEvents.begin(), existingBpmEvents.end(), event),
-                                existingBpmEvents.end());
-        existingBeatEvents.erase(std::remove(existingBeatEvents.begin(), existingBeatEvents.end(), event),
-                                 existingBeatEvents.end());
-        existingTimelineSpeedEvents.erase(
-            std::remove(existingTimelineSpeedEvents.begin(), existingTimelineSpeedEvents.end(), event),
-            existingTimelineSpeedEvents.end());
-        existingNoteSpeedEvents.erase(
-            std::remove(existingNoteSpeedEvents.begin(), existingNoteSpeedEvents.end(), event),
-            existingNoteSpeedEvents.end());
+        bool removed = false;
+        auto removeFrom = [&](auto &events) {
+            const auto oldSize = events.size();
+            events.erase(std::remove(events.begin(), events.end(), event), events.end());
+            removed = removed || events.size() != oldSize;
+        };
+        removeFrom(existingBpmEvents);
+        removeFrom(existingBeatEvents);
+        removeFrom(existingTimelineSpeedEvents);
+        removeFrom(existingNoteSpeedEvents);
+        if (removed)
+        {
+            event->release();
+        }
         return MP_TRUE;
     }
     FakeBpmEvent *addExistingBpmEvent(int tick, double bpm)
     {
-        existingBpmEvents.push_back(new FakeBpmEvent());
-        existingBpmEvents.back()->info.tick = tick;
-        existingBpmEvents.back()->info.bpm = bpm;
-        return existingBpmEvents.back();
+        auto *event = new FakeBpmEvent();
+        allocatedBpmEvents.push_back(event);
+        existingBpmEvents.push_back(event);
+        event->info.tick = tick;
+        event->info.bpm = bpm;
+        return event;
     }
 
     FakeBeatEvent *addExistingBeatEvent(int bar, int beatsPerBar, int beatUnit)
     {
-        existingBeatEvents.push_back(new FakeBeatEvent());
-        existingBeatEvents.back()->info.bar = bar;
-        existingBeatEvents.back()->info.beatsPerBar = beatsPerBar;
-        existingBeatEvents.back()->info.beatUnit = beatUnit;
-        return existingBeatEvents.back();
+        auto *event = new FakeBeatEvent();
+        allocatedBeatEvents.push_back(event);
+        existingBeatEvents.push_back(event);
+        event->info.bar = bar;
+        event->info.beatsPerBar = beatsPerBar;
+        event->info.beatUnit = beatUnit;
+        return event;
     }
 
     FakeTimelineSpeedEvent *addExistingTimelineSpeedEvent(int tick, int timelineId, double speed)
     {
-        existingTimelineSpeedEvents.push_back(new FakeTimelineSpeedEvent());
-        existingTimelineSpeedEvents.back()->info.tick = tick;
-        existingTimelineSpeedEvents.back()->info.timelineId = timelineId;
-        existingTimelineSpeedEvents.back()->info.speed = speed;
-        return existingTimelineSpeedEvents.back();
+        auto *event = new FakeTimelineSpeedEvent();
+        allocatedTimelineSpeedEvents.push_back(event);
+        existingTimelineSpeedEvents.push_back(event);
+        event->info.tick = tick;
+        event->info.timelineId = timelineId;
+        event->info.speed = speed;
+        return event;
     }
 
     FakeNoteSpeedEvent *addExistingNoteSpeedEvent(int tick, double speed)
     {
-        existingNoteSpeedEvents.push_back(new FakeNoteSpeedEvent());
-        existingNoteSpeedEvents.back()->info.tick = tick;
-        existingNoteSpeedEvents.back()->info.speed = speed;
-        return existingNoteSpeedEvents.back();
+        auto *event = new FakeNoteSpeedEvent();
+        allocatedNoteSpeedEvents.push_back(event);
+        existingNoteSpeedEvents.push_back(event);
+        event->info.tick = tick;
+        event->info.speed = speed;
+        return event;
     }
 
     MpBoolean findEventBpm(MpInteger tick, void **ppobj) override
@@ -410,6 +498,7 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         {
             if (event->info.tick == tick)
             {
+                event->addRef();
                 *ppobj = event;
                 return MP_TRUE;
             }
@@ -422,6 +511,7 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         {
             if (event->info.bar == bar)
             {
+                event->addRef();
                 *ppobj = event;
                 return MP_TRUE;
             }
@@ -434,6 +524,7 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         {
             if (event->info.tick == tick && event->info.timelineId == timelineId)
             {
+                event->addRef();
                 *ppobj = event;
                 return MP_TRUE;
             }
@@ -446,6 +537,7 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
         {
             if (event->info.tick == tick)
             {
+                event->addRef();
                 *ppobj = event;
                 return MP_TRUE;
             }
@@ -464,10 +556,17 @@ class FakeChart final : public IMargretePluginChart, public FakeBase
     mutable std::vector<FakeBeatEvent *> createdBeatEvents;
     mutable std::vector<FakeTimelineSpeedEvent *> createdTimelineSpeedEvents;
     mutable std::vector<FakeNoteSpeedEvent *> createdNoteSpeedEvents;
+    mutable std::vector<FakeNote *> allocatedNotes;
+    mutable std::vector<FakeBpmEvent *> allocatedBpmEvents;
+    mutable std::vector<FakeBeatEvent *> allocatedBeatEvents;
+    mutable std::vector<FakeTimelineSpeedEvent *> allocatedTimelineSpeedEvents;
+    mutable std::vector<FakeNoteSpeedEvent *> allocatedNoteSpeedEvents;
     int appendedNotes{0};
     int appendedEvents{0};
     int deletedNotes{0};
     int deletedEvents{0};
+    MpBoolean appendNoteResult{MP_TRUE};
+    MpBoolean appendEventResult{MP_TRUE};
     std::vector<IMargretePluginEvent *> deletedEventPointers;
 };
 
@@ -555,11 +654,13 @@ class FakeDocument final : public IMargretePluginDocument, public FakeBase
     }
     MpBoolean getChart(IMargretePluginChart **ppobj) override
     {
+        chart.addRef();
         *ppobj = &chart;
         return MP_TRUE;
     }
     MpBoolean getUndoBuffer(IMargretePluginUndoBuffer **ppobj) override
     {
+        undo.addRef();
         *ppobj = &undo;
         return MP_TRUE;
     }
@@ -588,6 +689,7 @@ class FakeContext final : public IMargretePluginContext, public FakeBase
     }
     MpBoolean getDocument(IMargretePluginDocument **ppobj) override
     {
+        document.addRef();
         *ppobj = &document;
         return MP_TRUE;
     }

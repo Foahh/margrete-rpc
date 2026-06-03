@@ -4,6 +4,25 @@
 #include "MargreteSession.h"
 #include "TransactionApplier.h"
 
+TEST_CASE("margrete session releases acquired interfaces")
+{
+    FakeContext context;
+
+    REQUIRE(context.document.refCountValue() == 1);
+    REQUIRE(context.chart.refCountValue() == 1);
+    REQUIRE(context.undo.refCountValue() == 1);
+    {
+        MargreteSession session(context);
+
+        REQUIRE(context.document.refCountValue() == 2);
+        REQUIRE(context.chart.refCountValue() == 2);
+        REQUIRE(context.undo.refCountValue() == 2);
+    }
+    REQUIRE(context.document.refCountValue() == 1);
+    REQUIRE(context.chart.refCountValue() == 1);
+    REQUIRE(context.undo.refCountValue() == 1);
+}
+
 TEST_CASE("apply edit appends notes and child trees inside undo recording")
 {
     FakeContext context;
@@ -28,6 +47,49 @@ TEST_CASE("apply edit appends notes and child trees inside undo recording")
     REQUIRE(context.updated);
 }
 
+TEST_CASE("apply edit releases created note when root append fails")
+{
+    FakeContext context;
+    context.chart.appendNoteResult = MP_FALSE;
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    request.add_notes_upsert()->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
+
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+
+    REQUIRE(context.undo.commitCount == 0);
+    REQUIRE(context.undo.discardCount == 1);
+    REQUIRE(context.chart.createdNotes.size() == 1);
+    REQUIRE(context.chart.createdNotes[0]->refCountValue() == 0);
+}
+
+TEST_CASE("apply edit releases created note tree when child append fails")
+{
+    struct AppendChildResultGuard
+    {
+        ~AppendChildResultGuard()
+        {
+            FakeNote::appendChildResult = MP_TRUE;
+        }
+    } guard;
+
+    FakeNote::appendChildResult = MP_FALSE;
+    FakeContext context;
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *note = request.add_notes_upsert();
+    note->set_type(margrete::rpc::v1::NOTE_TYPE_HOLD);
+    note->add_children()->set_type(margrete::rpc::v1::NOTE_TYPE_HOLD);
+
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+
+    REQUIRE(context.undo.commitCount == 0);
+    REQUIRE(context.undo.discardCount == 1);
+    REQUIRE(context.chart.createdNotes.size() == 2);
+    REQUIRE(context.chart.createdNotes[0]->refCountValue() == 0);
+    REQUIRE(context.chart.createdNotes[1]->refCountValue() == 0);
+}
+
 TEST_CASE("event operation creates bpm event when key is empty")
 {
     FakeContext context;
@@ -45,6 +107,24 @@ TEST_CASE("event operation creates bpm event when key is empty")
     REQUIRE(context.chart.appendedEvents == 1);
 }
 
+TEST_CASE("event operation releases created event when append fails")
+{
+    FakeContext context;
+    context.chart.appendEventResult = MP_FALSE;
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *event = request.add_bpm_upsert();
+    event->set_tick(0);
+    event->set_bpm(180.0);
+
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+
+    REQUIRE(context.undo.commitCount == 0);
+    REQUIRE(context.undo.discardCount == 1);
+    REQUIRE(context.chart.createdBpmEvents.size() == 1);
+    REQUIRE(context.chart.createdBpmEvents[0]->refCountValue() == 0);
+}
+
 TEST_CASE("event operation replaces bpm event when key overlaps")
 {
     FakeContext context;
@@ -59,6 +139,7 @@ TEST_CASE("event operation replaces bpm event when key overlaps")
 
     REQUIRE(existing->info.bpm == 185.0);
     REQUIRE(context.chart.appendedEvents == 0);
+    REQUIRE(existing->refCountValue() == 1);
 }
 
 TEST_CASE("event operation creates timeline speed by tick and timeline id")
@@ -121,6 +202,7 @@ TEST_CASE("apply edit in-place update does not duplicate root notes")
     REQUIRE(context.chart.notes.size() == 1);
     REQUIRE(context.chart.notes[0]->info.x == 9);
     REQUIRE(context.chart.appendedNotes == 0);
+    REQUIRE(existing->refCountValue() == 1);
 }
 
 TEST_CASE("apply edit updates child notes in place without rebuilding the tree")
@@ -153,6 +235,8 @@ TEST_CASE("apply edit updates child notes in place without rebuilding the tree")
     REQUIRE(context.chart.createdNotes.empty());
     REQUIRE(root->info.tick == 1920);
     REQUIRE(child->info.tick == 2400);
+    REQUIRE(root->refCountValue() == 1);
+    REQUIRE(child->refCountValue() == 1);
 }
 
 TEST_CASE("apply edit discards recording when an in-place child id is unknown")
@@ -202,7 +286,7 @@ TEST_CASE("apply edit updates existing note and creates new note")
 TEST_CASE("apply edit deletes existing note by id")
 {
     FakeContext context;
-    context.chart.addExistingNote(10);
+    auto *deleted = context.chart.addExistingNote(10);
     context.chart.addExistingNote(11);
     MargreteSession session(context);
     margrete::rpc::v1::ApplyEditRequest request;
@@ -213,6 +297,7 @@ TEST_CASE("apply edit deletes existing note by id")
     REQUIRE(context.chart.notes.size() == 1);
     REQUIRE(context.chart.notes[0]->id == 11);
     REQUIRE(context.chart.deletedNotes == 1);
+    REQUIRE(deleted->refCountValue() == 0);
 }
 
 TEST_CASE("apply edit deletes bpm event by tick")
@@ -229,4 +314,5 @@ TEST_CASE("apply edit deletes bpm event by tick")
     REQUIRE(context.chart.deletedEvents == 1);
     REQUIRE(context.chart.deletedEventPointers.size() == 1);
     REQUIRE(context.chart.deletedEventPointers[0] == deleted);
+    REQUIRE(deleted->refCountValue() == 0);
 }
