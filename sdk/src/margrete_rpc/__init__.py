@@ -4,7 +4,7 @@ from margrete_rpc._errors import (
     MargreteProtocolError,
     MargreteRemoteError,
 )
-from margrete_rpc.client import Margrete
+from margrete_rpc.client import Margrete, ServerStatus
 from margrete_rpc.discovery import MargreteInstance, discovery_dir, list_instances
 from margrete_rpc.model import (
     TICKS_PER_BEAT,
@@ -83,6 +83,7 @@ __all__ = [
     "NoopTracer",
     "Pos",
     "p2t",
+    "ServerStatus",
     "Slide",
     "Tap",
     "t2p",

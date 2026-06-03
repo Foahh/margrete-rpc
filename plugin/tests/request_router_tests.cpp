@@ -10,7 +10,6 @@ TEST_CASE("router responds to ping")
 {
     FakeContext context;
     RequestRouter router(&context);
-    router.setInstanceId("test-instance");
     margrete::rpc::v1::Envelope request;
     request.set_request_id(11);
     request.mutable_ping_request();
@@ -19,11 +18,38 @@ TEST_CASE("router responds to ping")
 
     REQUIRE(response.request_id() == 11);
     REQUIRE(response.has_ping_response());
-    REQUIRE(response.ping_response().server_name() == "Margrete RPC");
-    REQUIRE(response.ping_response().server_version() == PRODUCT_VERSION);
-    REQUIRE(response.ping_response().server_build_time() == BUILD_TIME);
-    REQUIRE_FALSE(response.ping_response().server_build_time().empty());
-    REQUIRE(response.ping_response().instance_id() == "test-instance");
+}
+
+TEST_CASE("router responds to status")
+{
+    FakeContext context;
+    RequestRouter router(&context);
+    router.setInstanceId("test-instance");
+    router.setStatusSnapshotProvider([]() {
+        RouterStatusSnapshot snapshot;
+        snapshot.uptime = 42;
+        snapshot.pid = 1234;
+        snapshot.logPath = "C:\\logs\\margrete-rpc.log";
+        snapshot.configPath = "C:\\config\\margrete-rpc.ini";
+        return snapshot;
+    });
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(12);
+    request.mutable_status_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 12);
+    REQUIRE(response.has_status_response());
+    REQUIRE(response.status_response().server_name() == "Margrete RPC");
+    REQUIRE(response.status_response().server_version() == PRODUCT_VERSION);
+    REQUIRE(response.status_response().server_build_time() == BUILD_TIME);
+    REQUIRE_FALSE(response.status_response().server_build_time().empty());
+    REQUIRE(response.status_response().instance_id() == "test-instance");
+    REQUIRE(response.status_response().uptime() == 42);
+    REQUIRE(response.status_response().pid() == 1234);
+    REQUIRE(response.status_response().log_path() == "C:\\logs\\margrete-rpc.log");
+    REQUIRE(response.status_response().config_path() == "C:\\config\\margrete-rpc.ini");
 }
 
 TEST_CASE("router retains context while it may be used by background requests")

@@ -27,7 +27,7 @@ pip install /path/to/margrete-rpc/sdk
 from margrete_rpc import Margrete
 
 mg = Margrete()
-name = mg.ping()
+name = mg.status()
 print(name)
 ```
 
@@ -109,7 +109,7 @@ from margrete_rpc import Margrete
 ```
 
 - `Margrete(endpoint=None, *, instance_id=None, timeout=60.0)`
-- `ping() -> str`
+- `status() -> ServerStatus`
 - `undo() -> bool`
 - `redo() -> bool`
 - `current_tick() -> int`

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -44,6 +44,8 @@ class ServerController
     bool hasActiveConfig_{false};
     std::string instanceId_;
     std::filesystem::path logPath_;
+    std::uint32_t processId_{0};
+    std::chrono::steady_clock::time_point serverStartTime_{};
     Logger logger_;
     RequestRouter router_;
     std::unique_ptr<SocketServer> server_;

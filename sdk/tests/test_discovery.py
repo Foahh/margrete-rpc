@@ -47,7 +47,7 @@ def _start_ping_server() -> str:
                 request.ParseFromString(payload)
                 response = messages_pb2.Envelope(
                     request_id=request.request_id,
-                    ping_response=messages_pb2.PingResponse(server_name="Margrete RPC"),
+                    ping_response=messages_pb2.PingResponse(),
                 )
                 conn.sendall(encode_frame(response))
 

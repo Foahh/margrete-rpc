@@ -11,11 +11,15 @@ from margrete_rpc.transaction import EditTransaction
 
 
 @dataclass(frozen=True)
-class PingInfo:
+class ServerStatus:
     server_name: str
     server_version: str
     server_build_time: str
     instance_id: str
+    uptime: int
+    pid: int
+    log_path: str
+    config_path: str
 
 
 class Margrete:
@@ -40,17 +44,21 @@ class Margrete:
                 endpoint = resolve_endpoint(instance_id, timeout=min(timeout, 1.0))
             self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
 
-    def ping(self) -> PingInfo:
-        with self._tracer.span("margrete.client.ping"):
+    def status(self) -> ServerStatus:
+        with self._tracer.span("margrete.client.status"):
             response = self._transport.request(
-                messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
+                messages_pb2.Envelope(status_request=messages_pb2.StatusRequest())
             )
-        ping = response.ping_response
-        return PingInfo(
-            server_name=ping.server_name,
-            server_version=ping.server_version,
-            server_build_time=ping.server_build_time,
-            instance_id=ping.instance_id,
+        status = response.status_response
+        return ServerStatus(
+            server_name=status.server_name,
+            server_version=status.server_version,
+            server_build_time=status.server_build_time,
+            instance_id=status.instance_id,
+            uptime=status.uptime,
+            pid=status.pid,
+            log_path=status.log_path,
+            config_path=status.config_path,
         )
 
     def undo(self) -> bool:

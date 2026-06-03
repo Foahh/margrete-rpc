@@ -77,17 +77,27 @@ message Envelope {
     RedoResponse redo_response = 18;
     CurrentTickRequest current_tick_request = 19;
     CurrentTickResponse current_tick_response = 20;
+    StatusRequest status_request = 21;
+    StatusResponse status_response = 22;
     ErrorResponse error_response = 12;
   }
 }
 
 message PingRequest {}
 
-message PingResponse {
+message PingResponse {}
+
+message StatusRequest {}
+
+message StatusResponse {
   string server_name = 1;
   string server_version = 2;
   string server_build_time = 3;
   string instance_id = 4;
+  uint64 uptime = 5;
+  uint32 pid = 6;
+  string log_path = 7;
+  string config_path = 8;
 }
 
 message Note {

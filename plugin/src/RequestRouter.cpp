@@ -65,6 +65,12 @@ void RequestRouter::setInstanceId(std::string instanceId)
     instanceId_ = std::move(instanceId);
 }
 
+void RequestRouter::setStatusSnapshotProvider(StatusSnapshotProvider provider)
+{
+    std::scoped_lock lock(contextMutex_);
+    statusSnapshotProvider_ = std::move(provider);
+}
+
 void RequestRouter::setLogger(Logger *logger)
 {
     std::scoped_lock lock(contextMutex_);
@@ -81,12 +87,30 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         logInfo("request received id=" + std::to_string(request.request_id()) + " kind=" + requestKind(request));
         if (request.has_ping_request())
         {
-            auto *ping = response.mutable_ping_response();
-            ping->set_server_name("Margrete RPC");
-            ping->set_server_version(PRODUCT_VERSION);
-            ping->set_server_build_time(BUILD_TIME);
-            ping->set_instance_id(instanceId_);
-            logInfo("request handled id=" + std::to_string(request.request_id()) + " kind=ping ok");
+            response.mutable_ping_response();
+            return response;
+        }
+        if (request.has_status_request())
+        {
+            auto *status = response.mutable_status_response();
+            status->set_server_name("Margrete RPC");
+            status->set_server_version(PRODUCT_VERSION);
+            status->set_server_build_time(BUILD_TIME);
+            status->set_instance_id(instanceId_);
+
+            RouterStatusSnapshot snapshot;
+            {
+                std::scoped_lock lock(contextMutex_);
+                if (statusSnapshotProvider_)
+                {
+                    snapshot = statusSnapshotProvider_();
+                }
+            }
+            status->set_uptime(snapshot.uptime);
+            status->set_pid(snapshot.pid);
+            status->set_log_path(snapshot.logPath);
+            status->set_config_path(snapshot.configPath);
+            logInfo("request handled id=" + std::to_string(request.request_id()) + " kind=status ok");
             return response;
         }
 
@@ -189,8 +213,8 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
         if (request.has_current_tick_request())
         {
             response.mutable_current_tick_response()->set_current_tick(context->getCurrentTick());
-            logInfo("current_tick ok id=" + std::to_string(request.request_id()) + " current_tick=" +
-                    std::to_string(response.current_tick_response().current_tick()));
+            logInfo("current_tick ok id=" + std::to_string(request.request_id()) +
+                    " current_tick=" + std::to_string(response.current_tick_response().current_tick()));
             return response;
         }
         auto resp = error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INVALID_ARGUMENT, "unsupported request");
@@ -262,6 +286,8 @@ const char *RequestRouter::requestKind(const margrete::rpc::v1::Envelope &reques
 {
     if (request.has_ping_request())
         return "ping";
+    if (request.has_status_request())
+        return "status";
     if (request.has_begin_edit_request())
         return "begin_edit";
     if (request.has_apply_edit_request())

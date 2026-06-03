@@ -20,7 +20,6 @@ class MargreteInstance:
     plugin_version: str | None = None
     log: str | None = None
     record_path: Path | None = None
-    server_name: str | None = None
 
 
 def discovery_dir() -> Path:
@@ -99,7 +98,7 @@ def _load_instance(path: Path) -> MargreteInstance | None:
 
 def _validated(instance: MargreteInstance, timeout: float) -> MargreteInstance | None:
     try:
-        response = SocketRpcClient(instance.endpoint, timeout=timeout).request(
+        _response = SocketRpcClient(instance.endpoint, timeout=timeout).request(
             messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
         )
     except MargreteError:
@@ -113,7 +112,6 @@ def _validated(instance: MargreteInstance, timeout: float) -> MargreteInstance |
         plugin_version=instance.plugin_version,
         log=instance.log,
         record_path=instance.record_path,
-        server_name=response.ping_response.server_name,
     )
 
 

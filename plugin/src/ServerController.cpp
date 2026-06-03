@@ -1,7 +1,12 @@
 #include "ServerController.h"
 
+#include <chrono>
 #include <string>
 #include <utility>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "DiscoveryRegistry.h"
 #include "meta.h"
@@ -21,8 +26,24 @@ ServerController::ServerController(ServerConfig config)
     : config_(std::move(config)), instanceId_(DiscoveryRegistry::CreateInstanceId()),
       logPath_(ResolveLogPath(instanceId_)), logger_(logPath_), router_(nullptr, config_)
 {
+#ifdef _WIN32
+    processId_ = GetCurrentProcessId();
+#endif
     router_.setLogger(&logger_);
     router_.setInstanceId(instanceId_);
+    router_.setStatusSnapshotProvider([this]() {
+        RouterStatusSnapshot snapshot;
+        snapshot.pid = processId_;
+        snapshot.logPath = logPath_.string();
+        snapshot.configPath = config_.sourcePath.string();
+        if (running())
+        {
+            snapshot.uptime = static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - serverStartTime_)
+                    .count());
+        }
+        return snapshot;
+    });
     logConfig(config_, "config initialized");
     logger_.info("instance id=" + instanceId_);
 }
@@ -66,6 +87,7 @@ void ServerController::start(IMargretePluginContext *context)
     router_.setConfig(activeConfig_);
 
     const std::string publishHost = activeConfig_.host;
+    serverStartTime_ = std::chrono::steady_clock::now();
     server_ = std::make_unique<SocketServer>(
         activeConfig_.host, activeConfig_.port, router_, logger_, [this, publishHost](std::uint16_t port) {
             DiscoveryRegistry::Publish(instanceId_, publishHost, port, logPath_, PRODUCT_VERSION, logger_);

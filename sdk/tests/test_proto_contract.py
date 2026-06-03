@@ -23,6 +23,8 @@ def test_edit_wire_contract_has_only_begin_and_apply_edit():
     assert hasattr(messages_pb2, "RedoResponse")
     assert hasattr(messages_pb2, "CurrentTickRequest")
     assert hasattr(messages_pb2, "CurrentTickResponse")
+    assert hasattr(messages_pb2, "StatusRequest")
+    assert hasattr(messages_pb2, "StatusResponse")
 
     assert not hasattr(messages_pb2, "BeginAppendRequest")
     assert not hasattr(messages_pb2, "BeginAppendResponse")
@@ -51,6 +53,8 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
         "redo_response",
         "current_tick_request",
         "current_tick_response",
+        "status_request",
+        "status_response",
         "error_response",
     ]
 
@@ -64,6 +68,8 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
     assert fields_by_name["redo_response"].number == 18
     assert fields_by_name["current_tick_request"].number == 19
     assert fields_by_name["current_tick_response"].number == 20
+    assert fields_by_name["status_request"].number == 21
+    assert fields_by_name["status_response"].number == 22
     assert fields_by_name["error_response"].number == 12
     assert not OLD_ENVELOPE_BODY_FIELDS.intersection(fields_by_name)
 
