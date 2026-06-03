@@ -60,6 +60,7 @@ target_include_directories(MargretePluginSDK INTERFACE "${MARGRETE_SDK_INCLUDE}"
 add_library(margrete_rpc SHARED
     src/DLLMain.cpp
     src/Plugin.cpp
+    src/Dialog.c
     src/Config.cpp
     src/Logger.cpp
     src/DiscoveryRegistry.cpp
@@ -74,6 +75,8 @@ add_library(margrete_rpc SHARED
     ${CMAKE_CURRENT_BINARY_DIR}/include/version.rc
 )
 
+set_source_files_properties(src/Dialog.c PROPERTIES LANGUAGE CXX)
+
 set_target_properties(margrete_rpc PROPERTIES OUTPUT_NAME "${DLL_NAME}")
 
 target_include_directories(margrete_rpc PRIVATE
@@ -81,7 +84,7 @@ target_include_directories(margrete_rpc PRIVATE
     "${GENERATED_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
-target_link_libraries(margrete_rpc PRIVATE MargretePluginSDK protobuf::libprotobuf-lite ws2_32)
+target_link_libraries(margrete_rpc PRIVATE MargretePluginSDK protobuf::libprotobuf-lite ws2_32 user32 comctl32 shell32)
 
 if(MSVC)
     target_compile_options(margrete_rpc PRIVATE /EHsc /utf-8)

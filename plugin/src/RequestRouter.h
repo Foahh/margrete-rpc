@@ -19,6 +19,7 @@ class RequestRouter
 
     margrete::rpc::v1::Envelope route(const margrete::rpc::v1::Envelope &request);
     void setContext(IMargretePluginContext *context);
+    void setConfig(ServerConfig config);
     void setLogger(Logger *logger);
 
   private:

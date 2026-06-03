@@ -1,14 +1,19 @@
 #include "Plugin.h"
 
+#include <cstdlib>
 #include <cwchar>
+#include <exception>
 #include <filesystem>
+#include <iterator>
 #include <string>
+#include <utility>
 
 #if defined(_WIN32)
 #include <windows.h>
 #endif
 
 #include "Config.h"
+#include "Dialog.h"
 #include "meta.h"
 
 namespace
@@ -63,12 +68,37 @@ std::filesystem::path ResolveConfigPath()
 
     return "margrete-rpc.ini";
 }
+
+ServerConfig LoadCurrentConfig()
+{
+    return LoadServerConfig(ResolveConfigPath());
+}
+
+std::string TryReloadConfig(ServerController &controller)
+{
+    try
+    {
+        controller.setConfig(LoadCurrentConfig());
+        return {};
+    }
+    catch (const std::exception &ex)
+    {
+        return ex.what();
+    }
+}
+
+void ShowServerDialog(IMargretePluginContext *ctx, ServerController &controller, std::string configError)
+{
+    ShowServerStatusDialog(ctx, controller, std::move(configError),
+                           [&controller]() { return TryReloadConfig(controller); });
+}
 } // namespace
 
 Plugin::Plugin()
 {
-    const std::filesystem::path configPath = ResolveConfigPath();
-    controller_ = std::make_unique<ServerController>(LoadServerConfig(configPath));
+    ServerConfig config;
+    config.sourcePath = ResolveConfigPath();
+    controller_ = std::make_unique<ServerController>(config);
 }
 
 Plugin::~Plugin()
@@ -126,6 +156,12 @@ MpBoolean Plugin::invoke(IMargretePluginContext *ctx)
     {
         return MP_FALSE;
     }
-    controller_->toggle(ctx);
+
+    auto configError = TryReloadConfig(*controller_);
+    if (!controller_->running() && configError.empty())
+    {
+        controller_->start(ctx);
+    }
+    ShowServerDialog(ctx, *controller_, configError);
     return MP_TRUE;
 }

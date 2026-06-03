@@ -52,6 +52,12 @@ void RequestRouter::setContext(IMargretePluginContext *context)
     context_ = context;
 }
 
+void RequestRouter::setConfig(ServerConfig config)
+{
+    std::scoped_lock lock(contextMutex_);
+    config_ = std::move(config);
+}
+
 void RequestRouter::setLogger(Logger *logger)
 {
     std::scoped_lock lock(contextMutex_);
