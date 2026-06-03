@@ -5,6 +5,7 @@
 #include <fstream>
 #include <ranges>
 #include <stdexcept>
+#include <string_view>
 
 namespace
 {
@@ -14,6 +15,49 @@ std::string Trim(std::string value)
     value.erase(value.begin(), std::ranges::find_if(value, notSpace));
     value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
     return value;
+}
+
+bool IsValidIpv4Address(std::string_view value)
+{
+    if (value.empty())
+    {
+        return false;
+    }
+
+    int octetCount = 0;
+    std::size_t start = 0;
+    while (start <= value.size())
+    {
+        const std::size_t dot = value.find('.', start);
+        const std::size_t end = dot == std::string_view::npos ? value.size() : dot;
+        const std::string_view octet = value.substr(start, end - start);
+        if (octet.empty() || octet.size() > 3)
+        {
+            return false;
+        }
+
+        int number = 0;
+        for (const char ch : octet)
+        {
+            if (!std::isdigit(static_cast<unsigned char>(ch)))
+            {
+                return false;
+            }
+            number = number * 10 + (ch - '0');
+        }
+        if (number > 255)
+        {
+            return false;
+        }
+
+        ++octetCount;
+        if (dot == std::string_view::npos)
+        {
+            break;
+        }
+        start = dot + 1;
+    }
+    return octetCount == 4;
 }
 } // namespace
 
@@ -71,9 +115,9 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         }
     }
 
-    if (config.host != "127.0.0.1")
+    if (!IsValidIpv4Address(config.host))
     {
-        throw std::runtime_error("server host must be 127.0.0.1");
+        throw std::runtime_error("server host must be an IPv4 address");
     }
     return config;
 }

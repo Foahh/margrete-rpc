@@ -1,6 +1,6 @@
 # Margrete RPC Plugin
 
-This plugin hosts a localhost TCP/protobuf server for chart scripting.
+This plugin hosts a TCP/protobuf server for chart scripting.
 
 Invoke the plugin command once in Margrete to start the server. Invoke it again to stop the server.
 
@@ -12,7 +12,7 @@ host = 127.0.0.1
 port = auto
 ```
 
-The plugin binds only to `127.0.0.1`.
+By default, the plugin binds to `127.0.0.1`. Set `host` to another IPv4 address only when you intentionally want to accept connections on that interface. For example, `0.0.0.0` accepts connections on all IPv4 interfaces and may expose the RPC server to other machines on your network.
 
 `port = auto` asks Windows for a free local port, so multiple Margrete processes can run the plugin at the same time. Set `port` to a fixed numeric value only when you need a stable endpoint.
 

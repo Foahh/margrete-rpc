@@ -46,8 +46,8 @@ void ServerController::toggle(IMargretePluginContext *context)
     }
     router_.setContext(context);
     router_.setLogger(&logger_);
-    server_ = std::make_unique<SocketServer>(config_.port, router_, logger_, [this](std::uint16_t port) {
-        DiscoveryRegistry::Publish(instanceId_, port, logPath_, PRODUCT_VERSION, logger_);
+    server_ = std::make_unique<SocketServer>(config_.host, config_.port, router_, logger_, [this](std::uint16_t port) {
+        DiscoveryRegistry::Publish(instanceId_, config_.host, port, logPath_, PRODUCT_VERSION, logger_);
         discoveryPublished_.store(true);
     });
     logger_.info("server starting");

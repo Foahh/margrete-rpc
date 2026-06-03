@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <thread>
 
 #include "Logger.h"
@@ -13,7 +14,8 @@ class SocketServer
   public:
     using StartedCallback = std::function<void(std::uint16_t)>;
 
-    SocketServer(std::uint16_t port, RequestRouter &router, Logger &logger, StartedCallback onStarted = {});
+    SocketServer(std::string host, std::uint16_t port, RequestRouter &router, Logger &logger,
+                 StartedCallback onStarted = {});
     ~SocketServer();
 
     void start();
@@ -25,6 +27,7 @@ class SocketServer
     void run();
     void handleClient(uintptr_t socketHandle);
 
+    std::string host_;
     std::uint16_t port_;
     RequestRouter &router_;
     Logger &logger_;

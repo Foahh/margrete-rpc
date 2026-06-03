@@ -52,14 +52,28 @@ TEST_CASE("config supports automatic port")
     REQUIRE(config.autoPort == true);
 }
 
-TEST_CASE("config rejects non-localhost host")
+TEST_CASE("config accepts explicit IPv4 host")
 {
-    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-bad.ini";
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-host.ini";
     {
         std::ofstream out(path);
         out << "[server]\n";
         out << "host = 0.0.0.0\n";
     }
 
-    REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server host must be 127.0.0.1"));
+    const ServerConfig config = LoadServerConfig(path);
+
+    REQUIRE(config.host == "0.0.0.0");
+}
+
+TEST_CASE("config rejects invalid host")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-bad-host.ini";
+    {
+        std::ofstream out(path);
+        out << "[server]\n";
+        out << "host = localhost\n";
+    }
+
+    REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server host must be an IPv4 address"));
 }

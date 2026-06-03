@@ -91,6 +91,7 @@ add_executable(plugin_tests
     tests/smoke_tests.cpp
     tests/frame_protocol_tests.cpp
     tests/config_tests.cpp
+    tests/discovery_registry_tests.cpp
     tests/request_router_tests.cpp
     tests/chart_mapper_tests.cpp
     tests/transaction_applier_tests.cpp

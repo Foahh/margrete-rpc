@@ -11,8 +11,9 @@
 
 #include "FrameProtocol.h"
 
-SocketServer::SocketServer(std::uint16_t port, RequestRouter &router, Logger &logger, StartedCallback onStarted)
-    : port_(port), router_(router), logger_(logger), onStarted_(std::move(onStarted))
+SocketServer::SocketServer(std::string host, std::uint16_t port, RequestRouter &router, Logger &logger,
+                           StartedCallback onStarted)
+    : host_(std::move(host)), port_(port), router_(router), logger_(logger), onStarted_(std::move(onStarted))
 {
 }
 
@@ -78,7 +79,15 @@ void SocketServer::run()
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port_);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+    if (inet_pton(AF_INET, host_.c_str(), &addr.sin_addr) != 1)
+    {
+        running_.store(false);
+        logger_.error("invalid bind host=" + host_);
+        closesocket(srv);
+        listenSocket_ = ~uintptr_t{0};
+        WSACleanup();
+        return;
+    }
 
     if (bind(srv, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == SOCKET_ERROR)
     {
@@ -113,7 +122,7 @@ void SocketServer::run()
     }
     actualPort_.store(ntohs(boundAddr.sin_port));
 
-    logger_.info("server started on 127.0.0.1:" + std::to_string(actualPort_.load()));
+    logger_.info("server started on " + host_ + ":" + std::to_string(actualPort_.load()));
     if (onStarted_)
     {
         onStarted_(actualPort_.load());

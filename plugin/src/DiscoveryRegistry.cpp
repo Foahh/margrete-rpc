@@ -98,15 +98,15 @@ std::filesystem::path DiscoveryRegistry::RecordPath(const std::string &instanceI
     return Directory() / (instanceId + ".json");
 }
 
-void DiscoveryRegistry::Publish(const std::string &instanceId, std::uint16_t port, const std::filesystem::path &logPath,
-                                const char *pluginVersion, Logger &logger)
+void DiscoveryRegistry::Publish(const std::string &instanceId, const std::string &host, std::uint16_t port,
+                                const std::filesystem::path &logPath, const char *pluginVersion, Logger &logger)
 {
     try
     {
         const auto dir = Directory();
         std::filesystem::create_directories(dir);
         const auto recordPath = RecordPath(instanceId);
-        const std::string endpoint = "127.0.0.1:" + std::to_string(port);
+        const std::string endpoint = host + ":" + std::to_string(port);
 
         std::ofstream out(recordPath, std::ios::trunc);
         out << "{\n";
