@@ -273,7 +273,7 @@ def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("ids", raw_only=True) as tx:
+    with mg.open_edit("ids", ll_only=True) as tx:
         assert isinstance(tx.chart, LLChart)
         tx.chart.raw_notes[0].x = 3
 
@@ -320,7 +320,7 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("child", raw_only=True) as tx:
+    with mg.open_edit("child", ll_only=True) as tx:
         tx.chart.raw_notes[0].children[0].tick = 500
 
     apply_request = transport.requests[1].apply_edit_request
@@ -341,7 +341,7 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("child", raw_only=True) as tx:
+    with mg.open_edit("child", ll_only=True) as tx:
         tx.chart.raw_notes[0].children.insert(0, L.hold_end(240, 1, 2))
 
     apply_request = transport.requests[1].apply_edit_request

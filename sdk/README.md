@@ -64,7 +64,7 @@ with mg.open_edit("move notes") as tx:
 with mg.open_edit("append pattern", scan=False) as tx:
     tx.chart.notes.append(Tap(tx.current_tick, 4, 1))
 
-with mg.open_edit("raw edit", raw_only=True) as tx:
+with mg.open_edit("raw edit", ll_only=True) as tx:
     tx.chart.raw_notes[0].x += 1
 ```
 
@@ -72,7 +72,7 @@ with mg.open_edit("raw edit", raw_only=True) as tx:
 
 Due to the limitation of plugin, see [`plugin/README.md`](../plugin/README.md), if you just want adding notes and events, use `open_edit(scan=False)`.
 
-Use `open_edit(raw_only=True)` to work entirely with raw `LLNote` trees (`LLChart`) instead of wrapped note types.
+Use `open_edit(ll_only=True)` to work entirely with raw `LLNote` trees (`LLChart`) instead of wrapped note types.
 
 See [`example`](example/) for more complex usage.
 
@@ -113,7 +113,7 @@ from margrete_rpc import Margrete
 - `undo() -> bool`
 - `redo() -> bool`
 - `current_tick() -> int`
-- `open_edit(name: str, *, scan: bool = True, raw_only: bool = False, ...) -> EditTransaction`
+- `open_edit(name: str, *, scan: bool = True, ll_only: bool = False, ...) -> EditTransaction`
 
 Discovery helpers:
 

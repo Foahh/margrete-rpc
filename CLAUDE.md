@@ -137,7 +137,7 @@ with mg.open_edit("name") as tx:
 
 **Note object hierarchy:**
 - **HL (high-level)**: `Tap`, `Flick`, `Hold`, etc. — typed note classes with properties
-- **LL (low-level)**: `LLNote` trees with raw `data` dict — used internally and for raw_only transactions
+- **LL (low-level)**: `LLNote` trees with raw `data` dict — used internally and for ll_only transactions
 - `chart.notes` → HL interface; `chart.raw_notes` → LL interface
 
 **Generated code:**
@@ -174,7 +174,7 @@ The wire protocol is defined in `proto/margrete/rpc/v1/messages.proto`. Key mess
 1. **Auto-discovery:** SDK auto-connects to the sole running plugin instance; manual endpoint override available
 2. **Port auto-assignment:** Plugin requests free port from Windows, enabling multiple Margrete instances simultaneously
 3. **Undo/redo per-transaction:** Margrete undo stack is cleared on each new transaction to avoid stale undo states
-4. **Raw vs HL chart modes:** `open_edit(raw_only=True)` for low-level access when scripting doesn't need typed objects
+4. **Raw vs HL chart modes:** `open_edit(ll_only=True)` for low-level access when scripting doesn't need typed objects
 5. **Event scanning limitation:** Plugin scans events linearly (tick 0 → last_note_tick) due to Margrete SDK constraints; passed as `event_scan_extra_tick` / `event_scan_til` parameters
 
 ### Testing Strategy

@@ -96,9 +96,9 @@ class Margrete:
         event_scan_til: list[int] | None = None,
         event_scan_note_til_only: bool = False,
         scan: bool = True,
-        raw_only: bool = False,
+        ll_only: bool = False,
     ) -> EditTransaction:
-        tx_type = "edit_ll" if raw_only else "edit"
+        tx_type = "edit_ll" if ll_only else "edit"
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type, "tx.name": name}):
             req = messages_pb2.BeginEditRequest(
                 name=name, scan=scan, event_scan_note_til_only=event_scan_note_til_only
@@ -111,7 +111,7 @@ class Margrete:
         begin = response.begin_edit_response
         chart = (
             LLChart.from_begin_edit_response(begin)
-            if raw_only
+            if ll_only
             else Chart.from_begin_edit_response(begin)
         )
         return EditTransaction(
