@@ -93,7 +93,6 @@ def test_note_enums_remain_public_exports():
 
     assert NoteType.TAP.value == messages_pb2.NOTE_TYPE_TAP
     assert LongAttr.END_NOACT.value == messages_pb2.LONG_ATTR_END_NOACT
-    assert ExtapDirection.NONE.value == messages_pb2.DIRECTION_NONE
     assert ExtapDirection.UP.value == messages_pb2.DIRECTION_UP
     assert AirDirection.DOWNRIGHT.value == messages_pb2.DIRECTION_DOWNRIGHT
     assert ExtapDirection.OUTIN.value == messages_pb2.DIRECTION_OUTIN
@@ -566,7 +565,6 @@ def test_ground_note_direction_is_available_only_on_extap_and_flick():
 @pytest.mark.parametrize(
     "direction",
     [
-        ExtapDirection.NONE,
         ExtapDirection.UP,
         ExtapDirection.DOWN,
         ExtapDirection.CENTER,
@@ -590,6 +588,7 @@ def test_extap_accepts_only_extap_directions(direction):
 @pytest.mark.parametrize(
     "direction",
     [
+        messages_pb2.DIRECTION_NONE,
         messages_pb2.DIRECTION_AUTO,
         messages_pb2.DIRECTION_UPLEFT,
     ],
@@ -1078,13 +1077,69 @@ def test_wrap_ll_note_rejects_many_air_children():
         wrap_ll_note(invalid)
 
 
-def test_wrap_ll_note_wraps_extap_with_none_direction():
+def test_wrap_ll_note_preserves_raw_extap_none_direction():
     ll = L.extap(0, 4, 2, direction=messages_pb2.DIRECTION_NONE)
 
     wrapped = wrap_ll_note(ll)
+    restored = wrapped.to_ll()
 
     assert isinstance(wrapped, Extap)
-    assert wrapped.direction is ExtapDirection.NONE
+    assert wrapped.direction == messages_pb2.DIRECTION_NONE
+    assert restored == ll
+
+
+def test_wrap_ll_note_preserves_transformed_extap_direction_with_air():
+    ll = L.extap(
+        79200,
+        8,
+        4,
+        height=80,
+        direction=messages_pb2.DIRECTION_AUTO,
+    ).child(
+        L.air(
+            79200,
+            8,
+            4,
+            height=80,
+            direction=AirDirection.DOWNRIGHT,
+        )
+    )
+    ll._id = 1103
+    ll.children[0]._id = 1104
+
+    wrapped = wrap_ll_note(ll)
+    restored = wrapped.to_ll()
+
+    assert isinstance(wrapped, Extap)
+    assert wrapped.direction == messages_pb2.DIRECTION_AUTO
+    assert restored == ll
+
+
+@pytest.mark.parametrize(
+    "direction",
+    [
+        messages_pb2.DIRECTION_ROTATE_LEFT,
+        messages_pb2.DIRECTION_INOUT,
+    ],
+)
+def test_wrap_ll_note_preserves_transformed_flick_direction(direction):
+    ll = L.flick(153440, 2, 12, height=80, direction=direction).child(
+        L.air(
+            153440,
+            2,
+            12,
+            height=80,
+            direction=AirDirection.UPRIGHT,
+            ex_attr=ExAttr.INVERT,
+        )
+    )
+
+    wrapped = wrap_ll_note(ll)
+    restored = wrapped.to_ll()
+
+    assert isinstance(wrapped, Flick)
+    assert wrapped.direction == direction
+    assert restored == ll
 
 
 def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
@@ -1124,7 +1179,7 @@ def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
     assert chart.events.bpm == [BpmEvent(0, 120.0)]
 
 
-def test_chart_from_begin_edit_response_wraps_extap_with_none_direction():
+def test_chart_from_begin_edit_response_preserves_raw_extap_none_direction():
     response = messages_pb2.BeginEditResponse(
         current_tick=240,
         notes=[
@@ -1144,7 +1199,7 @@ def test_chart_from_begin_edit_response_wraps_extap_with_none_direction():
     assert len(chart.notes) == 1
     assert chart.raw_notes == []
     assert isinstance(chart.notes[0], Extap)
-    assert chart.notes[0].direction is ExtapDirection.NONE
+    assert chart.notes[0].direction == messages_pb2.DIRECTION_NONE
 
 
 def test_event_normalization_uses_last_write_wins_by_key():

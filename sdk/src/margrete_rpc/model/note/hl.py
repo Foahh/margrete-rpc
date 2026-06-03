@@ -93,7 +93,7 @@ def _checked_info_property(name: str, check):
 
 def _direction_property(enum_type: type[IntEnum], label: str):
     def getter(self):
-        return enum_type(int(self._info.direction))
+        return _enum_value(enum_type, int(self._info.direction))
 
     def setter(self, value):
         try:
@@ -103,6 +103,11 @@ def _direction_property(enum_type: type[IntEnum], label: str):
         self._info.direction = direction
 
     return property(getter, setter)
+
+
+def _restore_wrapped_info(wrapped: _GroundNote, note: LLNote) -> None:
+    wrapped._info = note.info.copy()
+    wrapped._id = note._id
 
 
 def _coerce_aircrush_density_value(value: object) -> int:
@@ -824,29 +829,11 @@ def _wrap_ground(note: LLNote) -> HLNote:
             int(note.tick), note.x, note.width, _info=note.info, _id=note._id
         )
     elif note.type is NoteType.EXTAP:
-        try:
-            wrapped = Extap(
-                int(note.tick),
-                note.x,
-                note.width,
-                direction=note.direction,
-                _info=note.info,
-                _id=note._id,
-            )
-        except ValueError as exc:
-            raise UnsupportedNoteTree("unsupported extap direction") from exc
+        wrapped = Extap(int(note.tick), note.x, note.width)
+        _restore_wrapped_info(wrapped, note)
     elif note.type is NoteType.FLICK:
-        try:
-            wrapped = Flick(
-                int(note.tick),
-                note.x,
-                note.width,
-                direction=note.direction,
-                _info=note.info,
-                _id=note._id,
-            )
-        except ValueError as exc:
-            raise UnsupportedNoteTree("unsupported flick direction") from exc
+        wrapped = Flick(int(note.tick), note.x, note.width)
+        _restore_wrapped_info(wrapped, note)
     elif note.type is NoteType.DAMAGE:
         wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
     else:

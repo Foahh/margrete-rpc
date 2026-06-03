@@ -42,7 +42,6 @@ class AirDirection(IntEnum):
 
 
 class ExtapDirection(IntEnum):
-    NONE = messages_pb2.DIRECTION_NONE
     UP = messages_pb2.DIRECTION_UP
     DOWN = messages_pb2.DIRECTION_DOWN
     CENTER = messages_pb2.DIRECTION_CENTER
