@@ -747,6 +747,59 @@ def test_hold_requires_end_and_defaults_end_geometry_to_begin():
     assert ll.children[0].width == 2
 
 
+def test_slide_joints_default_geometry_to_previous_joint():
+    slide = Slide(tick=0, x=4, width=2).control(480).step(960).curve_control(1440).end(1920)
+
+    ll = slide.to_ll()
+
+    assert [child.long_attr for child in ll.children] == [
+        LongAttr.CONTROL,
+        LongAttr.STEP,
+        LongAttr.CURVE_CONTROL,
+        LongAttr.END,
+    ]
+    assert [(child.x, child.width, child.height) for child in ll.children] == [
+        (4, 2, 800),
+        (4, 2, 800),
+        (4, 2, 800),
+        (4, 2, 800),
+    ]
+
+
+def test_air_long_joints_default_geometry_to_previous_joint():
+    tap = Tap(tick=0, x=4, width=2)
+    air_slide = tap.air(AirDirection.DOWN).slide(height=80)
+    air_slide.control(480).step(960).curve_control(1440).end_noact(1920)
+
+    air_hold = Tap(tick=0, x=6, width=2).air(AirDirection.DOWN).hold(height=120)
+    air_hold.step(480).end_noact(960)
+
+    slide_ll = air_slide.to_ll()
+    hold_ll = air_hold.to_ll()
+
+    assert [(child.x, child.width, child.height) for child in slide_ll.children] == [
+        (4, 2, 80),
+        (4, 2, 80),
+        (4, 2, 80),
+        (4, 2, 80),
+    ]
+    assert [(child.x, child.width, child.height) for child in hold_ll.children] == [
+        (6, 2, 120),
+        (6, 2, 120),
+    ]
+
+
+def test_air_crush_joints_default_geometry_to_previous_joint():
+    crush = AirCrush(tick=0, x=4, width=2, height=80, density=0).control(480).end(960)
+
+    ll = crush.to_ll()
+
+    assert [(child.long_attr, child.x, child.width, child.height) for child in ll.children] == [
+        (LongAttr.CONTROL, 4, 2, 80),
+        (LongAttr.END, 4, 2, 80),
+    ]
+
+
 def test_air_slide_forces_upward_air_and_supports_end_noact():
     tap = Tap(tick=0, x=4, width=2)
     air_slide = tap.air(AirDirection.DOWN).slide(height=80)

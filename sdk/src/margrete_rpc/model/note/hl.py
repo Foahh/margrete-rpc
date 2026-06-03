@@ -463,6 +463,20 @@ class _LongBuilder(_GeometryInfoMixin, _ShiftMixin):
             raise ValueError("long note requires an end joint")
         return self._joints[-1]
 
+    def _joint_geometry(
+        self,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> tuple[int, int, int]:
+        previous = self._joints[-1] if self._joints else self
+        return (
+            previous.x if x is None else x,
+            previous.width if width is None else width,
+            previous.height if height is None else height,
+        )
+
     def _to_ll_tree(
         self, begin_attr: LongAttr = LongAttr.BEGIN, *, skip_validation: bool = False
     ) -> LLNote:
@@ -525,20 +539,34 @@ class _LongBuilder(_GeometryInfoMixin, _ShiftMixin):
 class Slide(_LongBuilder):
     _note_type = NoteType.SLIDE
 
-    def step(self, tick: int, *, x: int, width: int) -> Slide:
-        self._add_joint(Joint(tick=tick, x=x, width=width, long_attr=LongAttr.STEP))
+    def step(self, tick: int, *, x: int | None = None, width: int | None = None) -> Slide:
+        x, width, height = self._joint_geometry(x=x, width=width)
+        self._add_joint(Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.STEP))
         return self
 
-    def control(self, tick: int, *, x: int, width: int) -> Slide:
-        self._add_joint(Joint(tick=tick, x=x, width=width, long_attr=LongAttr.CONTROL))
+    def control(self, tick: int, *, x: int | None = None, width: int | None = None) -> Slide:
+        x, width, height = self._joint_geometry(x=x, width=width)
+        self._add_joint(
+            Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.CONTROL)
+        )
         return self
 
-    def curve_control(self, tick: int, *, x: int, width: int) -> Slide:
-        self._add_joint(Joint(tick=tick, x=x, width=width, long_attr=LongAttr.CURVE_CONTROL))
+    def curve_control(self, tick: int, *, x: int | None = None, width: int | None = None) -> Slide:
+        x, width, height = self._joint_geometry(x=x, width=width)
+        self._add_joint(
+            Joint(
+                tick=tick,
+                x=x,
+                width=width,
+                height=height,
+                long_attr=LongAttr.CURVE_CONTROL,
+            )
+        )
         return self
 
-    def end(self, tick: int, *, x: int, width: int) -> Slide:
-        self._add_joint(Joint(tick=tick, x=x, width=width, long_attr=LongAttr.END))
+    def end(self, tick: int, *, x: int | None = None, width: int | None = None) -> Slide:
+        x, width, height = self._joint_geometry(x=x, width=width)
+        self._add_joint(Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END))
         return self
 
     def air(self, direction: AirDirection) -> Air:
@@ -582,17 +610,41 @@ class Hold(_LongBuilder):
 class AirSlide(_LongBuilder):
     _note_type = NoteType.AIRSLIDE
 
-    def step(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
+    def step(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirSlide:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.STEP))
         return self
 
-    def control(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
+    def control(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirSlide:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(
             Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.CONTROL)
         )
         return self
 
-    def curve_control(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
+    def curve_control(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirSlide:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(
             Joint(
                 tick=tick,
@@ -604,11 +656,27 @@ class AirSlide(_LongBuilder):
         )
         return self
 
-    def end(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
+    def end(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirSlide:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END))
         return self
 
-    def end_noact(self, tick: int, *, x: int, width: int, height: int) -> AirSlide:
+    def end_noact(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirSlide:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(
             Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END_NOACT)
         )
@@ -621,15 +689,39 @@ class AirSlide(_LongBuilder):
 class AirHold(_LongBuilder):
     _note_type = NoteType.AIRHOLD
 
-    def step(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
+    def step(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirHold:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.STEP))
         return self
 
-    def end(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
+    def end(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirHold:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END))
         return self
 
-    def end_noact(self, tick: int, *, x: int, width: int, height: int) -> AirHold:
+    def end_noact(
+        self,
+        tick: int,
+        *,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> AirHold:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(
             Joint(tick=tick, x=x, width=width, height=height, long_attr=LongAttr.END_NOACT)
         )
@@ -672,10 +764,11 @@ class AirCrush(_LongBuilder):
         self,
         tick: int,
         *,
-        x: int,
-        width: int,
-        height: int,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
     ) -> AirCrush:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(
             Joint(
                 tick=tick,
@@ -691,10 +784,11 @@ class AirCrush(_LongBuilder):
         self,
         tick: int,
         *,
-        x: int,
-        width: int,
-        height: int,
+        x: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
     ) -> AirCrush:
+        x, width, height = self._joint_geometry(x=x, width=width, height=height)
         self._add_joint(
             Joint(
                 tick=tick,
