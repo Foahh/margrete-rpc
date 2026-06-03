@@ -18,7 +18,6 @@ def _write_record(base: Path, instance_id: str, endpoint: str) -> None:
     (directory / f"{instance_id}.json").write_text(
         json.dumps(
             {
-                "schema": 1,
                 "instance_id": instance_id,
                 "pid": 123,
                 "endpoint": endpoint,

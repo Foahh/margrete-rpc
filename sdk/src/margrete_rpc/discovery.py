@@ -78,8 +78,6 @@ def _load_instance(path: Path) -> MargreteInstance | None:
         return None
     if not isinstance(data, dict):
         return None
-    if data.get("schema") != 1:
-        return None
 
     instance_id = _string(data.get("instance_id"))
     endpoint = _string(data.get("endpoint"))

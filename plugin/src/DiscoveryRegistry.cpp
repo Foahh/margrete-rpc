@@ -110,7 +110,6 @@ void DiscoveryRegistry::Publish(const std::string &instanceId, const std::string
 
         std::ofstream out(recordPath, std::ios::trunc);
         out << "{\n";
-        out << "  \"schema\": 1,\n";
         out << "  \"instance_id\": \"" << JsonEscape(instanceId) << "\",\n";
         out << "  \"pid\": " << CurrentProcessId() << ",\n";
         out << "  \"endpoint\": \"" << JsonEscape(endpoint) << "\",\n";
