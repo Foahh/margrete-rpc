@@ -165,7 +165,7 @@ def test_scan_false_rejects_existing_note_ids_before_commit_request():
     with pytest.raises(ValueError, match="scan=false transactions cannot send existing note ids"):
         with mg.open_edit("bad", scan=False) as tx:
             note = L.tap(480, 2, 1)
-            note.id = 99
+            note._id = 99
             tx.chart.raw_notes.append(note)
 
     assert len(transport.requests) == 1

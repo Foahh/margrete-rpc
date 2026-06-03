@@ -19,7 +19,6 @@ def _strip_note_ids(note: LLNote) -> LLNote:
     return LLNote(
         info=note.info.copy(),
         children=[_strip_note_ids(child) for child in note.children],
-        id=None,
     )
 
 
@@ -49,7 +48,7 @@ def _event_signature_from_chart(chart: Chart | LLChart) -> bytes:
 
 def _has_existing_note_id(notes: list[LLNote]) -> bool:
     for note in notes:
-        if note.id is not None or _has_existing_note_id(note.children):
+        if note._id is not None or _has_existing_note_id(note.children):
             return True
     return False
 
@@ -74,7 +73,7 @@ def _note_tree_sig(note: LLNote) -> bytes:
 
 
 def _id_structure(note: LLNote) -> tuple[int | None, tuple]:
-    return (note.id, tuple(_id_structure(child) for child in note.children))
+    return (note._id, tuple(_id_structure(child) for child in note.children))
 
 
 def _children_id_structure(note: LLNote) -> tuple:
@@ -86,18 +85,18 @@ def _append_scanned_note_diffs(
     orig_notes: list[LLNote],
     final_notes: list[LLNote],
 ) -> None:
-    orig_by_id = {note.id: note for note in orig_notes if note.id is not None}
-    final_ids = {note.id for note in final_notes if note.id is not None}
+    orig_by_id = {note._id: note for note in orig_notes if note._id is not None}
+    final_ids = {note._id for note in final_notes if note._id is not None}
 
     for note_id in orig_by_id:
         if note_id not in final_ids:
             request.note_ids_delete.append(note_id)
 
     for note in final_notes:
-        if note.id is None:
+        if note._id is None:
             request.notes_upsert.append(_strip_note_ids(note).to_proto())
             continue
-        orig = orig_by_id.get(note.id)
+        orig = orig_by_id.get(note._id)
         if orig is None:
             request.notes_upsert.append(_strip_note_ids(note).to_proto())
             continue
@@ -106,7 +105,7 @@ def _append_scanned_note_diffs(
         if _children_id_structure(orig) == _children_id_structure(note):
             request.notes_upsert.append(note.to_proto())
         else:
-            request.note_ids_delete.append(note.id)
+            request.note_ids_delete.append(note._id)
             request.notes_upsert.append(_strip_note_ids(note).to_proto())
 
 

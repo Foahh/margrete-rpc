@@ -211,7 +211,7 @@ class Air(_GeometryInfoMixin, _ShiftMixin):
     __repr__ = __str__
 
     def to_ll(self, *, skip_validation: bool = False) -> LLNote:
-        note = LLNote(info=self._info.copy(), id=self._id)
+        note = LLNote(info=self._info.copy(), _id=self._id)
         if self._long_action is not None:
             note.children.append(
                 self._long_action.to_ll(skip_validation=skip_validation)  # type: ignore[union-attr]
@@ -259,7 +259,7 @@ class _GroundNote(_GeometryInfoMixin, _ShiftMixin):
         return self._air
 
     def _base_ll(self) -> LLNote:
-        return LLNote(info=self._info.copy(), id=self._id)
+        return LLNote(info=self._info.copy(), _id=self._id)
 
     def __str__(self) -> str:
         parts = [
@@ -385,11 +385,11 @@ class Joint(_GeometryInfoMixin):
         long_attr: LongAttr,
         height: int = 800,
         info: NoteInfo | None = None,
-        id: int | None = None,
+        _id: int | None = None,
         air: Air | None = None,
     ) -> None:
         self.info = _copy_info(info)
-        self.id = id
+        self._id = _id
         self.air = air
         self.tick = tick
         self.x = x
@@ -484,7 +484,7 @@ class _LongBuilder(_GeometryInfoMixin, _ShiftMixin):
             self._require_end()
         root = LLNote(
             info=self._info.copy(long_attr=begin_attr),
-            id=self._id,
+            _id=self._id,
         )
         for joint in self._joints:
             jinfo = joint.info.copy(type=self._note_type)
@@ -492,7 +492,7 @@ class _LongBuilder(_GeometryInfoMixin, _ShiftMixin):
                 jinfo = jinfo.copy(option_value=0)
             child = LLNote(
                 info=jinfo,
-                id=joint.id,
+                _id=joint._id,
             )
             if joint.air is not None:
                 child.children.append(joint.air.to_ll(skip_validation=skip_validation))
@@ -820,7 +820,7 @@ def _wrap_ground(note: LLNote) -> HLNote:
     if note.long_attr is not LongAttr.NONE:
         raise UnsupportedNoteTree("ground note must not have long_attr")
     if note.type is NoteType.TAP:
-        wrapped: _GroundNote = Tap(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
+        wrapped: _GroundNote = Tap(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
     elif note.type is NoteType.EXTAP:
         try:
             wrapped = Extap(
@@ -829,7 +829,7 @@ def _wrap_ground(note: LLNote) -> HLNote:
                 note.width,
                 direction=note.direction,
                 _info=note.info,
-                _id=note.id,
+                _id=note._id,
             )
         except ValueError as exc:
             raise UnsupportedNoteTree("unsupported extap direction") from exc
@@ -841,12 +841,12 @@ def _wrap_ground(note: LLNote) -> HLNote:
                 note.width,
                 direction=note.direction,
                 _info=note.info,
-                _id=note.id,
+                _id=note._id,
             )
         except ValueError as exc:
             raise UnsupportedNoteTree("unsupported flick direction") from exc
     elif note.type is NoteType.DAMAGE:
-        wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note.id)
+        wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
     else:
         raise UnsupportedNoteTree("unsupported ground note")
 
@@ -861,7 +861,7 @@ def _wrap_ground(note: LLNote) -> HLNote:
         except ValueError as exc:
             raise UnsupportedNoteTree("unsupported air direction") from exc
         wrapped_air._info = child.info.copy()
-        wrapped_air._id = child.id
+        wrapped_air._id = child._id
         if len(child.children) > 1:
             raise UnsupportedNoteTree("air may have only one long action")
         if child.children:
@@ -886,7 +886,7 @@ def _require_final_end(children: list[LLNote], allowed: set[LongAttr]) -> None:
 
 def _copy_joint(builder: _LongBuilder, child: LLNote) -> None:
     builder._joints[-1].info = child.info.copy()
-    builder._joints[-1].id = child.id
+    builder._joints[-1]._id = child._id
     if child.children:
         builder._joints[-1].air = _wrap_attached_air(child.children)
 
@@ -904,7 +904,7 @@ def _wrap_attached_air(children: list[LLNote]) -> Air:
             child.width,
             child.direction,
             _info=child.info.copy(),
-            _id=child.id,
+            _id=child._id,
         )
     except ValueError as exc:
         raise UnsupportedNoteTree("unsupported air direction") from exc
@@ -919,7 +919,7 @@ def _wrap_slide(note: LLNote) -> Slide:
     _check_ll_root_begin(note, NoteType.SLIDE)
     _require_final_end(note.children, {LongAttr.END})
     slide = Slide(
-        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note._id
     )
     previous_tick = int(note.tick)
     for child in note.children:
@@ -946,7 +946,7 @@ def _wrap_hold(note: LLNote) -> Hold:
     child = note.children[0]
     _check_order(int(note.tick), int(child.tick))
     hold = Hold(
-        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note._id
     )
     hold.end(int(child.tick), x=child.x, width=child.width)
     _copy_joint(hold, child)
@@ -965,7 +965,7 @@ def _wrap_air_slide(note: LLNote) -> AirSlide:
     _check_ll_root_begin(note, NoteType.AIRSLIDE)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     slide = AirSlide(
-        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note._id
     )
     previous_tick = int(note.tick)
     for child in note.children:
@@ -991,7 +991,7 @@ def _wrap_air_hold(note: LLNote) -> AirHold:
     _check_ll_root_begin(note, NoteType.AIRHOLD)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     hold = AirHold(
-        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note.id
+        int(note.tick), note.x, note.width, height=note.height, _info=note.info, _id=note._id
     )
     previous_tick = int(note.tick)
     for child in note.children:
@@ -1020,7 +1020,7 @@ def _wrap_air_crush(note: LLNote) -> AirCrush:
         density=note.option_value,
         color=cast(AirCrushColor, note.variation_id),
         _info=note.info,
-        _id=note.id,
+        _id=note._id,
     )
     previous_tick = int(note.tick)
     for child in note.children:

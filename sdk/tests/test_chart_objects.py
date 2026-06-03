@@ -244,7 +244,7 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
     assert note.x == 4
     assert note.width == 1
     assert note.height == 800
-    assert note.id is None
+    assert note._id is None
     assert note.children == []
 
 
@@ -271,7 +271,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
         3,
         7,
     )
-    note = LLNote(info=info, id=12)
+    note = LLNote(info=info, _id=12)
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.BEGIN
@@ -284,7 +284,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
     assert note.height == 800
     assert note.timeline_id == 3
     assert note.option_value == 7
-    assert note.id == 12
+    assert note._id == 12
 
 
 def test_event_dataclasses_accept_required_fields_as_positional_arguments():
@@ -360,7 +360,7 @@ def test_tick_subtracts_between_int_ticks():
 
 def test_note_round_trips_to_protobuf_with_children_and_id():
     note = LLNote(
-        id=10,
+        _id=10,
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
@@ -432,7 +432,7 @@ def test_l_factory_methods_build_low_level_notes():
 
 def test_llnote_round_trips_to_protobuf_with_children_and_id():
     note = LLNote(
-        id=10,
+        _id=10,
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
@@ -1120,7 +1120,7 @@ def test_chart_from_begin_edit_response_splits_wrapped_and_raw_notes():
     assert len(chart.notes) == 1
     assert isinstance(chart.notes[0], Tap)
     assert len(chart.raw_notes) == 1
-    assert chart.raw_notes[0].id == 2
+    assert chart.raw_notes[0]._id == 2
     assert chart.events.bpm == [BpmEvent(0, 120.0)]
 
 

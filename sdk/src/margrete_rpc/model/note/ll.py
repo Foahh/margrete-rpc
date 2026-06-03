@@ -31,7 +31,7 @@ def _info_property(name: str):
 class LLNote:
     info: NoteInfo = field(default_factory=NoteInfo)
     children: list[LLNote] = field(default_factory=list)
-    id: int | None = None
+    _id: int | None = field(default=None)
 
     type = _info_property("type")
     long_attr = _info_property("long_attr")
@@ -57,7 +57,7 @@ class LLNote:
     @classmethod
     def from_proto(cls, proto: messages_pb2.Note) -> LLNote:
         return cls(
-            id=proto.id if proto.HasField("id") else None,
+            _id=proto.id if proto.HasField("id") else None,
             info=NoteInfo(
                 type=NoteType(proto.type),
                 long_attr=LongAttr(proto.long_attr),
@@ -88,8 +88,8 @@ class LLNote:
             timeline_id=self.timeline_id,
             option_value=int(self.option_value),
         )
-        if self.id is not None:
-            proto.id = self.id
+        if self._id is not None:
+            proto.id = self._id
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
 
@@ -101,8 +101,8 @@ class LLNote:
 
 def _format_ll_note(note: LLNote, *, indent: int = 0) -> str:
     prefix = "  " * indent
-    id_part = f"id={note.id}, " if note.id is not None else ""
-    line = f"{prefix}LLNote({id_part}info={note.info!s})"
+    id_part = f"id={note._id}, " if note._id is not None else ""
+    line = f"{prefix}LL({id_part}info={note.info!s})"
     if not note.children:
         return line
     return line + "\n" + "\n".join(_format_ll_note(c, indent=indent + 1) for c in note.children)

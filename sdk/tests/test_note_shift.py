@@ -138,8 +138,8 @@ def test_shift_does_not_validate_negative_tick_or_width():
 
 def test_shift_preserves_id_and_timeline_id():
     note = L.tap(1, 2, 1, timeline_id=42)
-    note.id = 99
+    note._id = 99
     note.shift(t=3)
-    assert note.id == 99
+    assert note._id == 99
     assert note.timeline_id == 42
     assert note.type is NoteType.TAP
