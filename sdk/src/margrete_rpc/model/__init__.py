@@ -12,11 +12,11 @@ from margrete_rpc.model.event import (
 from margrete_rpc.model.note import (
     Air,
     AirCrush,
-    AirHold,
-    AirSlide,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
+    AirHold,
+    AirSlide,
     Damage,
     ExAttr,
     Extap,

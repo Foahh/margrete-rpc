@@ -56,9 +56,7 @@ def _build_time_signatures(beat_events: Iterable[BeatEvent]) -> list[_TimeSignat
         prev = segments[-1]
         measure_len = _measure_length(prev)
         tick = prev.tick + measure_len * (event.bar - prev.bar)
-        segments.append(
-            _TimeSignature(event.bar, tick, event.beats_per_bar, event.beat_unit)
-        )
+        segments.append(_TimeSignature(event.bar, tick, event.beats_per_bar, event.beat_unit))
     return segments
 
 
@@ -118,12 +116,7 @@ class ChartTime:
             raise ValueError(
                 f"offset {offset} out of range for beat length {beat_tick} at bar {bar}"
             )
-        return (
-            ts.tick
-            + (bar - ts.bar) * measure_len
-            + beat * beat_tick
-            + offset
-        )
+        return ts.tick + (bar - ts.bar) * measure_len + beat * beat_tick + offset
 
     def _find_segment_index_for_bar(self, bar: int) -> int:
         segments = self._segments

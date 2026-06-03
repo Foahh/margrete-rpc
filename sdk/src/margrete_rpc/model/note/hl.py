@@ -26,8 +26,7 @@ class HLNote(Protocol):
     def to_ll(self, *, skip_validation: bool = False) -> LLNote:
         raise NotImplementedError
 
-    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self:
-        ...
+    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self: ...
 
 
 def _hl_enum_line(value: IntEnum | int) -> str:
@@ -111,9 +110,7 @@ def _coerce_aircrush_density_value(value: object) -> int:
         return int(value)
     if type(value) is int:
         return value
-    raise TypeError(
-        f"density must be int or AirCrushOption, got {type(value).__name__}"
-    )
+    raise TypeError(f"density must be int or AirCrushOption, got {type(value).__name__}")
 
 
 class _GeometryInfoMixin:

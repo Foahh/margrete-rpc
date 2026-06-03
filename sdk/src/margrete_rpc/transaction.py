@@ -117,7 +117,10 @@ def _append_scanned_event_diffs(
         if tick not in final_bpm:
             request.bpm_ticks_delete.append(tick)
     for tick, event in final_bpm.items():
-        if tick not in orig_bpm or event.to_proto().SerializeToString() != orig_bpm[tick].to_proto().SerializeToString():
+        if (
+            tick not in orig_bpm
+            or event.to_proto().SerializeToString() != orig_bpm[tick].to_proto().SerializeToString()
+        ):
             request.bpm_upsert.append(event.to_proto())
 
     orig_beat = {int(event.bar): event for event in orig_events.beat}
@@ -126,7 +129,10 @@ def _append_scanned_event_diffs(
         if bar not in final_beat:
             request.beat_bars_delete.append(bar)
     for bar, event in final_beat.items():
-        if bar not in orig_beat or event.to_proto().SerializeToString() != orig_beat[bar].to_proto().SerializeToString():
+        if (
+            bar not in orig_beat
+            or event.to_proto().SerializeToString() != orig_beat[bar].to_proto().SerializeToString()
+        ):
             request.beat_upsert.append(event.to_proto())
 
     orig_til = {(int(event.tick), int(event.timeline_id)): event for event in orig_events.til}
@@ -138,7 +144,10 @@ def _append_scanned_event_diffs(
                 messages_pb2.TimelineSpeedKey(tick=tick, timeline_id=timeline_id)
             )
     for key, event in final_til.items():
-        if key not in orig_til or event.to_proto().SerializeToString() != orig_til[key].to_proto().SerializeToString():
+        if (
+            key not in orig_til
+            or event.to_proto().SerializeToString() != orig_til[key].to_proto().SerializeToString()
+        ):
             request.til_upsert.append(event.to_proto())
 
     orig_note_speed = {int(event.tick): event for event in orig_events.note_speed}
@@ -147,9 +156,11 @@ def _append_scanned_event_diffs(
         if tick not in final_note_speed:
             request.note_speed_ticks_delete.append(tick)
     for tick, event in final_note_speed.items():
-        if tick not in orig_note_speed or event.to_proto().SerializeToString() != orig_note_speed[
-            tick
-        ].to_proto().SerializeToString():
+        if (
+            tick not in orig_note_speed
+            or event.to_proto().SerializeToString()
+            != orig_note_speed[tick].to_proto().SerializeToString()
+        ):
             request.note_speed_upsert.append(event.to_proto())
 
 

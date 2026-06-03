@@ -84,7 +84,7 @@ void CollectTimelineIdsFromNote(const margrete::rpc::v1::Note &note, std::unorde
 }
 
 std::vector<std::int32_t> FilterEventScanTilByNotes(const std::vector<margrete::rpc::v1::Note> &notes,
-                                                   const std::vector<std::int32_t> &eventScanTil)
+                                                    const std::vector<std::int32_t> &eventScanTil)
 {
     std::unordered_set<std::int32_t> used;
     for (const auto &n : notes)

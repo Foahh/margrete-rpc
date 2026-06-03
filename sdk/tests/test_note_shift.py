@@ -60,11 +60,7 @@ def test_hl_ground_with_air_and_air_slide_shifts_all_nodes():
 
 
 def test_hl_slide_shifts_begin_and_all_joints():
-    slide = (
-        Slide(tick=100, x=0, width=4, height=80)
-        .step(150, x=2, width=4)
-        .end(200, x=4, width=4)
-    )
+    slide = Slide(tick=100, x=0, width=4, height=80).step(150, x=2, width=4).end(200, x=4, width=4)
     slide.shift(t=10, x=1, w=1, h=5)
     assert slide.tick == 110
     assert slide.x == 1

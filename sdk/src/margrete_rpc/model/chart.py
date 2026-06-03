@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 from typing import overload
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.chart_time import Pos, p2t as _p2t, t2p as _t2p
+from margrete_rpc.model.chart_time import Pos
+from margrete_rpc.model.chart_time import p2t as _p2t
+from margrete_rpc.model.chart_time import t2p as _t2p
 from margrete_rpc.model.event import (
     BeatEvent,
     BpmEvent,

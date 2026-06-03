@@ -29,8 +29,8 @@ from margrete_rpc import (
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import normalize_event_operations
-from margrete_rpc.model.note import wrap_ll_note
 from margrete_rpc.model.constant import TICKS_PER_BEAT
+from margrete_rpc.model.note import wrap_ll_note
 from margrete_rpc.util.time import beats_to_ticks
 
 
@@ -105,6 +105,7 @@ def test_note_enums_remain_public_exports():
 
 def test_new_note_api_is_exported_from_root_package():
     from margrete_rpc import (
+        TICKS_PER_BEAT,
         Air,
         AirCrush,
         AirHold,
@@ -117,7 +118,6 @@ def test_new_note_api_is_exported_from_root_package():
         NoteInfo,
         Slide,
         Tap,
-        TICKS_PER_BEAT,
         UnsupportedNoteTree,
         b2t,
         beats_to_ticks,
@@ -949,11 +949,7 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
 
 
 def test_long_note_exposes_joints_for_iteration():
-    slide = (
-        Slide(tick=960, x=0, width=4)
-        .step(1440, x=6, width=3)
-        .end(1920, x=12, width=4)
-    )
+    slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=3).end(1920, x=12, width=4)
 
     assert slide.joints is slide._joints
     assert [joint.long_attr for joint in slide.joints] == [
