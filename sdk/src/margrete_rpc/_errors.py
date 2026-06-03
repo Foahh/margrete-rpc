@@ -9,6 +9,10 @@ class MargreteProtocolError(MargreteError):
     """Raised when the TCP/protobuf framing is invalid."""
 
 
+class MargreteDiscoveryError(MargreteError):
+    """Raised when a running plugin instance cannot be selected."""
+
+
 class MargreteRemoteError(MargreteError):
     """Raised when the plugin returns an ErrorResponse."""
 

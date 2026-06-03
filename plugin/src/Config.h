@@ -9,8 +9,8 @@ struct ServerConfig
     std::filesystem::path sourcePath{};
     bool loadedFromFile{false};
     std::string host{"127.0.0.1"};
-    std::uint16_t port{48731};
-    std::filesystem::path logPath{"margrete-rpc.log"};
+    std::uint16_t port{0};
+    bool autoPort{true};
 };
 
 ServerConfig LoadServerConfig(const std::filesystem::path &iniPath);

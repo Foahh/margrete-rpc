@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
+from margrete_rpc.discovery import resolve_endpoint
 from margrete_rpc.model import Chart, LLChart
 from margrete_rpc.trace import NoopTracer, Tracer
 from margrete_rpc.transaction import EditTransaction
@@ -10,16 +11,23 @@ from margrete_rpc.transaction import EditTransaction
 class Margrete:
     def __init__(
         self,
-        endpoint: str = "127.0.0.1:48731",
+        endpoint: str | None = None,
         *,
+        instance_id: str | None = None,
         timeout: float = 60.0,
         transport=None,
         tracer: Tracer | None = None,
     ) -> None:
         self._tracer = tracer if tracer is not None else NoopTracer()
         if transport is not None:
+            if endpoint is not None or instance_id is not None:
+                raise ValueError("endpoint and instance_id cannot be used with transport")
             self._transport = transport
         else:
+            if endpoint is not None and instance_id is not None:
+                raise ValueError("pass endpoint or instance_id, not both")
+            if endpoint is None:
+                endpoint = resolve_endpoint(instance_id, timeout=min(timeout, 1.0))
             self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
 
     def ping(self) -> str:

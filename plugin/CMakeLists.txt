@@ -62,6 +62,7 @@ add_library(margrete_rpc SHARED
     src/Plugin.cpp
     src/Config.cpp
     src/Logger.cpp
+    src/DiscoveryRegistry.cpp
     src/FrameProtocol.cpp
     src/MargreteSession.cpp
     src/RequestRouter.cpp
@@ -95,6 +96,7 @@ add_executable(plugin_tests
     tests/transaction_applier_tests.cpp
     src/Config.cpp
     src/Logger.cpp
+    src/DiscoveryRegistry.cpp
     src/FrameProtocol.cpp
     src/MargreteSession.cpp
     src/RequestRouter.cpp

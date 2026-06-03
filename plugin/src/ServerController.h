@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 
 #include <MargretePlugin.h>
@@ -19,7 +20,10 @@ class ServerController
 
   private:
     ServerConfig config_;
+    std::string instanceId_;
+    std::filesystem::path logPath_;
     Logger logger_;
     RequestRouter router_;
     std::unique_ptr<SocketServer> server_;
+    std::atomic_bool discoveryPublished_{false};
 };

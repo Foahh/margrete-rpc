@@ -9,11 +9,18 @@ Default server config `margrete-rpc.ini`:
 ```ini
 [server]
 host = 127.0.0.1
-port = 48731
-log = margrete-rpc.log
+port = auto
 ```
 
 The plugin binds only to `127.0.0.1`.
+
+`port = auto` asks Windows for a free local port, so multiple Margrete processes can run the plugin at the same time. Set `port` to a fixed numeric value only when you need a stable endpoint.
+
+Logs are written per instance under:
+
+```text
+%LOCALAPPDATA%\MargreteRPC\logs\margrete-rpc-{instance_id}.log
+```
 
 ## Limitation
 

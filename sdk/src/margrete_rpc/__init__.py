@@ -1,13 +1,20 @@
-from margrete_rpc._errors import MargreteError, MargreteProtocolError, MargreteRemoteError
+from margrete_rpc._errors import (
+    MargreteDiscoveryError,
+    MargreteError,
+    MargreteProtocolError,
+    MargreteRemoteError,
+)
 from margrete_rpc.client import Margrete
+from margrete_rpc.discovery import MargreteInstance, discovery_dir, list_instances
 from margrete_rpc.model import (
+    TICKS_PER_BEAT,
     Air,
     AirCrush,
-    AirHold,
-    AirSlide,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
+    AirHold,
+    AirSlide,
     BeatEvent,
     BpmEvent,
     Chart,
@@ -29,13 +36,12 @@ from margrete_rpc.model import (
     NoteSpeedEvent,
     NoteType,
     Pos,
-    p2t,
     Slide,
     Tap,
-    t2p,
-    TICKS_PER_BEAT,
     TimelineSpeedEvent,
     UnsupportedNoteTree,
+    p2t,
+    t2p,
 )
 from margrete_rpc.trace import CallbackTracer, NoopTracer, TraceEvent, Tracer
 from margrete_rpc.util import b2t, beats_to_ticks
@@ -66,7 +72,9 @@ __all__ = [
     "LLNote",
     "LongAttr",
     "Margrete",
+    "MargreteDiscoveryError",
     "MargreteError",
+    "MargreteInstance",
     "MargreteProtocolError",
     "MargreteRemoteError",
     "NoteInfo",
@@ -86,4 +94,6 @@ __all__ = [
     "UnsupportedNoteTree",
     "b2t",
     "beats_to_ticks",
+    "discovery_dir",
+    "list_instances",
 ]

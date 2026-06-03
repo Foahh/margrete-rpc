@@ -3,6 +3,7 @@
 #include <array>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <winsock2.h>
@@ -10,8 +11,8 @@
 
 #include "FrameProtocol.h"
 
-SocketServer::SocketServer(std::uint16_t port, RequestRouter &router, Logger &logger)
-    : port_(port), router_(router), logger_(logger)
+SocketServer::SocketServer(std::uint16_t port, RequestRouter &router, Logger &logger, StartedCallback onStarted)
+    : port_(port), router_(router), logger_(logger), onStarted_(std::move(onStarted))
 {
 }
 
@@ -47,6 +48,11 @@ void SocketServer::stop()
 bool SocketServer::running() const noexcept
 {
     return running_.load();
+}
+
+std::uint16_t SocketServer::actualPort() const noexcept
+{
+    return actualPort_.load();
 }
 
 void SocketServer::run()
@@ -94,7 +100,24 @@ void SocketServer::run()
         return;
     }
 
-    logger_.info("server started on 127.0.0.1:" + std::to_string(port_));
+    sockaddr_in boundAddr{};
+    int boundAddrLen = sizeof(boundAddr);
+    if (getsockname(srv, reinterpret_cast<sockaddr *>(&boundAddr), &boundAddrLen) == SOCKET_ERROR)
+    {
+        running_.store(false);
+        logger_.error("getsockname failed");
+        closesocket(srv);
+        listenSocket_ = ~uintptr_t{0};
+        WSACleanup();
+        return;
+    }
+    actualPort_.store(ntohs(boundAddr.sin_port));
+
+    logger_.info("server started on 127.0.0.1:" + std::to_string(actualPort_.load()));
+    if (onStarted_)
+    {
+        onStarted_(actualPort_.load());
+    }
     while (running_.load())
     {
         SOCKET client = accept(srv, nullptr, nullptr);
@@ -110,6 +133,7 @@ void SocketServer::run()
     }
 
     running_.store(false);
+    actualPort_.store(0);
     if (listenSocket_ == static_cast<uintptr_t>(srv))
     {
         closesocket(srv);

@@ -55,26 +55,25 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         }
         else if (section == "server" && key == "port")
         {
-            const int port = std::stoi(value);
-            if (port <= 0 || port > 65535)
+            if (value == "auto")
             {
-                throw std::runtime_error("server port must be between 1 and 65535");
+                config.port = 0;
+                config.autoPort = true;
+                continue;
+            }
+            const int port = std::stoi(value);
+            if (port < 0 || port > 65535)
+            {
+                throw std::runtime_error("server port must be auto or between 0 and 65535");
             }
             config.port = static_cast<std::uint16_t>(port);
-        }
-        else if (section == "server" && key == "log")
-        {
-            config.logPath = value;
+            config.autoPort = port == 0;
         }
     }
 
     if (config.host != "127.0.0.1")
     {
         throw std::runtime_error("server host must be 127.0.0.1");
-    }
-    if (config.logPath.empty())
-    {
-        config.logPath = "margrete-rpc.log";
     }
     return config;
 }

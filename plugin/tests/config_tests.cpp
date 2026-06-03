@@ -14,8 +14,8 @@ TEST_CASE("config uses defaults when file is missing")
     REQUIRE(config.sourcePath.filename().string() == "missing-file.ini");
     REQUIRE(config.loadedFromFile == false);
     REQUIRE(config.host == "127.0.0.1");
-    REQUIRE(config.port == 48731);
-    REQUIRE(config.logPath.filename().string() == "margrete-rpc.log");
+    REQUIRE(config.port == 0);
+    REQUIRE(config.autoPort == true);
 }
 
 TEST_CASE("config reads server section")
@@ -26,7 +26,6 @@ TEST_CASE("config reads server section")
         out << "[server]\n";
         out << "host = 127.0.0.1\n";
         out << "port = 49000\n";
-        out << "log = custom.log\n";
     }
 
     const ServerConfig config = LoadServerConfig(path);
@@ -35,7 +34,22 @@ TEST_CASE("config reads server section")
     REQUIRE(config.loadedFromFile == true);
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 49000);
-    REQUIRE(config.logPath.filename().string() == "custom.log");
+    REQUIRE(config.autoPort == false);
+}
+
+TEST_CASE("config supports automatic port")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-auto.ini";
+    {
+        std::ofstream out(path);
+        out << "[server]\n";
+        out << "port = auto\n";
+    }
+
+    const ServerConfig config = LoadServerConfig(path);
+
+    REQUIRE(config.port == 0);
+    REQUIRE(config.autoPort == true);
 }
 
 TEST_CASE("config rejects non-localhost host")

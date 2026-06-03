@@ -5,7 +5,7 @@ Python client for the **Margrete RPC** plugin.
 ## Requirements
 
 - Python **3.12+**
-- A running Margrete RPC server (default listen address: `127.0.0.1:48731`)
+- A running Margrete RPC server
 
 ## Installation
 
@@ -26,9 +26,27 @@ pip install /path/to/margrete-rpc/sdk
 ```python
 from margrete_rpc import Margrete
 
-mg = Margrete("127.0.0.1:48731")
+mg = Margrete()
 name = mg.ping()
 print(name)
+```
+
+`Margrete()` connects automatically when exactly one live plugin server is discovered.
+If multiple Margrete instances are running the plugin, select one explicitly:
+
+```python
+from margrete_rpc import Margrete, list_instances
+
+for instance in list_instances():
+    print(instance.instance_id, instance.endpoint)
+
+mg = Margrete(instance_id="...")
+```
+
+You can still connect to a fixed endpoint:
+
+```python
+mg = Margrete("127.0.0.1:48731")
 ```
 
 ## Chart Editing
@@ -90,9 +108,15 @@ p = t2p(960, beat_events=chart.events.beat)
 from margrete_rpc import Margrete
 ```
 
-- `Margrete(endpoint="127.0.0.1:48731", timeout=60.0)`
+- `Margrete(endpoint=None, *, instance_id=None, timeout=60.0)`
 - `ping() -> str`
 - `open_edit(name: str, *, scan: bool = True, raw_only: bool = False, ...) -> EditTransaction`
+
+Discovery helpers:
+
+- `list_instances(validate=True) -> list[MargreteInstance]`
+- `MargreteInstance.instance_id`
+- `MargreteInstance.endpoint`
 
 The wire schema lives in the repository `proto/` tree (`margrete.rpc.v1`).
 

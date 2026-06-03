@@ -22,7 +22,7 @@ specific transforms, but it can also feel brittle when you want to:
 ## How it works (high level)
 
 - You start the server from inside Margrete by running the plugin command.
-- Your script communicates to Margrete by connecting to `127.0.0.1:48731` (by default).
+- Your script communicates with a discovered local plugin server, or with an explicit `127.0.0.1:<port>` endpoint.
 
 ## Quick start
 

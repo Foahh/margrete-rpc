@@ -5,5 +5,4 @@ dev = @DEVELOPER@
 
 [server]
 host = 127.0.0.1
-port = 48731
-log = margrete-rpc.log
+port = auto
