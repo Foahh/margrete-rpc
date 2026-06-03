@@ -49,6 +49,16 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
     assert apply_request.bpm_ticks_delete == []
 
 
+def test_ping_sends_request():
+    transport = FakeTransport(
+        [messages_pb2.Envelope(ping_response=messages_pb2.PingResponse())]
+    )
+    mg = Margrete(transport=transport)
+
+    assert mg.ping() is None
+    assert transport.requests[0].HasField("ping_request")
+
+
 def test_undo_sends_request_and_returns_success():
     transport = FakeTransport(
         [messages_pb2.Envelope(undo_response=messages_pb2.UndoResponse(success=True))]

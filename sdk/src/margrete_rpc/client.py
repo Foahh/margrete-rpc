@@ -44,6 +44,12 @@ class Margrete:
                 endpoint = resolve_endpoint(instance_id, timeout=min(timeout, 1.0))
             self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
 
+    def ping(self) -> None:
+        with self._tracer.span("margrete.client.ping"):
+            self._transport.request(
+                messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
+            )
+
     def status(self) -> ServerStatus:
         with self._tracer.span("margrete.client.status"):
             response = self._transport.request(
