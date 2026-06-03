@@ -116,6 +116,7 @@ std::vector<margrete::rpc::v1::Note> ChartMapper::SnapshotNotes(IMargretePluginC
         {
             throw std::runtime_error("failed to read note from chart");
         }
+        MargreteComPtr<IMargretePluginNote> owned(note);
         notes.push_back(NoteToProto(*note));
     }
     return notes;
@@ -204,6 +205,7 @@ margrete::rpc::v1::Note ChartMapper::NoteToProto(IMargretePluginNote &note)
         {
             throw std::runtime_error("failed to read child note");
         }
+        MargreteComPtr<IMargretePluginNote> owned(child);
         *proto.add_children() = NoteToProto(*child);
     }
     return proto;

@@ -31,6 +31,42 @@ IMargretePluginNote *CreateNoteTree(IMargretePluginChart &chart, const margrete:
     return note;
 }
 
+void UpsertNoteTree(IMargretePluginNote &existing, const margrete::rpc::v1::Note &proto)
+{
+    const MP_NOTEINFO info = ChartMapper::ProtoToNoteInfo(proto);
+    existing.setInfo(&info);
+
+    std::unordered_map<int, IMargretePluginNote *> childById;
+    const MpInteger childCount = existing.getChildrenCount();
+    std::vector<MargreteComPtr<IMargretePluginNote>> children;
+    children.reserve(static_cast<std::size_t>(childCount));
+    for (MpInteger index = 0; index < childCount; ++index)
+    {
+        IMargretePluginNote *child = nullptr;
+        Check(existing.getChild(index, &child), "failed to read child note");
+        if (!child)
+        {
+            throw std::runtime_error("child note is unavailable");
+        }
+        children.emplace_back(child);
+        childById.emplace(children.back()->getId(), children.back().get());
+    }
+
+    for (const auto &childProto : proto.children())
+    {
+        if (!childProto.has_id())
+        {
+            throw std::invalid_argument("in-place note upsert requires child ids");
+        }
+        auto found = childById.find(childProto.id());
+        if (found == childById.end())
+        {
+            throw std::invalid_argument("note upsert references unknown child id");
+        }
+        UpsertNoteTree(*found->second, childProto);
+    }
+}
+
 void ApplyBpmEvent(IMargretePluginChart &chart, const margrete::rpc::v1::BpmEvent &proto)
 {
     void *existing = nullptr;
@@ -106,15 +142,20 @@ void ApplyNoteSpeedEvent(IMargretePluginChart &chart, const margrete::rpc::v1::N
     Check(chart.appendEvent(event), "failed to append note speed event");
 }
 
-std::vector<IMargretePluginNote *> CurrentRootNotes(IMargretePluginChart &chart)
+std::vector<MargreteComPtr<IMargretePluginNote>> CurrentRootNotes(IMargretePluginChart &chart)
 {
-    std::vector<IMargretePluginNote *> notes;
+    std::vector<MargreteComPtr<IMargretePluginNote>> notes;
     const MpInteger count = chart.getNotesCount();
+    notes.reserve(static_cast<std::size_t>(count));
     for (MpInteger index = 0; index < count; ++index)
     {
         IMargretePluginNote *note = nullptr;
         Check(chart.getNote(index, &note), "failed to read existing note");
-        notes.push_back(note);
+        if (!note)
+        {
+            throw std::runtime_error("root note is unavailable");
+        }
+        notes.emplace_back(note);
     }
     return notes;
 }
@@ -142,7 +183,12 @@ void DeleteAllRootNotes(IMargretePluginChart &chart)
     {
         IMargretePluginNote *note = nullptr;
         Check(chart.getNote(index - 1, &note), "failed to read existing note");
-        Check(chart.deleteNote(note), "failed to delete note");
+        if (!note)
+        {
+            throw std::runtime_error("root note is unavailable");
+        }
+        MargreteComPtr<IMargretePluginNote> owned(note);
+        Check(chart.deleteNote(owned.get()), "failed to delete note");
     }
 }
 
@@ -171,11 +217,24 @@ void ApplyEditNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyE
         {
             deleteIds.insert(id);
         }
-        for (auto *note : CurrentRootNotes(chart))
+        std::vector<MargreteComPtr<IMargretePluginNote>> roots;
+        const MpInteger count = chart.getNotesCount();
+        roots.reserve(static_cast<std::size_t>(count));
+        for (MpInteger index = 0; index < count; ++index)
+        {
+            IMargretePluginNote *note = nullptr;
+            Check(chart.getNote(index, &note), "failed to read existing note");
+            if (!note)
+            {
+                throw std::runtime_error("root note is unavailable");
+            }
+            roots.emplace_back(note);
+        }
+        for (auto &note : roots)
         {
             if (deleteIds.contains(note->getId()))
             {
-                Check(chart.deleteNote(note), "failed to delete note");
+                Check(chart.deleteNote(note.get()), "failed to delete note");
             }
         }
     }
@@ -183,9 +242,10 @@ void ApplyEditNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyE
     if (request.notes_upsert_size() > 0)
     {
         std::unordered_map<int, IMargretePluginNote *> existingById;
-        for (auto *note : CurrentRootNotes(chart))
+        auto roots = CurrentRootNotes(chart);
+        for (auto &note : roots)
         {
-            existingById.emplace(note->getId(), note);
+            existingById.emplace(note->getId(), note.get());
         }
 
         for (const auto &proto : request.notes_upsert())
@@ -197,8 +257,7 @@ void ApplyEditNotes(IMargretePluginChart &chart, const margrete::rpc::v1::ApplyE
                 {
                     throw std::invalid_argument("note upsert references unknown note id");
                 }
-                const MP_NOTEINFO info = ChartMapper::ProtoToNoteInfo(proto);
-                found->second->setInfo(&info);
+                UpsertNoteTree(*found->second, proto);
             }
             else
             {

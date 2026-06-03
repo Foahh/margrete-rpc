@@ -274,33 +274,37 @@ def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     assert apply_request.note_ids_delete == []
 
 
-def test_scanned_note_edit_rebuilds_tree_when_children_change():
-    transport = FakeTransport(
-        [
-            messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(
-                    current_tick=960,
-                    scan=True,
-                    notes=[
+def _hold_with_end_response() -> messages_pb2.Envelope:
+    return messages_pb2.Envelope(
+        begin_edit_response=messages_pb2.BeginEditResponse(
+            current_tick=960,
+            scan=True,
+            notes=[
+                messages_pb2.Note(
+                    id=1,
+                    type=messages_pb2.NOTE_TYPE_HOLD,
+                    tick=0,
+                    x=1,
+                    width=2,
+                    children=[
                         messages_pb2.Note(
-                            id=1,
+                            id=2,
                             type=messages_pb2.NOTE_TYPE_HOLD,
-                            tick=0,
+                            tick=480,
                             x=1,
                             width=2,
-                            children=[
-                                messages_pb2.Note(
-                                    id=2,
-                                    type=messages_pb2.NOTE_TYPE_HOLD,
-                                    tick=480,
-                                    x=1,
-                                    width=2,
-                                )
-                            ],
                         )
                     ],
                 )
-            ),
+            ],
+        )
+    )
+
+
+def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
+    transport = FakeTransport(
+        [
+            _hold_with_end_response(),
             messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
         ]
     )
@@ -311,10 +315,31 @@ def test_scanned_note_edit_rebuilds_tree_when_children_change():
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
+    assert apply_request.note_ids_delete == []
+    assert len(apply_request.notes_upsert) == 1
+    assert apply_request.notes_upsert[0].id == 1
+    assert apply_request.notes_upsert[0].children[0].id == 2
+    assert apply_request.notes_upsert[0].children[0].tick == 500
+
+
+def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
+    transport = FakeTransport(
+        [
+            _hold_with_end_response(),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit("child", raw_only=True) as tx:
+        tx.chart.raw_notes[0].children.insert(0, L.hold_end(240, 1, 2))
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.replace_all_notes is False
     assert apply_request.note_ids_delete == [1]
     assert len(apply_request.notes_upsert) == 1
     assert not apply_request.notes_upsert[0].HasField("id")
-    assert apply_request.notes_upsert[0].children[0].tick == 500
+    assert len(apply_request.notes_upsert[0].children) == 2
 
 
 def test_scanned_unchanged_events_send_no_deletes():

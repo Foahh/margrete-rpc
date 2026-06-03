@@ -189,6 +189,26 @@ TEST_CASE("router invokes undo and reports result")
     REQUIRE(context.undo.undoCount == 1);
 }
 
+TEST_CASE("router deduplicates root notes after successful undo")
+{
+    FakeContext context;
+    context.chart.addExistingNote(10);
+    context.chart.addExistingNote(10);
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(30);
+    request.mutable_undo_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.has_undo_response());
+    REQUIRE(response.undo_response().success() == true);
+    REQUIRE(context.chart.notes.size() == 1);
+    REQUIRE(context.chart.deletedNotes == 1);
+    REQUIRE(context.updated);
+}
+
 TEST_CASE("router invokes redo and reports result")
 {
     FakeContext context;

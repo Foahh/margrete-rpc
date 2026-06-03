@@ -3,9 +3,11 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "ChartMapper.h"
 #include "MargreteSession.h"
+#include "RootNoteDeduper.h"
 #include "TransactionApplier.h"
 #include "meta.h"
 
@@ -200,6 +202,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             const bool success = session.undoBuffer().canUndo() == MP_TRUE && session.undoBuffer().undo() == MP_TRUE;
             if (success)
             {
+                RootNoteDeduper::Deduplicate(session.chart());
                 session.update();
             }
             response.mutable_undo_response()->set_success(success);
@@ -212,6 +215,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             const bool success = session.undoBuffer().canRedo() == MP_TRUE && session.undoBuffer().redo() == MP_TRUE;
             if (success)
             {
+                RootNoteDeduper::Deduplicate(session.chart());
                 session.update();
             }
             response.mutable_redo_response()->set_success(success);

@@ -73,8 +73,12 @@ def _note_tree_sig(note: LLNote) -> bytes:
     return _strip_note_ids(note).to_proto().SerializeToString()
 
 
-def _children_tree_sig(note: LLNote) -> bytes:
-    return b"\n".join(_note_tree_sig(child) for child in note.children)
+def _id_structure(note: LLNote) -> tuple[int | None, tuple]:
+    return (note.id, tuple(_id_structure(child) for child in note.children))
+
+
+def _children_id_structure(note: LLNote) -> tuple:
+    return tuple(_id_structure(child) for child in note.children)
 
 
 def _append_scanned_note_diffs(
@@ -99,7 +103,7 @@ def _append_scanned_note_diffs(
             continue
         if _note_tree_sig(orig) == _note_tree_sig(note):
             continue
-        if _children_tree_sig(orig) == _children_tree_sig(note):
+        if _children_id_structure(orig) == _children_id_structure(note):
             request.notes_upsert.append(note.to_proto())
         else:
             request.note_ids_delete.append(note.id)

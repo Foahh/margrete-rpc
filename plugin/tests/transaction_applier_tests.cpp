@@ -123,6 +123,57 @@ TEST_CASE("apply edit in-place update does not duplicate root notes")
     REQUIRE(context.chart.appendedNotes == 0);
 }
 
+TEST_CASE("apply edit updates child notes in place without rebuilding the tree")
+{
+    FakeContext context;
+    auto *root = context.chart.addExistingNote(10);
+    root->info.type = MP_NOTETYPE_HOLD;
+    root->info.tick = 0;
+    auto *child = context.chart.addDetachedNote(11);
+    child->info.type = MP_NOTETYPE_HOLD;
+    child->info.tick = 480;
+    root->children.push_back(child);
+
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *updated = request.add_notes_upsert();
+    updated->set_id(10);
+    updated->set_type(margrete::rpc::v1::NOTE_TYPE_HOLD);
+    updated->set_tick(1920);
+    auto *updatedChild = updated->add_children();
+    updatedChild->set_id(11);
+    updatedChild->set_type(margrete::rpc::v1::NOTE_TYPE_HOLD);
+    updatedChild->set_tick(2400);
+
+    TransactionApplier::ApplyEdit(session, request);
+
+    REQUIRE(context.chart.notes.size() == 1);
+    REQUIRE(context.chart.appendedNotes == 0);
+    REQUIRE(context.chart.deletedNotes == 0);
+    REQUIRE(context.chart.createdNotes.empty());
+    REQUIRE(root->info.tick == 1920);
+    REQUIRE(child->info.tick == 2400);
+}
+
+TEST_CASE("apply edit discards recording when an in-place child id is unknown")
+{
+    FakeContext context;
+    auto *root = context.chart.addExistingNote(10);
+    auto *child = context.chart.addDetachedNote(11);
+    root->children.push_back(child);
+
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *updated = request.add_notes_upsert();
+    updated->set_id(10);
+    auto *updatedChild = updated->add_children();
+    updatedChild->set_id(99);
+
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+    REQUIRE(context.undo.commitCount == 0);
+    REQUIRE(context.undo.discardCount == 1);
+}
+
 TEST_CASE("apply edit updates existing note and creates new note")
 {
     FakeContext context;
