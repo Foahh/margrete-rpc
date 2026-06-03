@@ -37,6 +37,27 @@ class Margrete:
             )
         return response.ping_response.server_name
 
+    def undo(self) -> bool:
+        with self._tracer.span("margrete.client.undo"):
+            response = self._transport.request(
+                messages_pb2.Envelope(undo_request=messages_pb2.UndoRequest())
+            )
+        return response.undo_response.success
+
+    def redo(self) -> bool:
+        with self._tracer.span("margrete.client.redo"):
+            response = self._transport.request(
+                messages_pb2.Envelope(redo_request=messages_pb2.RedoRequest())
+            )
+        return response.redo_response.success
+
+    def current_tick(self) -> int:
+        with self._tracer.span("margrete.client.current_tick"):
+            response = self._transport.request(
+                messages_pb2.Envelope(current_tick_request=messages_pb2.CurrentTickRequest())
+            )
+        return response.current_tick_response.current_tick
+
     def open_edit(
         self,
         name: str,

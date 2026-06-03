@@ -159,6 +159,29 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             logInfo("apply_edit ok id=" + std::to_string(request.request_id()));
             return response;
         }
+        if (request.has_undo_request())
+        {
+            MargreteSession session(*context);
+            const bool success = session.undo().canUndo() == MP_TRUE && session.undo().undo() == MP_TRUE;
+            response.mutable_undo_response()->set_success(success);
+            logInfo("undo ok id=" + std::to_string(request.request_id()) + " success=" + std::to_string(success));
+            return response;
+        }
+        if (request.has_redo_request())
+        {
+            MargreteSession session(*context);
+            const bool success = session.undo().canRedo() == MP_TRUE && session.undo().redo() == MP_TRUE;
+            response.mutable_redo_response()->set_success(success);
+            logInfo("redo ok id=" + std::to_string(request.request_id()) + " success=" + std::to_string(success));
+            return response;
+        }
+        if (request.has_current_tick_request())
+        {
+            response.mutable_current_tick_response()->set_current_tick(context->getCurrentTick());
+            logInfo("current_tick ok id=" + std::to_string(request.request_id()) + " current_tick=" +
+                    std::to_string(response.current_tick_response().current_tick()));
+            return response;
+        }
         auto resp = error(request.request_id(), margrete::rpc::v1::ERROR_CODE_INVALID_ARGUMENT, "unsupported request");
         logError("request failed id=" + std::to_string(request.request_id()) + " kind=" + requestKind(request) +
                  " code=INVALID_ARGUMENT msg=\"unsupported request\"");
@@ -232,6 +255,12 @@ const char *RequestRouter::requestKind(const margrete::rpc::v1::Envelope &reques
         return "begin_edit";
     if (request.has_apply_edit_request())
         return "apply_edit";
+    if (request.has_undo_request())
+        return "undo";
+    if (request.has_redo_request())
+        return "redo";
+    if (request.has_current_tick_request())
+        return "current_tick";
     if (request.has_error_response())
         return "error_response";
     return "unknown";

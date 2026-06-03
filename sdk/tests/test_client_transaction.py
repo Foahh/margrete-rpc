@@ -49,6 +49,40 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
     assert apply_request.bpm_ticks_delete == []
 
 
+def test_undo_sends_request_and_returns_success():
+    transport = FakeTransport(
+        [messages_pb2.Envelope(undo_response=messages_pb2.UndoResponse(success=True))]
+    )
+    mg = Margrete(transport=transport)
+
+    assert mg.undo() is True
+    assert transport.requests[0].HasField("undo_request")
+
+
+def test_redo_sends_request_and_returns_success():
+    transport = FakeTransport(
+        [messages_pb2.Envelope(redo_response=messages_pb2.RedoResponse(success=False))]
+    )
+    mg = Margrete(transport=transport)
+
+    assert mg.redo() is False
+    assert transport.requests[0].HasField("redo_request")
+
+
+def test_current_tick_sends_request_and_returns_tick():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                current_tick_response=messages_pb2.CurrentTickResponse(current_tick=960)
+            )
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    assert mg.current_tick() == 960
+    assert transport.requests[0].HasField("current_tick_request")
+
+
 def test_open_edit_sends_event_scan_note_til_only():
     transport = FakeTransport(
         [

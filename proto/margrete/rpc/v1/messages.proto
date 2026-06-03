@@ -71,6 +71,12 @@ message Envelope {
     BeginEditResponse begin_edit_response = 5;
     ApplyEditRequest apply_edit_request = 13;
     ApplyEditResponse apply_edit_response = 14;
+    UndoRequest undo_request = 15;
+    UndoResponse undo_response = 16;
+    RedoRequest redo_request = 17;
+    RedoResponse redo_response = 18;
+    CurrentTickRequest current_tick_request = 19;
+    CurrentTickResponse current_tick_response = 20;
     ErrorResponse error_response = 12;
   }
 }
@@ -164,6 +170,24 @@ message ApplyEditRequest {
 }
 
 message ApplyEditResponse {}
+
+message UndoRequest {}
+
+message UndoResponse {
+  bool success = 1;
+}
+
+message RedoRequest {}
+
+message RedoResponse {
+  bool success = 1;
+}
+
+message CurrentTickRequest {}
+
+message CurrentTickResponse {
+  int32 current_tick = 1;
+}
 
 message ErrorResponse {
   ErrorCode code = 1;

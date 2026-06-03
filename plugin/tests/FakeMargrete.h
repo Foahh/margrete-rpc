@@ -503,19 +503,21 @@ class FakeUndo final : public IMargretePluginUndoBuffer, public FakeBase
     }
     MpBoolean undo() override
     {
-        return MP_TRUE;
+        ++undoCount;
+        return undoResult;
     }
     MpBoolean redo() override
     {
-        return MP_TRUE;
+        ++redoCount;
+        return redoResult;
     }
     MpBoolean canUndo() const override
     {
-        return MP_TRUE;
+        return canUndoResult;
     }
     MpBoolean canRedo() const override
     {
-        return MP_FALSE;
+        return canRedoResult;
     }
     MpBoolean isRecording() const override
     {
@@ -525,6 +527,12 @@ class FakeUndo final : public IMargretePluginUndoBuffer, public FakeBase
     int beginCount{0};
     int commitCount{0};
     int discardCount{0};
+    int undoCount{0};
+    int redoCount{0};
+    MpBoolean undoResult{MP_TRUE};
+    MpBoolean redoResult{MP_TRUE};
+    MpBoolean canUndoResult{MP_TRUE};
+    MpBoolean canRedoResult{MP_TRUE};
 };
 
 class FakeDocument final : public IMargretePluginDocument, public FakeBase

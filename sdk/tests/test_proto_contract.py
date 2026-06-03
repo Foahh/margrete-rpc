@@ -17,6 +17,12 @@ def test_edit_wire_contract_has_only_begin_and_apply_edit():
     assert hasattr(messages_pb2, "BeginEditResponse")
     assert hasattr(messages_pb2, "ApplyEditRequest")
     assert hasattr(messages_pb2, "ApplyEditResponse")
+    assert hasattr(messages_pb2, "UndoRequest")
+    assert hasattr(messages_pb2, "UndoResponse")
+    assert hasattr(messages_pb2, "RedoRequest")
+    assert hasattr(messages_pb2, "RedoResponse")
+    assert hasattr(messages_pb2, "CurrentTickRequest")
+    assert hasattr(messages_pb2, "CurrentTickResponse")
 
     assert not hasattr(messages_pb2, "BeginAppendRequest")
     assert not hasattr(messages_pb2, "BeginAppendResponse")
@@ -39,6 +45,12 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
         "begin_edit_response",
         "apply_edit_request",
         "apply_edit_response",
+        "undo_request",
+        "undo_response",
+        "redo_request",
+        "redo_response",
+        "current_tick_request",
+        "current_tick_response",
         "error_response",
     ]
 
@@ -46,6 +58,12 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
     assert fields_by_name["begin_edit_response"].number == 5
     assert fields_by_name["apply_edit_request"].number == 13
     assert fields_by_name["apply_edit_response"].number == 14
+    assert fields_by_name["undo_request"].number == 15
+    assert fields_by_name["undo_response"].number == 16
+    assert fields_by_name["redo_request"].number == 17
+    assert fields_by_name["redo_response"].number == 18
+    assert fields_by_name["current_tick_request"].number == 19
+    assert fields_by_name["current_tick_response"].number == 20
     assert fields_by_name["error_response"].number == 12
     assert not OLD_ENVELOPE_BODY_FIELDS.intersection(fields_by_name)
 

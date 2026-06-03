@@ -139,3 +139,92 @@ TEST_CASE("router applies edit request")
     REQUIRE(context.chart.deletedEvents >= 1);
     REQUIRE(context.undo.commitCount == 1);
 }
+
+TEST_CASE("router invokes undo and reports result")
+{
+    FakeContext context;
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(24);
+    request.mutable_undo_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 24);
+    REQUIRE(response.has_undo_response());
+    REQUIRE(response.undo_response().success() == true);
+    REQUIRE(context.undo.undoCount == 1);
+}
+
+TEST_CASE("router invokes redo and reports result")
+{
+    FakeContext context;
+    context.undo.canRedoResult = MP_TRUE;
+    context.undo.redoResult = MP_FALSE;
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(25);
+    request.mutable_redo_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 25);
+    REQUIRE(response.has_redo_response());
+    REQUIRE(response.redo_response().success() == false);
+    REQUIRE(context.undo.redoCount == 1);
+}
+
+TEST_CASE("router skips undo when undo is unavailable")
+{
+    FakeContext context;
+    context.undo.canUndoResult = MP_FALSE;
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(28);
+    request.mutable_undo_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 28);
+    REQUIRE(response.has_undo_response());
+    REQUIRE(response.undo_response().success() == false);
+    REQUIRE(context.undo.undoCount == 0);
+}
+
+TEST_CASE("router skips redo when redo is unavailable")
+{
+    FakeContext context;
+    context.undo.canRedoResult = MP_FALSE;
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(29);
+    request.mutable_redo_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 29);
+    REQUIRE(response.has_redo_response());
+    REQUIRE(response.redo_response().success() == false);
+    REQUIRE(context.undo.redoCount == 0);
+}
+
+TEST_CASE("router returns current tick")
+{
+    FakeContext context;
+    context.currentTick = 1234;
+    RequestRouter router(&context);
+
+    margrete::rpc::v1::Envelope request;
+    request.set_request_id(26);
+    request.mutable_current_tick_request();
+
+    const auto response = router.route(request);
+
+    REQUIRE(response.request_id() == 26);
+    REQUIRE(response.has_current_tick_response());
+    REQUIRE(response.current_tick_response().current_tick() == 1234);
+}

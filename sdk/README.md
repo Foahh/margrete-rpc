@@ -110,6 +110,9 @@ from margrete_rpc import Margrete
 
 - `Margrete(endpoint=None, *, instance_id=None, timeout=60.0)`
 - `ping() -> str`
+- `undo() -> bool`
+- `redo() -> bool`
+- `current_tick() -> int`
 - `open_edit(name: str, *, scan: bool = True, raw_only: bool = False, ...) -> EditTransaction`
 
 Discovery helpers:
