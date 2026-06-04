@@ -175,6 +175,7 @@ class EditTransaction:
     scan: bool
     tracer: Tracer | None = None
     tx_type: str = "edit"
+    replace_all_notes: bool = False
     _span_active: object | None = None
 
     _orig_notes_sig: bytes = b""
@@ -217,7 +218,17 @@ class EditTransaction:
                 normalized = normalize_event_operations(self.chart)
                 request = messages_pb2.ApplyEditRequest(name=self.name)
 
-                if self.scan:
+                if self.replace_all_notes:
+                    final_notes = _final_notes_without_ids(self.chart)
+                    request.replace_all_notes = True
+                    request.notes_upsert.extend(note.to_proto() for note in final_notes)
+                    request.bpm_upsert.extend(event.to_proto() for event in normalized.events.bpm)
+                    request.beat_upsert.extend(event.to_proto() for event in normalized.events.beat)
+                    request.til_upsert.extend(event.to_proto() for event in normalized.events.til)
+                    request.note_speed_upsert.extend(
+                        event.to_proto() for event in normalized.events.note_speed
+                    )
+                elif self.scan:
                     final_notes = _final_notes_without_ids(self.chart)
                     final_events_sig = _event_signature_from_chart(normalized)
                     if (

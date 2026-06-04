@@ -95,6 +95,7 @@ class Margrete:
         event_scan_note_til_only: bool = False,
         scan: bool = True,
         raw: bool = False,
+        replace_all: bool = False,
     ) -> EditTransaction:
         tx_type = "edit_raw" if raw else "edit"
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type, "tx.name": name}):
@@ -120,4 +121,5 @@ class Margrete:
             scan=begin.scan,
             tracer=self._tracer,
             tx_type=tx_type,
+            replace_all_notes=replace_all,
         )
