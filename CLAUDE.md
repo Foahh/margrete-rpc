@@ -122,7 +122,7 @@ pytest -v --tb=short           # Verbose with short tracebacks
   - `chart.py`: `Chart` (high-level wrapper), `HighLevelChart`, `LowLevelChart`
   - `event.py`: Event classes (BpmEvent, BeatEvent, ScrollSpeedEvent, etc.)
   - `note.py` / `ll.py`: Note types (Tap, Flick, Hold, etc.); LL (low-level) vs HL (high-level)
-  - `chart_time.py`: Time/position conversion (tick ↔ bar/beat/offset via `Pos`, `t2p()`, `p2t()`)
+  - `chart_time.py`: Time/position conversion (tick ↔ bar/beat/offset tuple via `t2p()` and `p2t()`)
   - `constant.py`: Lane/note constants
   - `shift.py`: Utilities for shifting notes/events by tick offset
 - **`trace.py`**: Request/response logging (debug helper)

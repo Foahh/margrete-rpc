@@ -2,17 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import overload
 
 from margrete_rpc.model.constant import TICKS_PER_BEAT
 from margrete_rpc.model.event import BeatEvent
 
-
-@dataclass(frozen=True, slots=True)
-class Pos:
-    bar: int
-    beat: int
-    offset: int
+type Position = tuple[int, int, int]
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +62,7 @@ class ChartTime:
     def __init__(self, beat_events: Iterable[BeatEvent]) -> None:
         self._segments = _build_time_signatures(beat_events)
 
-    def t2p(self, tick: int) -> Pos:
+    def t2p(self, tick: int) -> Position:
         tick = _require_int("tick", tick)
         if tick < 0:
             raise ValueError("tick must be non-negative")
@@ -82,7 +76,7 @@ class ChartTime:
         beat_tick = TICKS_PER_BEAT // ts.beat_unit
         beat = remainder // beat_tick
         offset = remainder % beat_tick
-        return Pos(ts.bar + bars_since, beat, offset)
+        return (ts.bar + bars_since, beat, offset)
 
     def _find_segment_index(self, tick: int) -> int:
         segments = self._segments
@@ -97,10 +91,10 @@ class ChartTime:
                 high = mid - 1
         raise ValueError(f"tick {tick} is before all time signatures")
 
-    def p2t(self, pos: Pos) -> int:
-        bar = _require_int("bar", pos.bar)
-        beat = _require_int("beat", pos.beat)
-        offset = _require_int("offset", pos.offset)
+    def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
+        bar = _require_int("bar", bar)
+        beat = _require_int("beat", beat)
+        offset = _require_int("offset", offset)
         if bar < 0 or beat < 0 or offset < 0:
             raise ValueError("bar, beat, and offset must be non-negative")
 
@@ -129,36 +123,18 @@ class ChartTime:
         return idx
 
 
-def t2p(tick: int, *, beat_events: Iterable[BeatEvent]) -> Pos:
+def t2p(tick: int, *, beat_events: Iterable[BeatEvent]) -> Position:
     return ChartTime(beat_events).t2p(tick)
 
 
-@overload
-def p2t(pos: Pos, *, beat_events: Iterable[BeatEvent]) -> int: ...
-
-
-@overload
-def p2t(bar: int, beat: int, offset: int, *, beat_events: Iterable[BeatEvent]) -> int: ...
-
-
 def p2t(
-    pos_or_bar: Pos | int,
-    beat: int | None = None,
-    offset: int | None = None,
+    bar: int,
+    beat: int = 0,
+    offset: int = 0,
     *,
     beat_events: Iterable[BeatEvent],
 ) -> int:
-    engine = ChartTime(beat_events)
-    if isinstance(pos_or_bar, Pos):
-        if beat is not None or offset is not None:
-            raise TypeError("p2t accepts either Pos or (bar, beat, offset), not both")
-        return engine.p2t(pos_or_bar)
-    if beat is None or offset is None:
-        raise TypeError("p2t(bar, beat, offset) requires three int arguments")
-    bar = _require_int("bar", pos_or_bar)
-    beat_i = _require_int("beat", beat)
-    offset_i = _require_int("offset", offset)
-    return engine.p2t(Pos(bar, beat_i, offset_i))
+    return ChartTime(beat_events).p2t(bar, beat, offset)
 
 
-__all__ = ["Pos", "t2p", "p2t"]
+__all__ = ["Position", "t2p", "p2t"]

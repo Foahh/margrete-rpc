@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import overload
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.chart_time import Pos
+from margrete_rpc.model.chart_time import Position
 from margrete_rpc.model.chart_time import p2t as _p2t
 from margrete_rpc.model.chart_time import t2p as _t2p
 from margrete_rpc.model.event import (
@@ -47,28 +46,11 @@ class Chart:
             events=_events_from_response(response),
         )
 
-    def t2p(self, tick: int) -> Pos:
+    def t2p(self, tick: int) -> Position:
         return _t2p(tick, beat_events=self.events.beat)
 
-    @overload
-    def p2t(self, pos: Pos) -> int: ...
-
-    @overload
-    def p2t(self, bar: int, beat: int, offset: int) -> int: ...
-
-    def p2t(
-        self,
-        pos_or_bar: Pos | int,
-        beat: int | None = None,
-        offset: int | None = None,
-    ) -> int:
-        if isinstance(pos_or_bar, Pos):
-            if beat is not None or offset is not None:
-                raise TypeError("p2t accepts either Pos or (bar, beat, offset), not both")
-            return _p2t(pos_or_bar, beat_events=self.events.beat)
-        if beat is None or offset is None:
-            raise TypeError("p2t(bar, beat, offset) requires three int arguments")
-        return _p2t(pos_or_bar, beat, offset, beat_events=self.events.beat)
+    def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
+        return _p2t(bar, beat, offset, beat_events=self.events.beat)
 
 
 @dataclass
@@ -83,28 +65,11 @@ class LLChart:
             events=_events_from_response(response),
         )
 
-    def t2p(self, tick: int) -> Pos:
+    def t2p(self, tick: int) -> Position:
         return _t2p(tick, beat_events=self.events.beat)
 
-    @overload
-    def p2t(self, pos: Pos) -> int: ...
-
-    @overload
-    def p2t(self, bar: int, beat: int, offset: int) -> int: ...
-
-    def p2t(
-        self,
-        pos_or_bar: Pos | int,
-        beat: int | None = None,
-        offset: int | None = None,
-    ) -> int:
-        if isinstance(pos_or_bar, Pos):
-            if beat is not None or offset is not None:
-                raise TypeError("p2t accepts either Pos or (bar, beat, offset), not both")
-            return _p2t(pos_or_bar, beat_events=self.events.beat)
-        if beat is None or offset is None:
-            raise TypeError("p2t(bar, beat, offset) requires three int arguments")
-        return _p2t(pos_or_bar, beat, offset, beat_events=self.events.beat)
+    def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
+        return _p2t(bar, beat, offset, beat_events=self.events.beat)
 
 
 def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEvents:
