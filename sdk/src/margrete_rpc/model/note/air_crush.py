@@ -17,17 +17,16 @@ class AirCrushColor(StrEnum):
     ORANGE = "orange"
     YELLOW = "yellow"
     GREEN = "green"
-    AQUA = "aqua"
+    SKY = "sky"
     BLUE = "blue"
-    PURPLE = "purple"
     VIOLET = "violet"
-    PURPLE_ALT = "purple_alt"
-    GRAY = "gray"
-    BLACK = "black"
-    LIME = "lime"
-    CYAN = "cyan"
-    DARK_GREEN = "dark_green"
     PINK = "pink"
+    WHITE = "white"
+    GRAY = "gray"
+    GRASS = "grass"
+    SKY_BLUE = "sky_blue"
+    COBALT_BLUE = "cobalt_blue"
+    PURPLE = "purple"
     NONE = "none"
 
 
@@ -40,17 +39,16 @@ type AirCrushColorLike = (
         "orange",
         "yellow",
         "green",
-        "aqua",
+        "sky",
         "blue",
-        "purple",
         "violet",
-        "purple_alt",
-        "gray",
-        "black",
-        "lime",
-        "cyan",
-        "dark_green",
         "pink",
+        "white",
+        "gray",
+        "grass",
+        "sky_blue",
+        "cobalt_blue",
+        "purple",
         "none",
     ]
 )
@@ -69,17 +67,16 @@ AIR_CRUSH_COLOR_TO_VALUE = {
     AirCrushColor.ORANGE: messages_pb2.AIR_CRUSH_COLOR_ORANGE,
     AirCrushColor.YELLOW: messages_pb2.AIR_CRUSH_COLOR_YELLOW,
     AirCrushColor.GREEN: messages_pb2.AIR_CRUSH_COLOR_GREEN,
-    AirCrushColor.AQUA: messages_pb2.AIR_CRUSH_COLOR_AQUA,
+    AirCrushColor.SKY: messages_pb2.AIR_CRUSH_COLOR_SKY,
     AirCrushColor.BLUE: messages_pb2.AIR_CRUSH_COLOR_BLUE,
-    AirCrushColor.PURPLE: messages_pb2.AIR_CRUSH_COLOR_PURPLE,
     AirCrushColor.VIOLET: messages_pb2.AIR_CRUSH_COLOR_VIOLET,
-    AirCrushColor.PURPLE_ALT: messages_pb2.AIR_CRUSH_COLOR_PURPLE_ALT,
-    AirCrushColor.GRAY: messages_pb2.AIR_CRUSH_COLOR_GRAY,
-    AirCrushColor.BLACK: messages_pb2.AIR_CRUSH_COLOR_BLACK,
-    AirCrushColor.LIME: messages_pb2.AIR_CRUSH_COLOR_LIME,
-    AirCrushColor.CYAN: messages_pb2.AIR_CRUSH_COLOR_CYAN,
-    AirCrushColor.DARK_GREEN: messages_pb2.AIR_CRUSH_COLOR_DARK_GREEN,
     AirCrushColor.PINK: messages_pb2.AIR_CRUSH_COLOR_PINK,
+    AirCrushColor.WHITE: messages_pb2.AIR_CRUSH_COLOR_WHITE,
+    AirCrushColor.GRAY: messages_pb2.AIR_CRUSH_COLOR_GRAY,
+    AirCrushColor.GRASS: messages_pb2.AIR_CRUSH_COLOR_GRASS,
+    AirCrushColor.SKY_BLUE: messages_pb2.AIR_CRUSH_COLOR_SKY_BLUE,
+    AirCrushColor.COBALT_BLUE: messages_pb2.AIR_CRUSH_COLOR_COBALT_BLUE,
+    AirCrushColor.PURPLE: messages_pb2.AIR_CRUSH_COLOR_PURPLE,
     AirCrushColor.NONE: messages_pb2.AIR_CRUSH_COLOR_NONE,
 }
 

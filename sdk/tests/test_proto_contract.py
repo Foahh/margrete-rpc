@@ -104,17 +104,16 @@ def test_air_crush_color_wire_values_are_named_enum():
     assert messages_pb2.AIR_CRUSH_COLOR_ORANGE == 2
     assert messages_pb2.AIR_CRUSH_COLOR_YELLOW == 3
     assert messages_pb2.AIR_CRUSH_COLOR_GREEN == 4
-    assert messages_pb2.AIR_CRUSH_COLOR_AQUA == 5
+    assert messages_pb2.AIR_CRUSH_COLOR_SKY == 5
     assert messages_pb2.AIR_CRUSH_COLOR_BLUE == 6
-    assert messages_pb2.AIR_CRUSH_COLOR_PURPLE == 7
-    assert messages_pb2.AIR_CRUSH_COLOR_VIOLET == 8
-    assert messages_pb2.AIR_CRUSH_COLOR_PURPLE_ALT == 9
-    assert messages_pb2.AIR_CRUSH_COLOR_GRAY == 10
-    assert messages_pb2.AIR_CRUSH_COLOR_BLACK == 11
-    assert messages_pb2.AIR_CRUSH_COLOR_LIME == 12
-    assert messages_pb2.AIR_CRUSH_COLOR_CYAN == 13
-    assert messages_pb2.AIR_CRUSH_COLOR_DARK_GREEN == 14
-    assert messages_pb2.AIR_CRUSH_COLOR_PINK == 15
+    assert messages_pb2.AIR_CRUSH_COLOR_VIOLET == 7
+    assert messages_pb2.AIR_CRUSH_COLOR_PINK == 8
+    assert messages_pb2.AIR_CRUSH_COLOR_WHITE == 10
+    assert messages_pb2.AIR_CRUSH_COLOR_GRAY == 11
+    assert messages_pb2.AIR_CRUSH_COLOR_GRASS == 12
+    assert messages_pb2.AIR_CRUSH_COLOR_SKY_BLUE == 13
+    assert messages_pb2.AIR_CRUSH_COLOR_COBALT_BLUE == 14
+    assert messages_pb2.AIR_CRUSH_COLOR_PURPLE == 15
     assert messages_pb2.AIR_CRUSH_COLOR_NONE == 35
 
     field = messages_pb2.Note.DESCRIPTOR.fields_by_name["variation_id"]

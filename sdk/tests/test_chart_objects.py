@@ -69,17 +69,16 @@ def test_air_crush_color_values_match_variation_ids():
     assert AirCrushColor.ORANGE == "orange"
     assert AirCrushColor.YELLOW == "yellow"
     assert AirCrushColor.GREEN == "green"
-    assert AirCrushColor.AQUA == "aqua"
+    assert AirCrushColor.SKY == "sky"
     assert AirCrushColor.BLUE == "blue"
-    assert AirCrushColor.PURPLE == "purple"
     assert AirCrushColor.VIOLET == "violet"
-    assert AirCrushColor.PURPLE_ALT == "purple_alt"
-    assert AirCrushColor.GRAY == "gray"
-    assert AirCrushColor.BLACK == "black"
-    assert AirCrushColor.LIME == "lime"
-    assert AirCrushColor.CYAN == "cyan"
-    assert AirCrushColor.DARK_GREEN == "dark_green"
     assert AirCrushColor.PINK == "pink"
+    assert AirCrushColor.WHITE == "white"
+    assert AirCrushColor.GRAY == "gray"
+    assert AirCrushColor.GRASS == "grass"
+    assert AirCrushColor.SKY_BLUE == "sky_blue"
+    assert AirCrushColor.COBALT_BLUE == "cobalt_blue"
+    assert AirCrushColor.PURPLE == "purple"
     assert AirCrushColor.NONE == "none"
     none = M.air_crush_begin(1, 2, 1, 80, 0, variation_id=AirCrushColor.NONE)
     assert none.variation_id is AirCrushColor.NONE
@@ -113,7 +112,7 @@ def test_air_crush_enums_are_user_facing_strings():
     assert AirCrushOption.TRACE == "trace"
     assert AirCrushOption.HEAD_ONLY == "head_only"
     assert AirCrushColor.DEFAULT == "default"
-    assert AirCrushColor.DARK_GREEN == "dark_green"
+    assert AirCrushColor.COBALT_BLUE == "cobalt_blue"
 
 
 def test_direction_enum_values_are_user_facing_strings():
@@ -1209,7 +1208,7 @@ def test_air_crush_density_and_color_redirect_to_mg_storage_fields():
 
 def test_air_crush_accepts_string_density_options_and_colors():
     trace = AirCrush(t=0, x=4, w=2, h=80, density="trace", color="red")
-    head = AirCrush(t=0, x=4, w=2, h=80, density="head_only", color="dark_green")
+    head = AirCrush(t=0, x=4, w=2, h=80, density="head_only", color="cobalt_blue")
 
     assert trace.density == 0
     assert trace.color is AirCrushColor.RED
@@ -1217,7 +1216,7 @@ def test_air_crush_accepts_string_density_options_and_colors():
     assert trace.to_mg(skip_validation=True).to_proto().variation_id == 1
 
     assert head.density == 0x7FFFFFFF
-    assert head.color is AirCrushColor.DARK_GREEN
+    assert head.color is AirCrushColor.COBALT_BLUE
     assert head.to_mg(skip_validation=True).option_value == 0x7FFFFFFF
     assert head.to_mg(skip_validation=True).to_proto().variation_id == 14
 
