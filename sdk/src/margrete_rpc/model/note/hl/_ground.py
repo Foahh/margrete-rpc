@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ...chart_time import Tick
-from ..ll import LLNote
+from ..mg import MgNote
 from ..types import ExtapDirection, FlickDirection, LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._shared import (
@@ -10,7 +10,7 @@ from ._shared import (
     _copy_info,
     _direction_property,
     _GeometryInfoMixin,
-    _hl_enum_line,
+    _note_enum_line,
     _ShiftMixin,
 )
 
@@ -45,8 +45,8 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
     def long_attr(self) -> LongAttr:
         return LongAttr.NONE
 
-    def _base_ll(self) -> LLNote:
-        return LLNote(info=self._info.copy(), _id=self._id)
+    def _base_mg(self) -> MgNote:
+        return MgNote(info=self._info.copy(), _id=self._id)
 
     def _str_parts(self) -> list[str]:
         return [
@@ -67,10 +67,10 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
 
     __repr__ = __str__
 
-    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
-        note = self._base_ll()
+    def to_mg(self, *, skip_validation: bool = False) -> MgNote:
+        note = self._base_mg()
         if self._air is not None:
-            note.children.append(self._air._to_ll(note.info, skip_validation=skip_validation))
+            note.children.append(self._air._to_mg(note.info, skip_validation=skip_validation))
         return note
 
 
@@ -116,13 +116,13 @@ class Extap(_GroundNote):
         super().__init__(tick, x, width, NoteType.EXTAP, _copy_info(_info), _id)
         self.direction = direction
 
-    def _base_ll(self) -> LLNote:
-        note = super()._base_ll()
+    def _base_mg(self) -> MgNote:
+        note = super()._base_mg()
         note.direction = self.direction
         return note
 
     def _str_parts(self) -> list[str]:
-        return [*super()._str_parts(), f"direction={_hl_enum_line(self.direction)}"]
+        return [*super()._str_parts(), f"direction={_note_enum_line(self.direction)}"]
 
 
 class Flick(Extap):

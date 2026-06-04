@@ -52,27 +52,27 @@ mg = Margrete("127.0.0.1:48731")
 ## Chart Editing
 
 ```python
-from margrete_rpc import BpmEvent, L, Margrete, Tap
+from margrete_rpc import BpmEvent, M, Margrete, Tap
 
 mg = Margrete()
 
 with mg.open_edit("move notes") as tx:
     tx.chart.notes[0].x += 1
-    tx.chart.raw_notes.append(L.tap(tx.current_tick, 0, 1))
+    tx.chart.mg_notes.append(M.tap(tx.current_tick, 0, 1))
     tx.chart.events.bpm.append(BpmEvent(tick=0, bpm=180.0))
 
 with mg.open_edit("append pattern", scan=False) as tx:
     tx.chart.notes.append(Tap(tx.current_tick, 4, 1))
 
-with mg.open_edit("raw edit", ll_only=True) as tx:
-    tx.chart.raw_notes[0].x += 1
+with mg.open_edit("raw edit", raw=True) as tx:
+    tx.chart.mg_notes[0].x += 1
 ```
 
 `open_edit()` fetches the current chart and the current tick by default.
 
 Due to the limitation of plugin, see [`plugin/README.md`](../plugin/README.md), if you just want adding notes and events, use `open_edit(scan=False)`.
 
-Use `open_edit(ll_only=True)` to work entirely with raw `LLNote` trees (`LLChart`) instead of wrapped note types.
+Use `open_edit(raw=True)` to work entirely with raw `MgNote` trees (`MgChart`) instead of wrapped note types.
 
 See [`example`](example/) for more complex usage.
 
@@ -83,7 +83,7 @@ Convert absolute ticks to bar/beat/offset (and back), including time signature c
 ```python
 from margrete_rpc import Margrete
 
-with Margrete().open_edit("…") as tx:
+with Margrete().open_edit("...") as tx:
     p = tx.chart.t2p(tx.current_tick)       # (bar, beat, offset)
     tick = tx.chart.p2t(*p)
     tick = tx.chart.p2t(0, 2, 0)           # bar, beat, offset
@@ -100,8 +100,8 @@ tick = p2t(*p, beat_events=chart.events.beat)
 
 | API | Meaning |
 |-----|---------|
-| `b2t` / `beats_to_ticks` | Fractional beat tuple → tick offset within one beat |
-| `t2p` / `p2t` | Absolute tick ↔ `(bar, beat, offset)` with measures and time signatures |
+| `b2t` / `beats_to_ticks` | Fractional beat tuple -> tick offset within one beat |
+| `t2p` / `p2t` | Absolute tick <-> `(bar, beat, offset)` with measures and time signatures |
 
 ## Client: `Margrete`
 
@@ -114,7 +114,7 @@ from margrete_rpc import Margrete
 - `undo() -> bool`
 - `redo() -> bool`
 - `current_tick() -> int`
-- `open_edit(name: str, *, scan: bool = True, ll_only: bool = False, ...) -> EditTransaction`
+- `open_edit(name: str, *, scan: bool = True, raw: bool = False, ...) -> EditTransaction`
 
 Discovery helpers:
 

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
 from margrete_rpc.discovery import resolve_endpoint
-from margrete_rpc.model import Chart, LLChart
+from margrete_rpc.model import Chart, MgChart
 from margrete_rpc.trace import NoopTracer, Tracer
 from margrete_rpc.transaction import EditTransaction
 
@@ -94,9 +94,9 @@ class Margrete:
         event_scan_til: list[int] | None = None,
         event_scan_note_til_only: bool = False,
         scan: bool = True,
-        ll_only: bool = False,
+        raw: bool = False,
     ) -> EditTransaction:
-        tx_type = "edit_ll" if ll_only else "edit"
+        tx_type = "edit_raw" if raw else "edit"
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type, "tx.name": name}):
             req = messages_pb2.BeginEditRequest(
                 name=name, scan=scan, event_scan_note_til_only=event_scan_note_til_only
@@ -108,8 +108,8 @@ class Margrete:
             response = self._transport.request(messages_pb2.Envelope(begin_edit_request=req))
         begin = response.begin_edit_response
         chart = (
-            LLChart.from_begin_edit_response(begin)
-            if ll_only
+            MgChart.from_begin_edit_response(begin)
+            if raw
             else Chart.from_begin_edit_response(begin)
         )
         return EditTransaction(

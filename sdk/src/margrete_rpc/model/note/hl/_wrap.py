@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import cast
 
-from ..ll import LLNote
+from ..mg import MgNote
 from ..types import AirCrushColor, LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide
 from ._ground import Damage, Extap, Flick, Tap, _GroundNote
 from ._joint import _JointHost
 from ._long import AirCrush, Hold, Slide
-from ._shared import HLNote, UnsupportedNoteTree
+from ._shared import Note, UnsupportedNoteTree
 
 
-def wrap_ll_note(note: LLNote) -> HLNote:
+def wrap_mg_note(note: MgNote) -> Note:
     if note.type in (NoteType.TAP, NoteType.EXTAP, NoteType.FLICK, NoteType.DAMAGE):
         return _wrap_ground(note)
     if note.type is NoteType.HOLD:
@@ -23,12 +23,12 @@ def wrap_ll_note(note: LLNote) -> HLNote:
     raise UnsupportedNoteTree(f"unsupported root note type: {note.type.name}")
 
 
-def _restore_wrapped_info(wrapped: _GroundNote, note: LLNote) -> None:
+def _restore_wrapped_info(wrapped: _GroundNote, note: MgNote) -> None:
     wrapped._info = note.info.copy()
     wrapped._id = note._id
 
 
-def _wrap_ground(note: LLNote) -> HLNote:
+def _wrap_ground(note: MgNote) -> Note:
     if note.long_attr is not LongAttr.NONE:
         raise UnsupportedNoteTree("ground note must not have long_attr")
     if note.type is NoteType.TAP:
@@ -53,7 +53,7 @@ def _wrap_ground(note: LLNote) -> HLNote:
     return wrapped
 
 
-def _check_ll_root_begin(note: LLNote, expected: NoteType) -> None:
+def _check_mg_root_begin(note: MgNote, expected: NoteType) -> None:
     if note.type is not expected or note.long_attr is not LongAttr.BEGIN:
         raise UnsupportedNoteTree("long note root must be BEGIN")
 
@@ -63,12 +63,12 @@ def _check_order(previous_tick: int, tick: int) -> None:
         raise UnsupportedNoteTree("long note joints must be strictly chronological")
 
 
-def _require_final_end(children: list[LLNote], allowed: set[LongAttr]) -> None:
+def _require_final_end(children: list[MgNote], allowed: set[LongAttr]) -> None:
     if not children or children[-1].long_attr not in allowed:
         raise UnsupportedNoteTree("long note must end with an end joint")
 
 
-def _copy_joint(builder: _JointHost, child: LLNote, placed_kind: LongAttr) -> None:
+def _copy_joint(builder: _JointHost, child: MgNote, placed_kind: LongAttr) -> None:
     joint = builder._joints[-1]
     joint.info = child.info.copy(long_attr=placed_kind)
     joint._id = child._id
@@ -77,7 +77,7 @@ def _copy_joint(builder: _JointHost, child: LLNote, placed_kind: LongAttr) -> No
     joint._default_height = False
 
 
-def _wrap_attached_air_note(note: LLNote) -> Air | AirSlide | AirHold:
+def _wrap_attached_air_note(note: MgNote) -> Air | AirSlide | AirHold:
     if note.type is not NoteType.AIR:
         raise UnsupportedNoteTree("attached note child must be AIR")
     if len(note.children) > 1:
@@ -95,13 +95,13 @@ def _wrap_attached_air_note(note: LLNote) -> Air | AirSlide | AirHold:
     raise UnsupportedNoteTree("air child must be AIRSLIDE or AIRHOLD")
 
 
-def _ensure_air_only_on_end(child: LLNote, is_final: bool) -> None:
+def _ensure_air_only_on_end(child: MgNote, is_final: bool) -> None:
     if child.children and not is_final:
         raise UnsupportedNoteTree("air may attach only to the end joint")
 
 
-def _wrap_slide(note: LLNote) -> Slide:
-    _check_ll_root_begin(note, NoteType.SLIDE)
+def _wrap_slide(note: MgNote) -> Slide:
+    _check_mg_root_begin(note, NoteType.SLIDE)
     _require_final_end(note.children, {LongAttr.END})
     slide = Slide(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
     previous_tick = int(note.tick)
@@ -130,8 +130,8 @@ def _wrap_slide(note: LLNote) -> Slide:
     return slide
 
 
-def _wrap_hold(note: LLNote) -> Hold:
-    _check_ll_root_begin(note, NoteType.HOLD)
+def _wrap_hold(note: MgNote) -> Hold:
+    _check_mg_root_begin(note, NoteType.HOLD)
     if len(note.children) != 1 or note.children[0].long_attr is not LongAttr.END:
         raise UnsupportedNoteTree("hold must have exactly one end joint")
     child = note.children[0]
@@ -145,12 +145,12 @@ def _wrap_hold(note: LLNote) -> Hold:
 
 
 def _wrap_air_slide(
-    note: LLNote,
+    note: MgNote,
     *,
     air_info: NoteInfo | None = None,
     air_id: int | None = None,
 ) -> AirSlide:
-    _check_ll_root_begin(note, NoteType.AIRSLIDE)
+    _check_mg_root_begin(note, NoteType.AIRSLIDE)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     slide = AirSlide(
         height=note.height,
@@ -188,12 +188,12 @@ def _wrap_air_slide(
 
 
 def _wrap_air_hold(
-    note: LLNote,
+    note: MgNote,
     *,
     air_info: NoteInfo | None = None,
     air_id: int | None = None,
 ) -> AirHold:
-    _check_ll_root_begin(note, NoteType.AIRHOLD)
+    _check_mg_root_begin(note, NoteType.AIRHOLD)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     hold = AirHold(
         height=note.height,
@@ -227,8 +227,8 @@ def _wrap_air_hold(
     return hold
 
 
-def _wrap_air_crush(note: LLNote) -> AirCrush:
-    _check_ll_root_begin(note, NoteType.AIRCRUSH)
+def _wrap_air_crush(note: MgNote) -> AirCrush:
+    _check_mg_root_begin(note, NoteType.AIRCRUSH)
     _require_final_end(note.children, {LongAttr.END})
     crush = AirCrush(
         int(note.tick),

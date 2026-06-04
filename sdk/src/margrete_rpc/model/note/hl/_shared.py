@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import Any, Protocol, Self, runtime_checkable
 
-from ..ll import LLNote
+from ..mg import MgNote
 from ..types import AirCrushOption, NoteInfo, NoteType
 
 
@@ -12,7 +12,7 @@ class UnsupportedNoteTree(ValueError):
 
 
 @runtime_checkable
-class HLNote(Protocol):
+class Note(Protocol):
     tick: int
     x: int
     width: int
@@ -23,10 +23,10 @@ class HLNote(Protocol):
 
     def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self: ...
 
-    def to_ll(self, *, skip_validation: bool = False) -> LLNote: ...
+    def to_mg(self, *, skip_validation: bool = False) -> MgNote: ...
 
 
-def _hl_enum_line(value: IntEnum | int) -> str:
+def _note_enum_line(value: IntEnum | int) -> str:
     if isinstance(value, IntEnum):
         return f"{type(value).__name__}.{value.name}({int(value)})"
     return repr(value)
@@ -134,6 +134,6 @@ class _HeightMixin:
 
 class _ShiftMixin:
     def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self:
-        from ..shift import _shift_hl
+        from ..shift import _shift_note
 
-        return _shift_hl(self, t=t, x=x, w=w, h=h)
+        return _shift_note(self, t=t, x=x, w=w, h=h)

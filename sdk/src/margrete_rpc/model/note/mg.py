@@ -19,19 +19,19 @@ from .types import (
 
 
 def _info_property(name: str):
-    def getter(self: LLNote):
+    def getter(self: MgNote):
         return getattr(self.info, name)
 
-    def setter(self: LLNote, value):
+    def setter(self: MgNote, value):
         setattr(self.info, name, value)
 
     return property(getter, setter)
 
 
 @dataclass
-class LLNote:
+class MgNote:
     info: NoteInfo = field(default_factory=NoteInfo)
-    children: list[LLNote] = field(default_factory=list)
+    children: list[MgNote] = field(default_factory=list)
     _id: int | None = field(default=None)
 
     type = _info_property("type")
@@ -47,16 +47,16 @@ class LLNote:
     option_value = _info_property("option_value")
 
     def __str__(self) -> str:
-        return _format_ll_note(self, indent=0)
+        return _format_mg_note(self, indent=0)
 
     __repr__ = __str__
 
-    def child(self, *children: LLNote) -> LLNote:
+    def child(self, *children: MgNote) -> MgNote:
         self.children = list(children)
         return self
 
     @classmethod
-    def from_proto(cls, proto: messages_pb2.Note) -> LLNote:
+    def from_proto(cls, proto: messages_pb2.Note) -> MgNote:
         return cls(
             _id=proto.id if proto.HasField("id") else None,
             info=NoteInfo(
@@ -94,25 +94,25 @@ class LLNote:
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
 
-    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> LLNote:
-        from .shift import _shift_ll
+    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> MgNote:
+        from .shift import _shift_mg
 
-        return _shift_ll(self, t=t, x=x, w=w, h=h)
+        return _shift_mg(self, t=t, x=x, w=w, h=h)
 
 
-def _format_ll_note(note: LLNote, *, indent: int = 0) -> str:
+def _format_mg_note(note: MgNote, *, indent: int = 0) -> str:
     prefix = "  " * indent
     id_part = f"id={note._id}, " if note._id is not None else ""
-    line = f"{prefix}LL({id_part}info={note.info!s})"
+    line = f"{prefix}Mg({id_part}info={note.info!s})"
     if not note.children:
         return line
-    return line + "\n" + "\n".join(_format_ll_note(c, indent=indent + 1) for c in note.children)
+    return line + "\n" + "\n".join(_format_mg_note(c, indent=indent + 1) for c in note.children)
 
 
-class L:
+class M:
     @staticmethod
-    def tap(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return LLNote(
+    def tap(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=NoteType.TAP,
                 tick=tick,
@@ -124,8 +124,8 @@ class L:
         )
 
     @staticmethod
-    def extap(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return LLNote(
+    def extap(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=NoteType.EXTAP,
                 tick=tick,
@@ -137,8 +137,8 @@ class L:
         )
 
     @staticmethod
-    def flick(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return LLNote(
+    def flick(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=NoteType.FLICK,
                 tick=tick,
@@ -150,8 +150,8 @@ class L:
         )
 
     @staticmethod
-    def damage(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return LLNote(
+    def damage(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=NoteType.DAMAGE,
                 tick=tick,
@@ -171,8 +171,8 @@ class L:
         width: int,
         height: int,
         **kwargs,
-    ) -> LLNote:
-        return LLNote(
+    ) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=note_type,
                 long_attr=long_attr,
@@ -185,38 +185,38 @@ class L:
         )
 
     @staticmethod
-    def hold_begin(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return L._segment(NoteType.HOLD, LongAttr.BEGIN, tick, x, width, height, **kwargs)
+    def hold_begin(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return M._segment(NoteType.HOLD, LongAttr.BEGIN, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def hold_end(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return L._segment(NoteType.HOLD, LongAttr.END, tick, x, width, height, **kwargs)
+    def hold_end(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return M._segment(NoteType.HOLD, LongAttr.END, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def slide_begin(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return L._segment(NoteType.SLIDE, LongAttr.BEGIN, tick, x, width, height, **kwargs)
+    def slide_begin(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return M._segment(NoteType.SLIDE, LongAttr.BEGIN, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def slide_step(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return L._segment(NoteType.SLIDE, LongAttr.STEP, tick, x, width, height, **kwargs)
+    def slide_step(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return M._segment(NoteType.SLIDE, LongAttr.STEP, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def slide_control(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return L._segment(NoteType.SLIDE, LongAttr.CONTROL, tick, x, width, height, **kwargs)
+    def slide_control(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return M._segment(NoteType.SLIDE, LongAttr.CONTROL, tick, x, width, height, **kwargs)
 
     @staticmethod
     def slide_curve_control(
         tick: Tick, x: int, width: int, *, height: int = 800, **kwargs
-    ) -> LLNote:
-        return L._segment(NoteType.SLIDE, LongAttr.CURVE_CONTROL, tick, x, width, height, **kwargs)
+    ) -> MgNote:
+        return M._segment(NoteType.SLIDE, LongAttr.CURVE_CONTROL, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def slide_end(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return L._segment(NoteType.SLIDE, LongAttr.END, tick, x, width, height, **kwargs)
+    def slide_end(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return M._segment(NoteType.SLIDE, LongAttr.END, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> LLNote:
-        return LLNote(
+    def air(tick: Tick, x: int, width: int, *, height: int = 800, **kwargs) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=NoteType.AIR,
                 tick=tick,
@@ -228,46 +228,46 @@ class L:
         )
 
     @staticmethod
-    def air_slide_begin(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRSLIDE, LongAttr.BEGIN, tick, x, width, height, **kwargs)
+    def air_slide_begin(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRSLIDE, LongAttr.BEGIN, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_slide_step(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRSLIDE, LongAttr.STEP, tick, x, width, height, **kwargs)
+    def air_slide_step(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRSLIDE, LongAttr.STEP, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_slide_control(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRSLIDE, LongAttr.CONTROL, tick, x, width, height, **kwargs)
+    def air_slide_control(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRSLIDE, LongAttr.CONTROL, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_slide_curve_control(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(
+    def air_slide_curve_control(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(
             NoteType.AIRSLIDE, LongAttr.CURVE_CONTROL, tick, x, width, height, **kwargs
         )
 
     @staticmethod
-    def air_slide_end(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRSLIDE, LongAttr.END, tick, x, width, height, **kwargs)
+    def air_slide_end(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRSLIDE, LongAttr.END, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_slide_end_noact(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRSLIDE, LongAttr.END_NOACT, tick, x, width, height, **kwargs)
+    def air_slide_end_noact(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRSLIDE, LongAttr.END_NOACT, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_hold_begin(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRHOLD, LongAttr.BEGIN, tick, x, width, height, **kwargs)
+    def air_hold_begin(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRHOLD, LongAttr.BEGIN, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_hold_step(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRHOLD, LongAttr.STEP, tick, x, width, height, **kwargs)
+    def air_hold_step(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRHOLD, LongAttr.STEP, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_hold_end(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRHOLD, LongAttr.END, tick, x, width, height, **kwargs)
+    def air_hold_end(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRHOLD, LongAttr.END, tick, x, width, height, **kwargs)
 
     @staticmethod
-    def air_hold_end_noact(tick: Tick, x: int, width: int, height: int, **kwargs) -> LLNote:
-        return L._segment(NoteType.AIRHOLD, LongAttr.END_NOACT, tick, x, width, height, **kwargs)
+    def air_hold_end_noact(tick: Tick, x: int, width: int, height: int, **kwargs) -> MgNote:
+        return M._segment(NoteType.AIRHOLD, LongAttr.END_NOACT, tick, x, width, height, **kwargs)
 
     @staticmethod
     def _air_crush_segment(
@@ -278,8 +278,8 @@ class L:
         height: int,
         option_value: AirCrushOption | int,
         **kwargs,
-    ) -> LLNote:
-        return LLNote(
+    ) -> MgNote:
+        return MgNote(
             info=NoteInfo(
                 type=NoteType.AIRCRUSH,
                 long_attr=long_attr,
@@ -295,19 +295,19 @@ class L:
     @staticmethod
     def air_crush_begin(
         tick: Tick, x: int, width: int, height: int, option_value: AirCrushOption | int, **kwargs
-    ) -> LLNote:
-        return L._air_crush_segment(LongAttr.BEGIN, tick, x, width, height, option_value, **kwargs)
+    ) -> MgNote:
+        return M._air_crush_segment(LongAttr.BEGIN, tick, x, width, height, option_value, **kwargs)
 
     @staticmethod
     def air_crush_control(
         tick: Tick, x: int, width: int, height: int, option_value: AirCrushOption | int, **kwargs
-    ) -> LLNote:
-        return L._air_crush_segment(
+    ) -> MgNote:
+        return M._air_crush_segment(
             LongAttr.CONTROL, tick, x, width, height, option_value, **kwargs
         )
 
     @staticmethod
     def air_crush_end(
         tick: Tick, x: int, width: int, height: int, option_value: AirCrushOption | int, **kwargs
-    ) -> LLNote:
-        return L._air_crush_segment(LongAttr.END, tick, x, width, height, option_value, **kwargs)
+    ) -> MgNote:
+        return M._air_crush_segment(LongAttr.END, tick, x, width, height, option_value, **kwargs)

@@ -1,6 +1,6 @@
 import pytest
 
-from margrete_rpc import AirSlide, Hold, L, Margrete, NoteInfo, Slide, Tap
+from margrete_rpc import AirSlide, Hold, M, Margrete, NoteInfo, Slide, Tap
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model.chart_time import pop_tick_resolver, push_tick_resolver, resolve_tick
 
@@ -52,17 +52,17 @@ def test_noteinfo_is_the_resolution_sink():
     info.tick = (0, 1)
     assert info.tick == BEAT
     assert info.copy(tick=(2, 0)).tick == 2 * BAR
-    # Plain ints pass straight through, including negatives (LL stays permissive).
+    # Plain ints pass straight through, including negatives (MgNote stays permissive).
     info.tick = -5
     assert info.tick == -5
 
 
-def test_hl_tap_accepts_position_tuple():
+def test_note_tap_accepts_position_tuple():
     assert Tap((1, 0), 0, 4).tick == BAR
     assert Tap(1920, 0, 4).tick == 1920  # int still works
 
 
-def test_hl_chained_joints_accept_positions():
+def test_note_chained_joints_accept_positions():
     note = Tap((1, 0), 0, 4).air(
         AirSlide(height=80).control((1, 1), x=5, height=100).step((1, 2), height=100)
     )
@@ -70,7 +70,7 @@ def test_hl_chained_joints_accept_positions():
     assert [int(j.tick) for j in note._air.joints] == [BAR + BEAT, BAR + 2 * BEAT]
 
 
-def test_hl_slide_and_hold_steps_accept_positions():
+def test_note_slide_and_hold_steps_accept_positions():
     slide = Slide((0, 0), 0, 4).step((0, 1)).step((0, 2))
     assert [int(j.tick) for j in slide.joints] == [BEAT, 2 * BEAT]
 
@@ -78,13 +78,13 @@ def test_hl_slide_and_hold_steps_accept_positions():
     assert int(hold.joints[-1].tick) == BAR
 
 
-def test_ll_factory_and_setter_accept_positions():
-    note = L.tap((2, 0), 4, 2)
+def test_mg_factory_and_setter_accept_positions():
+    note = M.tap((2, 0), 4, 2)
     assert note.tick == 2 * BAR
     note.tick = (0, 1, 0)
     assert note.tick == BEAT
 
-    seg = L.slide_begin((1, 0), 0, 4)
+    seg = M.slide_begin((1, 0), 0, 4)
     assert seg.tick == BAR
 
 

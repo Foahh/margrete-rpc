@@ -1,6 +1,6 @@
 """Domain models."""
 
-from margrete_rpc.model.chart import Chart, ChartEvents, LLChart, normalize_event_operations
+from margrete_rpc.model.chart import Chart, ChartEvents, MgChart, normalize_event_operations
 from margrete_rpc.model.chart_time import Position, p2t, t2p
 from margrete_rpc.model.constant import TICKS_PER_BEAT
 from margrete_rpc.model.event import (
@@ -23,18 +23,18 @@ from margrete_rpc.model.note import (
     ExtapDirection,
     Flick,
     FlickDirection,
-    HLNote,
     Hold,
     Joint,
-    L,
-    LLNote,
     LongAttr,
+    M,
+    MgNote,
+    Note,
     NoteInfo,
     NoteType,
     Slide,
     Tap,
     UnsupportedNoteTree,
-    wrap_ll_note,
+    wrap_mg_note,
 )
 
 __all__ = [
@@ -55,12 +55,12 @@ __all__ = [
     "ExtapDirection",
     "Flick",
     "FlickDirection",
-    "HLNote",
+    "Note",
     "Hold",
     "Joint",
-    "L",
-    "LLChart",
-    "LLNote",
+    "M",
+    "MgChart",
+    "MgNote",
     "LongAttr",
     "NoteInfo",
     "NoteSpeedEvent",
@@ -74,5 +74,5 @@ __all__ = [
     "TimelineSpeedEvent",
     "UnsupportedNoteTree",
     "normalize_event_operations",
-    "wrap_ll_note",
+    "wrap_mg_note",
 ]

@@ -3,15 +3,15 @@ from __future__ import annotations
 from typing import Self
 
 from ...chart_time import Tick
-from ..ll import LLNote
+from ..mg import MgNote
 from ..types import AirDirection, ExAttr, LongAttr, NoteInfo, NoteType
 from ._joint import Joint, _JointHost
 from ._shared import (
     _copy_info,
     _direction_property,
     _HeightMixin,
-    _hl_enum_line,
     _info_property,
+    _note_enum_line,
 )
 
 
@@ -48,9 +48,9 @@ class Air:
     def long_attr(self) -> LongAttr:
         return LongAttr.NONE
 
-    def _to_ll(self, anchor: NoteInfo, *, skip_validation: bool = False) -> LLNote:
+    def _to_mg(self, anchor: NoteInfo, *, skip_validation: bool = False) -> MgNote:
         del skip_validation
-        return LLNote(
+        return MgNote(
             info=self._info.copy(
                 type=NoteType.AIR,
                 long_attr=LongAttr.NONE,
@@ -62,7 +62,7 @@ class Air:
         )
 
     def __str__(self) -> str:
-        parts = [f"direction={_hl_enum_line(self.direction)}"]
+        parts = [f"direction={_note_enum_line(self.direction)}"]
         if self._id is not None:
             parts.append(f"id={self._id}")
         if self.inverted:
@@ -118,16 +118,16 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
     def _begin_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
         return self._info.copy(tick=anchor.tick, x=anchor.x, width=anchor.width)
 
-    def _to_ll(self, anchor: NoteInfo, *, skip_validation: bool = False) -> LLNote:
+    def _to_mg(self, anchor: NoteInfo, *, skip_validation: bool = False) -> MgNote:
         begin_info = self._begin_info_with_anchor(anchor)
-        action = LLNote(info=begin_info, _id=self._id)
+        action = MgNote(info=begin_info, _id=self._id)
         action.children = self._build_long_children(
             self._note_type,
             self._terminus_attr,
             begin_info,
             skip_validation=skip_validation,
         )
-        air = LLNote(info=self._air_info_with_anchor(anchor), _id=self._air_id)
+        air = MgNote(info=self._air_info_with_anchor(anchor), _id=self._air_id)
         air.children.append(action)
         return air
 

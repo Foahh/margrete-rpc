@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ...chart_time import Tick
-from ..ll import LLNote
+from ..mg import MgNote
 from ..types import LongAttr, NoteInfo, NoteType
 from ._shared import (
     _check_tick,
@@ -11,8 +11,8 @@ from ._shared import (
     _copy_info,
     _GeometryInfoMixin,
     _HeightMixin,
-    _hl_enum_line,
     _info_property,
+    _note_enum_line,
 )
 
 
@@ -190,14 +190,14 @@ class _JointHost:
         begin_info: NoteInfo,
         *,
         skip_validation: bool = False,
-    ) -> list[LLNote]:
+    ) -> list[MgNote]:
         if not skip_validation:
             if not self._joints:
                 raise ValueError("long note requires at least one joint")
             if self._joints[-1].long_attr not in (LongAttr.STEP, LongAttr.CONTROL):
                 raise ValueError("long note must end with a step or control joint")
 
-        children: list[LLNote] = []
+        children: list[MgNote] = []
         previous = begin_info
         for index, joint in enumerate(self._joints):
             long_attr = joint.long_attr
@@ -206,7 +206,7 @@ class _JointHost:
             jinfo = self._resolve_joint_info(joint, previous, note_type, long_attr)
             if note_type is NoteType.AIRCRUSH:
                 jinfo = jinfo.copy(option_value=0)
-            children.append(LLNote(info=jinfo, _id=joint._id))
+            children.append(MgNote(info=jinfo, _id=joint._id))
             previous = jinfo
         return children
 
@@ -215,7 +215,7 @@ class _JointHost:
         for j in self._joints:
             jbits = [
                 f"tick={int(j.tick)}",
-                f"long_attr={_hl_enum_line(j.long_attr)}",
+                f"long_attr={_note_enum_line(j.long_attr)}",
                 f"x={j.x}",
                 f"width={j.width}",
                 f"height={j.height}",

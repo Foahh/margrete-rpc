@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ...chart_time import Tick, resolve_tick
-from ..ll import LLNote
+from ..mg import MgNote
 from ..types import AirCrushColor, AirCrushOption, LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._joint import Joint, _JointHost
@@ -11,8 +11,8 @@ from ._shared import (
     _copy_info,
     _GeometryInfoMixin,
     _HeightMixin,
-    _hl_enum_line,
     _info_property,
+    _note_enum_line,
     _ShiftMixin,
 )
 
@@ -54,8 +54,8 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
         del joint
         return LongAttr.END
 
-    def _to_ll_tree(self, *, skip_validation: bool = False) -> LLNote:
-        root = LLNote(info=self._info.copy(long_attr=LongAttr.BEGIN), _id=self._id)
+    def _to_mg_tree(self, *, skip_validation: bool = False) -> MgNote:
+        root = MgNote(info=self._info.copy(long_attr=LongAttr.BEGIN), _id=self._id)
         root.children = self._build_long_children(
             self._note_type,
             self._terminus_attr,
@@ -66,7 +66,7 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
             if not root.children:
                 raise ValueError("attached air requires an end joint")
             root.children[-1].children.append(
-                self._air._to_ll(root.children[-1].info, skip_validation=skip_validation)
+                self._air._to_mg(root.children[-1].info, skip_validation=skip_validation)
             )
         return root
 
@@ -82,7 +82,7 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
         if isinstance(self, AirCrush):
             parts.append(f"height={self.height}")
             parts.append(f"density={self.density}")
-            parts.append(f"color={_hl_enum_line(self.color)}")
+            parts.append(f"color={_note_enum_line(self.color)}")
         head = ", ".join(parts)
         lines = [f"{cls}({head}"]
         if self._joints:
@@ -110,8 +110,8 @@ class Slide(_AirAttachable, _PlaceableLong):
         self._add_curve_control(tick, x=x, width=width)
         return self
 
-    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
-        return self._to_ll_tree(skip_validation=skip_validation)
+    def to_mg(self, *, skip_validation: bool = False) -> MgNote:
+        return self._to_mg_tree(skip_validation=skip_validation)
 
 
 class Hold(_AirAttachable, _PlaceableLong):
@@ -127,8 +127,8 @@ class Hold(_AirAttachable, _PlaceableLong):
             self._add_step(tick)
         return self
 
-    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
-        return self._to_ll_tree(skip_validation=skip_validation)
+    def to_mg(self, *, skip_validation: bool = False) -> MgNote:
+        return self._to_mg_tree(skip_validation=skip_validation)
 
 
 class AirCrush(_HeightMixin, _PlaceableLong):
@@ -172,5 +172,5 @@ class AirCrush(_HeightMixin, _PlaceableLong):
         self._add_control(tick, x=x, width=width, height=height)
         return self
 
-    def to_ll(self, *, skip_validation: bool = False) -> LLNote:
-        return self._to_ll_tree(skip_validation=skip_validation)
+    def to_mg(self, *, skip_validation: bool = False) -> MgNote:
+        return self._to_mg_tree(skip_validation=skip_validation)

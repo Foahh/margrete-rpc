@@ -1,6 +1,6 @@
 import pytest
 
-from margrete_rpc import L, LLChart, Margrete, Tap
+from margrete_rpc import M, Margrete, MgChart, Tap
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 
@@ -127,9 +127,9 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     with mg.open_edit("append", scan=False) as tx:
         assert tx.current_tick == 480
         assert tx.chart.notes == []
-        assert tx.chart.raw_notes == []
+        assert tx.chart.mg_notes == []
         tx.chart.notes.append(Tap(480, 2, 1))
-        tx.chart.raw_notes.append(L.tap(720, 4, 1))
+        tx.chart.mg_notes.append(M.tap(720, 4, 1))
 
     begin_request = transport.requests[0].begin_edit_request
     apply_request = transport.requests[1].apply_edit_request
@@ -138,10 +138,10 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     assert [note.tick for note in apply_request.notes_upsert] == [480, 720]
 
 
-def test_open_edit_ll_is_removed():
+def test_open_edit_has_no_separate_raw_method():
     mg = Margrete(transport=FakeTransport([]))
 
-    assert not hasattr(mg, "open_edit_ll")
+    assert not hasattr(mg, "open_edit_raw")
 
 
 def test_open_append_is_removed():
@@ -162,9 +162,9 @@ def test_scan_false_rejects_existing_note_ids_before_commit_request():
 
     with pytest.raises(ValueError, match="scan=false transactions cannot send existing note ids"):
         with mg.open_edit("bad", scan=False) as tx:
-            note = L.tap(480, 2, 1)
+            note = M.tap(480, 2, 1)
             note._id = 99
-            tx.chart.raw_notes.append(note)
+            tx.chart.mg_notes.append(note)
 
     assert len(transport.requests) == 1
 
@@ -240,6 +240,7 @@ def test_scanned_timeline_speed_value_edit_with_same_key_sends_apply_request():
 
 
 def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
+
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
@@ -271,9 +272,9 @@ def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("ids", ll_only=True) as tx:
-        assert isinstance(tx.chart, LLChart)
-        tx.chart.raw_notes[0].x = 3
+    with mg.open_edit("ids", raw=True) as tx:
+        assert isinstance(tx.chart, MgChart)
+        tx.chart.mg_notes[0].x = 3
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
@@ -318,8 +319,8 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("child", ll_only=True) as tx:
-        tx.chart.raw_notes[0].children[0].tick = 500
+    with mg.open_edit("child", raw=True) as tx:
+        tx.chart.mg_notes[0].children[0].tick = 500
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
@@ -339,8 +340,8 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("child", ll_only=True) as tx:
-        tx.chart.raw_notes[0].children.insert(0, L.hold_end(240, 1, 2))
+    with mg.open_edit("child", raw=True) as tx:
+        tx.chart.mg_notes[0].children.insert(0, M.hold_end(240, 1, 2))
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False

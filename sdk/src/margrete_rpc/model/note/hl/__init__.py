@@ -4,8 +4,8 @@ from ._air import Air, AirHold, AirSlide
 from ._ground import Damage, Extap, Flick, Tap
 from ._joint import Joint
 from ._long import AirCrush, Hold, Slide
-from ._shared import HLNote, UnsupportedNoteTree
-from ._wrap import wrap_ll_note
+from ._shared import Note, UnsupportedNoteTree
+from ._wrap import wrap_mg_note
 
 __all__ = [
     "Air",
@@ -15,11 +15,11 @@ __all__ = [
     "Damage",
     "Extap",
     "Flick",
-    "HLNote",
+    "Note",
     "Hold",
     "Joint",
     "Slide",
     "Tap",
     "UnsupportedNoteTree",
-    "wrap_ll_note",
+    "wrap_mg_note",
 ]

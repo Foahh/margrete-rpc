@@ -119,10 +119,10 @@ pytest -v --tb=short           # Verbose with short tracebacks
 - **`_socket.py`**: Low-level socket + framing protocol (send/recv length-prefixed messages)
 - **`_errors.py`**: `MargreteProtocolError` (socket/frame issues), `MargreteRemoteError` (RPC error responses)
 - **`chart/`**: Chart object models
-  - `chart.py`: `Chart` (high-level wrapper), `HighLevelChart`, `LowLevelChart`
+  - `chart.py`: `Chart` (typed SDK wrapper) and `MgChart` (Margrete-native/raw chart)
   - `event.py`: Event classes (BpmEvent, BeatEvent, ScrollSpeedEvent, etc.)
-  - `note.py` / `ll.py`: Note types (Tap, Flick, Hold, etc.); LL (low-level) vs HL (high-level)
-  - `chart_time.py`: Time/position conversion (tick ↔ bar/beat/offset tuple via `t2p()` and `p2t()`)
+  - `note/`: Note types (`Tap`, `Flick`, `Hold`, etc.) plus Margrete-native `MgNote` trees and `M` factories
+  - `chart_time.py`: Time/position conversion (tick -> bar/beat/offset tuple via `t2p()` and `p2t()`)
   - `constant.py`: Lane/note constants
   - `shift.py`: Utilities for shifting notes/events by tick offset
 - **`trace.py`**: Request/response logging (debug helper)
@@ -136,9 +136,10 @@ with mg.open_edit("name") as tx:
 ```
 
 **Note object hierarchy:**
-- **HL (high-level)**: `Tap`, `Flick`, `Hold`, etc. — typed note classes with properties
-- **LL (low-level)**: `LLNote` trees with raw `data` dict — used internally and for ll_only transactions
-- `chart.notes` → HL interface; `chart.raw_notes` → LL interface
+- **SDK notes**: `Note` protocol implemented by `Tap`, `Flick`, `Hold`, etc.; these are typed Python objects for normal scripting
+- **Margrete-native notes**: `MgNote` trees built with `M.tap(...)`, `M.slide_begin(...)`, etc.; used for raw Margrete/plugin note structures
+- `chart.notes` -> typed SDK note interface; `chart.mg_notes` -> Margrete-native notes that could not or should not be wrapped
+- Use `open_edit(raw=True)` to receive an `MgChart` and work entirely with `MgNote` trees
 
 **Generated code:**
 - `_proto/messages_pb2.py` is generated from `proto/margrete/rpc/v1/messages.proto`
@@ -165,17 +166,17 @@ The wire protocol is defined in `proto/margrete/rpc/v1/messages.proto`. Key mess
 - Windows SDK (ws2_32, user32, comctl32, shell32)
 
 **SDK:**
-- `protobuf>=7.34,<8` — message serialization
-- pytest (dev) — testing
-- ruff (dev) — linting/formatting
+- `protobuf>=7.34,<8` - message serialization
+- pytest (dev) - testing
+- ruff (dev) - linting/formatting
 
 ### Key Design Decisions
 
 1. **Auto-discovery:** SDK auto-connects to the sole running plugin instance; manual endpoint override available
 2. **Port auto-assignment:** Plugin requests free port from Windows, enabling multiple Margrete instances simultaneously
 3. **Undo/redo per-transaction:** Margrete undo stack is cleared on each new transaction to avoid stale undo states
-4. **Raw vs HL chart modes:** `open_edit(ll_only=True)` for low-level access when scripting doesn't need typed objects
-5. **Event scanning limitation:** Plugin scans events linearly (tick 0 → last_note_tick) due to Margrete SDK constraints; passed as `event_scan_extra_tick` / `event_scan_til` parameters
+4. **Raw vs typed chart modes:** `open_edit(raw=True)` for Margrete-native `MgNote` access when scripting does not need typed SDK note objects
+5. **Event scanning limitation:** Plugin scans events linearly (tick 0 -> last_note_tick) due to Margrete SDK constraints; passed as `event_scan_extra_tick` / `event_scan_til` parameters
 
 ### Testing Strategy
 

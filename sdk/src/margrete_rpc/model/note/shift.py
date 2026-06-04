@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .ll import LLNote
+from .mg import MgNote
 from .types import NoteInfo
 
 
@@ -11,12 +11,12 @@ def _apply_deltas(info: NoteInfo, *, t: int, x: int, w: int, h: int) -> None:
     info.height += h
 
 
-def _shift_ll(note: LLNote, *, t: int, x: int, w: int, h: int) -> LLNote:
+def _shift_mg(note: MgNote, *, t: int, x: int, w: int, h: int) -> MgNote:
     if t == x == w == h == 0:
         return note
     _apply_deltas(note.info, t=t, x=x, w=w, h=h)
     for child in note.children:
-        _shift_ll(child, t=t, x=x, w=w, h=h)
+        _shift_mg(child, t=t, x=x, w=w, h=h)
     return note
 
 
@@ -68,7 +68,7 @@ def _shift_long_builder(builder: object, *, t: int, x: int, w: int, h: int) -> N
         _shift_attachable_air(builder._air, t=t, x=x, w=w, h=h)
 
 
-def _shift_hl(note: object, *, t: int, x: int, w: int, h: int) -> object:
+def _shift_note(note: object, *, t: int, x: int, w: int, h: int) -> object:
     if t == x == w == h == 0:
         return note
     from .hl import AirCrush, Damage, Extap, Flick, Hold, Slide, Tap

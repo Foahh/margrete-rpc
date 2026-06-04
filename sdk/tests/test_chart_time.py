@@ -73,9 +73,9 @@ def test_chart_t2p_delegates_to_module():
 
 
 def test_chart_p2t_bar_beat_offset():
-    from margrete_rpc.model.chart import LLChart
+    from margrete_rpc.model.chart import MgChart
 
-    chart = LLChart()
+    chart = MgChart()
     assert chart.p2t(1) == TICKS_PER_BEAT
     assert chart.p2t(0, 1, 0) == 480
 
