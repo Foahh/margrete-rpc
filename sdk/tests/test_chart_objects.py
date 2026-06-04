@@ -19,6 +19,7 @@ from margrete_rpc import (
     Flick,
     FlickDirection,
     Hold,
+    Joint,
     LongAttr,
     M,
     MgNote,
@@ -718,12 +719,39 @@ def test_attachable_air_objects_are_not_placeable_notes():
     assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, density=0), "air")
 
 
+def test_all_high_level_notes_expose_validate():
+    notes = [
+        Tap(t=0, x=4, w=2),
+        Damage(t=0, x=4, w=2),
+        Extap(t=0, x=4, w=2),
+        Flick(t=0, x=4, w=2),
+        Slide(t=0, x=4, w=2).step(960),
+        Hold(t=0, x=4, w=2).step(960),
+        AirCrush(t=0, x=4, w=2, h=80, density=5).control(960),
+    ]
+
+    for note in notes:
+        note.validate()
+        assert isinstance(note, Note)
+
+
 def test_high_level_short_notes_validate_tick_and_width():
     with pytest.raises(ValueError, match="t must be non-negative"):
         Tap(t=-1, x=4, w=2)
 
     with pytest.raises(ValueError, match="w must be at least 1"):
         Tap(t=0, x=4, w=0)
+
+
+def test_ground_note_validate_catches_invalid_mutated_info():
+    tap = Tap(t=0, x=4, w=2)
+    tap._info.w = 0
+
+    with pytest.raises(ValueError, match="w must be at least 1"):
+        tap.validate()
+
+    with pytest.raises(ValueError, match="w must be at least 1"):
+        tap.to_mg()
 
 
 def test_ground_note_direction_is_available_only_on_extap_and_flick():
@@ -901,6 +929,27 @@ def test_long_note_requires_at_least_one_serializable_joint():
         AirCrush(t=0, x=4, w=2, h=80, density=5).to_mg()
 
 
+def test_long_note_validate_catches_invalid_begin_geometry():
+    slide = Slide(t=0, x=4, w=2).step(960)
+    slide._info.w = 0
+
+    with pytest.raises(ValueError, match="w must be at least 1"):
+        slide.validate()
+
+    with pytest.raises(ValueError, match="w must be at least 1"):
+        slide.to_mg()
+
+
+def test_note_validate_catches_invalid_attached_air_builder():
+    tap = Tap(t=0, x=4, w=2).air(AirSlide(h=80))
+
+    with pytest.raises(ValueError, match="requires at least one joint"):
+        tap.validate()
+
+    with pytest.raises(ValueError, match="requires at least one joint"):
+        tap.to_mg()
+
+
 def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
     tap = Tap(t=1920, x=1, w=2)
     assert str(tap) == repr(tap)
@@ -971,6 +1020,42 @@ def test_slide_joints_default_geometry_to_previous_joint():
         (4, 2, 800),
         (4, 2, 800),
     ]
+
+
+def test_joint_kind_is_public_editable_property():
+    slide = Slide(t=0, x=4, w=2).control(480).step(960)
+
+    assert slide.joints[0].kind is LongAttr.CONTROL
+    slide.joints[0].kind = LongAttr.STEP
+
+    mg_note = slide.to_mg()
+
+    assert slide.joints[0].kind is LongAttr.STEP
+    assert [child.long_attr for child in mg_note.children] == [LongAttr.STEP, LongAttr.END]
+
+
+def test_joint_does_not_keep_public_long_attr_name():
+    joint = Joint(t=960, x=8, w=2, kind=LongAttr.STEP)
+
+    assert not hasattr(joint, "long_attr")
+    with pytest.raises(TypeError):
+        Joint(t=960, x=8, w=2, long_attr=LongAttr.STEP)
+
+
+def test_public_joints_list_can_be_mutated_and_validated():
+    slide = Slide(t=0, x=4, w=2)
+    slide.joints.append(Joint(t=960, x=8, w=2, kind=LongAttr.STEP))
+
+    slide.validate()
+    mg_note = slide.to_mg()
+
+    assert len(mg_note.children) == 1
+    assert mg_note.children[0].long_attr is LongAttr.END
+    assert mg_note.children[0].x == 8
+
+    slide.joints.append("bad")
+    with pytest.raises(TypeError, match="joint"):
+        slide.validate()
 
 
 def test_air_long_joints_default_geometry_to_previous_joint():
@@ -1192,7 +1277,7 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
     joint.x = 7
     joint.w = 2
     joint.h = 700
-    joint.long_attr = LongAttr.CONTROL
+    joint.kind = LongAttr.CONTROL
     joint.info.option_value = 9
 
     assert joint.info.t == 1680
@@ -1213,7 +1298,7 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
     assert joint.x == 8
     assert joint.w == 1
     assert joint.h == 600
-    assert joint.long_attr is LongAttr.END
+    assert joint.kind is LongAttr.END
     assert joint.info.option_value == 5
 
 
@@ -1221,7 +1306,7 @@ def test_long_note_exposes_joints_for_iteration():
     slide = Slide(t=960, x=0, w=4).step(1440, x=6, w=3).step(1920, x=12, w=4)
 
     assert slide.joints is slide._joints
-    assert [joint.long_attr for joint in slide.joints] == [
+    assert [joint.kind for joint in slide.joints] == [
         LongAttr.STEP,
         LongAttr.STEP,
     ]

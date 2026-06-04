@@ -181,7 +181,7 @@ class AirSlide(_AttachableAirLong):
         return self
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
-        if joint.long_attr is LongAttr.CONTROL:
+        if joint.kind is LongAttr.CONTROL:
             return LongAttr.END_NOACT
         return LongAttr.END
 
@@ -190,7 +190,7 @@ class AirHold(_AttachableAirLong):
     _note_type = NoteType.AIRHOLD
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
-        if joint.long_attr is LongAttr.CONTROL:
+        if joint.kind is LongAttr.CONTROL:
             return LongAttr.END_NOACT
         return LongAttr.END
 

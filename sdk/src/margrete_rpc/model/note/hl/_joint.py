@@ -17,7 +17,7 @@ from ._shared import (
 
 
 class Joint(_GeometryInfoMixin, _HeightMixin):
-    long_attr = _info_property("long_attr", LongAttr)
+    kind = _info_property("long_attr", LongAttr)
 
     @property
     def info(self) -> NoteInfo:
@@ -32,11 +32,11 @@ class Joint(_GeometryInfoMixin, _HeightMixin):
         t: Tick,
         x: int,
         w: int,
-        long_attr: LongAttr,
         h: int = 800,
         info: NoteInfo | None = None,
         _id: int | None = None,
         *,
+        kind: LongAttr,
         default_x: bool = False,
         default_width: bool = False,
         default_height: bool = False,
@@ -50,7 +50,7 @@ class Joint(_GeometryInfoMixin, _HeightMixin):
         self._info.x = x
         self._info.w = w
         self._info.h = h
-        self.long_attr = long_attr
+        self.kind = kind
         if not default_width:
             _check_width(w)
 
@@ -115,7 +115,7 @@ class _JointHost:
             x=joint_x,
             w=joint_width,
             h=joint_height,
-            long_attr=long_attr,
+            kind=long_attr,
             default_x=default_x,
             default_width=default_width,
             default_height=default_height,
@@ -131,6 +131,24 @@ class _JointHost:
         if int(joint.t) <= previous_tick:
             raise ValueError("joint t must be later than previous joint")
         self._joints.append(joint)
+
+    def validate(self) -> None:
+        if not self._joints:
+            raise ValueError("long note requires at least one joint")
+
+        previous_tick = int(self._begin_info_for_defaults().t)
+        for index, joint in enumerate(self._joints):
+            if not isinstance(joint, Joint):
+                raise TypeError(f"joint at index {index} must be Joint")
+            _check_tick(joint.t)
+            if not joint._default_width:
+                _check_width(joint.w)
+            if int(joint.t) <= previous_tick:
+                raise ValueError("joint t must be later than previous joint")
+            previous_tick = int(joint.t)
+
+        if self._joints[-1].kind not in (LongAttr.STEP, LongAttr.CONTROL):
+            raise ValueError("long note must end with a step or control joint")
 
     def _add_step(
         self,
@@ -210,15 +228,12 @@ class _JointHost:
         skip_validation: bool = False,
     ) -> list[MgNote]:
         if not skip_validation:
-            if not self._joints:
-                raise ValueError("long note requires at least one joint")
-            if self._joints[-1].long_attr not in (LongAttr.STEP, LongAttr.CONTROL):
-                raise ValueError("long note must end with a step or control joint")
+            self.validate()
 
         children: list[MgNote] = []
         previous = begin_info
         for index, joint in enumerate(self._joints):
-            long_attr = joint.long_attr
+            long_attr = joint.kind
             if not skip_validation and index == len(self._joints) - 1:
                 long_attr = terminus_attr(joint)
             jinfo = self._resolve_joint_info(joint, previous, note_type, long_attr)
@@ -233,7 +248,7 @@ class _JointHost:
         for j in self._joints:
             jbits = [
                 f"t={int(j.t)}",
-                f"long_attr={_note_enum_line(j.long_attr)}",
+                f"kind={_note_enum_line(j.kind)}",
                 f"x={j.x}",
                 f"w={j.w}",
                 f"h={j.h}",
