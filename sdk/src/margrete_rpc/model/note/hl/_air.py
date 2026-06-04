@@ -49,8 +49,16 @@ class Air:
     def long_attr(self) -> LongAttr:
         return LongAttr.NONE
 
+    def validate(self) -> None:
+        self.direction
+
+    def _validate_with_anchor(self, anchor: NoteInfo) -> None:
+        del anchor
+        self.validate()
+
     def _to_mg(self, anchor: NoteInfo, *, skip_validation: bool = False) -> MgNote:
-        del skip_validation
+        if not skip_validation:
+            self._validate_with_anchor(anchor)
         return MgNote(
             info=self._info.copy(
                 type=NoteType.AIR,
@@ -119,8 +127,16 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
     def _begin_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
         return self._info.copy(t=anchor.t, x=anchor.x, w=anchor.w)
 
+    def validate(self) -> None:
+        self._validate_with_anchor(self._begin_info_for_defaults())
+
+    def _validate_with_anchor(self, anchor: NoteInfo) -> None:
+        self._validate_joints(self._begin_info_with_anchor(anchor))
+
     def _to_mg(self, anchor: NoteInfo, *, skip_validation: bool = False) -> MgNote:
         begin_info = self._begin_info_with_anchor(anchor)
+        if not skip_validation:
+            self._validate_joints(begin_info)
         action = MgNote(info=begin_info, _id=self._id)
         action.children = self._build_long_children(
             self._note_type,

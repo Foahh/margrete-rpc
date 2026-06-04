@@ -13,6 +13,7 @@ from ..types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._joint import Joint, _JointHost
 from ._shared import (
+    _check_tick,
     _check_width,
     _coerce_aircrush_density_value,
     _copy_info,
@@ -60,7 +61,22 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
         del joint
         return LongAttr.END
 
+    def validate(self) -> None:
+        _check_tick(self.t)
+        _check_width(self.w)
+        self._validate_joints(self._info)
+        if self._air is not None:
+            children = self._build_long_children(
+                self._note_type,
+                self._terminus_attr,
+                self._info,
+                skip_validation=True,
+            )
+            self._air._validate_with_anchor(children[-1].info)
+
     def _to_mg_tree(self, *, skip_validation: bool = False) -> MgNote:
+        if not skip_validation:
+            self.validate()
         root = MgNote(info=self._info.copy(long_attr=LongAttr.BEGIN), _id=self._id)
         root.children = self._build_long_children(
             self._note_type,

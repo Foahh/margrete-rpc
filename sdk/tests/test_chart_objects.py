@@ -950,6 +950,16 @@ def test_note_validate_catches_invalid_attached_air_builder():
         tap.to_mg()
 
 
+def test_note_validate_checks_attached_air_against_anchor_tick():
+    tap = Tap(t=1000, x=4, w=2).air(AirSlide(h=80).step(960))
+
+    with pytest.raises(ValueError, match="joint t must be later than previous joint"):
+        tap.validate()
+
+    with pytest.raises(ValueError, match="joint t must be later than previous joint"):
+        tap.to_mg()
+
+
 def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
     tap = Tap(t=1920, x=1, w=2)
     assert str(tap) == repr(tap)

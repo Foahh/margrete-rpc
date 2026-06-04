@@ -68,7 +68,15 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
 
     __repr__ = __str__
 
+    def validate(self) -> None:
+        _check_tick(self.t)
+        _check_width(self.w)
+        if self._air is not None:
+            self._air._validate_with_anchor(self._info)
+
     def to_mg(self, *, skip_validation: bool = False) -> MgNote:
+        if not skip_validation:
+            self.validate()
         note = self._base_mg()
         if self._air is not None:
             note.children.append(self._air._to_mg(note.info, skip_validation=skip_validation))

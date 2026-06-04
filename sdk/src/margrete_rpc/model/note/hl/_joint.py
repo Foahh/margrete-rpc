@@ -133,10 +133,13 @@ class _JointHost:
         self._joints.append(joint)
 
     def validate(self) -> None:
+        self._validate_joints(self._begin_info_for_defaults())
+
+    def _validate_joints(self, begin_info: NoteInfo) -> None:
         if not self._joints:
             raise ValueError("long note requires at least one joint")
 
-        previous_tick = int(self._begin_info_for_defaults().t)
+        previous_tick = int(begin_info.t)
         for index, joint in enumerate(self._joints):
             if not isinstance(joint, Joint):
                 raise TypeError(f"joint at index {index} must be Joint")
@@ -228,7 +231,7 @@ class _JointHost:
         skip_validation: bool = False,
     ) -> list[MgNote]:
         if not skip_validation:
-            self.validate()
+            self._validate_joints(begin_info)
 
         children: list[MgNote] = []
         previous = begin_info
