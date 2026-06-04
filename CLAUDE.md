@@ -218,3 +218,7 @@ Recent work has focused on:
 - SDK discovery and auto-connection
 
 Follow conventional commit style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`.
+
+## User Notes
+
+- The project is still under development and not published yet, so a cleaner implementation and better future maintainability are preferred over maintaining backward compatibility.
