@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from ..chart_time import Tick
 from .types import (
     AirCrushOption,
-    AirDirection,
     ExAttr,
-    ExtapDirection,
-    FlickDirection,
     LongAttr,
     NoteInfo,
     NoteType,
+    direction_from_proto,
+    direction_to_proto,
 )
 
 
@@ -62,7 +60,7 @@ class MgNote:
             info=NoteInfo(
                 type=NoteType(proto.type),
                 long_attr=LongAttr(proto.long_attr),
-                direction=cast(AirDirection | ExtapDirection | FlickDirection, proto.direction),
+                direction=direction_from_proto(NoteType(proto.type), proto.direction),
                 ex_attr=ExAttr(proto.ex_attr),
                 variation_id=proto.variation_id,
                 x=proto.x,
@@ -79,7 +77,7 @@ class MgNote:
         proto = messages_pb2.Note(
             type=int(self.type),
             long_attr=int(self.long_attr),
-            direction=int(self.direction),
+            direction=direction_to_proto(self.type, self.direction),
             ex_attr=int(self.ex_attr),
             variation_id=int(self.variation_id),
             x=self.x,

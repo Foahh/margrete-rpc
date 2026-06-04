@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Any, Protocol, Self, runtime_checkable
 
 from ..mg import MgNote
-from ..types import AirCrushOption, NoteInfo, NoteType
+from ..types import AirCrushOption, NoteInfo, NoteType, direction_from_proto
 
 
 class UnsupportedNoteTree(ValueError):
@@ -26,9 +26,9 @@ class Note(Protocol):
     def to_mg(self, *, skip_validation: bool = False) -> MgNote: ...
 
 
-def _note_enum_line(value: IntEnum | int) -> str:
-    if isinstance(value, IntEnum):
-        return f"{type(value).__name__}.{value.name}({int(value)})"
+def _note_enum_line(value: IntEnum | StrEnum | int) -> str:
+    if isinstance(value, (IntEnum, StrEnum)):
+        return f"{type(value).__name__}.{value.name}({value.value!r})"
     return repr(value)
 
 
@@ -99,14 +99,24 @@ def _tick_property():
     return property(getter, setter)
 
 
-def _direction_property(enum_type: type[IntEnum], label: str):
+def _direction_property(enum_type: type[StrEnum], label: str):
     def getter(self):
-        return _enum_value(enum_type, int(self._info.direction))
+        value = self._info.direction
+        if isinstance(value, enum_type):
+            return value
+        if isinstance(value, str):
+            return enum_type(value)
+        return direction_from_proto(self._info.type, int(value))
 
     def setter(self, value):
         try:
-            direction = enum_type(int(value))
-        except ValueError as exc:
+            if isinstance(value, str):
+                direction = enum_type(value)
+            else:
+                direction = direction_from_proto(self._info.type, int(value))
+                if not isinstance(direction, enum_type):
+                    raise ValueError
+        except (TypeError, ValueError) as exc:
             raise ValueError(f"invalid {label} direction") from exc
         self._info.direction = direction
 

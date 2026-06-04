@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from enum import IntEnum
-from typing import Any, cast
+from enum import IntEnum, StrEnum
+from typing import Any, Literal
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
@@ -32,31 +32,61 @@ class LongAttr(IntEnum):
     END_NOACT = messages_pb2.LONG_ATTR_END_NOACT
 
 
-class AirDirection(IntEnum):
-    UP = messages_pb2.DIRECTION_UP
-    DOWN = messages_pb2.DIRECTION_DOWN
-    UPLEFT = messages_pb2.DIRECTION_UPLEFT
-    UPRIGHT = messages_pb2.DIRECTION_UPRIGHT
-    DOWNLEFT = messages_pb2.DIRECTION_DOWNLEFT
-    DOWNRIGHT = messages_pb2.DIRECTION_DOWNRIGHT
+class AirDirection(StrEnum):
+    UP = "up"
+    DOWN = "down"
+    UP_LEFT = "up_left"
+    UP_RIGHT = "up_right"
+    DOWN_LEFT = "down_left"
+    DOWN_RIGHT = "down_right"
 
 
-class ExtapDirection(IntEnum):
-    UP = messages_pb2.DIRECTION_UP
-    DOWN = messages_pb2.DIRECTION_DOWN
-    CENTER = messages_pb2.DIRECTION_CENTER
-    LEFT = messages_pb2.DIRECTION_LEFT
-    RIGHT = messages_pb2.DIRECTION_RIGHT
-    ROTATE_LEFT = messages_pb2.DIRECTION_ROTATE_LEFT
-    ROTATE_RIGHT = messages_pb2.DIRECTION_ROTATE_RIGHT
-    INOUT = messages_pb2.DIRECTION_INOUT
-    OUTIN = messages_pb2.DIRECTION_OUTIN
+class ExtapDirection(StrEnum):
+    UP = "up"
+    DOWN = "down"
+    CENTER = "center"
+    LEFT = "left"
+    RIGHT = "right"
+    ROTATE_LEFT = "rotate_left"
+    ROTATE_RIGHT = "rotate_right"
+    IN_OUT = "in_out"
+    OUT_IN = "out_in"
 
 
-class FlickDirection(IntEnum):
-    AUTO = messages_pb2.DIRECTION_AUTO
-    LEFT = messages_pb2.DIRECTION_LEFT
-    RIGHT = messages_pb2.DIRECTION_RIGHT
+class FlickDirection(StrEnum):
+    AUTO = "auto"
+    LEFT = "left"
+    RIGHT = "right"
+
+
+type AirDirectionLike = (
+    AirDirection
+    | Literal[
+        "up",
+        "down",
+        "up_left",
+        "up_right",
+        "down_left",
+        "down_right",
+    ]
+)
+type ExtapDirectionLike = (
+    ExtapDirection
+    | Literal[
+        "up",
+        "down",
+        "center",
+        "left",
+        "right",
+        "rotate_left",
+        "rotate_right",
+        "in_out",
+        "out_in",
+    ]
+)
+type FlickDirectionLike = FlickDirection | Literal["auto", "left", "right"]
+type Direction = AirDirection | ExtapDirection | FlickDirection
+type DirectionValue = Direction | int
 
 
 class ExAttr(IntEnum):
@@ -91,17 +121,47 @@ class AirCrushColor(IntEnum):
     NON = 35
 
 
-def _enum_line(value: IntEnum) -> str:
-    return f"{type(value).__name__}.{value.name}({int(value)})"
+AIR_DIRECTION_TO_PROTO = {
+    AirDirection.UP: messages_pb2.DIRECTION_UP,
+    AirDirection.DOWN: messages_pb2.DIRECTION_DOWN,
+    AirDirection.UP_LEFT: messages_pb2.DIRECTION_UPLEFT,
+    AirDirection.UP_RIGHT: messages_pb2.DIRECTION_UPRIGHT,
+    AirDirection.DOWN_LEFT: messages_pb2.DIRECTION_DOWNLEFT,
+    AirDirection.DOWN_RIGHT: messages_pb2.DIRECTION_DOWNRIGHT,
+}
+
+EXTAP_DIRECTION_TO_PROTO = {
+    ExtapDirection.UP: messages_pb2.DIRECTION_UP,
+    ExtapDirection.DOWN: messages_pb2.DIRECTION_DOWN,
+    ExtapDirection.CENTER: messages_pb2.DIRECTION_CENTER,
+    ExtapDirection.LEFT: messages_pb2.DIRECTION_LEFT,
+    ExtapDirection.RIGHT: messages_pb2.DIRECTION_RIGHT,
+    ExtapDirection.ROTATE_LEFT: messages_pb2.DIRECTION_ROTATE_LEFT,
+    ExtapDirection.ROTATE_RIGHT: messages_pb2.DIRECTION_ROTATE_RIGHT,
+    ExtapDirection.IN_OUT: messages_pb2.DIRECTION_INOUT,
+    ExtapDirection.OUT_IN: messages_pb2.DIRECTION_OUTIN,
+}
+
+FLICK_DIRECTION_TO_PROTO = {
+    FlickDirection.AUTO: messages_pb2.DIRECTION_AUTO,
+    FlickDirection.LEFT: messages_pb2.DIRECTION_LEFT,
+    FlickDirection.RIGHT: messages_pb2.DIRECTION_RIGHT,
+}
+
+AIR_DIRECTION_FROM_PROTO = {value: key for key, value in AIR_DIRECTION_TO_PROTO.items()}
+EXTAP_DIRECTION_FROM_PROTO = {value: key for key, value in EXTAP_DIRECTION_TO_PROTO.items()}
+FLICK_DIRECTION_FROM_PROTO = {value: key for key, value in FLICK_DIRECTION_TO_PROTO.items()}
+
+
+def _enum_line(value: IntEnum | StrEnum) -> str:
+    return f"{type(value).__name__}.{value.name}({value.value!r})"
 
 
 @dataclass
 class NoteInfo:
     type: NoteType = NoteType.UNKNOWN
     long_attr: LongAttr = LongAttr.NONE
-    direction: AirDirection | ExtapDirection | FlickDirection = cast(
-        AirDirection | ExtapDirection | FlickDirection, messages_pb2.DIRECTION_UP
-    )
+    direction: DirectionValue = AirDirection.UP
     ex_attr: ExAttr = ExAttr.NONE
     variation_id: AirCrushColor | int = 0
     x: int = 0
@@ -129,25 +189,41 @@ class NoteInfo:
 
 def _direction_line(info: NoteInfo) -> str:
     d = info.direction
-    if isinstance(d, IntEnum):
+    if isinstance(d, StrEnum):
         return _enum_line(d)
-    raw = int(d)
-    if info.type is NoteType.FLICK:
-        try:
-            return _enum_line(FlickDirection(raw))
-        except ValueError:
-            return repr(raw)
-    if info.type is NoteType.EXTAP:
-        try:
-            return _enum_line(ExtapDirection(raw))
-        except ValueError:
-            return repr(raw)
-    if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
-        try:
-            return _enum_line(AirDirection(raw))
-        except ValueError:
-            return repr(raw)
-    return repr(raw)
+    direction = direction_from_proto(info.type, int(d))
+    if isinstance(direction, StrEnum):
+        return _enum_line(direction)
+    return repr(direction)
+
+
+def direction_from_proto(note_type: NoteType, value: int) -> DirectionValue:
+    if note_type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
+        return AIR_DIRECTION_FROM_PROTO.get(value, value)
+    if note_type is NoteType.EXTAP:
+        return EXTAP_DIRECTION_FROM_PROTO.get(value, value)
+    if note_type is NoteType.FLICK:
+        return FLICK_DIRECTION_FROM_PROTO.get(value, value)
+    return AIR_DIRECTION_FROM_PROTO.get(value, value)
+
+
+def direction_to_proto(note_type: NoteType, value: DirectionValue | str) -> int:
+    if isinstance(value, AirDirection):
+        return AIR_DIRECTION_TO_PROTO[value]
+    if isinstance(value, ExtapDirection):
+        return EXTAP_DIRECTION_TO_PROTO[value]
+    if isinstance(value, FlickDirection):
+        return FLICK_DIRECTION_TO_PROTO[value]
+    if note_type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
+        if isinstance(value, str):
+            return AIR_DIRECTION_TO_PROTO[AirDirection(value)]
+    elif note_type is NoteType.EXTAP:
+        if isinstance(value, str):
+            return EXTAP_DIRECTION_TO_PROTO[ExtapDirection(value)]
+    elif note_type is NoteType.FLICK:
+        if isinstance(value, str):
+            return FLICK_DIRECTION_TO_PROTO[FlickDirection(value)]
+    return int(value)
 
 
 def _variation_line(info: NoteInfo) -> str:
@@ -197,10 +273,17 @@ __all__ = [
     "AirCrushColor",
     "AirCrushOption",
     "AirDirection",
+    "AirDirectionLike",
+    "Direction",
+    "DirectionValue",
     "ExAttr",
     "ExtapDirection",
+    "ExtapDirectionLike",
     "FlickDirection",
+    "FlickDirectionLike",
     "LongAttr",
     "NoteInfo",
     "NoteType",
+    "direction_from_proto",
+    "direction_to_proto",
 ]

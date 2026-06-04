@@ -97,13 +97,21 @@ def test_note_enums_remain_public_exports():
 
     assert NoteType.TAP.value == messages_pb2.NOTE_TYPE_TAP
     assert LongAttr.END_NOACT.value == messages_pb2.LONG_ATTR_END_NOACT
-    assert ExtapDirection.UP.value == messages_pb2.DIRECTION_UP
-    assert AirDirection.DOWNRIGHT.value == messages_pb2.DIRECTION_DOWNRIGHT
-    assert ExtapDirection.OUTIN.value == messages_pb2.DIRECTION_OUTIN
-    assert FlickDirection.RIGHT.value == messages_pb2.DIRECTION_RIGHT
+    assert ExtapDirection.UP.value == "up"
+    assert AirDirection.DOWN_RIGHT.value == "down_right"
+    assert ExtapDirection.OUT_IN.value == "out_in"
+    assert FlickDirection.RIGHT.value == "right"
     assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
     assert AirCrushOption.HEAD_ONLY == 0x7FFFFFFF
     assert AirCrushColor.NON == 35
+
+
+def test_direction_enum_values_are_user_facing_strings():
+    assert AirDirection.UP == "up"
+    assert AirDirection.UP_LEFT == "up_left"
+    assert ExtapDirection.ROTATE_LEFT == "rotate_left"
+    assert ExtapDirection.IN_OUT == "in_out"
+    assert FlickDirection.AUTO == "auto"
 
 
 def test_new_note_api_is_exported_from_root_package():
@@ -249,7 +257,8 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
-    assert note.direction == messages_pb2.DIRECTION_UP
+    assert note.direction is AirDirection.UP
+    assert note.to_proto().direction == messages_pb2.DIRECTION_UP
     assert note.ex_attr is ExAttr.NONE
     assert note.tick == 960
     assert note.x == 4
@@ -375,7 +384,7 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
-            direction=AirDirection.UPLEFT,
+            direction=AirDirection.UP_LEFT,
             ex_attr=ExAttr.HAS_NOTE,
             variation_id=2,
             x=3,
@@ -447,7 +456,7 @@ def test_mgnote_round_trips_to_protobuf_with_children_and_id():
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
-            direction=AirDirection.UPLEFT,
+            direction=AirDirection.UP_LEFT,
             ex_attr=ExAttr.HAS_NOTE,
             variation_id=2,
             x=3,
@@ -566,6 +575,13 @@ def test_air_direction_shorthand_attaches_plain_air():
     assert tap.to_mg().children[0].direction is AirDirection.DOWN
 
 
+def test_air_direction_string_shorthand_attaches_plain_air():
+    tap = Tap(tick=0, x=4, width=2)
+
+    assert tap.air("down") is tap
+    assert tap.to_mg().children[0].direction is AirDirection.DOWN
+
+
 def test_height_is_absent_from_floor_notes_and_bare_air():
     assert not hasattr(Tap(tick=0, x=4, width=2), "height")
     assert not hasattr(Damage(tick=0, x=4, width=2), "height")
@@ -615,8 +631,8 @@ def test_ground_note_direction_is_available_only_on_extap_and_flick():
         ExtapDirection.RIGHT,
         ExtapDirection.ROTATE_LEFT,
         ExtapDirection.ROTATE_RIGHT,
-        ExtapDirection.INOUT,
-        ExtapDirection.OUTIN,
+        ExtapDirection.IN_OUT,
+        ExtapDirection.OUT_IN,
     ],
 )
 def test_extap_accepts_only_extap_directions(direction):
@@ -626,6 +642,17 @@ def test_extap_accepts_only_extap_directions(direction):
 
     extap.direction = direction
     assert extap._info.direction == direction
+
+
+def test_extap_accepts_string_direction_and_serializes_to_proto_value():
+    extap = Extap(tick=0, x=4, width=2, direction="rotate_left")
+
+    assert extap.direction is ExtapDirection.ROTATE_LEFT
+    assert extap.direction == "rotate_left"
+
+    extap.direction = "in_out"
+    assert extap.direction is ExtapDirection.IN_OUT
+    assert extap.to_mg().to_proto().direction == messages_pb2.DIRECTION_INOUT
 
 
 @pytest.mark.parametrize(
@@ -657,6 +684,14 @@ def test_flick_accepts_only_flick_directions(direction):
     assert flick._info.direction == direction
 
 
+def test_flick_accepts_string_direction_and_serializes_to_proto_value():
+    flick = Flick(tick=0, x=4, width=2, direction="left")
+
+    assert flick.direction is FlickDirection.LEFT
+    assert flick.direction == "left"
+    assert flick.to_mg().to_proto().direction == messages_pb2.DIRECTION_LEFT
+
+
 @pytest.mark.parametrize(
     "direction",
     [
@@ -679,10 +714,10 @@ def test_flick_rejects_invalid_directions(direction):
     [
         AirDirection.UP,
         AirDirection.DOWN,
-        AirDirection.UPLEFT,
-        AirDirection.UPRIGHT,
-        AirDirection.DOWNLEFT,
-        AirDirection.DOWNRIGHT,
+        AirDirection.UP_LEFT,
+        AirDirection.UP_RIGHT,
+        AirDirection.DOWN_LEFT,
+        AirDirection.DOWN_RIGHT,
     ],
 )
 def test_air_accepts_only_air_directions(direction):
@@ -692,6 +727,17 @@ def test_air_accepts_only_air_directions(direction):
 
     air.direction = direction
     assert air._info.direction == direction
+
+
+def test_air_accepts_string_direction_and_serializes_to_proto_value():
+    air = Air("up_left")
+
+    assert air.direction is AirDirection.UP_LEFT
+    assert air.direction == "up_left"
+
+    air.direction = "down_right"
+    assert air.direction is AirDirection.DOWN_RIGHT
+    assert air._to_mg(NoteInfo()).to_proto().direction == messages_pb2.DIRECTION_DOWNRIGHT
 
 
 @pytest.mark.parametrize(
@@ -1160,7 +1206,7 @@ def test_wrap_mg_note_preserves_transformed_extap_direction_with_air():
             8,
             4,
             height=80,
-            direction=AirDirection.DOWNRIGHT,
+            direction=AirDirection.DOWN_RIGHT,
         )
     )
     mg_note._id = 1103
@@ -1188,7 +1234,7 @@ def test_wrap_mg_note_preserves_transformed_flick_direction(direction):
             2,
             12,
             height=80,
-            direction=AirDirection.UPRIGHT,
+            direction=AirDirection.UP_RIGHT,
             ex_attr=ExAttr.INVERT,
         )
     )

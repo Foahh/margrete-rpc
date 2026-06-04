@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from ...chart_time import Tick
 from ..mg import MgNote
-from ..types import ExtapDirection, FlickDirection, LongAttr, NoteInfo, NoteType
+from ..types import (
+    ExtapDirection,
+    ExtapDirectionLike,
+    FlickDirection,
+    FlickDirectionLike,
+    LongAttr,
+    NoteInfo,
+    NoteType,
+)
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._shared import (
     _check_tick,
@@ -109,7 +117,7 @@ class Extap(_GroundNote):
         x: int,
         width: int,
         *,
-        direction: ExtapDirection | int = ExtapDirection.UP,
+        direction: ExtapDirectionLike | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -134,7 +142,7 @@ class Flick(Extap):
         x: int,
         width: int,
         *,
-        direction: FlickDirection | int = FlickDirection.AUTO,
+        direction: FlickDirectionLike | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:

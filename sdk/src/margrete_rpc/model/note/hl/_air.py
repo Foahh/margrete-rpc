@@ -4,7 +4,7 @@ from typing import Self
 
 from ...chart_time import Tick
 from ..mg import MgNote
-from ..types import AirDirection, ExAttr, LongAttr, NoteInfo, NoteType
+from ..types import AirDirection, AirDirectionLike, ExAttr, LongAttr, NoteInfo, NoteType
 from ._joint import Joint, _JointHost
 from ._shared import (
     _copy_info,
@@ -21,7 +21,7 @@ class Air:
 
     def __init__(
         self,
-        direction: AirDirection,
+        direction: AirDirectionLike,
         *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -197,10 +197,10 @@ class AirHold(_AttachableAirLong):
 class _AirAttachable:
     _air: Air | AirSlide | AirHold | None
 
-    def air(self, air: AirDirection | Air | AirSlide | AirHold) -> Self:
-        if isinstance(air, AirDirection):
+    def air(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
+        if isinstance(air, (AirDirection, str)):
             air = Air(air)
         if not isinstance(air, (Air, AirSlide, AirHold)):
-            raise TypeError("air expects AirDirection, Air, AirSlide, or AirHold")
+            raise TypeError("air expects air direction, Air, AirSlide, or AirHold")
         self._air = air
         return self
