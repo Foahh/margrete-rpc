@@ -7,15 +7,15 @@ from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 @dataclass
 class BpmEvent:
-    tick: int
+    t: int
     bpm: float
 
     @classmethod
     def from_proto(cls, proto: messages_pb2.BpmEvent) -> BpmEvent:
-        return cls(tick=proto.tick, bpm=proto.bpm)
+        return cls(t=proto.tick, bpm=proto.bpm)
 
     def to_proto(self) -> messages_pb2.BpmEvent:
-        return messages_pb2.BpmEvent(tick=self.tick, bpm=self.bpm)
+        return messages_pb2.BpmEvent(tick=self.t, bpm=self.bpm)
 
 
 @dataclass
@@ -38,33 +38,33 @@ class BeatEvent:
 
 @dataclass
 class TimelineSpeedEvent:
-    timeline_id: int
-    tick: int
+    til: int
+    t: int
     speed: float
 
     @classmethod
     def from_proto(cls, proto: messages_pb2.TimelineSpeedEvent) -> TimelineSpeedEvent:
-        return cls(tick=proto.tick, timeline_id=proto.timeline_id, speed=proto.speed)
+        return cls(t=proto.tick, til=proto.timeline_id, speed=proto.speed)
 
     def to_proto(self) -> messages_pb2.TimelineSpeedEvent:
         return messages_pb2.TimelineSpeedEvent(
-            tick=self.tick,
-            timeline_id=self.timeline_id,
+            tick=self.t,
+            timeline_id=self.til,
             speed=self.speed,
         )
 
 
 @dataclass
 class NoteSpeedEvent:
-    tick: int
+    t: int
     speed: float
 
     @classmethod
     def from_proto(cls, proto: messages_pb2.NoteSpeedEvent) -> NoteSpeedEvent:
-        return cls(tick=proto.tick, speed=proto.speed)
+        return cls(t=proto.tick, speed=proto.speed)
 
     def to_proto(self) -> messages_pb2.NoteSpeedEvent:
-        return messages_pb2.NoteSpeedEvent(tick=self.tick, speed=self.speed)
+        return messages_pb2.NoteSpeedEvent(tick=self.t, speed=self.speed)
 
 
 def _last_by_key[T](items: list[T], key) -> list[T]:

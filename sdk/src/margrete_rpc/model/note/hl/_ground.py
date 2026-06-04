@@ -1,16 +1,9 @@
 from __future__ import annotations
 
 from ...chart_time import Tick
+from ..direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
 from ..mg import MgNote
-from ..types import (
-    ExtapDirection,
-    ExtapDirectionLike,
-    FlickDirection,
-    FlickDirectionLike,
-    LongAttr,
-    NoteInfo,
-    NoteType,
-)
+from ..types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._shared import (
     _check_tick,
@@ -26,9 +19,9 @@ from ._shared import (
 class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         _type: NoteType,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -39,11 +32,11 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
         self._air: Air | AirSlide | AirHold | None = None
         self._info.type = _type
         self._info.long_attr = LongAttr.NONE
-        self.tick = tick
+        self.t = t
         self.x = x
-        self.width = width
-        _check_tick(self.tick)
-        _check_width(self.width)
+        self.w = w
+        _check_tick(self.t)
+        _check_width(self.w)
 
     @property
     def type(self) -> NoteType:
@@ -58,9 +51,9 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
 
     def _str_parts(self) -> list[str]:
         return [
-            f"tick={int(self.tick)}",
+            f"t={int(self.t)}",
             f"x={self.x}",
-            f"width={self.width}",
+            f"w={self.w}",
         ]
 
     def __str__(self) -> str:
@@ -85,27 +78,27 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
 class Tap(_GroundNote):
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(tick, x, width, NoteType.TAP, _copy_info(_info), _id)
+        super().__init__(t, x, w, NoteType.TAP, _copy_info(_info), _id)
 
 
 class Damage(_GroundNote):
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(tick, x, width, NoteType.DAMAGE, _copy_info(_info), _id)
+        super().__init__(t, x, w, NoteType.DAMAGE, _copy_info(_info), _id)
 
 
 class Extap(_GroundNote):
@@ -113,15 +106,15 @@ class Extap(_GroundNote):
 
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         *,
         direction: ExtapDirectionLike | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(tick, x, width, NoteType.EXTAP, _copy_info(_info), _id)
+        super().__init__(t, x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.direction = direction
 
     def _base_mg(self) -> MgNote:
@@ -138,14 +131,14 @@ class Flick(Extap):
 
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         *,
         direction: FlickDirectionLike | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(tick, x, width, direction=direction, _info=_info, _id=_id)
+        super().__init__(t, x, w, direction=direction, _info=_info, _id=_id)
         self._type = NoteType.FLICK
         self._info.type = NoteType.FLICK

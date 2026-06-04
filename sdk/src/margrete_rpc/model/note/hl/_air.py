@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Self
 
 from ...chart_time import Tick
+from ..direction import AirDirection, AirDirectionLike
 from ..mg import MgNote
-from ..types import AirDirection, AirDirectionLike, ExAttr, LongAttr, NoteInfo, NoteType
+from ..types import ExAttr, LongAttr, NoteInfo, NoteType
 from ._joint import Joint, _JointHost
 from ._shared import (
     _copy_info,
@@ -17,7 +18,7 @@ from ._shared import (
 
 class Air:
     direction = _direction_property(AirDirection, "air")
-    til = _info_property("timeline_id")
+    til = _info_property("til")
 
     def __init__(
         self,
@@ -54,9 +55,9 @@ class Air:
             info=self._info.copy(
                 type=NoteType.AIR,
                 long_attr=LongAttr.NONE,
-                tick=anchor.tick,
+                t=anchor.t,
                 x=anchor.x,
-                width=anchor.width,
+                w=anchor.w,
             ),
             _id=self._id,
         )
@@ -78,7 +79,7 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
     def __init__(
         self,
         *,
-        height: int,
+        h: int,
         _air_info: NoteInfo | None = None,
         _air_id: int | None = None,
         _info: NoteInfo | None = None,
@@ -95,11 +96,11 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
         self._info.long_attr = LongAttr.BEGIN
         if _air_info is None:
             self._air_info.direction = AirDirection.UP
-            self._air_info.height = height
+            self._air_info.h = h
         if _info is None:
-            self._info.height = height
+            self._info.h = h
         else:
-            self.height = height
+            self.h = h
 
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
@@ -113,10 +114,10 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
         return LongAttr.BEGIN
 
     def _air_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
-        return self._air_info.copy(tick=anchor.tick, x=anchor.x, width=anchor.width)
+        return self._air_info.copy(t=anchor.t, x=anchor.x, w=anchor.w)
 
     def _begin_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
-        return self._info.copy(tick=anchor.tick, x=anchor.x, width=anchor.width)
+        return self._info.copy(t=anchor.t, x=anchor.x, w=anchor.w)
 
     def _to_mg(self, anchor: NoteInfo, *, skip_validation: bool = False) -> MgNote:
         begin_info = self._begin_info_with_anchor(anchor)
@@ -133,28 +134,28 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
 
     def step(
         self,
-        tick: Tick,
+        t: Tick,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> Self:
-        self._add_step(tick, x=x, width=width, height=height)
+        self._add_step(t, x=x, w=w, h=h)
         return self
 
     def control(
         self,
-        tick: Tick,
+        t: Tick,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> Self:
-        self._add_control(tick, x=x, width=width, height=height)
+        self._add_control(t, x=x, w=w, h=h)
         return self
 
     def __str__(self) -> str:
-        parts = [f"height={self.height}"]
+        parts = [f"h={self.h}"]
         if self._id is not None:
             parts.append(f"id={self._id}")
         head = ", ".join(parts)
@@ -170,13 +171,13 @@ class AirSlide(_AttachableAirLong):
 
     def curve_control(
         self,
-        tick: Tick,
+        t: Tick,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> Self:
-        self._add_curve_control(tick, x=x, width=width, height=height)
+        self._add_curve_control(t, x=x, w=w, h=h)
         return self
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:

@@ -33,10 +33,10 @@ def _notes_signature(notes: list[MgNote]) -> bytes:
 
 def _event_signature_from_chart(chart: Chart | MgChart) -> bytes:
     ev = chart.events
-    bpm = sorted(ev.bpm, key=lambda event: int(event.tick))
+    bpm = sorted(ev.bpm, key=lambda event: int(event.t))
     beat = sorted(ev.beat, key=lambda event: int(event.bar))
-    til = sorted(ev.til, key=lambda event: (int(event.tick), int(event.timeline_id)))
-    note_speed = sorted(ev.note_speed, key=lambda event: int(event.tick))
+    til = sorted(ev.til, key=lambda event: (int(event.t), int(event.til)))
+    note_speed = sorted(ev.note_speed, key=lambda event: int(event.t))
     return b"\x1e".join(
         [
             b"\x1f".join(event.to_proto().SerializeToString() for event in bpm),
@@ -115,15 +115,15 @@ def _append_scanned_event_diffs(
     orig_events: ChartEvents,
     final_events: ChartEvents,
 ) -> None:
-    orig_bpm = {int(event.tick): event for event in orig_events.bpm}
-    final_bpm = {int(event.tick): event for event in final_events.bpm}
-    for tick in orig_bpm:
-        if tick not in final_bpm:
-            request.bpm_ticks_delete.append(tick)
-    for tick, event in final_bpm.items():
+    orig_bpm = {int(event.t): event for event in orig_events.bpm}
+    final_bpm = {int(event.t): event for event in final_events.bpm}
+    for t in orig_bpm:
+        if t not in final_bpm:
+            request.bpm_ticks_delete.append(t)
+    for t, event in final_bpm.items():
         if (
-            tick not in orig_bpm
-            or event.to_proto().SerializeToString() != orig_bpm[tick].to_proto().SerializeToString()
+            t not in orig_bpm
+            or event.to_proto().SerializeToString() != orig_bpm[t].to_proto().SerializeToString()
         ):
             request.bpm_upsert.append(event.to_proto())
 
@@ -139,14 +139,12 @@ def _append_scanned_event_diffs(
         ):
             request.beat_upsert.append(event.to_proto())
 
-    orig_til = {(int(event.tick), int(event.timeline_id)): event for event in orig_events.til}
-    final_til = {(int(event.tick), int(event.timeline_id)): event for event in final_events.til}
+    orig_til = {(int(event.t), int(event.til)): event for event in orig_events.til}
+    final_til = {(int(event.t), int(event.til)): event for event in final_events.til}
     for key in orig_til:
         if key not in final_til:
-            tick, timeline_id = key
-            request.til_keys_delete.append(
-                messages_pb2.TimelineSpeedKey(tick=tick, timeline_id=timeline_id)
-            )
+            t, til = key
+            request.til_keys_delete.append(messages_pb2.TimelineSpeedKey(tick=t, timeline_id=til))
     for key, event in final_til.items():
         if (
             key not in orig_til
@@ -154,16 +152,16 @@ def _append_scanned_event_diffs(
         ):
             request.til_upsert.append(event.to_proto())
 
-    orig_note_speed = {int(event.tick): event for event in orig_events.note_speed}
-    final_note_speed = {int(event.tick): event for event in final_events.note_speed}
-    for tick in orig_note_speed:
-        if tick not in final_note_speed:
-            request.note_speed_ticks_delete.append(tick)
-    for tick, event in final_note_speed.items():
+    orig_note_speed = {int(event.t): event for event in orig_events.note_speed}
+    final_note_speed = {int(event.t): event for event in final_events.note_speed}
+    for t in orig_note_speed:
+        if t not in final_note_speed:
+            request.note_speed_ticks_delete.append(t)
+    for t, event in final_note_speed.items():
         if (
-            tick not in orig_note_speed
+            t not in orig_note_speed
             or event.to_proto().SerializeToString()
-            != orig_note_speed[tick].to_proto().SerializeToString()
+            != orig_note_speed[t].to_proto().SerializeToString()
         ):
             request.note_speed_upsert.append(event.to_proto())
 

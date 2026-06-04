@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 from ...chart_time import Tick, resolve_tick
+from ..air_crush import (
+    AirCrushColor,
+    AirCrushColorLike,
+    AirCrushOptionLike,
+    air_crush_color_from_value,
+    air_crush_color_to_value,
+)
 from ..mg import MgNote
-from ..types import AirCrushColor, AirCrushOption, LongAttr, NoteInfo, NoteType
+from ..types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._joint import Joint, _JointHost
 from ._shared import (
@@ -11,7 +18,6 @@ from ._shared import (
     _copy_info,
     _GeometryInfoMixin,
     _HeightMixin,
-    _info_property,
     _note_enum_line,
     _ShiftMixin,
 )
@@ -22,14 +28,14 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
 
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        _check_width(width)
+        _check_width(w)
         self._info = _copy_info(_info)
         self._id = _id
         self._joints: list[Joint] = []
@@ -37,10 +43,10 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
         if _info is None:
-            self._info.height = 800
-        self.tick = tick
+            self._info.h = 800
+        self.t = t
         self.x = x
-        self.width = width
+        self.w = w
 
     @property
     def type(self) -> NoteType:
@@ -73,14 +79,14 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
     def __str__(self) -> str:
         cls = self.__class__.__name__
         parts = [
-            f"tick={int(self.tick)}",
+            f"t={int(self.t)}",
             f"x={self.x}",
-            f"width={self.width}",
+            f"w={self.w}",
         ]
         if self._id is not None:
             parts.append(f"id={self._id}")
         if isinstance(self, AirCrush):
-            parts.append(f"height={self.height}")
+            parts.append(f"h={self.h}")
             parts.append(f"density={self.density}")
             parts.append(f"color={_note_enum_line(self.color)}")
         head = ", ".join(parts)
@@ -98,16 +104,34 @@ class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
 class Slide(_AirAttachable, _PlaceableLong):
     _note_type = NoteType.SLIDE
 
-    def step(self, tick: Tick, *, x: int | None = None, width: int | None = None) -> Slide:
-        self._add_step(tick, x=x, width=width)
+    def step(
+        self,
+        t: Tick,
+        *,
+        x: int | None = None,
+        w: int | None = None,
+    ) -> Slide:
+        self._add_step(t, x=x, w=w)
         return self
 
-    def control(self, tick: Tick, *, x: int | None = None, width: int | None = None) -> Slide:
-        self._add_control(tick, x=x, width=width)
+    def control(
+        self,
+        t: Tick,
+        *,
+        x: int | None = None,
+        w: int | None = None,
+    ) -> Slide:
+        self._add_control(t, x=x, w=w)
         return self
 
-    def curve_control(self, tick: Tick, *, x: int | None = None, width: int | None = None) -> Slide:
-        self._add_curve_control(tick, x=x, width=width)
+    def curve_control(
+        self,
+        t: Tick,
+        *,
+        x: int | None = None,
+        w: int | None = None,
+    ) -> Slide:
+        self._add_curve_control(t, x=x, w=w)
         return self
 
     def to_mg(self, *, skip_validation: bool = False) -> MgNote:
@@ -117,14 +141,14 @@ class Slide(_AirAttachable, _PlaceableLong):
 class Hold(_AirAttachable, _PlaceableLong):
     _note_type = NoteType.HOLD
 
-    def step(self, tick: Tick) -> Hold:
-        tick = resolve_tick(tick)
+    def step(self, t: Tick) -> Hold:
+        t = resolve_tick(t)
         if self._joints:
-            if int(tick) <= int(self._info.tick):
-                raise ValueError("end tick must be later than the begin")
-            self._joints[-1].tick = tick
+            if int(t) <= int(self._info.t):
+                raise ValueError("end t must be later than the begin")
+            self._joints[-1].t = t
         else:
-            self._add_step(tick)
+            self._add_step(t)
         return self
 
     def to_mg(self, *, skip_validation: bool = False) -> MgNote:
@@ -136,18 +160,18 @@ class AirCrush(_HeightMixin, _PlaceableLong):
 
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         *,
-        height: int,
-        density: AirCrushOption | int,
-        color: AirCrushColor = AirCrushColor.DEF,
+        h: int,
+        density: AirCrushOptionLike | int,
+        color: AirCrushColorLike | int = AirCrushColor.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(tick, x, width, _info=_info, _id=_id)
-        self.height = height
+        super().__init__(t, x, w, _info=_info, _id=_id)
+        self.h = h
         self.density = density
         self.color = color
 
@@ -159,17 +183,23 @@ class AirCrush(_HeightMixin, _PlaceableLong):
     def density(self, value: object) -> None:
         self._info.option_value = _coerce_aircrush_density_value(value)
 
-    color = _info_property("variation_id", AirCrushColor)
+    @property
+    def color(self) -> AirCrushColor | int:
+        return air_crush_color_from_value(air_crush_color_to_value(self._info.variation_id))
+
+    @color.setter
+    def color(self, value: AirCrushColorLike | int) -> None:
+        self._info.variation_id = air_crush_color_from_value(air_crush_color_to_value(value))
 
     def control(
         self,
-        tick: Tick,
+        t: Tick,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> AirCrush:
-        self._add_control(tick, x=x, width=width, height=height)
+        self._add_control(t, x=x, w=w, h=h)
         return self
 
     def to_mg(self, *, skip_validation: bool = False) -> MgNote:

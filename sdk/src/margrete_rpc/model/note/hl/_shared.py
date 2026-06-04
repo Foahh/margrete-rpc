@@ -3,8 +3,10 @@ from __future__ import annotations
 from enum import IntEnum, StrEnum
 from typing import Any, Protocol, Self, runtime_checkable
 
+from ..air_crush import AirCrushOption, air_crush_option_to_value
+from ..direction import direction_from_proto
 from ..mg import MgNote
-from ..types import AirCrushOption, NoteInfo, NoteType, direction_from_proto
+from ..types import NoteInfo, NoteType
 
 
 class UnsupportedNoteTree(ValueError):
@@ -13,9 +15,9 @@ class UnsupportedNoteTree(ValueError):
 
 @runtime_checkable
 class Note(Protocol):
-    tick: int
+    t: int
     x: int
-    width: int
+    w: int
     til: int
 
     @property
@@ -32,14 +34,14 @@ def _note_enum_line(value: IntEnum | StrEnum | int) -> str:
     return repr(value)
 
 
-def _check_tick(tick: int) -> None:
-    if int(tick) < 0:
-        raise ValueError("tick must be non-negative")
+def _check_tick(t: int) -> None:
+    if int(t) < 0:
+        raise ValueError("t must be non-negative")
 
 
-def _check_width(width: int) -> None:
-    if width < 1:
-        raise ValueError("width must be at least 1")
+def _check_width(w: int) -> None:
+    if w < 1:
+        raise ValueError("w must be at least 1")
 
 
 def _copy_info(info: NoteInfo | None) -> NoteInfo:
@@ -88,13 +90,13 @@ def _checked_info_property(name: str, check):
     return property(getter, setter)
 
 
-def _tick_property():
+def _t_property():
     def getter(self):
-        return self._info.tick
+        return self._info.t
 
     def setter(self, value):
-        self._info.tick = value
-        _check_tick(self._info.tick)
+        self._info.t = value
+        _check_tick(self._info.t)
 
     return property(getter, setter)
 
@@ -124,22 +126,22 @@ def _direction_property(enum_type: type[StrEnum], label: str):
 
 
 def _coerce_aircrush_density_value(value: object) -> int:
-    if isinstance(value, AirCrushOption):
-        return int(value)
+    if isinstance(value, (AirCrushOption, str)):
+        return air_crush_option_to_value(value)
     if type(value) is int:
         return value
-    raise TypeError(f"density must be int or AirCrushOption, got {type(value).__name__}")
+    raise TypeError(f"density must be int, str, or AirCrushOption, got {type(value).__name__}")
 
 
 class _GeometryInfoMixin:
-    tick = _tick_property()
+    t = _t_property()
     x = _info_property("x")
-    width = _checked_info_property("width", _check_width)
-    til = _info_property("timeline_id")
+    w = _checked_info_property("w", _check_width)
+    til = _info_property("til")
 
 
 class _HeightMixin:
-    height = _info_property("height")
+    h = _info_property("h")
 
 
 class _ShiftMixin:

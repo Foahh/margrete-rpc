@@ -62,6 +62,26 @@ enum ExAttr {
   EX_ATTR_EXJDG = 3;
 }
 
+enum AirCrushColor {
+  AIR_CRUSH_COLOR_DEFAULT = 0;
+  AIR_CRUSH_COLOR_RED = 1;
+  AIR_CRUSH_COLOR_ORANGE = 2;
+  AIR_CRUSH_COLOR_YELLOW = 3;
+  AIR_CRUSH_COLOR_GREEN = 4;
+  AIR_CRUSH_COLOR_AQUA = 5;
+  AIR_CRUSH_COLOR_BLUE = 6;
+  AIR_CRUSH_COLOR_PURPLE = 7;
+  AIR_CRUSH_COLOR_VIOLET = 8;
+  AIR_CRUSH_COLOR_PURPLE_ALT = 9;
+  AIR_CRUSH_COLOR_GRAY = 10;
+  AIR_CRUSH_COLOR_BLACK = 11;
+  AIR_CRUSH_COLOR_LIME = 12;
+  AIR_CRUSH_COLOR_CYAN = 13;
+  AIR_CRUSH_COLOR_DARK_GREEN = 14;
+  AIR_CRUSH_COLOR_PINK = 15;
+  AIR_CRUSH_COLOR_NONE = 35;
+}
+
 message Envelope {
   uint64 request_id = 1;
   oneof body {
@@ -106,7 +126,7 @@ message Note {
   LongAttr long_attr = 3;
   Direction direction = 4;
   ExAttr ex_attr = 5;
-  int32 variation_id = 6;
+  AirCrushColor variation_id = 6;
   int32 x = 7;
   int32 width = 8;
   int32 height = 9;

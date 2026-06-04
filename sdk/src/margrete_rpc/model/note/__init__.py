@@ -1,5 +1,23 @@
 from __future__ import annotations
 
+from .air_crush import (
+    AirCrushColor,
+    AirCrushColorLike,
+    AirCrushColorValue,
+    AirCrushOption,
+    AirCrushOptionLike,
+    AirCrushOptionValue,
+)
+from .direction import (
+    AirDirection,
+    AirDirectionLike,
+    Direction,
+    DirectionValue,
+    ExtapDirection,
+    ExtapDirectionLike,
+    FlickDirection,
+    FlickDirectionLike,
+)
 from .hl import (
     Air,
     AirCrush,
@@ -18,17 +36,7 @@ from .hl import (
 )
 from .mg import M, MgNote
 from .types import (
-    AirCrushColor,
-    AirCrushOption,
-    AirDirection,
-    AirDirectionLike,
-    Direction,
-    DirectionValue,
     ExAttr,
-    ExtapDirection,
-    ExtapDirectionLike,
-    FlickDirection,
-    FlickDirectionLike,
     LongAttr,
     NoteInfo,
     NoteType,
@@ -40,7 +48,11 @@ __all__ = [
     "AirHold",
     "AirSlide",
     "AirCrushColor",
+    "AirCrushColorLike",
+    "AirCrushColorValue",
     "AirCrushOption",
+    "AirCrushOptionLike",
+    "AirCrushOptionValue",
     "AirDirection",
     "AirDirectionLike",
     "Direction",

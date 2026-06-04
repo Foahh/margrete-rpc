@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import cast
-
+from ..air_crush import air_crush_color_from_value
 from ..mg import MgNote
-from ..types import AirCrushColor, LongAttr, NoteInfo, NoteType
+from ..types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide
 from ._ground import Damage, Extap, Flick, Tap, _GroundNote
 from ._joint import _JointHost
@@ -32,17 +31,15 @@ def _wrap_ground(note: MgNote) -> Note:
     if note.long_attr is not LongAttr.NONE:
         raise UnsupportedNoteTree("ground note must not have long_attr")
     if note.type is NoteType.TAP:
-        wrapped: _GroundNote = Tap(
-            int(note.tick), note.x, note.width, _info=note.info, _id=note._id
-        )
+        wrapped: _GroundNote = Tap(int(note.t), note.x, note.w, _info=note.info, _id=note._id)
     elif note.type is NoteType.EXTAP:
-        wrapped = Extap(int(note.tick), note.x, note.width)
+        wrapped = Extap(int(note.t), note.x, note.w)
         _restore_wrapped_info(wrapped, note)
     elif note.type is NoteType.FLICK:
-        wrapped = Flick(int(note.tick), note.x, note.width)
+        wrapped = Flick(int(note.t), note.x, note.w)
         _restore_wrapped_info(wrapped, note)
     elif note.type is NoteType.DAMAGE:
-        wrapped = Damage(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
+        wrapped = Damage(int(note.t), note.x, note.w, _info=note.info, _id=note._id)
     else:
         raise UnsupportedNoteTree("unsupported ground note")
 
@@ -58,8 +55,8 @@ def _check_mg_root_begin(note: MgNote, expected: NoteType) -> None:
         raise UnsupportedNoteTree("long note root must be BEGIN")
 
 
-def _check_order(previous_tick: int, tick: int) -> None:
-    if int(tick) <= int(previous_tick):
+def _check_order(previous_t: int, t: int) -> None:
+    if int(t) <= int(previous_t):
         raise UnsupportedNoteTree("long note joints must be strictly chronological")
 
 
@@ -103,30 +100,30 @@ def _ensure_air_only_on_end(child: MgNote, is_final: bool) -> None:
 def _wrap_slide(note: MgNote) -> Slide:
     _check_mg_root_begin(note, NoteType.SLIDE)
     _require_final_end(note.children, {LongAttr.END})
-    slide = Slide(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
-    previous_tick = int(note.tick)
+    slide = Slide(int(note.t), note.x, note.w, _info=note.info, _id=note._id)
+    previous_t = int(note.t)
     for index, child in enumerate(note.children):
         is_final = index == len(note.children) - 1
-        _check_order(previous_tick, int(child.tick))
+        _check_order(previous_t, int(child.t))
         _ensure_air_only_on_end(child, is_final)
         if child.long_attr is LongAttr.STEP:
-            slide.step(int(child.tick), x=child.x, width=child.width)
+            slide.step(int(child.t), x=child.x, w=child.w)
             placed_kind = LongAttr.STEP
         elif child.long_attr is LongAttr.CONTROL:
-            slide.control(int(child.tick), x=child.x, width=child.width)
+            slide.control(int(child.t), x=child.x, w=child.w)
             placed_kind = LongAttr.CONTROL
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide.curve_control(int(child.tick), x=child.x, width=child.width)
+            slide.curve_control(int(child.t), x=child.x, w=child.w)
             placed_kind = LongAttr.CURVE_CONTROL
         elif child.long_attr is LongAttr.END and is_final:
-            slide.step(int(child.tick), x=child.x, width=child.width)
+            slide.step(int(child.t), x=child.x, w=child.w)
             placed_kind = LongAttr.STEP
         else:
             raise UnsupportedNoteTree("unsupported slide joint")
         _copy_joint(slide, child, placed_kind)
         if child.children:
             slide.air(_wrap_attached_air_note(child.children[0]))
-        previous_tick = int(child.tick)
+        previous_t = int(child.t)
     return slide
 
 
@@ -135,9 +132,9 @@ def _wrap_hold(note: MgNote) -> Hold:
     if len(note.children) != 1 or note.children[0].long_attr is not LongAttr.END:
         raise UnsupportedNoteTree("hold must have exactly one end joint")
     child = note.children[0]
-    _check_order(int(note.tick), int(child.tick))
-    hold = Hold(int(note.tick), note.x, note.width, _info=note.info, _id=note._id)
-    hold._add_step(int(child.tick), x=child.x, width=child.width, height=child.height)
+    _check_order(int(note.t), int(child.t))
+    hold = Hold(int(note.t), note.x, note.w, _info=note.info, _id=note._id)
+    hold._add_step(int(child.t), x=child.x, w=child.w, h=child.h)
     _copy_joint(hold, child, LongAttr.STEP)
     if child.children:
         hold.air(_wrap_attached_air_note(child.children[0]))
@@ -153,37 +150,37 @@ def _wrap_air_slide(
     _check_mg_root_begin(note, NoteType.AIRSLIDE)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     slide = AirSlide(
-        height=note.height,
+        h=note.h,
         _air_info=air_info,
         _air_id=air_id,
         _info=note.info,
         _id=note._id,
     )
-    previous_tick = int(note.tick)
+    previous_t = int(note.t)
     for index, child in enumerate(note.children):
         is_final = index == len(note.children) - 1
-        _check_order(previous_tick, int(child.tick))
+        _check_order(previous_t, int(child.t))
         if child.children:
             raise UnsupportedNoteTree("air slide joints must not have children")
         if child.long_attr is LongAttr.STEP:
-            slide.step(int(child.tick), x=child.x, width=child.width, height=child.height)
+            slide.step(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.STEP
         elif child.long_attr is LongAttr.CONTROL:
-            slide.control(int(child.tick), x=child.x, width=child.width, height=child.height)
+            slide.control(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.CONTROL
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide.curve_control(int(child.tick), x=child.x, width=child.width, height=child.height)
+            slide.curve_control(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.CURVE_CONTROL
         elif child.long_attr is LongAttr.END and is_final:
-            slide.step(int(child.tick), x=child.x, width=child.width, height=child.height)
+            slide.step(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.STEP
         elif child.long_attr is LongAttr.END_NOACT and is_final:
-            slide.control(int(child.tick), x=child.x, width=child.width, height=child.height)
+            slide.control(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.CONTROL
         else:
             raise UnsupportedNoteTree("unsupported air slide joint")
         _copy_joint(slide, child, placed_kind)
-        previous_tick = int(child.tick)
+        previous_t = int(child.t)
     return slide
 
 
@@ -196,34 +193,34 @@ def _wrap_air_hold(
     _check_mg_root_begin(note, NoteType.AIRHOLD)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     hold = AirHold(
-        height=note.height,
+        h=note.h,
         _air_info=air_info,
         _air_id=air_id,
         _info=note.info,
         _id=note._id,
     )
-    previous_tick = int(note.tick)
+    previous_t = int(note.t)
     for index, child in enumerate(note.children):
         is_final = index == len(note.children) - 1
-        _check_order(previous_tick, int(child.tick))
+        _check_order(previous_t, int(child.t))
         if child.children:
             raise UnsupportedNoteTree("air hold joints must not have children")
         if child.long_attr is LongAttr.STEP:
-            hold.step(int(child.tick), x=child.x, width=child.width, height=child.height)
+            hold.step(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.STEP
         elif child.long_attr is LongAttr.CONTROL:
-            hold.control(int(child.tick), x=child.x, width=child.width, height=child.height)
+            hold.control(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.CONTROL
         elif child.long_attr is LongAttr.END and is_final:
-            hold.step(int(child.tick), x=child.x, width=child.width, height=child.height)
+            hold.step(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.STEP
         elif child.long_attr is LongAttr.END_NOACT and is_final:
-            hold.control(int(child.tick), x=child.x, width=child.width, height=child.height)
+            hold.control(int(child.t), x=child.x, w=child.w, h=child.h)
             placed_kind = LongAttr.CONTROL
         else:
             raise UnsupportedNoteTree("unsupported air hold joint")
         _copy_joint(hold, child, placed_kind)
-        previous_tick = int(child.tick)
+        previous_t = int(child.t)
     return hold
 
 
@@ -231,39 +228,39 @@ def _wrap_air_crush(note: MgNote) -> AirCrush:
     _check_mg_root_begin(note, NoteType.AIRCRUSH)
     _require_final_end(note.children, {LongAttr.END})
     crush = AirCrush(
-        int(note.tick),
+        int(note.t),
         note.x,
-        note.width,
-        height=note.height,
+        note.w,
+        h=note.h,
         density=note.option_value,
-        color=cast(AirCrushColor, note.variation_id),
+        color=air_crush_color_from_value(int(note.variation_id)),
         _info=note.info,
         _id=note._id,
     )
-    previous_tick = int(note.tick)
+    previous_t = int(note.t)
     for index, child in enumerate(note.children):
         is_final = index == len(note.children) - 1
-        _check_order(previous_tick, int(child.tick))
+        _check_order(previous_t, int(child.t))
         if child.children:
             raise UnsupportedNoteTree("air crush joints must not have children")
         if child.long_attr is LongAttr.CONTROL:
             crush.control(
-                int(child.tick),
+                int(child.t),
                 x=child.x,
-                width=child.width,
-                height=child.height,
+                w=child.w,
+                h=child.h,
             )
             placed_kind = LongAttr.CONTROL
         elif child.long_attr is LongAttr.END and is_final:
             crush.control(
-                int(child.tick),
+                int(child.t),
                 x=child.x,
-                width=child.width,
-                height=child.height,
+                w=child.w,
+                h=child.h,
             )
             placed_kind = LongAttr.CONTROL
         else:
             raise UnsupportedNoteTree("unsupported air crush joint")
         _copy_joint(crush, child, placed_kind)
-        previous_tick = int(child.tick)
+        previous_t = int(child.t)
     return crush

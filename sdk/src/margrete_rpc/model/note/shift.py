@@ -5,10 +5,10 @@ from .types import NoteInfo
 
 
 def _apply_deltas(info: NoteInfo, *, t: int, x: int, w: int, h: int) -> None:
-    info.tick = int(info.tick) + t
+    info.t = int(info.t) + t
     info.x += x
-    info.width += w
-    info.height += h
+    info.w += w
+    info.h += h
 
 
 def _shift_mg(note: MgNote, *, t: int, x: int, w: int, h: int) -> MgNote:
@@ -24,13 +24,13 @@ def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
     from .hl import Joint
 
     assert isinstance(joint, Joint)
-    joint._info.tick = int(joint._info.tick) + t
+    joint._info.t = int(joint._info.t) + t
     if not joint._default_x:
         joint._info.x += x
     if not joint._default_width:
-        joint._info.width += w
+        joint._info.w += w
     if not joint._default_height:
-        joint._info.height += h
+        joint._info.h += h
 
 
 def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> None:
@@ -40,8 +40,8 @@ def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> Non
         return
     if not isinstance(air, (AirSlide, AirHold)):
         raise TypeError(f"expected attachable air, got {type(air).__name__}")
-    air._air_info.height += h
-    air._info.height += h
+    air._air_info.h += h
+    air._info.h += h
     for joint in air._joints:
         _shift_joint(joint, t=t, x=x, w=w, h=h)
 

@@ -84,13 +84,13 @@ def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEven
 def normalize_event_operations(chart: Chart | MgChart) -> Chart | MgChart:
     ev = chart.events
     events = ChartEvents(
-        bpm=_last_by_key(ev.bpm, lambda event: event.tick),
+        bpm=_last_by_key(ev.bpm, lambda event: event.t),
         beat=_last_by_key(ev.beat, lambda event: event.bar),
         til=_last_by_key(
             ev.til,
-            lambda event: (event.tick, event.timeline_id),
+            lambda event: (event.t, event.til),
         ),
-        note_speed=_last_by_key(ev.note_speed, lambda event: event.tick),
+        note_speed=_last_by_key(ev.note_speed, lambda event: event.t),
     )
     if isinstance(chart, MgChart):
         return MgChart(mg_notes=chart.mg_notes, events=events)

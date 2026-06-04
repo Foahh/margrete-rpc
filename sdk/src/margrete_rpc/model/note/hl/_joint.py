@@ -29,11 +29,11 @@ class Joint(_GeometryInfoMixin, _HeightMixin):
 
     def __init__(
         self,
-        tick: Tick,
+        t: Tick,
         x: int,
-        width: int,
+        w: int,
         long_attr: LongAttr,
-        height: int = 800,
+        h: int = 800,
         info: NoteInfo | None = None,
         _id: int | None = None,
         *,
@@ -46,13 +46,13 @@ class Joint(_GeometryInfoMixin, _HeightMixin):
         self._default_x = default_x
         self._default_width = default_width
         self._default_height = default_height
-        self.tick = tick
+        self.t = t
         self._info.x = x
-        self._info.width = width
-        self._info.height = height
+        self._info.w = w
+        self._info.h = h
         self.long_attr = long_attr
         if not default_width:
-            _check_width(width)
+            _check_width(w)
 
 
 class _JointHost:
@@ -66,7 +66,7 @@ class _JointHost:
     def duration(self) -> int:
         if not self._joints:
             return 0
-        return int(self._joints[-1].tick) - int(self._begin_info_for_defaults().tick)
+        return int(self._joints[-1].t) - int(self._begin_info_for_defaults().t)
 
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
@@ -75,17 +75,19 @@ class _JointHost:
         self,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> tuple[int, int, int, bool, bool, bool]:
         previous = self._joints[-1] if self._joints else self._begin_info_for_defaults()
         default_x = x is None
-        default_width = width is None
-        default_height = height is None
+        default_width = w is None
+        default_height = h is None
+        previous_w = previous.w
+        previous_h = previous.h
         return (
             previous.x if x is None else x,
-            previous.width if width is None else width,
-            previous.height if height is None else height,
+            previous_w if w is None else w,
+            previous_h if h is None else h,
             default_x,
             default_width,
             default_height,
@@ -93,12 +95,12 @@ class _JointHost:
 
     def _make_joint(
         self,
-        tick: Tick,
+        t: Tick,
         long_attr: LongAttr,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> Joint:
         (
             joint_x,
@@ -107,12 +109,12 @@ class _JointHost:
             default_x,
             default_width,
             default_height,
-        ) = self._joint_geometry(x=x, width=width, height=height)
+        ) = self._joint_geometry(x=x, w=w, h=h)
         return Joint(
-            tick=tick,
+            t=t,
             x=joint_x,
-            width=joint_width,
-            height=joint_height,
+            w=joint_width,
+            h=joint_height,
             long_attr=long_attr,
             default_x=default_x,
             default_width=default_width,
@@ -120,51 +122,67 @@ class _JointHost:
         )
 
     def _add_joint(self, joint: Joint) -> None:
-        _check_tick(joint.tick)
+        _check_tick(joint.t)
         if not joint._default_width:
-            _check_width(joint.width)
+            _check_width(joint.w)
         previous_tick = int(
-            self._joints[-1].tick if self._joints else self._begin_info_for_defaults().tick
+            self._joints[-1].t if self._joints else self._begin_info_for_defaults().t
         )
-        if int(joint.tick) <= previous_tick:
-            raise ValueError("joint tick must be later than previous joint")
+        if int(joint.t) <= previous_tick:
+            raise ValueError("joint t must be later than previous joint")
         self._joints.append(joint)
 
     def _add_step(
         self,
-        tick: Tick,
+        t: Tick,
         *,
         x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
-    ) -> None:
-        self._add_joint(self._make_joint(tick, LongAttr.STEP, x=x, width=width, height=height))
-
-    def _add_control(
-        self,
-        tick: Tick,
-        *,
-        x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
-    ) -> None:
-        self._add_joint(self._make_joint(tick, LongAttr.CONTROL, x=x, width=width, height=height))
-
-    def _add_curve_control(
-        self,
-        tick: Tick,
-        *,
-        x: int | None = None,
-        width: int | None = None,
-        height: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
     ) -> None:
         self._add_joint(
             self._make_joint(
-                tick,
+                t,
+                LongAttr.STEP,
+                x=x,
+                w=w,
+                h=h,
+            )
+        )
+
+    def _add_control(
+        self,
+        t: Tick,
+        *,
+        x: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
+    ) -> None:
+        self._add_joint(
+            self._make_joint(
+                t,
+                LongAttr.CONTROL,
+                x=x,
+                w=w,
+                h=h,
+            )
+        )
+
+    def _add_curve_control(
+        self,
+        t: Tick,
+        *,
+        x: int | None = None,
+        w: int | None = None,
+        h: int | None = None,
+    ) -> None:
+        self._add_joint(
+            self._make_joint(
+                t,
                 LongAttr.CURVE_CONTROL,
                 x=x,
-                width=width,
-                height=height,
+                w=w,
+                h=h,
             )
         )
 
@@ -179,8 +197,8 @@ class _JointHost:
             type=note_type,
             long_attr=long_attr,
             x=previous.x if joint._default_x else joint.x,
-            width=previous.width if joint._default_width else joint.width,
-            height=previous.height if joint._default_height else joint.height,
+            w=previous.w if joint._default_width else joint.w,
+            h=previous.h if joint._default_height else joint.h,
         )
 
     def _build_long_children(
@@ -214,11 +232,11 @@ class _JointHost:
         joint_strs: list[str] = []
         for j in self._joints:
             jbits = [
-                f"tick={int(j.tick)}",
+                f"t={int(j.t)}",
                 f"long_attr={_note_enum_line(j.long_attr)}",
                 f"x={j.x}",
-                f"width={j.width}",
-                f"height={j.height}",
+                f"w={j.w}",
+                f"h={j.h}",
             ]
             if j.info.option_value != 0:
                 jbits.append(f"option_value={j.info.option_value}")

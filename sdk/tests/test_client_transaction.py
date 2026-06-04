@@ -320,7 +320,7 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     mg = Margrete(transport=transport)
 
     with mg.open_edit("child", raw=True) as tx:
-        tx.chart.mg_notes[0].children[0].tick = 500
+        tx.chart.mg_notes[0].children[0].t = 500
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
