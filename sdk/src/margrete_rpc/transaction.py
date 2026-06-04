@@ -6,6 +6,7 @@ from types import TracebackType
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.model import Chart, LLChart, LLNote, normalize_event_operations
 from margrete_rpc.model.chart import ChartEvents
+from margrete_rpc.model.chart_time import Position, pop_tick_resolver, push_tick_resolver
 from margrete_rpc.trace import NoopTracer, Tracer
 
 
@@ -182,6 +183,10 @@ class EditTransaction:
     _orig_events_sig: bytes = b""
     _orig_notes: list[LLNote] | None = None
     _orig_events: ChartEvents | None = None
+    _resolver_token: object | None = None
+
+    def _resolve_position(self, pos: Position) -> int:
+        return self.chart.p2t(*pos)
 
     def __enter__(self) -> EditTransaction:
         if self.tracer is None:
@@ -191,6 +196,7 @@ class EditTransaction:
             attrs={"tx.type": self.tx_type, "tx.name": self.name},
         )
         self._span_active.__enter__()
+        self._resolver_token = push_tick_resolver(self._resolve_position)
 
         if self.scan:
             self._orig_notes = [_clone_ll_note(note) for note in _final_notes(self.chart)]
@@ -253,6 +259,9 @@ class EditTransaction:
                     self.transport.request(messages_pb2.Envelope(apply_edit_request=request))
             return False
         finally:
+            if self._resolver_token is not None:
+                pop_tick_resolver(self._resolver_token)
+                self._resolver_token = None
             if self._span_active is not None:
                 self._span_active.__exit__(exc_type, exc, tb)
                 self._span_active = None

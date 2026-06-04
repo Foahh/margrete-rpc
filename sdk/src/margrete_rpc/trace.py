@@ -43,7 +43,7 @@ class CallbackTracer:
         start_ns = perf_counter_ns()
         try:
             yield
-        except Exception as e:  # noqa: BLE001 - must record all exceptions
+        except Exception as e:
             end_ns = perf_counter_ns()
             self._emit(
                 TraceEvent(

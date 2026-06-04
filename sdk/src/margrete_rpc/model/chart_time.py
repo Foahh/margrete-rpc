@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+import contextvars
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from margrete_rpc.model.constant import TICKS_PER_BEAT
 from margrete_rpc.model.event import BeatEvent
 
 type Position = tuple[int, int, int]
+
+type Tick = int | Position
+type TickResolver = Callable[[Position], int]
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,4 +141,47 @@ def p2t(
     return ChartTime(beat_events).p2t(bar, beat, offset)
 
 
-__all__ = ["Position", "t2p", "p2t"]
+_active_tick_resolver: contextvars.ContextVar[TickResolver | None] = contextvars.ContextVar(
+    "margrete_active_tick_resolver", default=None
+)
+
+
+def push_tick_resolver(resolver: TickResolver) -> contextvars.Token:
+    """Install ``resolver`` as the active position->tick resolver; returns a reset token."""
+    return _active_tick_resolver.set(resolver)
+
+
+def pop_tick_resolver(token: contextvars.Token) -> None:
+    """Restore the resolver that was active before the matching ``push_tick_resolver``."""
+    _active_tick_resolver.reset(token)
+
+
+def resolve_tick(value: Tick) -> int:
+    """Coerce a tick argument to an int.
+
+    An int passes through unchanged. A ``(bar[, beat[, offset]])`` tuple is resolved
+    against the active edit context (set by ``open_edit``); with no active context it
+    falls back to a plain 4/4 time signature.
+    """
+    if isinstance(value, tuple):
+        if not 1 <= len(value) <= 3:
+            raise ValueError(
+                "position tick must be a (bar,), (bar, beat), or (bar, beat, offset) tuple"
+            )
+        resolver = _active_tick_resolver.get()
+        if resolver is not None:
+            return resolver(value)
+        return p2t(*value, beat_events=())
+    return value
+
+
+__all__ = [
+    "Position",
+    "Tick",
+    "TickResolver",
+    "t2p",
+    "p2t",
+    "resolve_tick",
+    "push_tick_resolver",
+    "pop_tick_resolver",
+]

@@ -1,10 +1,13 @@
 import pytest
 
 from margrete_rpc import (
+    Air,
     AirCrush,
     AirCrushColor,
     AirCrushOption,
     AirDirection,
+    AirHold,
+    AirSlide,
     BeatEvent,
     BpmEvent,
     Chart,
@@ -15,6 +18,7 @@ from margrete_rpc import (
     ExtapDirection,
     Flick,
     FlickDirection,
+    HLNote,
     Hold,
     L,
     LLNote,
@@ -353,7 +357,7 @@ def test_hl_and_ll_note_tick_are_plain_int():
 
 def test_tick_subtracts_between_int_ticks():
     crush = AirCrush(tick=100, x=4, width=2, height=80, density=5)
-    crush.control(105, x=6, width=2, height=120).end(110, x=8, width=2, height=80)
+    crush.control(105, x=6, width=2, height=120).control(110, x=8, width=2, height=80)
     assert crush.joints[-1].tick - crush.tick == 10
 
 
@@ -460,7 +464,6 @@ def test_llnote_round_trips_to_protobuf_with_children_and_id():
 def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     tap = Tap(tick=960, x=4, width=2)
     tap.x = 5
-    tap.height = 700
     tap.til = 3
     tap._info.ex_attr = ExAttr.HAS_NOTE
     tap.tick = 480
@@ -470,7 +473,6 @@ def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     assert tap.tick == 480
     assert tap.x == 5
     assert tap.width == 2
-    assert tap.height == 700
     assert tap.til == 3
     assert tap._info.ex_attr is ExAttr.HAS_NOTE
     assert ll.type is NoteType.TAP
@@ -478,7 +480,6 @@ def test_tap_redirects_shared_ll_fields_and_converts_to_ll():
     assert ll.tick == 480
     assert ll.x == 5
     assert ll.width == 2
-    assert ll.height == 700
     assert ll.timeline_id == 3
     assert ll.ex_attr is ExAttr.HAS_NOTE
     assert ll.children == []
@@ -527,21 +528,55 @@ def test_high_level_ground_note_geometry_is_backed_by_note_info():
 def test_tap_air_adds_single_air_child():
     tap = Tap(tick=0, x=4, width=2)
 
-    air = tap.air(AirDirection.DOWN)
+    air = Air(AirDirection.DOWN)
+    result = tap.air(air)
     ll = tap.to_ll()
 
+    assert result is tap
     assert air.direction is AirDirection.DOWN
     assert len(ll.children) == 1
     assert ll.children[0].type is NoteType.AIR
     assert ll.children[0].direction == AirDirection.DOWN
+    assert ll.children[0].tick == tap.tick
+    assert ll.children[0].x == tap.x
+    assert ll.children[0].width == tap.width
 
 
-def test_ground_note_rejects_multiple_air_objects():
+def test_air_replaces_existing_air_object():
     tap = Tap(tick=0, x=4, width=2)
-    tap.air(AirDirection.UP)
+    first = Air(AirDirection.UP)
+    second = Air(AirDirection.DOWN)
 
-    with pytest.raises(ValueError, match="only one air"):
-        tap.air(AirDirection.DOWN)
+    assert tap.air(first).air(second) is tap
+    assert tap.to_ll().children[0].direction is AirDirection.DOWN
+
+
+def test_air_direction_shorthand_attaches_plain_air():
+    tap = Tap(tick=0, x=4, width=2)
+
+    assert tap.air(AirDirection.DOWN) is tap
+    assert tap.to_ll().children[0].direction is AirDirection.DOWN
+
+
+def test_height_is_absent_from_floor_notes_and_bare_air():
+    assert not hasattr(Tap(tick=0, x=4, width=2), "height")
+    assert not hasattr(Damage(tick=0, x=4, width=2), "height")
+    assert not hasattr(Slide(tick=0, x=4, width=2), "height")
+    assert not hasattr(Hold(tick=0, x=4, width=2), "height")
+    assert not hasattr(Air(AirDirection.UP), "height")
+    assert hasattr(AirSlide(height=80), "height")
+    assert hasattr(AirHold(height=80), "height")
+    assert hasattr(AirCrush(tick=0, x=4, width=2, height=80, density=0), "height")
+
+
+def test_attachable_air_objects_are_not_placeable_hl_notes():
+    assert isinstance(Tap(tick=0, x=4, width=2), HLNote)
+    assert not isinstance(Air(AirDirection.UP), HLNote)
+    assert not isinstance(AirSlide(height=80), HLNote)
+    assert not isinstance(AirHold(height=80), HLNote)
+    assert not hasattr(AirSlide(height=80), "to_ll")
+    assert not hasattr(AirHold(height=80), "to_ll")
+    assert not hasattr(AirCrush(tick=0, x=4, width=2, height=80, density=0), "air")
 
 
 def test_high_level_short_notes_validate_tick_and_width():
@@ -643,7 +678,7 @@ def test_flick_rejects_invalid_directions(direction):
     ],
 )
 def test_air_accepts_only_air_directions(direction):
-    air = Tap(tick=0, x=4, width=2).air(direction)
+    air = Air(direction)
 
     assert air.direction is direction
 
@@ -661,21 +696,16 @@ def test_air_accepts_only_air_directions(direction):
     ],
 )
 def test_air_rejects_invalid_directions(direction):
-    tap = Tap(tick=0, x=4, width=2)
-
     with pytest.raises(ValueError, match="invalid air direction"):
-        tap.air(direction)
+        Air(direction)
 
-    air = tap.air(AirDirection.UP)
+    air = Air(AirDirection.UP)
     with pytest.raises(ValueError, match="invalid air direction"):
         air.direction = direction
 
 
-def test_slide_requires_end_and_converts_ordered_joints():
+def test_slide_promotes_last_joint_to_end_and_preserves_partial_debug_tree():
     slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=4).control(1680, x=8, width=4)
-
-    with pytest.raises(ValueError, match="requires an end joint"):
-        slide.to_ll()
 
     partial = slide.to_ll(skip_validation=True)
     assert partial.type is NoteType.SLIDE
@@ -684,15 +714,22 @@ def test_slide_requires_end_and_converts_ordered_joints():
         LongAttr.CONTROL,
     ]
 
-    ll = slide.end(1920, x=12, width=4).to_ll()
+    ll = slide.to_ll()
 
     assert ll.type is NoteType.SLIDE
     assert ll.long_attr is LongAttr.BEGIN
     assert [child.long_attr for child in ll.children] == [
         LongAttr.STEP,
-        LongAttr.CONTROL,
         LongAttr.END,
     ]
+
+
+def test_long_note_requires_at_least_one_serializable_joint():
+    with pytest.raises(ValueError, match="requires at least one joint"):
+        Slide(tick=960, x=0, width=4).to_ll()
+
+    with pytest.raises(ValueError, match="requires at least one joint"):
+        AirCrush(tick=0, x=4, width=2, height=80, density=5).to_ll()
 
 
 def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
@@ -708,36 +745,26 @@ def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
 
 def test_high_level_str_prints_attached_air_as_children():
     tap = Tap(tick=0, x=4, width=2)
-    tap.air(AirDirection.DOWN).slide(height=80).end(960, x=8, width=2, height=100)
+    tap.air(AirSlide(height=80).step(960, x=8, width=2, height=100))
 
     lines = str(tap).splitlines()
 
     assert lines[0].startswith("Tap(")
-    assert lines[1].startswith("  Air(")
-    assert lines[2].startswith("    AirSlide(")
+    assert lines[1].startswith("  AirSlide(")
     assert "air=" not in lines[0]
     assert "long_action=" not in lines[1]
 
 
-def test_slide_rejects_joints_after_end_and_non_increasing_ticks():
+def test_slide_rejects_non_increasing_ticks():
     slide = Slide(tick=960, x=0, width=4)
 
     with pytest.raises(ValueError, match="must be later"):
         slide.step(960, x=6, width=4)
 
-    slide.step(1440, x=6, width=4).end(1920, x=12, width=4)
 
-    with pytest.raises(ValueError, match="already ended"):
-        slide.control(2160, x=8, width=4)
-
-
-def test_hold_requires_end_and_defaults_end_geometry_to_begin():
+def test_hold_step_promotes_to_end_and_defaults_geometry_to_begin():
     hold = Hold(tick=0, x=4, width=2)
-
-    with pytest.raises(ValueError, match="requires an end joint"):
-        hold.to_ll()
-
-    ll = hold.end(960).to_ll()
+    ll = hold.step(960).to_ll()
 
     assert ll.type is NoteType.HOLD
     assert len(ll.children) == 1
@@ -746,8 +773,20 @@ def test_hold_requires_end_and_defaults_end_geometry_to_begin():
     assert ll.children[0].width == 2
 
 
+def test_hold_has_a_single_end_and_step_replaces_it():
+    hold = Hold(tick=0, x=4, width=2).step(960).step(1920)
+    ll = hold.to_ll()
+
+    assert len(ll.children) == 1
+    assert ll.children[0].long_attr is LongAttr.END
+    assert ll.children[0].tick == 1920
+
+    with pytest.raises(ValueError, match="must be later"):
+        Hold(tick=1000, x=4, width=2).step(2000).step(1000)
+
+
 def test_slide_joints_default_geometry_to_previous_joint():
-    slide = Slide(tick=0, x=4, width=2).control(480).step(960).curve_control(1440).end(1920)
+    slide = Slide(tick=0, x=4, width=2).control(480).step(960).curve_control(1440).step(1920)
 
     ll = slide.to_ll()
 
@@ -766,15 +805,13 @@ def test_slide_joints_default_geometry_to_previous_joint():
 
 
 def test_air_long_joints_default_geometry_to_previous_joint():
-    tap = Tap(tick=0, x=4, width=2)
-    air_slide = tap.air(AirDirection.DOWN).slide(height=80)
-    air_slide.control(480).step(960).curve_control(1440).end_noact(1920)
+    slide_tap = Tap(tick=0, x=4, width=2).air(
+        AirSlide(height=80).control(480).step(960).curve_control(1440).control(1920)
+    )
+    hold_tap = Tap(tick=0, x=6, width=2).air(AirHold(height=120).step(480).control(960))
 
-    air_hold = Tap(tick=0, x=6, width=2).air(AirDirection.DOWN).hold(height=120)
-    air_hold.step(480).end_noact(960)
-
-    slide_ll = air_slide.to_ll()
-    hold_ll = air_hold.to_ll()
+    slide_ll = slide_tap.to_ll().children[0].children[0]
+    hold_ll = hold_tap.to_ll().children[0].children[0]
 
     assert [(child.x, child.width, child.height) for child in slide_ll.children] == [
         (4, 2, 80),
@@ -789,7 +826,7 @@ def test_air_long_joints_default_geometry_to_previous_joint():
 
 
 def test_air_crush_joints_default_geometry_to_previous_joint():
-    crush = AirCrush(tick=0, x=4, width=2, height=80, density=0).control(480).end(960)
+    crush = AirCrush(tick=0, x=4, width=2, height=80, density=0).control(480).control(960)
 
     ll = crush.to_ll()
 
@@ -799,14 +836,13 @@ def test_air_crush_joints_default_geometry_to_previous_joint():
     ]
 
 
-def test_air_slide_forces_upward_air_and_supports_end_noact():
-    tap = Tap(tick=0, x=4, width=2)
-    air_slide = tap.air(AirDirection.DOWN).slide(height=80)
+def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
+    tap = Tap(tick=0, x=4, width=2).air(
+        AirSlide(height=80)
+        .control(480, x=6, width=2, height=120)
+        .control(960, x=8, width=2, height=80)
+    )
 
-    with pytest.raises(ValueError, match="requires an end joint"):
-        tap.to_ll()
-
-    air_slide.control(480, x=6, width=2, height=120).end_noact(960, x=8, width=2, height=80)
     ll = tap.to_ll()
 
     air = ll.children[0]
@@ -816,70 +852,74 @@ def test_air_slide_forces_upward_air_and_supports_end_noact():
     assert air_long.children[-1].long_attr is LongAttr.END_NOACT
 
 
+def test_control_terminus_differs_between_air_slide_and_ground_slide():
+    air_slide = Tap(tick=0, x=4, width=2).air(AirSlide(height=80).control(480))
+    slide = Slide(tick=0, x=4, width=2).control(480)
+
+    air_slide_ll = air_slide.to_ll().children[0].children[0]
+    slide_ll = slide.to_ll()
+
+    assert air_slide_ll.children[-1].long_attr is LongAttr.END_NOACT
+    assert slide_ll.children[-1].long_attr is LongAttr.END
+
+
+def test_air_hold_has_no_curve_control_but_air_slide_does():
+    assert hasattr(AirSlide(height=80), "curve_control")
+    assert not hasattr(AirHold(height=80), "curve_control")
+    assert hasattr(AirHold(height=80), "control")
+
+
 def test_air_invert_maps_to_ex_attr_invert_on_ll():
     tap = Tap(tick=0, x=4, width=2)
-    air = tap.air(AirDirection.DOWN)
+    air = Air(AirDirection.DOWN)
+    tap.air(air)
     air.inverted = True
     air.til = 3
-    air.tick = air.tick + beats_to_ticks(1, 4)
+    tap.tick = tap.tick + beats_to_ticks(1, 4)
 
     ll = tap.to_ll().children[0]
 
     assert air.inverted is True
-    assert air.tick == 480
     assert ll.ex_attr is ExAttr.INVERT
     assert ll.timeline_id == 3
     assert ll.tick == 480
 
 
-def test_air_geometry_and_direction_are_backed_by_note_info():
-    air = Tap(tick=0, x=4, width=2).air(AirDirection.DOWN)
+def test_air_geometry_is_derived_from_anchor_on_serialization():
+    tap = Tap(tick=0, x=4, width=2).air(Air(AirDirection.DOWN))
+    air = tap._air
 
-    assert air._info.tick == 0
-    assert air._info.x == 4
-    assert air._info.width == 2
+    assert isinstance(air, Air)
     assert air._info.direction == AirDirection.DOWN
 
-    air.tick = 480
-    air.x = 5
-    air.width = 3
+    tap.tick = 480
+    tap.x = 5
+    tap.width = 3
     air.direction = AirDirection.UP
 
-    assert air._info.tick == 480
-    assert air._info.x == 5
-    assert air._info.width == 3
+    ll = tap.to_ll().children[0]
+
     assert air._info.direction == AirDirection.UP
-
-    air._info.tick = 240
-    air._info.x = 6
-    air._info.width = 4
-    air._info.direction = AirDirection.DOWNLEFT
-
-    assert air.tick == 240
-    assert air.x == 6
-    assert air.width == 4
-    assert air.direction is AirDirection.DOWNLEFT
+    assert ll.tick == 480
+    assert ll.x == 5
+    assert ll.width == 3
+    assert ll.direction is AirDirection.UP
 
 
 def test_air_slide_and_air_hold_do_not_expose_color_on_hl_builder():
-    tap = Tap(tick=0, x=4, width=2)
-    air_slide = tap.air(AirDirection.DOWN).slide(height=80)
-    air_slide.end(960, x=8, width=2, height=100)
-
-    hold = Tap(tick=1200, x=4, width=2).air(AirDirection.UP).hold(height=120)
-    hold.end_noact(1680, x=4, width=2, height=140)
+    tap = Tap(tick=0, x=4, width=2).air(AirSlide(height=80).step(960, x=8, width=2, height=100))
+    hold = Tap(tick=1200, x=4, width=2).air(
+        AirHold(height=120).control(1680, x=4, width=2, height=140)
+    )
 
     assert tap.to_ll().children[0].children[0].variation_id == 0
-    assert hold.to_ll().variation_id == 0
+    assert hold.to_ll().children[0].children[0].variation_id == 0
 
 
-def test_air_crush_allows_controls_only_and_requires_end():
+def test_air_crush_allows_controls_and_promotes_last_to_end():
     crush = AirCrush(tick=0, x=4, width=2, height=80, density=5)
 
-    with pytest.raises(ValueError, match="requires an end joint"):
-        crush.to_ll()
-
-    ll = crush.control(480, x=6, width=2, height=120).end(960, x=8, width=2, height=80).to_ll()
+    ll = crush.control(480, x=6, width=2, height=120).control(960, x=8, width=2, height=80).to_ll()
 
     assert ll.type is NoteType.AIRCRUSH
     assert [child.long_attr for child in ll.children] == [LongAttr.CONTROL, LongAttr.END]
@@ -897,7 +937,7 @@ def test_air_crush_density_and_color_redirect_to_ll_storage_fields():
     crush.density = 120
     crush.color = AirCrushColor.NON
     crush.til = 2
-    ll = crush.end(960, x=8, width=2, height=100).to_ll()
+    ll = crush.control(960, x=8, width=2, height=100).to_ll()
 
     assert crush.density == 120
     assert crush.color is AirCrushColor.NON
@@ -933,7 +973,7 @@ def test_wrap_ll_note_supports_air_hold_with_steps_attached_to_air():
 
 
 def test_long_note_begin_geometry_is_backed_by_note_info():
-    slide = Slide(tick=960, x=0, width=4, height=800)
+    slide = Slide(tick=960, x=0, width=4)
 
     assert slide._info.tick == 960
     assert slide._info.x == 0
@@ -943,12 +983,10 @@ def test_long_note_begin_geometry_is_backed_by_note_info():
     slide.tick = 480
     slide.x = 2
     slide.width = 3
-    slide.height = 700
 
     assert slide._info.tick == 480
     assert slide._info.x == 2
     assert slide._info.width == 3
-    assert slide._info.height == 700
 
     slide._info.tick = 240
     slide._info.x = 1
@@ -958,7 +996,6 @@ def test_long_note_begin_geometry_is_backed_by_note_info():
     assert slide.tick == 240
     assert slide.x == 1
     assert slide.width == 2
-    assert slide.height == 600
 
 
 def test_long_note_joint_geometry_is_backed_by_note_info():
@@ -1001,12 +1038,12 @@ def test_long_note_joint_geometry_is_backed_by_note_info():
 
 
 def test_long_note_exposes_joints_for_iteration():
-    slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=3).end(1920, x=12, width=4)
+    slide = Slide(tick=960, x=0, width=4).step(1440, x=6, width=3).step(1920, x=12, width=4)
 
     assert slide.joints is slide._joints
     assert [joint.long_attr for joint in slide.joints] == [
         LongAttr.STEP,
-        LongAttr.END,
+        LongAttr.STEP,
     ]
     assert slide.joints[-1].tick == 1920
 
@@ -1060,6 +1097,16 @@ def test_wrap_ll_note_rejects_invalid_begin_end_placement():
     invalid = L.slide_begin(960, 0, 4).child(
         L.slide_step(1440, 6, 4),
         L.slide_control(1200, 8, 4),
+        L.slide_end(1920, 12, 4),
+    )
+
+    with pytest.raises(UnsupportedNoteTree):
+        wrap_ll_note(invalid)
+
+
+def test_wrap_ll_note_rejects_air_on_non_end_slide_joint():
+    invalid = L.slide_begin(960, 0, 4).child(
+        L.slide_step(1440, 6, 4).child(L.air(1440, 6, 4, direction=AirDirection.UP)),
         L.slide_end(1920, 12, 4),
     )
 

@@ -20,13 +20,30 @@ def _shift_ll(note: LLNote, *, t: int, x: int, w: int, h: int) -> LLNote:
     return note
 
 
-def _shift_air(air: object, *, t: int, x: int, w: int, h: int) -> None:
-    from .hl import Air
+def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
+    from .hl import Joint
 
-    assert isinstance(air, Air)
-    _apply_deltas(air._info, t=t, x=x, w=w, h=h)
-    if air._long_action is not None:
-        _shift_long_builder(air._long_action, t=t, x=x, w=w, h=h)
+    assert isinstance(joint, Joint)
+    joint._info.tick = int(joint._info.tick) + t
+    if not joint._default_x:
+        joint._info.x += x
+    if not joint._default_width:
+        joint._info.width += w
+    if not joint._default_height:
+        joint._info.height += h
+
+
+def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> None:
+    from .hl import Air, AirHold, AirSlide
+
+    if isinstance(air, Air):
+        return
+    if not isinstance(air, (AirSlide, AirHold)):
+        raise TypeError(f"expected attachable air, got {type(air).__name__}")
+    air._air_info.height += h
+    air._info.height += h
+    for joint in air._joints:
+        _shift_joint(joint, t=t, x=x, w=w, h=h)
 
 
 def _shift_ground(note: object, *, t: int, x: int, w: int, h: int) -> None:
@@ -36,34 +53,30 @@ def _shift_ground(note: object, *, t: int, x: int, w: int, h: int) -> None:
         raise TypeError(f"expected ground note, got {type(note).__name__}")
     _apply_deltas(note._info, t=t, x=x, w=w, h=h)
     if note._air is not None:
-        _shift_air(note._air, t=t, x=x, w=w, h=h)
+        _shift_attachable_air(note._air, t=t, x=x, w=w, h=h)
 
 
 def _shift_long_builder(builder: object, *, t: int, x: int, w: int, h: int) -> None:
-    from .hl import AirCrush, AirHold, AirSlide, Hold, Joint, Slide
+    from .hl import AirCrush, Hold, Slide
 
-    if not isinstance(builder, (Slide, Hold, AirSlide, AirHold, AirCrush)):
+    if not isinstance(builder, (Slide, Hold, AirCrush)):
         raise TypeError(f"expected long builder, got {type(builder).__name__}")
     _apply_deltas(builder._info, t=t, x=x, w=w, h=h)
     for joint in builder._joints:
-        if not isinstance(joint, Joint):
-            continue
-        _apply_deltas(joint._info, t=t, x=x, w=w, h=h)
-        if joint.air is not None:
-            _shift_air(joint.air, t=t, x=x, w=w, h=h)
+        _shift_joint(joint, t=t, x=x, w=w, h=h)
+    if isinstance(builder, (Slide, Hold)) and builder._air is not None:
+        _shift_attachable_air(builder._air, t=t, x=x, w=w, h=h)
 
 
 def _shift_hl(note: object, *, t: int, x: int, w: int, h: int) -> object:
     if t == x == w == h == 0:
         return note
-    from .hl import Air, AirCrush, AirHold, AirSlide, Damage, Extap, Flick, Hold, Slide, Tap
+    from .hl import AirCrush, Damage, Extap, Flick, Hold, Slide, Tap
 
     if isinstance(note, (Tap, Extap, Flick, Damage)):
         _shift_ground(note, t=t, x=x, w=w, h=h)
-    elif isinstance(note, (Slide, Hold, AirSlide, AirHold, AirCrush)):
+    elif isinstance(note, (Slide, Hold, AirCrush)):
         _shift_long_builder(note, t=t, x=x, w=w, h=h)
-    elif isinstance(note, Air):
-        _shift_air(note, t=t, x=x, w=w, h=h)
     else:
         raise TypeError(f"unsupported note type for shift: {type(note).__name__}")
     return note

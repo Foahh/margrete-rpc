@@ -111,6 +111,13 @@ class NoteInfo:
     timeline_id: int = 0
     option_value: AirCrushOption | int = 0
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "tick" and isinstance(value, tuple):
+            from ..chart_time import resolve_tick
+
+            value = resolve_tick(value)
+        object.__setattr__(self, name, value)
+
     def copy(self, **changes: Any) -> NoteInfo:
         return replace(self, **changes)
 
