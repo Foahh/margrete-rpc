@@ -48,7 +48,7 @@ def test_note_slide_shifts_begin_and_all_joints():
 
 
 def test_note_hold_and_slide_air_shift():
-    hold = Hold(t=50, x=1, w=3).step(120).air(AirHold(h=70).step(160))
+    hold = Hold(t=50, x=1, w=3).step(120, x=1, w=3).air(AirHold(h=70).step(160, x=1, w=3, h=70))
     hold.shift(t=3)
 
     assert hold.t == 53

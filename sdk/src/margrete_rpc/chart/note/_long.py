@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from margrete_rpc._warnings import warnings
+
 from ..time import Tick, resolve_tick
 from ._air import Air, AirHold, AirSlide, _AirAttachable
-from ._joint import Joint, _JointHost
+from ._joint import AirJoint, Joint, _JointHost
 from ._shared import (
     _check_tick,
     _check_width,
@@ -122,31 +124,29 @@ class Slide(_AirAttachable, _PlaceableLong):
     def step(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
+        x: int,
+        w: int,
     ) -> Slide:
-        self._add_step(t, x=x, w=w)
+        self._add_step(t, x, w, 800)
         return self
 
     def control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
+        x: int,
+        w: int,
     ) -> Slide:
-        self._add_control(t, x=x, w=w)
+        self._add_control(t, x, w, 800)
         return self
 
+    @warnings.deprecated("CURVE_CONTROL is deprecated in Margrete.")
     def curve_control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
+        x: int,
+        w: int,
     ) -> Slide:
-        self._add_curve_control(t, x=x, w=w)
+        self._add_curve_control(t, x, w, 800)
         return self
 
     def to_node(self, *, skip_validation: bool = False) -> Node:
@@ -156,14 +156,17 @@ class Slide(_AirAttachable, _PlaceableLong):
 class Hold(_AirAttachable, _PlaceableLong):
     _note_type = NoteType.HOLD
 
-    def step(self, t: Tick) -> Hold:
+    def step(self, t: Tick, x: int, w: int) -> Hold:
         t = resolve_tick(t)
         if self._joints:
             if int(t) <= int(self._info.t):
                 raise ValueError("end t must be later than the begin")
-            self._joints[-1].t = t
+            joint = self._joints[-1]
+            joint.t = t
+            joint.x = x
+            joint.w = w
         else:
-            self._add_step(t)
+            self._add_step(t, x, w, 800)
         return self
 
     def to_node(self, *, skip_validation: bool = False) -> Node:
@@ -172,6 +175,7 @@ class Hold(_AirAttachable, _PlaceableLong):
 
 class AirCrush(_HeightMixin, _PlaceableLong):
     _note_type = NoteType.AIRCRUSH
+    _joint_type = AirJoint
 
     def __init__(
         self,
@@ -209,12 +213,11 @@ class AirCrush(_HeightMixin, _PlaceableLong):
     def control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> AirCrush:
-        self._add_control(t, x=x, w=w, h=h)
+        self._add_control(t, x, w, h)
         return self
 
     def to_node(self, *, skip_validation: bool = False) -> Node:

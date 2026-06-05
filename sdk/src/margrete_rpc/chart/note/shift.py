@@ -15,12 +15,9 @@ def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
 
     assert isinstance(joint, Joint)
     joint._info.t = int(joint._info.t) + t
-    if not joint._default_x:
-        joint._info.x += x
-    if not joint._default_width:
-        joint._info.w += w
-    if not joint._default_height:
-        joint._info.h += h
+    joint._info.x += x
+    joint._info.w += w
+    joint._info.h += h
 
 
 def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> None:

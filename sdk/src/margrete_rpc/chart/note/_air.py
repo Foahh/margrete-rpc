@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import Self
 
+from margrete_rpc._warnings import warnings
+
 from ..time import Tick
-from ._joint import Joint, _JointHost
+from ._joint import AirJoint, Joint, _JointHost
 from ._shared import (
     _copy_info,
     _direction_property,
@@ -13,7 +15,7 @@ from ._shared import (
 )
 from .direction import AirDirection, AirDirectionLike
 from .node import Node
-from .types import ExAttr, LongAttr, NoteInfo, NoteType
+from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
 
 
 class Air:
@@ -83,6 +85,7 @@ class Air:
 
 class _AttachableAirLong(_HeightMixin, _JointHost):
     _note_type: NoteType
+    _joint_type = AirJoint
 
     def __init__(
         self,
@@ -151,23 +154,21 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
     def step(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> Self:
-        self._add_step(t, x=x, w=w, h=h)
+        self._add_step(t, x, w, h)
         return self
 
     def control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> Self:
-        self._add_control(t, x=x, w=w, h=h)
+        self._add_control(t, x, w, h)
         return self
 
     def __str__(self) -> str:
@@ -185,19 +186,19 @@ class _AttachableAirLong(_HeightMixin, _JointHost):
 class AirSlide(_AttachableAirLong):
     _note_type = NoteType.AIRSLIDE
 
+    @warnings.deprecated("CURVE_CONTROL is deprecated in Margrete.")
     def curve_control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> Self:
-        self._add_curve_control(t, x=x, w=w, h=h)
+        self._add_curve_control(t, x, w, h)
         return self
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
-        if joint.kind is LongAttr.CONTROL:
+        if joint.kind is JointKind.CONTROL:
             return LongAttr.END_NOACT
         return LongAttr.END
 
@@ -206,7 +207,7 @@ class AirHold(_AttachableAirLong):
     _note_type = NoteType.AIRHOLD
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
-        if joint.kind is LongAttr.CONTROL:
+        if joint.kind is JointKind.CONTROL:
             return LongAttr.END_NOACT
         return LongAttr.END
 

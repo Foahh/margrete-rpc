@@ -9,54 +9,66 @@ from ._shared import (
     _copy_info,
     _GeometryInfoMixin,
     _HeightMixin,
-    _info_property,
     _note_enum_line,
 )
 from .node import Node
-from .types import LongAttr, NoteInfo, NoteType
+from .types import (
+    JointKind,
+    JointKindLike,
+    LongAttr,
+    NoteInfo,
+    NoteType,
+    joint_kind_to_long_attr,
+)
 
 
-class Joint(_GeometryInfoMixin, _HeightMixin):
-    kind = _info_property("long_attr", LongAttr)
-
-    @property
-    def info(self) -> NoteInfo:
-        return self._info
-
-    @info.setter
-    def info(self, value: NoteInfo) -> None:
-        self._info = value
-
+class Joint(_GeometryInfoMixin):
     def __init__(
         self,
         t: Tick,
         x: int,
         w: int,
-        h: int = 800,
-        info: NoteInfo | None = None,
         _id: int | None = None,
         *,
-        kind: LongAttr,
-        default_x: bool = False,
-        default_width: bool = False,
-        default_height: bool = False,
+        kind: JointKindLike,
     ) -> None:
-        self.info = _copy_info(info)
+        self._info = _copy_info(None)
         self._id = _id
-        self._default_x = default_x
-        self._default_width = default_width
-        self._default_height = default_height
+        self._kind = JointKind.STEP
         self.t = t
         self._info.x = x
         self._info.w = w
-        self._info.h = h
+        self._info.h = 800
         self.kind = kind
-        if not default_width:
-            _check_width(w)
+        _check_width(w)
+
+    @property
+    def kind(self) -> JointKind:
+        return self._kind
+
+    @kind.setter
+    def kind(self, value: JointKindLike) -> None:
+        self._kind = JointKind(value)
+
+
+class AirJoint(Joint, _HeightMixin):
+    def __init__(
+        self,
+        t: Tick,
+        x: int,
+        w: int,
+        h: int,
+        _id: int | None = None,
+        *,
+        kind: JointKindLike,
+    ) -> None:
+        super().__init__(t, x, w, _id=_id, kind=kind)
+        self.h = h
 
 
 class _JointHost:
     _joints: list[Joint]
+    _joint_type: type[Joint] = Joint
 
     @property
     def joints(self) -> list[Joint]:
@@ -71,60 +83,34 @@ class _JointHost:
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
 
-    def _joint_geometry(
-        self,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
-    ) -> tuple[int, int, int, bool, bool, bool]:
-        previous = self._joints[-1] if self._joints else self._begin_info_for_defaults()
-        default_x = x is None
-        default_width = w is None
-        default_height = h is None
-        previous_w = previous.w
-        previous_h = previous.h
-        return (
-            previous.x if x is None else x,
-            previous_w if w is None else w,
-            previous_h if h is None else h,
-            default_x,
-            default_width,
-            default_height,
-        )
-
     def _make_joint(
         self,
         t: Tick,
-        long_attr: LongAttr,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        kind: JointKind,
+        x: int,
+        w: int,
+        h: int,
     ) -> Joint:
-        (
-            joint_x,
-            joint_width,
-            joint_height,
-            default_x,
-            default_width,
-            default_height,
-        ) = self._joint_geometry(x=x, w=w, h=h)
-        return Joint(
+        if issubclass(self._joint_type, AirJoint):
+            return self._joint_type(
+                t,
+                x,
+                w,
+                h,
+                kind=kind,
+            )
+        return self._joint_type(
             t=t,
-            x=joint_x,
-            w=joint_width,
-            h=joint_height,
-            kind=long_attr,
-            default_x=default_x,
-            default_width=default_width,
-            default_height=default_height,
+            x=x,
+            w=w,
+            kind=kind,
         )
 
     def _add_joint(self, joint: Joint) -> None:
+        if type(joint) is not self._joint_type:
+            raise TypeError(f"joint must be {self._joint_type.__name__}")
         _check_tick(joint.t)
-        if not joint._default_width:
-            _check_width(joint.w)
+        _check_width(joint.w)
         previous_tick = int(
             self._joints[-1].t if self._joints else self._begin_info_for_defaults().t
         )
@@ -141,85 +127,77 @@ class _JointHost:
 
         previous_tick = int(begin_info.t)
         for index, joint in enumerate(self._joints):
-            if not isinstance(joint, Joint):
-                raise TypeError(f"joint at index {index} must be Joint")
+            if type(joint) is not self._joint_type:
+                raise TypeError(f"joint at index {index} must be {self._joint_type.__name__}")
             _check_tick(joint.t)
-            if not joint._default_width:
-                _check_width(joint.w)
+            _check_width(joint.w)
             if int(joint.t) <= previous_tick:
                 raise ValueError("joint t must be later than previous joint")
             previous_tick = int(joint.t)
 
-        if self._joints[-1].kind not in (LongAttr.STEP, LongAttr.CONTROL):
+        if self._joints[-1].kind not in (JointKind.STEP, JointKind.CONTROL):
             raise ValueError("long note must end with a step or control joint")
 
     def _add_step(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> None:
         self._add_joint(
             self._make_joint(
                 t,
-                LongAttr.STEP,
-                x=x,
-                w=w,
-                h=h,
+                JointKind.STEP,
+                x,
+                w,
+                h,
             )
         )
 
     def _add_control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> None:
         self._add_joint(
             self._make_joint(
                 t,
-                LongAttr.CONTROL,
-                x=x,
-                w=w,
-                h=h,
+                JointKind.CONTROL,
+                x,
+                w,
+                h,
             )
         )
 
     def _add_curve_control(
         self,
         t: Tick,
-        *,
-        x: int | None = None,
-        w: int | None = None,
-        h: int | None = None,
+        x: int,
+        w: int,
+        h: int,
     ) -> None:
         self._add_joint(
             self._make_joint(
                 t,
-                LongAttr.CURVE_CONTROL,
-                x=x,
-                w=w,
-                h=h,
+                JointKind.CURVE_CONTROL,
+                x,
+                w,
+                h,
             )
         )
 
     def _resolve_joint_info(
         self,
         joint: Joint,
-        previous: NoteInfo,
         note_type: NoteType,
         long_attr: LongAttr,
     ) -> NoteInfo:
-        return joint.info.copy(
+        return joint._info.copy(
             type=note_type,
             long_attr=long_attr,
-            x=previous.x if joint._default_x else joint.x,
-            w=previous.w if joint._default_width else joint.w,
-            h=previous.h if joint._default_height else joint.h,
         )
 
     def _build_long_children(
@@ -234,16 +212,14 @@ class _JointHost:
             self._validate_joints(begin_info)
 
         children: list[Node] = []
-        previous = begin_info
         for index, joint in enumerate(self._joints):
-            long_attr = joint.kind
+            long_attr = joint_kind_to_long_attr(joint.kind)
             if not skip_validation and index == len(self._joints) - 1:
                 long_attr = terminus_attr(joint)
-            jinfo = self._resolve_joint_info(joint, previous, note_type, long_attr)
+            jinfo = self._resolve_joint_info(joint, note_type, long_attr)
             if note_type is NoteType.AIRCRUSH:
                 jinfo = jinfo.copy(option_value=0)
             children.append(Node(info=jinfo, _id=joint._id))
-            previous = jinfo
         return children
 
     def _joint_strs(self) -> list[str]:
@@ -254,9 +230,10 @@ class _JointHost:
                 f"kind={_note_enum_line(j.kind)}",
                 f"x={j.x}",
                 f"w={j.w}",
-                f"h={j.h}",
             ]
-            if j.info.option_value != 0:
-                jbits.append(f"option_value={j.info.option_value}")
-            joint_strs.append(f"Joint({', '.join(jbits)})")
+            if isinstance(j, AirJoint):
+                jbits.append(f"h={j.h}")
+            if j._info.option_value != 0:
+                jbits.append(f"option_value={j._info.option_value}")
+            joint_strs.append(f"{j.__class__.__name__}({', '.join(jbits)})")
         return joint_strs

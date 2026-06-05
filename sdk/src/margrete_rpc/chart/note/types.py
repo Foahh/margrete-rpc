@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import IntEnum, StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
@@ -50,6 +50,32 @@ class LongAttr(IntEnum):
     CURVE_CONTROL = messages_pb2.LONG_ATTR_CURVE_CONTROL
     END = messages_pb2.LONG_ATTR_END
     END_NOACT = messages_pb2.LONG_ATTR_END_NOACT
+
+
+class JointKind(StrEnum):
+    STEP = "step"
+    CONTROL = "control"
+    CURVE_CONTROL = "curve_control"
+
+
+type JointKindLike = JointKind | Literal["step", "control", "curve_control"]
+
+
+JOINT_KIND_TO_LONG_ATTR = {
+    JointKind.STEP: LongAttr.STEP,
+    JointKind.CONTROL: LongAttr.CONTROL,
+    JointKind.CURVE_CONTROL: LongAttr.CURVE_CONTROL,
+}
+
+JOINT_KIND_FROM_LONG_ATTR = {value: key for key, value in JOINT_KIND_TO_LONG_ATTR.items()}
+
+
+def joint_kind_to_long_attr(value: JointKindLike) -> LongAttr:
+    return JOINT_KIND_TO_LONG_ATTR[JointKind(value)]
+
+
+def joint_kind_from_long_attr(value: LongAttr) -> JointKind:
+    return JOINT_KIND_FROM_LONG_ATTR[LongAttr(value)]
 
 
 class ExAttr(IntEnum):
@@ -154,9 +180,13 @@ __all__ = [
     "ExtapDirectionLike",
     "FlickDirection",
     "FlickDirectionLike",
+    "JointKind",
+    "JointKindLike",
     "LongAttr",
     "NoteInfo",
     "NoteType",
     "direction_from_proto",
     "direction_to_proto",
+    "joint_kind_from_long_attr",
+    "joint_kind_to_long_attr",
 ]

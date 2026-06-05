@@ -5,6 +5,7 @@ from margrete_rpc import (
     AirCrush,
     AirDirection,
     AirHold,
+    AirJoint,
     AirSlide,
     BeatEvent,
     BpmEvent,
@@ -21,6 +22,7 @@ from margrete_rpc import (
     FlickDirection,
     Hold,
     Joint,
+    JointKind,
     LongAttr,
     N,
     Node,
@@ -676,9 +678,9 @@ def test_all_high_level_notes_expose_validate():
         Damage(t=0, x=4, w=2),
         Extap(t=0, x=4, w=2),
         Flick(t=0, x=4, w=2),
-        Slide(t=0, x=4, w=2).step(960),
-        Hold(t=0, x=4, w=2).step(960),
-        AirCrush(t=0, x=4, w=2, h=80, density=5).control(960),
+        Slide(t=0, x=4, w=2).step(960, x=4, w=2),
+        Hold(t=0, x=4, w=2).step(960, x=4, w=2),
+        AirCrush(t=0, x=4, w=2, h=80, density=5).control(960, x=4, w=2, h=80),
     ]
 
     for note in notes:
@@ -881,7 +883,7 @@ def test_long_note_requires_at_least_one_serializable_joint():
 
 
 def test_long_note_validate_catches_invalid_begin_geometry():
-    slide = Slide(t=0, x=4, w=2).step(960)
+    slide = Slide(t=0, x=4, w=2).step(960, x=4, w=2)
     slide._info.w = 0
 
     with pytest.raises(ValueError, match="w must be at least 1"):
@@ -902,7 +904,7 @@ def test_note_validate_catches_invalid_attached_air_builder():
 
 
 def test_note_validate_checks_attached_air_against_anchor_tick():
-    tap = Tap(t=1000, x=4, w=2).air(AirSlide(h=80).step(960))
+    tap = Tap(t=1000, x=4, w=2).air(AirSlide(h=80).step(960, x=4, w=2, h=80))
 
     with pytest.raises(ValueError, match="joint t must be later than previous joint"):
         tap.validate()
@@ -941,9 +943,9 @@ def test_slide_rejects_non_increasing_ticks():
         slide.step(960, x=6, w=4)
 
 
-def test_hold_step_promotes_to_end_and_defaults_geometry_to_begin():
+def test_hold_step_promotes_to_end_with_explicit_geometry():
     hold = Hold(t=0, x=4, w=2)
-    node = hold.step(960).to_node()
+    node = hold.step(960, x=4, w=2).to_node()
 
     assert node.type is NoteType.HOLD
     assert len(node.children) == 1
@@ -953,19 +955,23 @@ def test_hold_step_promotes_to_end_and_defaults_geometry_to_begin():
 
 
 def test_hold_has_a_single_end_and_step_replaces_it():
-    hold = Hold(t=0, x=4, w=2).step(960).step(1920)
+    hold = Hold(t=0, x=4, w=2).step(960, x=4, w=2).step(1920, x=6, w=2)
     node = hold.to_node()
 
     assert len(node.children) == 1
     assert node.children[0].long_attr is LongAttr.END
     assert node.children[0].t == 1920
+    assert node.children[0].x == 6
 
     with pytest.raises(ValueError, match="must be later"):
-        Hold(t=1000, x=4, w=2).step(2000).step(1000)
+        Hold(t=1000, x=4, w=2).step(2000, x=4, w=2).step(1000, x=4, w=2)
 
 
-def test_slide_joints_default_geometry_to_previous_joint():
-    slide = Slide(t=0, x=4, w=2).control(480).step(960).curve_control(1440).step(1920)
+def test_slide_joints_use_explicit_geometry():
+    slide = Slide(t=0, x=4, w=2).control(480, 5, 2).step(960, 6, 3)
+    with pytest.deprecated_call():
+        slide.curve_control(1440, 7, 4)
+    slide.step(1920, 8, 5)
 
     node = slide.to_node()
 
@@ -976,36 +982,38 @@ def test_slide_joints_default_geometry_to_previous_joint():
         LongAttr.END,
     ]
     assert [(child.x, child.w, child.h) for child in node.children] == [
-        (4, 2, 800),
-        (4, 2, 800),
-        (4, 2, 800),
-        (4, 2, 800),
+        (5, 2, 800),
+        (6, 3, 800),
+        (7, 4, 800),
+        (8, 5, 800),
     ]
 
 
 def test_joint_kind_is_public_editable_property():
-    slide = Slide(t=0, x=4, w=2).control(480).step(960)
+    slide = Slide(t=0, x=4, w=2).control(480, x=4, w=2).step(960, x=4, w=2)
 
-    assert slide.joints[0].kind is LongAttr.CONTROL
-    slide.joints[0].kind = LongAttr.STEP
+    assert slide.joints[0].kind is JointKind.CONTROL
+    slide.joints[0].kind = "step"
 
     node = slide.to_node()
 
-    assert slide.joints[0].kind is LongAttr.STEP
+    assert slide.joints[0].kind is JointKind.STEP
     assert [child.long_attr for child in node.children] == [LongAttr.STEP, LongAttr.END]
 
 
-def test_joint_does_not_keep_public_long_attr_name():
-    joint = Joint(t=960, x=8, w=2, kind=LongAttr.STEP)
+def test_joint_does_not_keep_public_proto_names():
+    joint = Joint(t=960, x=8, w=2, kind=JointKind.STEP)
 
     assert not hasattr(joint, "long_attr")
+    assert not hasattr(joint, "type")
+    assert not hasattr(joint, "info")
     with pytest.raises(TypeError):
         Joint(t=960, x=8, w=2, long_attr=LongAttr.STEP)
 
 
 def test_public_joints_list_can_be_mutated_and_validated():
     slide = Slide(t=0, x=4, w=2)
-    slide.joints.append(Joint(t=960, x=8, w=2, kind=LongAttr.STEP))
+    slide.joints.append(Joint(t=960, x=8, w=2, kind="step"))
 
     slide.validate()
     node = slide.to_node()
@@ -1019,35 +1027,60 @@ def test_public_joints_list_can_be_mutated_and_validated():
         slide.validate()
 
 
-def test_air_long_joints_default_geometry_to_previous_joint():
-    slide_tap = Tap(t=0, x=4, w=2).air(
-        AirSlide(h=80).control(480).step(960).curve_control(1440).control(1920)
-    )
-    hold_tap = Tap(t=0, x=6, w=2).air(AirHold(h=120).step(480).control(960))
+def test_public_joints_list_rejects_wrong_joint_shape():
+    slide = Slide(t=0, x=4, w=2)
+    slide.joints.append(AirJoint(t=960, x=8, w=2, h=80, kind="step"))
+
+    with pytest.raises(TypeError, match="Joint"):
+        slide.validate()
+
+    tap = Tap(t=0, x=4, w=2).air(AirSlide(h=80))
+    air_slide = tap._air
+    assert isinstance(air_slide, AirSlide)
+    air_slide.joints.append(Joint(t=960, x=8, w=2, kind="step"))
+
+    with pytest.raises(TypeError, match="AirJoint"):
+        tap.validate()
+
+
+def test_air_long_joints_use_explicit_geometry():
+    slide_tap = Tap(t=0, x=4, w=2).air(AirSlide(h=80).control(480, 4, 2, 80).step(960, 5, 2, 90))
+    air_slide = slide_tap._air
+    assert isinstance(air_slide, AirSlide)
+    with pytest.deprecated_call():
+        air_slide.curve_control(1440, 6, 2, 100)
+    air_slide.control(1920, 7, 2, 110)
+    assert all(isinstance(joint, AirJoint) for joint in air_slide.joints)
+    hold_tap = Tap(t=0, x=6, w=2).air(AirHold(h=120).step(480, 6, 2, 120).control(960, 7, 2, 130))
 
     slide_node = slide_tap.to_node().children[0].children[0]
     hold_node = hold_tap.to_node().children[0].children[0]
 
     assert [(child.x, child.w, child.h) for child in slide_node.children] == [
         (4, 2, 80),
-        (4, 2, 80),
-        (4, 2, 80),
-        (4, 2, 80),
+        (5, 2, 90),
+        (6, 2, 100),
+        (7, 2, 110),
     ]
     assert [(child.x, child.w, child.h) for child in hold_node.children] == [
         (6, 2, 120),
-        (6, 2, 120),
+        (7, 2, 130),
     ]
 
 
-def test_air_crush_joints_default_geometry_to_previous_joint():
-    crush = AirCrush(t=0, x=4, w=2, h=80, density=0).control(480).control(960)
+def test_air_crush_joints_use_explicit_geometry():
+    crush = (
+        AirCrush(t=0, x=4, w=2, h=80, density=0)
+        .control(480, x=4, w=2, h=80)
+        .control(960, x=6, w=3, h=100)
+    )
 
     node = crush.to_node()
 
+    assert all(isinstance(joint, AirJoint) for joint in crush.joints)
     assert [(child.long_attr, child.x, child.w, child.h) for child in node.children] == [
         (LongAttr.CONTROL, 4, 2, 80),
-        (LongAttr.END, 4, 2, 80),
+        (LongAttr.END, 6, 3, 100),
     ]
 
 
@@ -1066,8 +1099,8 @@ def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
 
 
 def test_control_terminus_differs_between_air_slide_and_ground_slide():
-    air_slide = Tap(t=0, x=4, w=2).air(AirSlide(h=80).control(480))
-    slide = Slide(t=0, x=4, w=2).control(480)
+    air_slide = Tap(t=0, x=4, w=2).air(AirSlide(h=80).control(480, x=4, w=2, h=80))
+    slide = Slide(t=0, x=4, w=2).control(480, x=4, w=2)
 
     air_slide_node = air_slide.to_node().children[0].children[0]
     slide_node = slide.to_node()
@@ -1209,43 +1242,26 @@ def test_long_note_begin_geometry_is_backed_by_note_info():
     assert slide.w == 2
 
 
-def test_long_note_joint_geometry_is_backed_by_note_info():
+def test_long_note_joint_geometry_is_backed_by_internal_storage_without_proto_kind():
     slide = Slide(t=960, x=0, w=4).step(1440, x=6, w=3)
     joint = slide.joints[0]
 
-    assert joint.info.t == 1440
-    assert joint.info.x == 6
-    assert joint.info.w == 3
-    assert joint.info.h == 800
-    assert joint.info.long_attr is LongAttr.STEP
+    assert not hasattr(joint, "info")
+    assert joint.t == 1440
+    assert joint.x == 6
+    assert joint.w == 3
+    assert not hasattr(joint, "h")
+    assert joint.kind is JointKind.STEP
 
     joint.t = 1680
     joint.x = 7
     joint.w = 2
-    joint.h = 700
-    joint.kind = LongAttr.CONTROL
-    joint.info.option_value = 9
+    joint.kind = JointKind.CONTROL
 
-    assert joint.info.t == 1680
-    assert joint.info.x == 7
-    assert joint.info.w == 2
-    assert joint.info.h == 700
-    assert joint.info.long_attr is LongAttr.CONTROL
-    assert joint.info.option_value == 9
-
-    joint.info.t = 1920
-    joint.info.x = 8
-    joint.info.w = 1
-    joint.info.h = 600
-    joint.info.long_attr = LongAttr.END
-    joint.info.option_value = 5
-
-    assert joint.t == 1920
-    assert joint.x == 8
-    assert joint.w == 1
-    assert joint.h == 600
-    assert joint.kind is LongAttr.END
-    assert joint.info.option_value == 5
+    assert joint.t == 1680
+    assert joint.x == 7
+    assert joint.w == 2
+    assert joint.kind is JointKind.CONTROL
 
 
 def test_long_note_exposes_joints_for_iteration():
@@ -1253,8 +1269,8 @@ def test_long_note_exposes_joints_for_iteration():
 
     assert slide.joints is slide._joints
     assert [joint.kind for joint in slide.joints] == [
-        LongAttr.STEP,
-        LongAttr.STEP,
+        JointKind.STEP,
+        JointKind.STEP,
     ]
     assert slide.joints[-1].t == 1920
 
@@ -1271,7 +1287,6 @@ def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
     restored = wrapped.to_node()
 
     assert isinstance(wrapped, Slide)
-    assert joint.info.t == 1680
     assert restored.children[0].t == 1680
     assert restored.children[0].til == 2
     assert restored.children[0].ex_attr is ExAttr.HAS_NOTE

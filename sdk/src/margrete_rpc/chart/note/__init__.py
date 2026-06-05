@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from ._air import Air, AirHold, AirSlide
 from ._ground import Damage, Extap, Flick, Tap
-from ._joint import Joint
+from ._joint import AirJoint, Joint
 from ._long import AirCrush, Hold, Slide
 from ._shared import Note, UnsupportedNoteTree
 from ._wrap import wrap_node
@@ -24,6 +24,8 @@ from .direction import (
 from .node import N, Node
 from .types import (
     ExAttr,
+    JointKind,
+    JointKindLike,
     LongAttr,
     NoteInfo,
     NoteType,
@@ -33,6 +35,7 @@ __all__ = [
     "Air",
     "AirCrush",
     "AirHold",
+    "AirJoint",
     "AirSlide",
     "Color",
     "ColorLike",
@@ -52,6 +55,8 @@ __all__ = [
     "Note",
     "Hold",
     "Joint",
+    "JointKind",
+    "JointKindLike",
     "N",
     "Node",
     "LongAttr",
