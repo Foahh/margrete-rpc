@@ -1,6 +1,6 @@
 import pytest
 
-from margrete_rpc import AirSlide, Hold, M, Margrete, NoteInfo, Slide, Tap
+from margrete_rpc import AirSlide, Hold, Margrete, N, NoteInfo, Slide, Tap
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart.time import pop_tick_resolver, push_tick_resolver, resolve_tick
 
@@ -52,7 +52,7 @@ def test_noteinfo_is_the_resolution_sink():
     info.t = (0, 1)
     assert info.t == BEAT
     assert info.copy(t=(2, 0)).t == 2 * BAR
-    # Plain ints pass straight through, including negatives (MgNote stays permissive).
+    # Plain ints pass straight through, including negatives (Node stays permissive).
     info.t = -5
     assert info.t == -5
 
@@ -76,13 +76,13 @@ def test_note_slide_and_hold_steps_accept_positions():
     assert int(hold.joints[-1].t) == BAR
 
 
-def test_mg_factory_and_setter_accept_positions():
-    note = M.tap((2, 0), 4, 2)
+def test_node_factory_and_setter_accept_positions():
+    note = N.tap((2, 0), 4, 2)
     assert note.t == 2 * BAR
     note.t = (0, 1, 0)
     assert note.t == BEAT
 
-    seg = M.slide_begin((1, 0), 0, 4)
+    seg = N.slide_begin((1, 0), 0, 4)
     assert seg.t == BAR
 
 

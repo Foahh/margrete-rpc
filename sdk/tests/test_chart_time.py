@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     TICKS_PER_BEAT,
     d2t,
@@ -12,7 +13,6 @@ from margrete_rpc.chart.time import (
     t2d,
     t2p,
 )
-from margrete_rpc.chart.events import BeatEvent
 
 
 def test_t2p_origin_4_4():

@@ -4,9 +4,9 @@ import threading
 
 import pytest
 
-from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient, decode_frame, encode_frame
+from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
 
 
 def test_encode_decode_frame_round_trips_envelope():

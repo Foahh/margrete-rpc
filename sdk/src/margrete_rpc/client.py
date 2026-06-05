@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
+from margrete_rpc.chart import Chart
 from margrete_rpc.discovery import resolve_endpoint
-from margrete_rpc.chart import Chart, MgChart
 from margrete_rpc.trace import NoopTracer, Tracer
 from margrete_rpc.transaction import EditTransaction
 
@@ -108,11 +108,7 @@ class Margrete:
                 req.event_scan_til.extend(event_scan_til)
             response = self._transport.request(messages_pb2.Envelope(begin_edit_request=req))
         begin = response.begin_edit_response
-        chart = (
-            MgChart.from_begin_edit_response(begin)
-            if raw
-            else Chart.from_begin_edit_response(begin)
-        )
+        chart = Chart.from_begin_edit_response(begin, raw=raw)
         return EditTransaction(
             name=name,
             transport=self._transport,

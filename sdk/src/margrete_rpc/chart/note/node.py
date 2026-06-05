@@ -19,19 +19,19 @@ from .types import (
 
 
 def _info_property(name: str):
-    def getter(self: MgNote):
+    def getter(self: Node):
         return getattr(self.info, name)
 
-    def setter(self: MgNote, value):
+    def setter(self: Node, value):
         setattr(self.info, name, value)
 
     return property(getter, setter)
 
 
 @dataclass
-class MgNote:
+class Node:
     info: NoteInfo = field(default_factory=NoteInfo)
-    children: list[MgNote] = field(default_factory=list)
+    children: list[Node] = field(default_factory=list)
     _id: int | None = field(default=None)
 
     type = _info_property("type")
@@ -47,16 +47,16 @@ class MgNote:
     til = _info_property("til")
 
     def __str__(self) -> str:
-        return _format_mg_note(self, indent=0)
+        return _format_node(self, indent=0)
 
     __repr__ = __str__
 
-    def child(self, *children: MgNote) -> MgNote:
+    def child(self, *children: Node) -> Node:
         self.children = list(children)
         return self
 
     @classmethod
-    def from_proto(cls, proto: messages_pb2.Note) -> MgNote:
+    def from_proto(cls, proto: messages_pb2.Note) -> Node:
         return cls(
             _id=proto.id if proto.HasField("id") else None,
             info=NoteInfo(
@@ -96,22 +96,22 @@ class MgNote:
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
 
-    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> MgNote:
-        from .shift import _shift_mg
+    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Node:
+        from .shift import _shift_node
 
-        return _shift_mg(self, t=t, x=x, w=w, h=h)
+        return _shift_node(self, t=t, x=x, w=w, h=h)
 
 
-def _format_mg_note(note: MgNote, *, indent: int = 0) -> str:
+def _format_node(note: Node, *, indent: int = 0) -> str:
     prefix = "  " * indent
     id_part = f"id={note._id}, " if note._id is not None else ""
-    line = f"{prefix}M({id_part}info={note.info!s})"
+    line = f"{prefix}N({id_part}info={note.info!s})"
     if not note.children:
         return line
-    return line + "\n" + "\n".join(_format_mg_note(c, indent=indent + 1) for c in note.children)
+    return line + "\n" + "\n".join(_format_node(c, indent=indent + 1) for c in note.children)
 
 
-class M:
+class N:
     @staticmethod
     def tap(
         t: Tick,
@@ -121,10 +121,10 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=NoteType.TAP,
                 t=t,
@@ -144,10 +144,10 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=NoteType.EXTAP,
                 t=t,
@@ -167,10 +167,10 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=NoteType.FLICK,
                 t=t,
@@ -190,10 +190,10 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=NoteType.DAMAGE,
                 t=t,
@@ -215,10 +215,10 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=note_type,
                 long_attr=long_attr,
@@ -239,8 +239,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.HOLD, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.HOLD, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def hold_end(
@@ -251,8 +251,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.HOLD, LongAttr.END, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.HOLD, LongAttr.END, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def slide_begin(
@@ -263,8 +263,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def slide_step(
@@ -275,8 +275,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.SLIDE, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.SLIDE, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def slide_control(
@@ -287,8 +287,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(
+    ) -> Node:
+        return N._segment(
             NoteType.SLIDE,
             LongAttr.CONTROL,
             t,
@@ -308,8 +308,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(
+    ) -> Node:
+        return N._segment(
             NoteType.SLIDE,
             LongAttr.CURVE_CONTROL,
             t,
@@ -329,8 +329,8 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.SLIDE, LongAttr.END, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.SLIDE, LongAttr.END, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air(
@@ -341,10 +341,10 @@ class M:
         h: int = 800,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=NoteType.AIR,
                 t=t,
@@ -364,8 +364,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.AIRSLIDE, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.AIRSLIDE, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air_slide_step(
@@ -376,8 +376,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.AIRSLIDE, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.AIRSLIDE, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air_slide_control(
@@ -388,8 +388,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(
+    ) -> Node:
+        return N._segment(
             NoteType.AIRSLIDE,
             LongAttr.CONTROL,
             t,
@@ -409,8 +409,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(
+    ) -> Node:
+        return N._segment(
             NoteType.AIRSLIDE,
             LongAttr.CURVE_CONTROL,
             t,
@@ -430,8 +430,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.AIRSLIDE, LongAttr.END, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.AIRSLIDE, LongAttr.END, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air_slide_end_noact(
@@ -442,8 +442,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(
+    ) -> Node:
+        return N._segment(
             NoteType.AIRSLIDE,
             LongAttr.END_NOACT,
             t,
@@ -463,8 +463,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.AIRHOLD, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.AIRHOLD, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air_hold_step(
@@ -475,8 +475,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.AIRHOLD, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.AIRHOLD, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air_hold_end(
@@ -487,8 +487,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(NoteType.AIRHOLD, LongAttr.END, t, x, w, h, til=til, **kwargs)
+    ) -> Node:
+        return N._segment(NoteType.AIRHOLD, LongAttr.END, t, x, w, h, til=til, **kwargs)
 
     @staticmethod
     def air_hold_end_noact(
@@ -499,8 +499,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._segment(
+    ) -> Node:
+        return N._segment(
             NoteType.AIRHOLD,
             LongAttr.END_NOACT,
             t,
@@ -522,10 +522,10 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
+    ) -> Node:
         if til is not None:
             kwargs["til"] = til
-        return MgNote(
+        return Node(
             info=NoteInfo(
                 type=NoteType.AIRCRUSH,
                 long_attr=long_attr,
@@ -548,8 +548,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._air_crush_segment(
+    ) -> Node:
+        return N._air_crush_segment(
             LongAttr.BEGIN,
             t,
             x,
@@ -570,8 +570,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._air_crush_segment(
+    ) -> Node:
+        return N._air_crush_segment(
             LongAttr.CONTROL,
             t,
             x,
@@ -592,8 +592,8 @@ class M:
         *,
         til: int | None = None,
         **kwargs,
-    ) -> MgNote:
-        return M._air_crush_segment(
+    ) -> Node:
+        return N._air_crush_segment(
             LongAttr.END,
             t,
             x,

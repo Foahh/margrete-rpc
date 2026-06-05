@@ -5,6 +5,7 @@ from typing import Literal
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
+
 class AirCrushColor(StrEnum):
     DEFAULT = "default"
     RED = "red"

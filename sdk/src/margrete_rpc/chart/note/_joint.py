@@ -3,8 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..time import Tick
-from .mg import MgNote
-from .types import LongAttr, NoteInfo, NoteType
 from ._shared import (
     _check_tick,
     _check_width,
@@ -14,6 +12,8 @@ from ._shared import (
     _info_property,
     _note_enum_line,
 )
+from .node import Node
+from .types import LongAttr, NoteInfo, NoteType
 
 
 class Joint(_GeometryInfoMixin, _HeightMixin):
@@ -229,11 +229,11 @@ class _JointHost:
         begin_info: NoteInfo,
         *,
         skip_validation: bool = False,
-    ) -> list[MgNote]:
+    ) -> list[Node]:
         if not skip_validation:
             self._validate_joints(begin_info)
 
-        children: list[MgNote] = []
+        children: list[Node] = []
         previous = begin_info
         for index, joint in enumerate(self._joints):
             long_attr = joint.kind
@@ -242,7 +242,7 @@ class _JointHost:
             jinfo = self._resolve_joint_info(joint, previous, note_type, long_attr)
             if note_type is NoteType.AIRCRUSH:
                 jinfo = jinfo.copy(option_value=0)
-            children.append(MgNote(info=jinfo, _id=joint._id))
+            children.append(Node(info=jinfo, _id=joint._id))
             previous = jinfo
         return children
 

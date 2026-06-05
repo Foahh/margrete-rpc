@@ -4,7 +4,7 @@ from enum import IntEnum, StrEnum
 from typing import Any, Protocol, Self, runtime_checkable
 
 from .direction import direction_from_proto
-from .mg import MgNote
+from .node import Node
 from .types import NoteInfo, NoteType
 
 
@@ -26,7 +26,7 @@ class Note(Protocol):
 
     def validate(self) -> None: ...
 
-    def to_mg(self, *, skip_validation: bool = False) -> MgNote: ...
+    def to_node(self, *, skip_validation: bool = False) -> Node: ...
 
 
 def _note_enum_line(value: IntEnum | StrEnum | int) -> str:
@@ -133,7 +133,9 @@ def _coerce_aircrush_density_value(value: object) -> int:
         from ..time import resolve_density
 
         return resolve_density(value)
-    raise TypeError(f"density must be int or (numerator, denominator) tuple, got {type(value).__name__}")
+    raise TypeError(
+        f"density must be int or (numerator, denominator) tuple, got {type(value).__name__}"
+    )
 
 
 class _GeometryInfoMixin:

@@ -8,24 +8,24 @@ from margrete_rpc import (
     AirHold,
     AirSlide,
     Hold,
-    M,
-    MgNote,
+    N,
+    Node,
     NoteType,
     Slide,
     Tap,
 )
-from margrete_rpc.chart.note import wrap_mg_note
+from margrete_rpc.chart.note import wrap_node
 
 
-def _collect_geometry(note: MgNote) -> list[tuple[int, int, int, int]]:
+def _collect_geometry(note: Node) -> list[tuple[int, int, int, int]]:
     rows = [(int(note.t), note.x, note.w, note.h)]
     for child in note.children:
         rows.extend(_collect_geometry(child))
     return rows
 
 
-def test_mgnote_shift_moves_root_and_nested_children():
-    tree = M.tap(100, 4, 2).child(M.air(100, 4, 2, h=50).child(M.air_slide_begin(100, 4, 2, 40)))
+def test_node_shift_moves_root_and_nested_children():
+    tree = N.tap(100, 4, 2).child(N.air(100, 4, 2, h=50).child(N.air_slide_begin(100, 4, 2, 40)))
     tree.shift(t=5, x=1, w=2, h=10)
     assert _collect_geometry(tree) == [
         (105, 5, 4, 810),
@@ -34,8 +34,8 @@ def test_mgnote_shift_moves_root_and_nested_children():
     ]
 
 
-def test_mgnote_shift_noop_when_all_zero():
-    note = M.tap(10, 4, 2)
+def test_node_shift_noop_when_all_zero():
+    note = N.tap(10, 4, 2)
     before = note.info
     assert note.shift() is note
     assert note.info is before
@@ -102,18 +102,18 @@ def test_note_air_crush_shifts_begin_controls_and_end():
     assert crush.color is AirCrushColor.RED
 
 
-def test_note_shift_then_to_mg_matches_mg_shift_on_wrapped_tree():
+def test_note_shift_then_to_node_matches_node_shift_on_wrapped_tree():
     tap = Tap(t=100, x=4, w=2).air(AirSlide(h=80).step(200, x=8, w=2, h=100))
 
     note_path = copy.deepcopy(tap)
     note_path.shift(t=5, x=1, w=0, h=10)
-    note_geom = _collect_geometry(note_path.to_mg())
+    note_geom = _collect_geometry(note_path.to_node())
 
-    mg_path = wrap_mg_note(tap.to_mg())
-    mg_path.shift(t=5, x=1, w=0, h=10)
-    mg_geom = _collect_geometry(mg_path.to_mg())
+    node_path = wrap_node(tap.to_node())
+    node_path.shift(t=5, x=1, w=0, h=10)
+    node_geom = _collect_geometry(node_path.to_node())
 
-    assert note_geom == mg_geom
+    assert note_geom == node_geom
 
 
 def test_shift_chaining_returns_same_object_and_composes():
@@ -132,7 +132,7 @@ def test_shift_does_not_validate_negative_tick_or_width():
 
 
 def test_shift_preserves_id_and_timeline_id():
-    note = M.tap(1, 2, 1, til=42)
+    note = N.tap(1, 2, 1, til=42)
     note._id = 99
     note.shift(t=3)
     assert note._id == 99

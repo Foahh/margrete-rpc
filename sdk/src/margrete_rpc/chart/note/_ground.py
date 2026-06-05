@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from ..time import Tick
-from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
-from .mg import MgNote
-from .types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._shared import (
     _check_tick,
@@ -14,6 +11,9 @@ from ._shared import (
     _note_enum_line,
     _ShiftMixin,
 )
+from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
+from .node import Node
+from .types import LongAttr, NoteInfo, NoteType
 
 
 class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
@@ -46,8 +46,8 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
     def long_attr(self) -> LongAttr:
         return LongAttr.NONE
 
-    def _base_mg(self) -> MgNote:
-        return MgNote(info=self._info.copy(), _id=self._id)
+    def _base_node(self) -> Node:
+        return Node(info=self._info.copy(), _id=self._id)
 
     def _str_parts(self) -> list[str]:
         return [
@@ -74,12 +74,12 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
         if self._air is not None:
             self._air._validate_with_anchor(self._info)
 
-    def to_mg(self, *, skip_validation: bool = False) -> MgNote:
+    def to_node(self, *, skip_validation: bool = False) -> Node:
         if not skip_validation:
             self.validate()
-        note = self._base_mg()
+        note = self._base_node()
         if self._air is not None:
-            note.children.append(self._air._to_mg(note.info, skip_validation=skip_validation))
+            note.children.append(self._air._to_node(note.info, skip_validation=skip_validation))
         return note
 
 
@@ -125,8 +125,8 @@ class Extap(_GroundNote):
         super().__init__(t, x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.direction = direction
 
-    def _base_mg(self) -> MgNote:
-        note = super()._base_mg()
+    def _base_node(self) -> Node:
+        note = super()._base_node()
         note.direction = self.direction
         return note
 

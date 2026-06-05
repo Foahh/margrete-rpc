@@ -1,6 +1,6 @@
 import pytest
 
-from margrete_rpc import M, Margrete, MgChart, Tap
+from margrete_rpc import Chart, Margrete, N, Tap
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 
@@ -127,9 +127,9 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     with mg.open_edit("append", scan=False) as tx:
         assert tx.current_tick == 480
         assert tx.chart.notes == []
-        assert tx.chart.mg_notes == []
+        assert tx.chart.nodes == []
         tx.chart.notes.append(Tap(480, 2, 1))
-        tx.chart.mg_notes.append(M.tap(720, 4, 1))
+        tx.chart.nodes.append(N.tap(720, 4, 1))
 
     begin_request = transport.requests[0].begin_edit_request
     apply_request = transport.requests[1].apply_edit_request
@@ -162,9 +162,9 @@ def test_scan_false_rejects_existing_note_ids_before_commit_request():
 
     with pytest.raises(ValueError, match="scan=false transactions cannot send existing note ids"):
         with mg.open_edit("bad", scan=False) as tx:
-            note = M.tap(480, 2, 1)
+            note = N.tap(480, 2, 1)
             note._id = 99
-            tx.chart.mg_notes.append(note)
+            tx.chart.nodes.append(note)
 
     assert len(transport.requests) == 1
 
@@ -273,8 +273,8 @@ def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     mg = Margrete(transport=transport)
 
     with mg.open_edit("ids", raw=True) as tx:
-        assert isinstance(tx.chart, MgChart)
-        tx.chart.mg_notes[0].x = 3
+        assert isinstance(tx.chart, Chart)
+        tx.chart.nodes[0].x = 3
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
@@ -320,7 +320,7 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     mg = Margrete(transport=transport)
 
     with mg.open_edit("child", raw=True) as tx:
-        tx.chart.mg_notes[0].children[0].t = 500
+        tx.chart.nodes[0].children[0].t = 500
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
@@ -341,7 +341,7 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     mg = Margrete(transport=transport)
 
     with mg.open_edit("child", raw=True) as tx:
-        tx.chart.mg_notes[0].children.insert(0, M.hold_end(240, 1, 2))
+        tx.chart.nodes[0].children.insert(0, N.hold_end(240, 1, 2))
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False

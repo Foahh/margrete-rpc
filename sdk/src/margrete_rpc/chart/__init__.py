@@ -1,4 +1,4 @@
-from margrete_rpc.chart.chart import Chart, ChartEvents, MgChart, normalize_event_operations
+from margrete_rpc.chart.chart import Chart, ChartEvents, normalize_event_operations
 from margrete_rpc.chart.events import (
     BeatEvent,
     BpmEvent,
@@ -28,15 +28,15 @@ from margrete_rpc.chart.note import (
     Hold,
     Joint,
     LongAttr,
-    M,
-    MgNote,
+    N,
+    Node,
     Note,
     NoteInfo,
     NoteType,
     Slide,
     Tap,
     UnsupportedNoteTree,
-    wrap_mg_note,
+    wrap_node,
 )
 from margrete_rpc.chart.time import (
     TICKS_PER_BEAT,
@@ -73,9 +73,8 @@ __all__ = [
     "Note",
     "Hold",
     "Joint",
-    "M",
-    "MgChart",
-    "MgNote",
+    "N",
+    "Node",
     "LongAttr",
     "NoteInfo",
     "NoteSpeedEvent",
@@ -90,5 +89,5 @@ __all__ = [
     "d2t",
     "normalize_event_operations",
     "t2p",
-    "wrap_mg_note",
+    "wrap_node",
 ]

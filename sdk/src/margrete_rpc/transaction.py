@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart import Chart, ChartEvents, MgChart, MgNote, normalize_event_operations
+from margrete_rpc.chart import Chart, ChartEvents, Node, normalize_event_operations
 from margrete_rpc.chart.time import (
     Position,
     p2t,
@@ -16,28 +16,26 @@ from margrete_rpc.chart.time import (
 from margrete_rpc.trace import NoopTracer, Tracer
 
 
-def _final_notes(chart: Chart | MgChart) -> list[MgNote]:
-    if isinstance(chart, MgChart):
-        return chart.mg_notes
-    return [note.to_mg() for note in chart.notes] + chart.mg_notes
+def _final_notes(chart: Chart) -> list[Node]:
+    return [note.to_node() for note in chart.notes] + chart.nodes
 
 
-def _strip_note_ids(note: MgNote) -> MgNote:
-    return MgNote(
+def _strip_note_ids(note: Node) -> Node:
+    return Node(
         info=note.info.copy(),
         children=[_strip_note_ids(child) for child in note.children],
     )
 
 
-def _final_notes_without_ids(chart: Chart | MgChart) -> list[MgNote]:
+def _final_notes_without_ids(chart: Chart) -> list[Node]:
     return [_strip_note_ids(note) for note in _final_notes(chart)]
 
 
-def _notes_signature(notes: list[MgNote]) -> bytes:
+def _notes_signature(notes: list[Node]) -> bytes:
     return b"\n".join(note.to_proto().SerializeToString() for note in notes)
 
 
-def _event_signature_from_chart(chart: Chart | MgChart) -> bytes:
+def _event_signature_from_chart(chart: Chart) -> bytes:
     ev = chart.events
     bpm = sorted(ev.bpm, key=lambda event: int(event.t))
     beat = sorted(ev.beat, key=lambda event: int(event.bar))
@@ -53,15 +51,15 @@ def _event_signature_from_chart(chart: Chart | MgChart) -> bytes:
     )
 
 
-def _has_existing_note_id(notes: list[MgNote]) -> bool:
+def _has_existing_note_id(notes: list[Node]) -> bool:
     for note in notes:
         if note._id is not None or _has_existing_note_id(note.children):
             return True
     return False
 
 
-def _clone_mg_note(note: MgNote) -> MgNote:
-    return MgNote.from_proto(note.to_proto())
+def _clone_node(note: Node) -> Node:
+    return Node.from_proto(note.to_proto())
 
 
 def _clone_chart_events(events: ChartEvents) -> ChartEvents:
@@ -75,22 +73,22 @@ def _clone_chart_events(events: ChartEvents) -> ChartEvents:
     )
 
 
-def _note_tree_sig(note: MgNote) -> bytes:
+def _note_tree_sig(note: Node) -> bytes:
     return _strip_note_ids(note).to_proto().SerializeToString()
 
 
-def _id_structure(note: MgNote) -> tuple[int | None, tuple]:
+def _id_structure(note: Node) -> tuple[int | None, tuple]:
     return (note._id, tuple(_id_structure(child) for child in note.children))
 
 
-def _children_id_structure(note: MgNote) -> tuple:
+def _children_id_structure(note: Node) -> tuple:
     return tuple(_id_structure(child) for child in note.children)
 
 
 def _append_scanned_note_diffs(
     request: messages_pb2.ApplyEditRequest,
-    orig_notes: list[MgNote],
-    final_notes: list[MgNote],
+    orig_notes: list[Node],
+    final_notes: list[Node],
 ) -> None:
     orig_by_id = {note._id: note for note in orig_notes if note._id is not None}
     final_ids = {note._id for note in final_notes if note._id is not None}
@@ -177,7 +175,7 @@ class EditTransaction:
     name: str
     transport: object
     current_tick: int
-    chart: Chart | MgChart
+    chart: Chart
     scan: bool
     tracer: Tracer | None = None
     tx_type: str = "edit"
@@ -186,7 +184,7 @@ class EditTransaction:
 
     _orig_notes_sig: bytes = b""
     _orig_events_sig: bytes = b""
-    _orig_notes: list[MgNote] | None = None
+    _orig_notes: list[Node] | None = None
     _orig_events: ChartEvents | None = None
     _resolver_token: object | None = None
     _beat_events_token: object | None = None
@@ -206,7 +204,7 @@ class EditTransaction:
         self._resolver_token = push_tick_resolver(self._resolve_position)
 
         if self.scan:
-            self._orig_notes = [_clone_mg_note(note) for note in _final_notes(self.chart)]
+            self._orig_notes = [_clone_node(note) for note in _final_notes(self.chart)]
             self._orig_notes_sig = _notes_signature(_final_notes_without_ids(self.chart))
             normalized = normalize_event_operations(self.chart)
             self._orig_events = _clone_chart_events(normalized.events)

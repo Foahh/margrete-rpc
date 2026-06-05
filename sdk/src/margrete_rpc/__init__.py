@@ -1,11 +1,3 @@
-from margrete_rpc.errors import (
-    MargreteDiscoveryError,
-    MargreteError,
-    MargreteProtocolError,
-    MargreteRemoteError,
-)
-from margrete_rpc.client import Margrete, ServerStatus
-from margrete_rpc.discovery import MargreteInstance, discovery_dir, list_instances
 from margrete_rpc.chart import (
     TICKS_PER_BEAT,
     Air,
@@ -34,9 +26,8 @@ from margrete_rpc.chart import (
     Hold,
     Joint,
     LongAttr,
-    M,
-    MgChart,
-    MgNote,
+    N,
+    Node,
     Note,
     NoteInfo,
     NoteSpeedEvent,
@@ -49,6 +40,14 @@ from margrete_rpc.chart import (
     d2t,
     p2t,
     t2p,
+)
+from margrete_rpc.client import Margrete, ServerStatus
+from margrete_rpc.discovery import MargreteInstance, discovery_dir, list_instances
+from margrete_rpc.errors import (
+    MargreteDiscoveryError,
+    MargreteError,
+    MargreteProtocolError,
+    MargreteRemoteError,
 )
 from margrete_rpc.trace import CallbackTracer, NoopTracer, TraceEvent, Tracer
 
@@ -79,9 +78,8 @@ __all__ = [
     "Note",
     "Hold",
     "Joint",
-    "M",
-    "MgChart",
-    "MgNote",
+    "N",
+    "Node",
     "LongAttr",
     "Margrete",
     "MargreteDiscoveryError",

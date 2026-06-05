@@ -5,8 +5,8 @@ import socket
 import struct
 from dataclasses import dataclass
 
-from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
 from margrete_rpc.trace import NoopTracer, Tracer
 
 MAX_FRAME_SIZE = 16 * 1024 * 1024

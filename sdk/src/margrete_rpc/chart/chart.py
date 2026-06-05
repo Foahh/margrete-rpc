@@ -10,7 +10,7 @@ from margrete_rpc.chart.events import (
     TimelineSpeedEvent,
     _last_by_key,
 )
-from margrete_rpc.chart.note import MgNote, Note, UnsupportedNoteTree, wrap_mg_note
+from margrete_rpc.chart.note import Node, Note, UnsupportedNoteTree, wrap_node
 
 
 @dataclass
@@ -24,35 +24,33 @@ class ChartEvents:
 @dataclass
 class Chart:
     notes: list[Note] = field(default_factory=list)
-    mg_notes: list[MgNote] = field(default_factory=list)
+    nodes: list[Node] = field(default_factory=list)
     events: ChartEvents = field(default_factory=ChartEvents)
 
     @classmethod
-    def from_begin_edit_response(cls, response: messages_pb2.BeginEditResponse) -> Chart:
+    def from_begin_edit_response(
+        cls,
+        response: messages_pb2.BeginEditResponse,
+        *,
+        raw: bool = False,
+    ) -> Chart:
+        if raw:
+            return cls(
+                nodes=[Node.from_proto(note) for note in response.notes],
+                events=_events_from_response(response),
+            )
+
         notes: list[Note] = []
-        mg_notes: list[MgNote] = []
+        nodes: list[Node] = []
         for proto in response.notes:
-            mg_note = MgNote.from_proto(proto)
+            node = Node.from_proto(proto)
             try:
-                notes.append(wrap_mg_note(mg_note))
+                notes.append(wrap_node(node))
             except UnsupportedNoteTree:
-                mg_notes.append(mg_note)
+                nodes.append(node)
         return cls(
             notes=notes,
-            mg_notes=mg_notes,
-            events=_events_from_response(response),
-        )
-
-
-@dataclass
-class MgChart:
-    mg_notes: list[MgNote] = field(default_factory=list)
-    events: ChartEvents = field(default_factory=ChartEvents)
-
-    @classmethod
-    def from_begin_edit_response(cls, response: messages_pb2.BeginEditResponse) -> MgChart:
-        return cls(
-            mg_notes=[MgNote.from_proto(note) for note in response.notes],
+            nodes=nodes,
             events=_events_from_response(response),
         )
 
@@ -66,7 +64,7 @@ def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEven
     )
 
 
-def normalize_event_operations(chart: Chart | MgChart) -> Chart | MgChart:
+def normalize_event_operations(chart: Chart) -> Chart:
     ev = chart.events
     events = ChartEvents(
         bpm=_last_by_key(ev.bpm, lambda event: event.t),
@@ -77,6 +75,4 @@ def normalize_event_operations(chart: Chart | MgChart) -> Chart | MgChart:
         ),
         note_speed=_last_by_key(ev.note_speed, lambda event: event.t),
     )
-    if isinstance(chart, MgChart):
-        return MgChart(mg_notes=chart.mg_notes, events=events)
-    return Chart(notes=chart.notes, mg_notes=chart.mg_notes, events=events)
+    return Chart(notes=chart.notes, nodes=chart.nodes, events=events)
