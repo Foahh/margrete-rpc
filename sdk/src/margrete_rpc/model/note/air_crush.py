@@ -22,7 +22,7 @@ class AirCrushColor(StrEnum):
     VIOLET = "violet"
     PINK = "pink"
     WHITE = "white"
-    GRAY = "gray"
+    BLACK = "black"
     GRASS = "grass"
     SKY_BLUE = "sky_blue"
     COBALT_BLUE = "cobalt_blue"
@@ -44,7 +44,7 @@ type AirCrushColorLike = (
         "violet",
         "pink",
         "white",
-        "gray",
+        "black",
         "grass",
         "sky_blue",
         "cobalt_blue",
@@ -72,7 +72,7 @@ AIR_CRUSH_COLOR_TO_VALUE = {
     AirCrushColor.VIOLET: messages_pb2.AIR_CRUSH_COLOR_VIOLET,
     AirCrushColor.PINK: messages_pb2.AIR_CRUSH_COLOR_PINK,
     AirCrushColor.WHITE: messages_pb2.AIR_CRUSH_COLOR_WHITE,
-    AirCrushColor.GRAY: messages_pb2.AIR_CRUSH_COLOR_GRAY,
+    AirCrushColor.BLACK: messages_pb2.AIR_CRUSH_COLOR_BLACK,
     AirCrushColor.GRASS: messages_pb2.AIR_CRUSH_COLOR_GRASS,
     AirCrushColor.SKY_BLUE: messages_pb2.AIR_CRUSH_COLOR_SKY_BLUE,
     AirCrushColor.COBALT_BLUE: messages_pb2.AIR_CRUSH_COLOR_COBALT_BLUE,

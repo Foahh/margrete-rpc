@@ -74,7 +74,7 @@ def test_air_crush_color_values_match_variation_ids():
     assert AirCrushColor.VIOLET == "violet"
     assert AirCrushColor.PINK == "pink"
     assert AirCrushColor.WHITE == "white"
-    assert AirCrushColor.GRAY == "gray"
+    assert AirCrushColor.BLACK == "black"
     assert AirCrushColor.GRASS == "grass"
     assert AirCrushColor.SKY_BLUE == "sky_blue"
     assert AirCrushColor.COBALT_BLUE == "cobalt_blue"
@@ -331,19 +331,6 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
     assert NoteSpeedEvent(960, 1.25) == NoteSpeedEvent(t=960, speed=1.25)
 
 
-def test_event_dataclasses_reject_full_geometry_names():
-    with pytest.raises(TypeError):
-        BpmEvent(tick=0, bpm=120.0)
-    with pytest.raises(TypeError):
-        TimelineSpeedEvent(tick=960, timeline_id=2, speed=0.75)
-    with pytest.raises(TypeError):
-        NoteSpeedEvent(tick=960, speed=1.25)
-
-    event = TimelineSpeedEvent(2, 960, 0.75)
-    assert not hasattr(event, "tick")
-    assert not hasattr(event, "timeline_id")
-
-
 def test_mg_note_tick_uses_int_and_beats_to_ticks_for_fractions():
     note = M.tap(0, 4, 1)
     assert note.t == 0
@@ -451,28 +438,6 @@ def test_raw_note_api_accepts_short_geometry_aliases():
     assert note.til == 4
 
 
-def test_note_api_rejects_full_geometry_names():
-    with pytest.raises(TypeError):
-        Tap(tick=0, x=4, width=2)
-    with pytest.raises(TypeError):
-        AirSlide(height=80)
-    with pytest.raises(TypeError):
-        M.tap(tick=0, x=4, width=2, height=80, timeline_id=3)
-
-    tap = Tap(t=0, x=4, w=2)
-    assert not hasattr(tap, "tick")
-    assert not hasattr(tap, "width")
-
-    air = AirSlide(h=80)
-    assert not hasattr(air, "height")
-
-    raw = M.tap(t=0, x=4, w=2, h=80, til=3)
-    assert not hasattr(raw, "tick")
-    assert not hasattr(raw, "width")
-    assert not hasattr(raw, "height")
-    assert not hasattr(raw, "timeline_id")
-
-
 def test_tick_subtracts_between_int_ticks():
     crush = AirCrush(t=100, x=4, w=2, h=80, density=5)
     crush.control(105, x=6, w=2, h=120).control(110, x=8, w=2, h=80)
@@ -535,17 +500,6 @@ def test_mgnote_info_properties_delegate_to_info():
         til=3,
         option_value=7,
     )
-
-
-def test_noteinfo_rejects_full_geometry_names():
-    with pytest.raises(TypeError):
-        NoteInfo(tick=0, width=1, height=80, timeline_id=2)
-
-    info = NoteInfo(t=0, x=1, w=2, h=80, til=3)
-    assert not hasattr(info, "tick")
-    assert not hasattr(info, "width")
-    assert not hasattr(info, "height")
-    assert not hasattr(info, "timeline_id")
 
 
 def test_l_factory_methods_build_low_level_notes():

@@ -31,14 +31,6 @@ def _info_property(name: str):
     return property(getter, setter)
 
 
-def _reject_full_geometry_kwargs(kwargs: dict) -> None:
-    full_names = {"tick", "width", "height", "timeline_id"}
-    used = sorted(full_names & kwargs.keys())
-    if used:
-        names = ", ".join(used)
-        raise TypeError(f"use short note geometry names instead: {names}")
-
-
 @dataclass
 class MgNote:
     info: NoteInfo = field(default_factory=NoteInfo)
@@ -133,7 +125,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(
@@ -157,7 +148,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(
@@ -181,7 +171,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(
@@ -205,7 +194,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(
@@ -231,7 +219,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(
@@ -358,7 +345,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(
@@ -540,7 +526,6 @@ class M:
         til: int | None = None,
         **kwargs,
     ) -> MgNote:
-        _reject_full_geometry_kwargs(kwargs)
         if til is not None:
             kwargs["til"] = til
         return MgNote(

@@ -109,7 +109,7 @@ def test_air_crush_color_wire_values_are_named_enum():
     assert messages_pb2.AIR_CRUSH_COLOR_VIOLET == 7
     assert messages_pb2.AIR_CRUSH_COLOR_PINK == 8
     assert messages_pb2.AIR_CRUSH_COLOR_WHITE == 10
-    assert messages_pb2.AIR_CRUSH_COLOR_GRAY == 11
+    assert messages_pb2.AIR_CRUSH_COLOR_BLACK == 11
     assert messages_pb2.AIR_CRUSH_COLOR_GRASS == 12
     assert messages_pb2.AIR_CRUSH_COLOR_SKY_BLUE == 13
     assert messages_pb2.AIR_CRUSH_COLOR_COBALT_BLUE == 14
