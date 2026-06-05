@@ -1,4 +1,5 @@
 from margrete_rpc.chart import (
+    FIELD_WIDTH,
     TICKS_PER_BEAT,
     Air,
     AirCrush,
@@ -41,7 +42,9 @@ from margrete_rpc.chart import (
     TimelineSpeedEvent,
     UnsupportedNoteTree,
     d2t,
+    merge,
     p2t,
+    split,
     t2p,
 )
 from margrete_rpc.client import Margrete, ServerStatus
@@ -76,6 +79,7 @@ __all__ = [
     "Extap",
     "ExtapDirection",
     "ExtapDirectionLike",
+    "FIELD_WIDTH",
     "Flick",
     "FlickDirection",
     "FlickDirectionLike",
@@ -112,4 +116,6 @@ __all__ = [
     "d2t",
     "discovery_dir",
     "list_instances",
+    "merge",
+    "split",
 ]

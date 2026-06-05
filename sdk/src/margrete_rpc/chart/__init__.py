@@ -6,6 +6,7 @@ from margrete_rpc.chart.events import (
     TimelineSpeedEvent,
 )
 from margrete_rpc.chart.note import (
+    FIELD_WIDTH,
     Air,
     AirCrush,
     AirDirection,
@@ -39,6 +40,8 @@ from margrete_rpc.chart.note import (
     Slide,
     Tap,
     UnsupportedNoteTree,
+    merge,
+    split,
     wrap_node,
 )
 from margrete_rpc.chart.time import (
@@ -71,6 +74,7 @@ __all__ = [
     "Extap",
     "ExtapDirection",
     "ExtapDirectionLike",
+    "FIELD_WIDTH",
     "Flick",
     "FlickDirection",
     "FlickDirectionLike",
@@ -93,7 +97,9 @@ __all__ = [
     "TimelineSpeedEvent",
     "UnsupportedNoteTree",
     "d2t",
+    "merge",
     "normalize_event_operations",
+    "split",
     "t2p",
     "wrap_node",
 ]

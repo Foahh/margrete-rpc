@@ -1,39 +1,47 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from .types import NoteInfo
 
-
-def _apply_deltas(info: NoteInfo, *, t: int, x: int, w: int, h: int) -> None:
-    info.t = int(info.t) + t
-    info.x += x
-    info.w += w
-    info.h += h
+type Delta = int | Callable[[int], int]
 
 
-def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
+def _combine(value: int, delta: Delta) -> int:
+    """Apply a delta to a field value: add an int, or map through a callable."""
+    if callable(delta):
+        return delta(int(value))
+    return int(value) + delta
+
+
+def _apply_deltas(info: NoteInfo, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
+    info.t = _combine(info.t, t)
+    info.x = _combine(info.x, x)
+    info.w = _combine(info.w, w)
+    info.h = _combine(info.h, h)
+
+
+def _shift_joint(joint: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .joint import Joint
 
     assert isinstance(joint, Joint)
-    joint._info.t = int(joint._info.t) + t
-    joint._info.x += x
-    joint._info.w += w
-    joint._info.h += h
+    _apply_deltas(joint._info, t=t, x=x, w=w, h=h)
 
 
-def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> None:
+def _shift_attachable_air(air: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .air import Air, AirHold, AirSlide
 
     if isinstance(air, Air):
         return
     if not isinstance(air, (AirSlide, AirHold)):
         raise TypeError(f"expected attachable air, got {type(air).__name__}")
-    air._air_info.h += h
-    air._info.h += h
+    air._air_info.h = _combine(air._air_info.h, h)
+    air._info.h = _combine(air._info.h, h)
     for joint in air._joints:
         _shift_joint(joint, t=t, x=x, w=w, h=h)
 
 
-def _shift_ground(note: object, *, t: int, x: int, w: int, h: int) -> None:
+def _shift_ground(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .ground import Damage, Extap, Flick, Tap
 
     if not isinstance(note, (Tap, Extap, Flick, Damage)):
@@ -43,7 +51,7 @@ def _shift_ground(note: object, *, t: int, x: int, w: int, h: int) -> None:
         _shift_attachable_air(note._air, t=t, x=x, w=w, h=h)
 
 
-def _shift_long_builder(builder: object, *, t: int, x: int, w: int, h: int) -> None:
+def _shift_long_builder(builder: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .long import AirCrush, Hold, Slide
 
     if not isinstance(builder, (Slide, Hold, AirCrush)):
@@ -55,9 +63,25 @@ def _shift_long_builder(builder: object, *, t: int, x: int, w: int, h: int) -> N
         _shift_attachable_air(builder._air, t=t, x=x, w=w, h=h)
 
 
-def _shift_note(note: object, *, t: int, x: int, w: int, h: int) -> object:
-    if t == x == w == h == 0:
+def _shift_air_long(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
+    from .air import AirHold, AirSlide
+
+    if not isinstance(note, (AirSlide, AirHold)):
+        raise TypeError(f"expected air long, got {type(note).__name__}")
+    _apply_deltas(note._info, t=t, x=x, w=w, h=h)
+    note._air_info.h = _combine(note._air_info.h, h)
+    for joint in note._joints:
+        _shift_joint(joint, t=t, x=x, w=w, h=h)
+
+
+def _is_noop(delta: Delta) -> bool:
+    return not callable(delta) and delta == 0
+
+
+def _shift_note(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> object:
+    if _is_noop(t) and _is_noop(x) and _is_noop(w) and _is_noop(h):
         return note
+    from .air import AirHold, AirSlide
     from .ground import Damage, Extap, Flick, Tap
     from .long import AirCrush, Hold, Slide
 
@@ -65,6 +89,8 @@ def _shift_note(note: object, *, t: int, x: int, w: int, h: int) -> object:
         _shift_ground(note, t=t, x=x, w=w, h=h)
     elif isinstance(note, (Slide, Hold, AirCrush)):
         _shift_long_builder(note, t=t, x=x, w=w, h=h)
+    elif isinstance(note, (AirSlide, AirHold)):
+        _shift_air_long(note, t=t, x=x, w=w, h=h)
     else:
         raise TypeError(f"unsupported note type for shift: {type(note).__name__}")
     return note

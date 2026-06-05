@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from ..time import Tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
+from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
+from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
@@ -9,14 +11,12 @@ from .shared import (
     _direction_property,
     _GeometryInfoMixin,
     _note_enum_line,
-    _ShiftMixin,
+    _TransformMixin,
 )
-from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
-from .node import Node
 from .types import LongAttr, NoteInfo, NoteType
 
 
-class _GroundNote(_AirAttachable, _GeometryInfoMixin, _ShiftMixin):
+class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
     def __init__(
         self,
         t: Tick,

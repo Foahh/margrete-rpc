@@ -5,16 +5,17 @@ from typing import Self
 from margrete_rpc._warnings import warnings
 
 from ..time import Tick
+from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _JointHost
+from .node import Node
 from .shared import (
     _copy_info,
     _direction_property,
     _HeightMixin,
     _info_property,
     _note_enum_line,
+    _TransformMixin,
 )
-from .direction import AirDirection, AirDirectionLike
-from .node import Node
 from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
 
 
@@ -83,7 +84,7 @@ class Air:
     __repr__ = __str__
 
 
-class _AttachableAirLong(_HeightMixin, _JointHost):
+class _AttachableAirLong(_HeightMixin, _TransformMixin, _JointHost):
     _note_type: NoteType
     _joint_type = AirJoint
 

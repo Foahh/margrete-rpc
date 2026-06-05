@@ -4,7 +4,14 @@ from margrete_rpc._warnings import warnings
 
 from ..time import Tick, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
+from .color import (
+    ColorLike,
+    ColorValue,
+    color_to_value,
+    color_value_from_proto,
+)
 from .joint import AirJoint, Joint, _JointHost
+from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
@@ -13,19 +20,12 @@ from .shared import (
     _GeometryInfoMixin,
     _HeightMixin,
     _note_enum_line,
-    _ShiftMixin,
+    _TransformMixin,
 )
-from .color import (
-    ColorLike,
-    ColorValue,
-    color_to_value,
-    color_value_from_proto,
-)
-from .node import Node
 from .types import LongAttr, NoteInfo, NoteType
 
 
-class _PlaceableLong(_GeometryInfoMixin, _ShiftMixin, _JointHost):
+class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
     _note_type: NoteType
 
     def __init__(

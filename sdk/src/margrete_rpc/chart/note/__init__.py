@@ -1,11 +1,6 @@
 from __future__ import annotations
 
 from .air import Air, AirHold, AirSlide
-from .ground import Damage, Extap, Flick, Tap
-from .joint import AirJoint, Joint
-from .long import AirCrush, Hold, Slide
-from .shared import Note, UnsupportedNoteTree
-from .wrap import wrap_node
 from .color import (
     Color,
     ColorLike,
@@ -21,7 +16,12 @@ from .direction import (
     FlickDirection,
     FlickDirectionLike,
 )
+from .ground import Damage, Extap, Flick, Tap
+from .joint import AirJoint, Joint
+from .long import AirCrush, Hold, Slide
 from .node import N, Node
+from .shared import FIELD_WIDTH, Note, UnsupportedNoteTree
+from .transform import merge, split
 from .types import (
     ExAttr,
     JointKind,
@@ -30,6 +30,7 @@ from .types import (
     NoteInfo,
     NoteType,
 )
+from .wrap import wrap_node
 
 __all__ = [
     "Air",
@@ -49,6 +50,7 @@ __all__ = [
     "Extap",
     "ExtapDirection",
     "ExtapDirectionLike",
+    "FIELD_WIDTH",
     "Flick",
     "FlickDirection",
     "FlickDirectionLike",
@@ -65,5 +67,7 @@ __all__ = [
     "Slide",
     "Tap",
     "UnsupportedNoteTree",
+    "merge",
+    "split",
     "wrap_node",
 ]

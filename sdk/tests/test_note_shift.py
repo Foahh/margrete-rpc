@@ -93,3 +93,29 @@ def test_shift_does_not_validate_negative_tick_or_width():
     tap.shift(t=-10_000, w=-5)
     assert tap.t == -9995
     assert tap.w == -3
+
+
+def test_shift_callable_maps_every_tick_across_tree():
+    air = AirSlide(h=80).step(200, x=8, w=2, h=100)
+    slide = Slide(t=100, x=0, w=4).step(200, x=2, w=4).air(air)
+    slide.shift(t=lambda v: v * 2)
+    assert slide.t == 200
+    assert slide.joints[0].t == 400
+    assert slide._air.joints[-1].t == 400
+
+
+def test_shift_callable_per_field_mixes_with_int_delta():
+    tap = Tap(t=480, x=4, w=2)
+    tap.shift(t=lambda v: v // 2, x=2)
+    assert tap.t == 240
+    assert tap.x == 6
+
+
+def test_shift_air_slide_standalone_shifts_begin_and_joints():
+    air = AirSlide(h=80).step(200, x=8, w=2, h=100)
+    air._info.t = 100
+    air.shift(t=5, h=10)
+    assert int(air._info.t) == 105
+    assert air._air_info.h == 90
+    assert air.joints[-1].t == 205
+    assert air.joints[-1].h == 110

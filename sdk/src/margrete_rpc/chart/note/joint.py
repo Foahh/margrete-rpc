@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..time import Tick
+from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
@@ -11,7 +12,6 @@ from .shared import (
     _HeightMixin,
     _note_enum_line,
 )
-from .node import Node
 from .types import (
     JointKind,
     JointKindLike,

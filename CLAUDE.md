@@ -45,12 +45,12 @@ ctest -C Debug --output-on-failure
 
 ### SDK (Python)
 
-The Python SDK uses **pytest** for testing and **ruff** for linting/formatting.
+The Python SDK uses **uv** for dependency management, **pytest** for testing and **ruff** for linting/formatting.
 
 **Setup:**
 ```bash
 cd sdk
-pip install -e ".[dev]"  # Editable install with dev dependencies
+uv sync
 ```
 
 **Run tests:**
@@ -218,4 +218,3 @@ Follow conventional commit style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:
 ## User Notes
 
 - **Development philosophy**: The project is not yet published, so cleaner implementation and future maintainability are prioritized over backward compatibility.
-- **Commit messages**: Suggest a concise commit message after task completion (conventional commit style).

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import IntEnum, StrEnum
-from typing import Any, Protocol, Self, runtime_checkable
+from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
 
+from ..time import Tick
 from .direction import direction_from_proto
 from .node import Node
 from .types import NoteInfo, NoteType
+
+FIELD_WIDTH = 16
+
+type Delta = int | Callable[[int], int]
+
+type AlignMode = Literal["round", "floor", "ceil"]
 
 
 class UnsupportedNoteTree(ValueError):
@@ -22,7 +30,27 @@ class Note(Protocol):
     @property
     def type(self) -> NoteType: ...
 
-    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self: ...
+    def shift(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
+
+    def shifted(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
+
+    def scale(self, factor: float, *, pivot: int | Tick = 0) -> Self: ...
+
+    def scaled(self, factor: float, *, pivot: int | Tick = 0) -> Self: ...
+
+    def align(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self: ...
+
+    def aligned(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self: ...
+
+    def flip(self, *, field: int = FIELD_WIDTH) -> Self: ...
+
+    def flipped(self, *, field: int = FIELD_WIDTH) -> Self: ...
+
+    def clone(self) -> Self: ...
+
+    def convert[T: Note](self, target: type[T], **overrides: Any) -> T: ...
+
+    def converted[T: Note](self, target: type[T], **overrides: Any) -> T: ...
 
     def validate(self) -> None: ...
 
@@ -149,8 +177,59 @@ class _HeightMixin:
     h = _info_property("h")
 
 
-class _ShiftMixin:
-    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self:
+class _TransformMixin:
+    _id: int | None
+
+    def shift(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
         from .shift import _shift_note
 
         return _shift_note(self, t=t, x=x, w=w, h=h)
+
+    def shifted(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+        return self.clone().shift(t=t, x=x, w=w, h=h)
+
+    def scale(self, factor: float, *, pivot: int | Tick = 0) -> Self:
+        from .transform import _scale
+
+        return _scale(self, factor, pivot)
+
+    def scaled(self, factor: float, *, pivot: int | Tick = 0) -> Self:
+        return self.clone().scale(factor, pivot=pivot)
+
+    def align(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self:
+        from .transform import _align
+
+        return _align(self, interval, mode)
+
+    def aligned(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self:
+        return self.clone().align(interval, mode=mode)
+
+    def flip(self, *, field: int = FIELD_WIDTH) -> Self:
+        from .transform import _flip
+
+        return _flip(self, field)
+
+    def flipped(self, *, field: int = FIELD_WIDTH) -> Self:
+        return self.clone().flip(field=field)
+
+    def clone(self) -> Self:
+        from .transform import _clone
+
+        return _clone(self)
+
+    def convert[T: Note](self, target: type[T], **overrides: Any) -> T:
+        """Convert this note to ``target`` in place; returns ``self`` reclassed."""
+        from .transform import _convert
+
+        new = _convert(self, target, overrides)
+        keep_id = self._id
+        self.__class__ = type(new)
+        self.__dict__ = new.__dict__
+        self._id = keep_id
+        return cast(T, self)
+
+    def converted[T: Note](self, target: type[T], **overrides: Any) -> T:
+        """Return a detached new note of ``target`` type, leaving this note unchanged."""
+        from .transform import _convert
+
+        return _convert(self, target, overrides)
