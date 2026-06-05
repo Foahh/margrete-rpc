@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from margrete_rpc.chart.time import p2t, t2p, TICKS_PER_BEAT
+from margrete_rpc.chart.time import p2t, t2p, push_beat_events, pop_beat_events, TICKS_PER_BEAT
 from margrete_rpc.chart.events import BeatEvent
 
 
@@ -64,19 +64,26 @@ def test_p2t_rejects_offset_out_of_range():
         p2t(0, 0, 480, beat_events=[])
 
 
-def test_chart_t2p_delegates_to_module():
-    from margrete_rpc.chart.chart import Chart, ChartEvents
+def test_t2p_p2t_use_context_beat_events():
+    events = [BeatEvent(bar=0, beats_per_bar=3, beat_unit=4)]
+    token = push_beat_events(events)
+    try:
+        # 3/4: bar length = 3 * 480 = 1440
+        assert t2p(1440) == (1, 0, 0)
+        assert p2t(1) == 1440
+    finally:
+        pop_beat_events(token)
+    # After popping, falls back to 4/4 default
+    assert t2p(1920) == (1, 0, 0)
 
-    chart = Chart(events=ChartEvents(beat=[BeatEvent(0, 4, 4)]))
-    assert chart.t2p(480) == (0, 1, 0)
 
-
-def test_chart_p2t_bar_beat_offset():
-    from margrete_rpc.chart.chart import MgChart
-
-    chart = MgChart()
-    assert chart.p2t(1) == TICKS_PER_BEAT
-    assert chart.p2t(0, 1, 0) == 480
+def test_explicit_beat_events_override_context():
+    events_3_4 = [BeatEvent(bar=0, beats_per_bar=3, beat_unit=4)]
+    token = push_beat_events(events_3_4)
+    try:
+        assert t2p(1920, beat_events=[]) == (1, 0, 0)  # explicit [] => 4/4
+    finally:
+        pop_beat_events(token)
 
 
 def test_t2p_rejects_duplicate_beat_bar():
@@ -89,16 +96,14 @@ def test_t2p_rejects_duplicate_beat_bar():
         t2p(0, beat_events=events)
 
 
-def test_chart_t2p_rejects_duplicate_beat_bar():
-    from margrete_rpc.chart.chart import Chart, ChartEvents
-
-    chart = Chart(
-        events=ChartEvents(
-            beat=[
-                BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
-                BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
-            ]
-        )
-    )
-    with pytest.raises(ValueError, match="duplicate BeatEvent bar 0"):
-        chart.t2p(0)
+def test_t2p_context_rejects_duplicate_beat_bar():
+    events = [
+        BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
+        BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
+    ]
+    token = push_beat_events(events)
+    try:
+        with pytest.raises(ValueError, match="duplicate BeatEvent bar 0"):
+            t2p(0)
+    finally:
+        pop_beat_events(token)

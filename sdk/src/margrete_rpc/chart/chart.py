@@ -3,9 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart.time import Position
-from margrete_rpc.chart.time import p2t as _p2t
-from margrete_rpc.chart.time import t2p as _t2p
 from margrete_rpc.chart.events import (
     BeatEvent,
     BpmEvent,
@@ -46,12 +43,6 @@ class Chart:
             events=_events_from_response(response),
         )
 
-    def t2p(self, tick: int) -> Position:
-        return _t2p(tick, beat_events=self.events.beat)
-
-    def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
-        return _p2t(bar, beat, offset, beat_events=self.events.beat)
-
 
 @dataclass
 class MgChart:
@@ -64,12 +55,6 @@ class MgChart:
             mg_notes=[MgNote.from_proto(note) for note in response.notes],
             events=_events_from_response(response),
         )
-
-    def t2p(self, tick: int) -> Position:
-        return _t2p(tick, beat_events=self.events.beat)
-
-    def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
-        return _p2t(bar, beat, offset, beat_events=self.events.beat)
 
 
 def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEvents:

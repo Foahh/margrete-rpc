@@ -81,15 +81,15 @@ See [`example`](example/) for more complex usage.
 Convert absolute ticks to bar/beat/offset (and back), including time signature changes from `BeatEvent` data:
 
 ```python
-from margrete_rpc import Margrete
+from margrete_rpc import Margrete, p2t, t2p
 
 with Margrete().open_edit("...") as tx:
-    p = tx.chart.t2p(tx.current_tick)       # (bar, beat, offset)
-    tick = tx.chart.p2t(*p)
-    tick = tx.chart.p2t(0, 2, 0)           # bar, beat, offset
+    p = t2p(tx.current_tick)       # (bar, beat, offset) — beat events from context
+    tick = p2t(*p)
+    tick = p2t(0, 2, 0)           # bar, beat, offset
 ```
 
-Module-level (no transaction):
+Outside a transaction, pass `beat_events` explicitly:
 
 ```python
 from margrete_rpc import p2t, t2p

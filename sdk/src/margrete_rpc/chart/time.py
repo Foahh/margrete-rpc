@@ -64,7 +64,7 @@ def _measure_length(ts: _TimeSignature) -> int:
     return TICKS_PER_BEAT // ts.beat_unit * ts.beats_per_bar
 
 
-class ChartTime:
+class TimeCalculator:
     def __init__(self, beat_events: Iterable[BeatEvent]) -> None:
         self._segments = _build_time_signatures(beat_events)
 
@@ -129,8 +129,30 @@ class ChartTime:
         return idx
 
 
-def t2p(tick: int, *, beat_events: Iterable[BeatEvent]) -> Position:
-    return ChartTime(beat_events).t2p(tick)
+_active_beat_events: contextvars.ContextVar[Iterable[BeatEvent] | None] = contextvars.ContextVar(
+    "margrete_active_beat_events", default=None
+)
+
+
+def push_beat_events(beat_events: Iterable[BeatEvent]) -> contextvars.Token:
+    """Install ``beat_events`` as the active beat events; returns a reset token."""
+    return _active_beat_events.set(beat_events)
+
+
+def pop_beat_events(token: contextvars.Token) -> None:
+    """Restore the beat events that were active before the matching ``push_beat_events``."""
+    _active_beat_events.reset(token)
+
+
+def _resolve_beat_events(beat_events: Iterable[BeatEvent] | None) -> Iterable[BeatEvent]:
+    if beat_events is not None:
+        return beat_events
+    ctx = _active_beat_events.get()
+    return ctx if ctx is not None else ()
+
+
+def t2p(tick: int, *, beat_events: Iterable[BeatEvent] | None = None) -> Position:
+    return TimeCalculator(_resolve_beat_events(beat_events)).t2p(tick)
 
 
 def p2t(
@@ -138,9 +160,9 @@ def p2t(
     beat: int = 0,
     offset: int = 0,
     *,
-    beat_events: Iterable[BeatEvent],
+    beat_events: Iterable[BeatEvent] | None = None,
 ) -> int:
-    return ChartTime(beat_events).p2t(bar, beat, offset)
+    return TimeCalculator(_resolve_beat_events(beat_events)).p2t(bar, beat, offset)
 
 
 _active_tick_resolver: contextvars.ContextVar[TickResolver | None] = contextvars.ContextVar(
@@ -198,9 +220,11 @@ __all__ = [
     "Position",
     "Tick",
     "TickResolver",
-    "ChartTime",
+    "TimeCalculator",
     "t2p",
     "p2t",
+    "push_beat_events",
+    "pop_beat_events",
     "resolve_tick",
     "push_tick_resolver",
     "pop_tick_resolver",
