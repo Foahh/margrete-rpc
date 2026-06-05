@@ -62,23 +62,23 @@ enum ExAttr {
   EX_ATTR_EXJDG = 3;
 }
 
-enum AirCrushColor {
-  AIR_CRUSH_COLOR_DEFAULT = 0;
-  AIR_CRUSH_COLOR_RED = 1;
-  AIR_CRUSH_COLOR_ORANGE = 2;
-  AIR_CRUSH_COLOR_YELLOW = 3;
-  AIR_CRUSH_COLOR_GREEN = 4;
-  AIR_CRUSH_COLOR_SKY = 5;
-  AIR_CRUSH_COLOR_BLUE = 6;
-  AIR_CRUSH_COLOR_VIOLET = 7;
-  AIR_CRUSH_COLOR_PINK = 8;
-  AIR_CRUSH_COLOR_WHITE = 10;
-  AIR_CRUSH_COLOR_BLACK = 11;
-  AIR_CRUSH_COLOR_GRASS = 12;
-  AIR_CRUSH_COLOR_SKY_BLUE = 13;
-  AIR_CRUSH_COLOR_COBALT_BLUE = 14;
-  AIR_CRUSH_COLOR_PURPLE = 15;
-  AIR_CRUSH_COLOR_NONE = 35;
+enum Color {
+  COLOR_DEFAULT = 0;
+  COLOR_RED = 1;
+  COLOR_ORANGE = 2;
+  COLOR_YELLOW = 3;
+  COLOR_GREEN = 4;
+  COLOR_SKY = 5;
+  COLOR_BLUE = 6;
+  COLOR_VIOLET = 7;
+  COLOR_PINK = 8;
+  COLOR_WHITE = 10;
+  COLOR_BLACK = 11;
+  COLOR_GRASS = 12;
+  COLOR_SKY_BLUE = 13;
+  COLOR_COBALT_BLUE = 14;
+  COLOR_PURPLE = 15;
+  COLOR_NONE = 35;
 }
 
 message Envelope {
@@ -125,7 +125,7 @@ message Note {
   LongAttr long_attr = 3;
   Direction direction = 4;
   ExAttr ex_attr = 5;
-  AirCrushColor variation_id = 6;
+  Color variation_id = 6;
   int32 x = 7;
   int32 width = 8;
   int32 height = 9;

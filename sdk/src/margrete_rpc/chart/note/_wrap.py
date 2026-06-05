@@ -5,7 +5,7 @@ from ._ground import Damage, Extap, Flick, Tap, _GroundNote
 from ._joint import _JointHost
 from ._long import AirCrush, Hold, Slide
 from ._shared import Note, UnsupportedNoteTree
-from .color import air_crush_color_from_value
+from .color import color_from_value
 from .node import Node
 from .types import LongAttr, NoteInfo, NoteType
 
@@ -233,7 +233,7 @@ def _wrap_air_crush(note: Node) -> AirCrush:
         note.w,
         h=note.h,
         density=note.option_value,
-        color=air_crush_color_from_value(int(note.variation_id)),
+        color=color_from_value(int(note.variation_id)),
         _info=note.info,
         _id=note._id,
     )

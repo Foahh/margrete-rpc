@@ -7,10 +7,11 @@ from typing import Any
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from .color import (
-    AirCrushColor,
-    AirCrushColorLike,
-    AirCrushColorValue,
-    air_crush_color_from_value,
+    Color,
+    ColorLike,
+    ColorValue,
+    color_to_value,
+    color_value_from_proto,
 )
 from .direction import (
     AirDirection,
@@ -66,9 +67,9 @@ def _enum_line(value: IntEnum | StrEnum) -> str:
 class NoteInfo:
     type: NoteType = NoteType.UNKNOWN
     long_attr: LongAttr = LongAttr.NONE
-    direction: DirectionValue = AirDirection.UP
+    direction: Direction = Direction.UP
     ex_attr: ExAttr = ExAttr.NONE
-    variation_id: AirCrushColorValue = 0
+    variation_id: Color = Color.DEFAULT
     x: int = 0
     w: int = 0
     h: int = 80
@@ -91,6 +92,11 @@ class NoteInfo:
             from ..time import resolve_density
 
             value = resolve_density(value)
+        elif name == "direction":
+            note_type = getattr(self, "type", NoteType.UNKNOWN)
+            value = Direction(direction_to_proto(note_type, value))
+        elif name == "variation_id":
+            value = Color(color_to_value(value))
         object.__setattr__(self, name, value)
 
     def copy(self, **changes: Any) -> NoteInfo:
@@ -103,25 +109,19 @@ class NoteInfo:
 
 
 def _direction_line(info: NoteInfo) -> str:
-    d = info.direction
-    if isinstance(d, StrEnum):
-        return _enum_line(d)
-    direction = direction_from_proto(info.type, int(d))
+    direction = direction_from_proto(info.type, int(info.direction))
     if isinstance(direction, StrEnum):
         return _enum_line(direction)
     return repr(direction)
 
 
 def _variation_line(info: NoteInfo) -> str:
-    v = info.variation_id
-    if isinstance(v, StrEnum):
-        return _enum_line(v)
     if info.type is NoteType.AIRCRUSH:
-        color = air_crush_color_from_value(int(v))
+        color = color_value_from_proto(int(info.variation_id))
         return _enum_line(color) if isinstance(color, StrEnum) else repr(color)
     if info.type in (NoteType.AIR, NoteType.AIRSLIDE, NoteType.AIRHOLD):
-        return repr(int(v))
-    return repr(v)
+        return repr(int(info.variation_id))
+    return repr(info.variation_id)
 
 
 def _format_note_info(info: NoteInfo) -> str:
@@ -142,9 +142,9 @@ def _format_note_info(info: NoteInfo) -> str:
 
 
 __all__ = [
-    "AirCrushColor",
-    "AirCrushColorLike",
-    "AirCrushColorValue",
+    "Color",
+    "ColorLike",
+    "ColorValue",
     "AirDirection",
     "AirDirectionLike",
     "Direction",

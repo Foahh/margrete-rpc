@@ -7,9 +7,9 @@ from ._long import AirCrush, Hold, Slide
 from ._shared import Note, UnsupportedNoteTree
 from ._wrap import wrap_node
 from .color import (
-    AirCrushColor,
-    AirCrushColorLike,
-    AirCrushColorValue,
+    Color,
+    ColorLike,
+    ColorValue,
 )
 from .direction import (
     AirDirection,
@@ -34,9 +34,9 @@ __all__ = [
     "AirCrush",
     "AirHold",
     "AirSlide",
-    "AirCrushColor",
-    "AirCrushColorLike",
-    "AirCrushColorValue",
+    "Color",
+    "ColorLike",
+    "ColorValue",
     "AirDirection",
     "AirDirectionLike",
     "Direction",

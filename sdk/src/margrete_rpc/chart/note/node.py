@@ -5,11 +5,6 @@ from dataclasses import dataclass, field
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from ..time import Tick
-from .color import (
-    air_crush_color_from_value,
-    air_crush_color_to_value,
-)
-from .direction import direction_from_proto, direction_to_proto
 from .types import (
     ExAttr,
     LongAttr,
@@ -62,11 +57,9 @@ class Node:
             info=NoteInfo(
                 type=NoteType(proto.type),
                 long_attr=LongAttr(proto.long_attr),
-                direction=direction_from_proto(NoteType(proto.type), proto.direction),
+                direction=proto.direction,
                 ex_attr=ExAttr(proto.ex_attr),
-                variation_id=air_crush_color_from_value(proto.variation_id)
-                if proto.type == messages_pb2.NOTE_TYPE_AIRCRUSH
-                else proto.variation_id,
+                variation_id=proto.variation_id,
                 x=proto.x,
                 w=proto.width,
                 h=proto.height,
@@ -81,9 +74,9 @@ class Node:
         proto = messages_pb2.Note(
             type=int(self.type),
             long_attr=int(self.long_attr),
-            direction=direction_to_proto(self.type, self.direction),
+            direction=int(self.direction),
             ex_attr=int(self.ex_attr),
-            variation_id=air_crush_color_to_value(self.variation_id),
+            variation_id=int(self.variation_id),
             x=self.x,
             width=self.w,
             height=self.h,

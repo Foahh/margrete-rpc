@@ -3,7 +3,6 @@ import pytest
 from margrete_rpc import (
     Air,
     AirCrush,
-    AirCrushColor,
     AirDirection,
     AirHold,
     AirSlide,
@@ -11,7 +10,10 @@ from margrete_rpc import (
     BpmEvent,
     Chart,
     ChartEvents,
+    Color,
+    ColorValue,
     Damage,
+    Direction,
     ExAttr,
     Extap,
     ExtapDirection,
@@ -62,31 +64,33 @@ def test_note_type_factories_set_kind_and_geometry():
 
 
 def test_air_crush_color_values_match_variation_ids():
-    assert AirCrushColor.DEFAULT == "default"
-    assert AirCrushColor.RED == "red"
-    assert AirCrushColor.ORANGE == "orange"
-    assert AirCrushColor.YELLOW == "yellow"
-    assert AirCrushColor.GREEN == "green"
-    assert AirCrushColor.SKY == "sky"
-    assert AirCrushColor.BLUE == "blue"
-    assert AirCrushColor.VIOLET == "violet"
-    assert AirCrushColor.PINK == "pink"
-    assert AirCrushColor.WHITE == "white"
-    assert AirCrushColor.BLACK == "black"
-    assert AirCrushColor.GRASS == "grass"
-    assert AirCrushColor.SKY_BLUE == "sky_blue"
-    assert AirCrushColor.COBALT_BLUE == "cobalt_blue"
-    assert AirCrushColor.PURPLE == "purple"
-    assert AirCrushColor.NONE == "none"
-    none = N.air_crush_begin(1, 2, 1, 80, 0, variation_id=AirCrushColor.NONE)
-    assert none.variation_id is AirCrushColor.NONE
+    assert Color.DEFAULT == messages_pb2.COLOR_DEFAULT
+    assert Color.RED == messages_pb2.COLOR_RED
+    assert Color.ORANGE == messages_pb2.COLOR_ORANGE
+    assert Color.YELLOW == messages_pb2.COLOR_YELLOW
+    assert Color.GREEN == messages_pb2.COLOR_GREEN
+    assert Color.SKY == messages_pb2.COLOR_SKY
+    assert Color.BLUE == messages_pb2.COLOR_BLUE
+    assert Color.VIOLET == messages_pb2.COLOR_VIOLET
+    assert Color.PINK == messages_pb2.COLOR_PINK
+    assert Color.WHITE == messages_pb2.COLOR_WHITE
+    assert Color.BLACK == messages_pb2.COLOR_BLACK
+    assert Color.GRASS == messages_pb2.COLOR_GRASS
+    assert Color.SKY_BLUE == messages_pb2.COLOR_SKY_BLUE
+    assert Color.COBALT_BLUE == messages_pb2.COLOR_COBALT_BLUE
+    assert Color.PURPLE == messages_pb2.COLOR_PURPLE
+    assert Color.NONE == messages_pb2.COLOR_NONE
+    none = N.air_crush_begin(1, 2, 1, 80, 0, variation_id=Color.NONE)
+    assert none.variation_id is Color.NONE
     assert none.to_proto().variation_id == 35
 
 
 def test_note_enums_remain_public_exports():
     from margrete_rpc import (
-        AirCrushColor,
         AirDirection,
+        Color,
+        ColorValue,
+        Direction,
         ExAttr,
         ExtapDirection,
         FlickDirection,
@@ -96,17 +100,19 @@ def test_note_enums_remain_public_exports():
 
     assert NoteType.TAP.value == messages_pb2.NOTE_TYPE_TAP
     assert LongAttr.END_NOACT.value == messages_pb2.LONG_ATTR_END_NOACT
+    assert Direction.DOWN_RIGHT.value == messages_pb2.DIRECTION_DOWNRIGHT
     assert ExtapDirection.UP.value == "up"
     assert AirDirection.DOWN_RIGHT.value == "down_right"
     assert ExtapDirection.OUT_IN.value == "out_in"
     assert FlickDirection.RIGHT.value == "right"
     assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
-    assert AirCrushColor.NONE == "none"
+    assert Color.NONE.value == messages_pb2.COLOR_NONE
+    assert ColorValue.NONE == "none"
 
 
-def test_air_crush_color_enums_are_user_facing_strings():
-    assert AirCrushColor.DEFAULT == "default"
-    assert AirCrushColor.COBALT_BLUE == "cobalt_blue"
+def test_air_crush_color_values_are_user_facing_strings():
+    assert ColorValue.DEFAULT == "default"
+    assert ColorValue.COBALT_BLUE == "cobalt_blue"
 
 
 def test_direction_enum_values_are_user_facing_strings():
@@ -258,7 +264,7 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
-    assert note.direction is AirDirection.UP
+    assert note.direction is Direction.UP
     assert note.to_proto().direction == messages_pb2.DIRECTION_UP
     assert note.ex_attr is ExAttr.NONE
     assert note.t == 960
@@ -296,7 +302,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.BEGIN
-    assert note.direction == ExtapDirection.UP
+    assert note.direction is Direction.UP
     assert note.ex_attr is ExAttr.HAS_NOTE
     assert note.variation_id == 2
     assert note.t == 960
@@ -442,7 +448,7 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
-            direction=AirDirection.UP_LEFT,
+            direction=Direction.UP_LEFT,
             ex_attr=ExAttr.HAS_NOTE,
             variation_id=2,
             x=3,
@@ -482,7 +488,7 @@ def test_node_info_properties_delegate_to_info():
     assert note.info == NoteInfo(
         type=NoteType.TAP,
         long_attr=LongAttr.BEGIN,
-        direction=ExtapDirection.UP,
+        direction=Direction.UP,
         ex_attr=ExAttr.HAS_NOTE,
         variation_id=2,
         x=4,
@@ -502,7 +508,7 @@ def test_l_factory_methods_build_low_level_notes():
     assert N.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
     assert N.hold_end(2, 2, 1).long_attr is LongAttr.END
     assert N.slide_begin(1, 2, 1).type is NoteType.SLIDE
-    assert N.air(1, 2, 1, direction=AirDirection.UP).direction == AirDirection.UP
+    assert N.air(1, 2, 1, direction=AirDirection.UP).direction is Direction.UP
     assert N.air_slide_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
     assert N.air_hold_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
     assert N.air_crush_begin(1, 2, 1, 80, 0x7FFFFFFF).option_value == 0x7FFFFFFF
@@ -514,7 +520,7 @@ def test_node_round_trips_to_protobuf_with_children_and_id():
         info=NoteInfo(
             type=NoteType.SLIDE,
             long_attr=LongAttr.BEGIN,
-            direction=AirDirection.UP_LEFT,
+            direction=Direction.UP_LEFT,
             ex_attr=ExAttr.HAS_NOTE,
             variation_id=2,
             x=3,
@@ -577,7 +583,7 @@ def test_high_level_ground_note_geometry_is_backed_by_note_info():
     assert extap._info.t == 960
     assert extap._info.x == 4
     assert extap._info.w == 2
-    assert extap._info.direction == ExtapDirection.UP
+    assert extap._info.direction is Direction.UP
 
     extap.t = 480
     extap.x = 5
@@ -587,7 +593,7 @@ def test_high_level_ground_note_geometry_is_backed_by_note_info():
     assert extap._info.t == 480
     assert extap._info.x == 5
     assert extap._info.w == 3
-    assert extap._info.direction == ExtapDirection.DOWN
+    assert extap._info.direction is Direction.DOWN
 
     extap._info.t = 240
     extap._info.x = 6
@@ -611,7 +617,7 @@ def test_tap_air_adds_single_air_child():
     assert air.direction is AirDirection.DOWN
     assert len(node.children) == 1
     assert node.children[0].type is NoteType.AIR
-    assert node.children[0].direction == AirDirection.DOWN
+    assert node.children[0].direction is Direction.DOWN
     assert node.children[0].t == tap.t
     assert node.children[0].x == tap.x
     assert node.children[0].w == tap.w
@@ -623,21 +629,21 @@ def test_air_replaces_existing_air_object():
     second = Air(AirDirection.DOWN)
 
     assert tap.air(first).air(second) is tap
-    assert tap.to_node().children[0].direction is AirDirection.DOWN
+    assert tap.to_node().children[0].direction is Direction.DOWN
 
 
 def test_air_direction_shorthand_attaches_plain_air():
     tap = Tap(t=0, x=4, w=2)
 
     assert tap.air(AirDirection.DOWN) is tap
-    assert tap.to_node().children[0].direction is AirDirection.DOWN
+    assert tap.to_node().children[0].direction is Direction.DOWN
 
 
 def test_air_direction_string_shorthand_attaches_plain_air():
     tap = Tap(t=0, x=4, w=2)
 
     assert tap.air("down") is tap
-    assert tap.to_node().children[0].direction is AirDirection.DOWN
+    assert tap.to_node().children[0].direction is Direction.DOWN
 
 
 def test_height_is_absent_from_floor_notes_and_bare_air():
@@ -729,7 +735,7 @@ def test_extap_accepts_only_extap_directions(direction):
     assert extap.direction is direction
 
     extap.direction = direction
-    assert extap._info.direction == direction
+    assert extap._info.direction is Direction[direction.name]
 
 
 def test_extap_accepts_string_direction_and_serializes_to_proto_value():
@@ -769,7 +775,7 @@ def test_flick_accepts_only_flick_directions(direction):
     assert flick.direction is direction
 
     flick.direction = direction
-    assert flick._info.direction == direction
+    assert flick._info.direction is Direction[direction.name]
 
 
 def test_flick_accepts_string_direction_and_serializes_to_proto_value():
@@ -814,7 +820,7 @@ def test_air_accepts_only_air_directions(direction):
     assert air.direction is direction
 
     air.direction = direction
-    assert air._info.direction == direction
+    assert air._info.direction is Direction[direction.name]
 
 
 def test_air_accepts_string_direction_and_serializes_to_proto_value():
@@ -1054,7 +1060,7 @@ def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
 
     air = node.children[0]
     air_long = air.children[0]
-    assert air.direction is AirDirection.UP
+    assert air.direction is Direction.UP
     assert air_long.type is NoteType.AIRSLIDE
     assert air_long.children[-1].long_attr is LongAttr.END_NOACT
 
@@ -1097,7 +1103,7 @@ def test_air_geometry_is_derived_from_anchor_on_serialization():
     air = tap._air
 
     assert isinstance(air, Air)
-    assert air._info.direction == AirDirection.DOWN
+    assert air._info.direction is Direction.DOWN
 
     tap.t = 480
     tap.x = 5
@@ -1106,11 +1112,11 @@ def test_air_geometry_is_derived_from_anchor_on_serialization():
 
     node = tap.to_node().children[0]
 
-    assert air._info.direction == AirDirection.UP
+    assert air._info.direction is Direction.UP
     assert node.t == 480
     assert node.x == 5
     assert node.w == 3
-    assert node.direction is AirDirection.UP
+    assert node.direction is Direction.UP
 
 
 def test_air_slide_and_air_hold_do_not_expose_color_on_note_builder():
@@ -1137,17 +1143,17 @@ def test_air_crush_density_and_color_redirect_to_node_storage_fields():
         w=2,
         h=80,
         density=0,
-        color=AirCrushColor.RED,
+        color=Color.RED,
     )
     crush.density = 120
-    crush.color = AirCrushColor.NONE
+    crush.color = Color.NONE
     crush.til = 2
     node = crush.control(960, x=8, w=2, h=100).to_node()
 
     assert crush.density == 120
-    assert crush.color is AirCrushColor.NONE
+    assert crush.color is ColorValue.NONE
     assert node.option_value == 120
-    assert node.variation_id == AirCrushColor.NONE
+    assert node.variation_id == Color.NONE
     assert node.til == 2
     assert node.children[0].option_value == 0
 

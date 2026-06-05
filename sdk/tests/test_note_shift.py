@@ -3,10 +3,11 @@ import copy
 from margrete_rpc import (
     Air,
     AirCrush,
-    AirCrushColor,
     AirDirection,
     AirHold,
     AirSlide,
+    Color,
+    ColorValue,
     Hold,
     N,
     Node,
@@ -87,7 +88,7 @@ def test_note_hold_and_slide_air_shift():
 
 def test_note_air_crush_shifts_begin_controls_and_end():
     crush = (
-        AirCrush(t=0, x=1, w=2, h=80, density=5, color=AirCrushColor.RED)
+        AirCrush(t=0, x=1, w=2, h=80, density=5, color=Color.RED)
         .control(50, x=2, w=2, h=90)
         .control(100, x=3, w=2, h=70)
     )
@@ -99,7 +100,7 @@ def test_note_air_crush_shifts_begin_controls_and_end():
     assert crush.joints[1].t == 107
     assert crush.joints[1].h == 73
     assert crush.density == 5
-    assert crush.color is AirCrushColor.RED
+    assert crush.color is ColorValue.RED
 
 
 def test_note_shift_then_to_node_matches_node_shift_on_wrapped_tree():

@@ -21,9 +21,9 @@ margrete::rpc::v1::Direction ToProtoDirection(MpInteger value)
     return static_cast<margrete::rpc::v1::Direction>(value);
 }
 
-margrete::rpc::v1::AirCrushColor ToProtoAirCrushColor(MpInteger value)
+margrete::rpc::v1::Color ToProtoColor(MpInteger value)
 {
-    return static_cast<margrete::rpc::v1::AirCrushColor>(value);
+    return static_cast<margrete::rpc::v1::Color>(value);
 }
 
 margrete::rpc::v1::ExAttr ToProtoExAttr(MpInteger value)
@@ -200,7 +200,7 @@ margrete::rpc::v1::Note ChartMapper::NoteToProto(IMargretePluginNote &note)
     proto.set_long_attr(ToProtoLongAttr(info.longAttr));
     proto.set_direction(ToProtoDirection(info.direction));
     proto.set_ex_attr(ToProtoExAttr(info.exAttr));
-    proto.set_variation_id(ToProtoAirCrushColor(info.variationId));
+    proto.set_variation_id(ToProtoColor(info.variationId));
     proto.set_x(info.x);
     proto.set_width(info.width);
     proto.set_height(info.height);

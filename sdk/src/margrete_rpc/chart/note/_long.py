@@ -14,10 +14,10 @@ from ._shared import (
     _ShiftMixin,
 )
 from .color import (
-    AirCrushColor,
-    AirCrushColorLike,
-    air_crush_color_from_value,
-    air_crush_color_to_value,
+    ColorLike,
+    ColorValue,
+    color_to_value,
+    color_value_from_proto,
 )
 from .node import Node
 from .types import LongAttr, NoteInfo, NoteType
@@ -181,7 +181,7 @@ class AirCrush(_HeightMixin, _PlaceableLong):
         *,
         h: int,
         density: int,
-        color: AirCrushColorLike | int = AirCrushColor.DEFAULT,
+        color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -199,12 +199,12 @@ class AirCrush(_HeightMixin, _PlaceableLong):
         self._info.option_value = _coerce_aircrush_density_value(value)
 
     @property
-    def color(self) -> AirCrushColor | int:
-        return air_crush_color_from_value(air_crush_color_to_value(self._info.variation_id))
+    def color(self) -> ColorValue | int:
+        return color_value_from_proto(int(self._info.variation_id))
 
     @color.setter
-    def color(self, value: AirCrushColorLike | int) -> None:
-        self._info.variation_id = air_crush_color_from_value(air_crush_color_to_value(value))
+    def color(self, value: ColorLike | int) -> None:
+        self._info.variation_id = color_to_value(value)
 
     def control(
         self,

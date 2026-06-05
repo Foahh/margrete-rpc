@@ -99,22 +99,22 @@ def test_begin_edit_event_scan_note_til_only_field_numbers():
 
 
 def test_air_crush_color_wire_values_are_named_enum():
-    assert messages_pb2.AIR_CRUSH_COLOR_DEFAULT == 0
-    assert messages_pb2.AIR_CRUSH_COLOR_RED == 1
-    assert messages_pb2.AIR_CRUSH_COLOR_ORANGE == 2
-    assert messages_pb2.AIR_CRUSH_COLOR_YELLOW == 3
-    assert messages_pb2.AIR_CRUSH_COLOR_GREEN == 4
-    assert messages_pb2.AIR_CRUSH_COLOR_SKY == 5
-    assert messages_pb2.AIR_CRUSH_COLOR_BLUE == 6
-    assert messages_pb2.AIR_CRUSH_COLOR_VIOLET == 7
-    assert messages_pb2.AIR_CRUSH_COLOR_PINK == 8
-    assert messages_pb2.AIR_CRUSH_COLOR_WHITE == 10
-    assert messages_pb2.AIR_CRUSH_COLOR_BLACK == 11
-    assert messages_pb2.AIR_CRUSH_COLOR_GRASS == 12
-    assert messages_pb2.AIR_CRUSH_COLOR_SKY_BLUE == 13
-    assert messages_pb2.AIR_CRUSH_COLOR_COBALT_BLUE == 14
-    assert messages_pb2.AIR_CRUSH_COLOR_PURPLE == 15
-    assert messages_pb2.AIR_CRUSH_COLOR_NONE == 35
+    assert messages_pb2.COLOR_DEFAULT == 0
+    assert messages_pb2.COLOR_RED == 1
+    assert messages_pb2.COLOR_ORANGE == 2
+    assert messages_pb2.COLOR_YELLOW == 3
+    assert messages_pb2.COLOR_GREEN == 4
+    assert messages_pb2.COLOR_SKY == 5
+    assert messages_pb2.COLOR_BLUE == 6
+    assert messages_pb2.COLOR_VIOLET == 7
+    assert messages_pb2.COLOR_PINK == 8
+    assert messages_pb2.COLOR_WHITE == 10
+    assert messages_pb2.COLOR_BLACK == 11
+    assert messages_pb2.COLOR_GRASS == 12
+    assert messages_pb2.COLOR_SKY_BLUE == 13
+    assert messages_pb2.COLOR_COBALT_BLUE == 14
+    assert messages_pb2.COLOR_PURPLE == 15
+    assert messages_pb2.COLOR_NONE == 35
 
     field = messages_pb2.Note.DESCRIPTOR.fields_by_name["variation_id"]
-    assert field.enum_type is messages_pb2.AirCrushColor.DESCRIPTOR
+    assert field.enum_type is messages_pb2.Color.DESCRIPTOR
