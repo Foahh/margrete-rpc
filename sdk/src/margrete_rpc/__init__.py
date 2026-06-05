@@ -46,8 +46,7 @@ from margrete_rpc.chart import (
     Tap,
     TimelineSpeedEvent,
     UnsupportedNoteTree,
-    b2t,
-    beats_to_ticks,
+    d2t,
     p2t,
     t2p,
 )
@@ -106,8 +105,7 @@ __all__ = [
     "CallbackTracer",
     "TraceEvent",
     "UnsupportedNoteTree",
-    "b2t",
-    "beats_to_ticks",
+    "d2t",
     "discovery_dir",
     "list_instances",
 ]

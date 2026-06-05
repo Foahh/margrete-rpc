@@ -129,7 +129,11 @@ def _direction_property(enum_type: type[StrEnum], label: str):
 def _coerce_aircrush_density_value(value: object) -> int:
     if type(value) is int:
         return value
-    raise TypeError(f"density must be int, got {type(value).__name__}")
+    if isinstance(value, tuple):
+        from ..time import resolve_density
+
+        return resolve_density(value)
+    raise TypeError(f"density must be int or (numerator, denominator) tuple, got {type(value).__name__}")
 
 
 class _GeometryInfoMixin:

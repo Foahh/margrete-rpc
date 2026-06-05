@@ -100,7 +100,8 @@ tick = p2t(*p, beat_events=chart.events.beat)
 
 | API | Meaning |
 |-----|---------|
-| `b2t` / `beats_to_ticks` | Fractional beat tuple -> tick offset within one beat |
+| `d2t(n, d)` | Beat division `n/d` → tick count; `d2t(1, 384)` == 5 |
+| `t2d(ticks)` | Tick count → reduced `(n, d)` fraction; `t2d(5)` == `(1, 384)` |
 | `t2p` / `p2t` | Absolute tick <-> `(bar, beat, offset)` with measures and time signatures |
 
 ## Client: `Margrete`

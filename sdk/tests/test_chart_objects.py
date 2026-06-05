@@ -33,7 +33,7 @@ from margrete_rpc import (
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart import normalize_event_operations
-from margrete_rpc.chart.time import TICKS_PER_BEAT, beats_to_ticks
+from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
 from margrete_rpc.chart.note import wrap_mg_note
 
 
@@ -133,8 +133,7 @@ def test_new_note_api_is_exported_from_root_package():
         Slide,
         Tap,
         UnsupportedNoteTree,
-        b2t,
-        beats_to_ticks,
+        d2t,
     )
 
     assert M.tap(0, 4, 2).type is NoteType.TAP
@@ -148,8 +147,7 @@ def test_new_note_api_is_exported_from_root_package():
     assert AirHold is not None
     assert issubclass(UnsupportedNoteTree, ValueError)
     assert TICKS_PER_BEAT == 1920
-    assert b2t(1, 4) == 480
-    assert beats_to_ticks(1, 4) == 480
+    assert d2t(1, 4) == 480
     assert NoopTracer() is not None
 
 
@@ -325,14 +323,14 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
     assert NoteSpeedEvent(960, 1.25) == NoteSpeedEvent(t=960, speed=1.25)
 
 
-def test_mg_note_tick_uses_int_and_beats_to_ticks_for_fractions():
+def test_mg_note_tick_uses_int_and_d2t_for_fractions():
     note = M.tap(0, 4, 1)
     assert note.t == 0
-    note.t = note.t + beats_to_ticks(1, 8)
+    note.t = note.t + d2t(1, 8)
     assert note.t == 240
-    note.t = note.t + beats_to_ticks(1, 8)
+    note.t = note.t + d2t(1, 8)
     assert note.t == 480
-    note.t = note.t - beats_to_ticks(1, 4)
+    note.t = note.t - d2t(1, 4)
     assert note.t == 0
 
 
@@ -346,32 +344,32 @@ def test_mg_note_tick_augmented_assignment_matches_direct_tick_math():
     assert note.t == 300
 
 
-def test_beats_to_ticks_rejects_non_whole_tick():
+def test_d2t_rejects_non_whole_tick():
     with pytest.raises(ValueError, match="whole tick"):
-        beats_to_ticks(1, 7)
+        d2t(1, 7)
 
 
-def test_beats_to_ticks_rejects_denominator_above_ticks_per_beat():
+def test_d2t_rejects_denominator_above_ticks_per_beat():
     with pytest.raises(ValueError, match="denominator must not exceed"):
-        beats_to_ticks(1, TICKS_PER_BEAT + 1)
+        d2t(1, TICKS_PER_BEAT + 1)
 
 
-def test_beats_to_ticks_rejects_non_int_types():
+def test_d2t_rejects_non_int_types():
     with pytest.raises(TypeError):
-        beats_to_ticks(1, 2.0)  # type: ignore[arg-type]
+        d2t(1, 2.0)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        beats_to_ticks("bad", 4)  # type: ignore[arg-type]
+        d2t("bad", 4)  # type: ignore[arg-type]
 
 
 def test_note_and_mg_note_tick_are_plain_int():
     note = M.tap(0, 4, 1)
     assert type(note.t) is int
-    note.t = note.t + beats_to_ticks(1, 8)
+    note.t = note.t + d2t(1, 8)
     assert note.info.t == 240
 
     tap = Tap(t=0, x=4, w=2)
     assert type(tap.t) is int
-    tap.t = beats_to_ticks(1, 4)
+    tap.t = d2t(1, 4)
     assert tap.t == 480
 
 
@@ -384,7 +382,7 @@ def test_high_level_notes_accept_short_geometry_aliases():
 
     tap.t = (0, 1)
     tap.w = 3
-    assert tap.t == beats_to_ticks(1, 4)
+    assert tap.t == d2t(1, 4)
     assert tap.w == 3
 
     slide = Slide(t=0, x=4, w=2).step(t=480, x=6, w=3)
@@ -1084,7 +1082,7 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
     tap.air(air)
     air.inverted = True
     air.til = 3
-    tap.t = tap.t + beats_to_ticks(1, 4)
+    tap.t = tap.t + d2t(1, 4)
 
     mg_note = tap.to_mg().children[0]
 
@@ -1157,10 +1155,10 @@ def test_air_crush_density_and_color_redirect_to_mg_storage_fields():
 
 def test_air_crush_density_is_plain_int():
     crush = AirCrush(t=0, x=4, w=2, h=80, density=0)
-    crush.density = beats_to_ticks(1, 8)
+    crush.density = d2t(1, 8)
     assert crush.density == 240
     assert type(crush.density) is int
-    crush.density = crush.density + beats_to_ticks(1, 8)
+    crush.density = crush.density + d2t(1, 8)
     assert crush.density == 480
 
 

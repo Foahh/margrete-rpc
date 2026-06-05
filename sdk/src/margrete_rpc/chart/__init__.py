@@ -41,8 +41,7 @@ from margrete_rpc.chart.note import (
 from margrete_rpc.chart.time import (
     TICKS_PER_BEAT,
     Position,
-    b2t,
-    beats_to_ticks,
+    d2t,
     p2t,
     t2p,
 )
@@ -88,8 +87,7 @@ __all__ = [
     "TICKS_PER_BEAT",
     "TimelineSpeedEvent",
     "UnsupportedNoteTree",
-    "b2t",
-    "beats_to_ticks",
+    "d2t",
     "normalize_event_operations",
     "t2p",
     "wrap_mg_note",

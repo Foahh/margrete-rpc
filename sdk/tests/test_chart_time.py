@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from margrete_rpc.chart.time import p2t, t2p, push_beat_events, pop_beat_events, TICKS_PER_BEAT
+from margrete_rpc.chart.time import (
+    TICKS_PER_BEAT,
+    d2t,
+    p2t,
+    pop_beat_events,
+    push_beat_events,
+    resolve_density,
+    t2d,
+    t2p,
+)
 from margrete_rpc.chart.events import BeatEvent
 
 
@@ -107,3 +116,86 @@ def test_t2p_context_rejects_duplicate_beat_bar():
             t2p(0)
     finally:
         pop_beat_events(token)
+
+
+# --- d2t / t2d / resolve_density ---
+
+
+def test_d2t_1_over_384():
+    # (1/384) * 1920 = 5
+    assert d2t(1, 384) == 5
+
+
+def test_d2t_1_over_4():
+    assert d2t(1, 4) == TICKS_PER_BEAT // 4
+
+
+def test_d2t_whole_beat():
+    assert d2t(1, 1) == TICKS_PER_BEAT
+
+
+def test_d2t_rejects_non_integer_division():
+    with pytest.raises(ValueError, match="whole tick"):
+        d2t(1, 7)
+
+
+def test_d2t_rejects_zero_denominator():
+    with pytest.raises(ValueError, match="positive"):
+        d2t(1, 0)
+
+
+def test_t2d_round_trip():
+    for ticks in (0, 1, 5, 480, 960, 1920, 3840):
+        n, d = t2d(ticks)
+        assert d2t(n, d) == ticks
+
+
+def test_t2d_reduces_fraction():
+    assert t2d(5) == (1, 384)
+    assert t2d(480) == (1, 4)
+    assert t2d(1920) == (1, 1)
+
+
+def test_t2d_rejects_non_int():
+    with pytest.raises(TypeError):
+        t2d(1.5)  # type: ignore[arg-type]
+
+
+def test_t2d_rejects_negative():
+    with pytest.raises(ValueError, match="non-negative"):
+        t2d(-1)
+
+
+def test_resolve_density_passes_int_through():
+    assert resolve_density(5) == 5
+    assert resolve_density(0) == 0
+
+
+def test_resolve_density_tuple():
+    assert resolve_density((1, 384)) == 5
+    assert resolve_density((1, 4)) == TICKS_PER_BEAT // 4
+
+
+def test_resolve_density_rejects_wrong_tuple_length():
+    with pytest.raises(ValueError, match="numerator, denominator"):
+        resolve_density((1, 2, 3))  # type: ignore[arg-type]
+
+
+def test_noteinfo_option_value_accepts_division_tuple():
+    from margrete_rpc.chart.note.types import NoteInfo
+
+    info = NoteInfo(option_value=(1, 384))
+    assert info.option_value == 5
+
+    info.option_value = (1, 4)
+    assert info.option_value == TICKS_PER_BEAT // 4
+
+
+def test_aircrush_density_accepts_division_tuple():
+    from margrete_rpc import AirCrush
+
+    note = AirCrush(0, 0, 4, h=80, density=(1, 384))
+    assert note.density == 5
+
+    note.density = (1, 4)
+    assert note.density == TICKS_PER_BEAT // 4

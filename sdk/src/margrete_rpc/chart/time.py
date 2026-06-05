@@ -14,6 +14,8 @@ type Position = tuple[int, int, int]
 type Tick = int | Position
 type TickResolver = Callable[[Position], int]
 
+type Division = int | tuple[int, int]
+
 
 @dataclass(frozen=True, slots=True)
 class _TimeSignature:
@@ -199,7 +201,7 @@ def resolve_tick(value: Tick) -> int:
     return value
 
 
-def beats_to_ticks(numerator: int, denominator: int) -> int:
+def d2t(numerator: int, denominator: int) -> int:
     if type(numerator) is not int or type(denominator) is not int:
         raise TypeError("numerator and denominator must be ints")
     if denominator <= 0:
@@ -212,11 +214,32 @@ def beats_to_ticks(numerator: int, denominator: int) -> int:
     return frac.numerator
 
 
-b2t = beats_to_ticks
+def t2d(ticks: int) -> tuple[int, int]:
+    """Convert a tick count to the reduced ``(numerator, denominator)`` beat fraction."""
+    if type(ticks) is not int:
+        raise TypeError("ticks must be int")
+    if ticks < 0:
+        raise ValueError("ticks must be non-negative")
+    frac = Fraction(ticks, TICKS_PER_BEAT)
+    return (frac.numerator, frac.denominator)
+
+
+def resolve_density(value: Division) -> int:
+    """Coerce a division argument to an int tick count.
+
+    An int passes through unchanged. A ``(numerator, denominator)`` tuple is
+    converted via ``d2t``.
+    """
+    if isinstance(value, tuple):
+        if len(value) != 2:
+            raise ValueError("division must be a (numerator, denominator) tuple")
+        return d2t(value[0], value[1])
+    return value
 
 
 __all__ = [
     "TICKS_PER_BEAT",
+    "Division",
     "Position",
     "Tick",
     "TickResolver",
@@ -228,6 +251,7 @@ __all__ = [
     "resolve_tick",
     "push_tick_resolver",
     "pop_tick_resolver",
-    "beats_to_ticks",
-    "b2t",
+    "d2t",
+    "t2d",
+    "resolve_density",
 ]

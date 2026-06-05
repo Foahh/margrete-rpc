@@ -87,6 +87,10 @@ class NoteInfo:
             from ..time import resolve_tick
 
             value = resolve_tick(value)
+        elif name == "option_value" and isinstance(value, tuple):
+            from ..time import resolve_density
+
+            value = resolve_density(value)
         object.__setattr__(self, name, value)
 
     def copy(self, **changes: Any) -> NoteInfo:
