@@ -3,10 +3,10 @@ from __future__ import annotations
 from enum import IntEnum, StrEnum
 from typing import Any, Protocol, Self, runtime_checkable
 
-from ..air_crush import AirCrushOption, air_crush_option_to_value
-from ..direction import direction_from_proto
-from ..mg import MgNote
-from ..types import NoteInfo, NoteType
+from .air_crush import AirCrushOption, air_crush_option_to_value
+from .direction import direction_from_proto
+from .mg import MgNote
+from .types import NoteInfo, NoteType
 
 
 class UnsupportedNoteTree(ValueError):
@@ -148,6 +148,6 @@ class _HeightMixin:
 
 class _ShiftMixin:
     def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Self:
-        from ..shift import _shift_note
+        from .shift import _shift_note
 
         return _shift_note(self, t=t, x=x, w=w, h=h)

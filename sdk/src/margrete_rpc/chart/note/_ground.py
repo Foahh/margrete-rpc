@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from ...chart_time import Tick
-from ..direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
-from ..mg import MgNote
-from ..types import LongAttr, NoteInfo, NoteType
+from ..time import Tick
+from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
+from .mg import MgNote
+from .types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._shared import (
     _check_tick,

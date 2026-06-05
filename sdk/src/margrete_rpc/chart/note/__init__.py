@@ -18,22 +18,12 @@ from .direction import (
     FlickDirection,
     FlickDirectionLike,
 )
-from .hl import (
-    Air,
-    AirCrush,
-    AirHold,
-    AirSlide,
-    Damage,
-    Extap,
-    Flick,
-    Hold,
-    Joint,
-    Note,
-    Slide,
-    Tap,
-    UnsupportedNoteTree,
-    wrap_mg_note,
-)
+from ._air import Air, AirHold, AirSlide
+from ._ground import Damage, Extap, Flick, Tap
+from ._joint import Joint
+from ._long import AirCrush, Hold, Slide
+from ._shared import Note, UnsupportedNoteTree
+from ._wrap import wrap_mg_note
 from .mg import M, MgNote
 from .types import (
     ExAttr,

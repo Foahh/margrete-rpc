@@ -2,7 +2,7 @@ import pytest
 
 from margrete_rpc import AirSlide, Hold, M, Margrete, NoteInfo, Slide, Tap
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.chart_time import pop_tick_resolver, push_tick_resolver, resolve_tick
+from margrete_rpc.chart.time import pop_tick_resolver, push_tick_resolver, resolve_tick
 
 BEAT = 480
 BAR = 1920

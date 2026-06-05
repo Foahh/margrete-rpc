@@ -33,10 +33,9 @@ from margrete_rpc import (
     UnsupportedNoteTree,
 )
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model import normalize_event_operations
-from margrete_rpc.model.constant import TICKS_PER_BEAT
-from margrete_rpc.model.note import wrap_mg_note
-from margrete_rpc.util.time import beats_to_ticks
+from margrete_rpc.chart import normalize_event_operations
+from margrete_rpc.chart.time import TICKS_PER_BEAT, beats_to_ticks
+from margrete_rpc.chart.note import wrap_mg_note
 
 
 def test_note_type_factories_set_kind_and_geometry():

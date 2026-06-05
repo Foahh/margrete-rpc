@@ -3,17 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model.chart_time import Position
-from margrete_rpc.model.chart_time import p2t as _p2t
-from margrete_rpc.model.chart_time import t2p as _t2p
-from margrete_rpc.model.event import (
+from margrete_rpc.chart.time import Position
+from margrete_rpc.chart.time import p2t as _p2t
+from margrete_rpc.chart.time import t2p as _t2p
+from margrete_rpc.chart.events import (
     BeatEvent,
     BpmEvent,
     NoteSpeedEvent,
     TimelineSpeedEvent,
     _last_by_key,
 )
-from margrete_rpc.model.note import MgNote, Note, UnsupportedNoteTree, wrap_mg_note
+from margrete_rpc.chart.note import MgNote, Note, UnsupportedNoteTree, wrap_mg_note
 
 
 @dataclass

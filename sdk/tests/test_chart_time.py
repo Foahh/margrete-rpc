@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from margrete_rpc.model.chart_time import p2t, t2p
-from margrete_rpc.model.constant import TICKS_PER_BEAT
-from margrete_rpc.model.event import BeatEvent
+from margrete_rpc.chart.time import p2t, t2p, TICKS_PER_BEAT
+from margrete_rpc.chart.events import BeatEvent
 
 
 def test_t2p_origin_4_4():
@@ -66,14 +65,14 @@ def test_p2t_rejects_offset_out_of_range():
 
 
 def test_chart_t2p_delegates_to_module():
-    from margrete_rpc.model.chart import Chart, ChartEvents
+    from margrete_rpc.chart.chart import Chart, ChartEvents
 
     chart = Chart(events=ChartEvents(beat=[BeatEvent(0, 4, 4)]))
     assert chart.t2p(480) == (0, 1, 0)
 
 
 def test_chart_p2t_bar_beat_offset():
-    from margrete_rpc.model.chart import MgChart
+    from margrete_rpc.chart.chart import MgChart
 
     chart = MgChart()
     assert chart.p2t(1) == TICKS_PER_BEAT
@@ -91,7 +90,7 @@ def test_t2p_rejects_duplicate_beat_bar():
 
 
 def test_chart_t2p_rejects_duplicate_beat_bar():
-    from margrete_rpc.model.chart import Chart, ChartEvents
+    from margrete_rpc.chart.chart import Chart, ChartEvents
 
     chart = Chart(
         events=ChartEvents(

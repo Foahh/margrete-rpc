@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Self
 
-from ...chart_time import Tick
-from ..direction import AirDirection, AirDirectionLike
-from ..mg import MgNote
-from ..types import ExAttr, LongAttr, NoteInfo, NoteType
+from ..time import Tick
+from .direction import AirDirection, AirDirectionLike
+from .mg import MgNote
+from .types import ExAttr, LongAttr, NoteInfo, NoteType
 from ._joint import Joint, _JointHost
 from ._shared import (
     _copy_info,

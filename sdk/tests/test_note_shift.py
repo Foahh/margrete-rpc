@@ -14,7 +14,7 @@ from margrete_rpc import (
     Slide,
     Tap,
 )
-from margrete_rpc.model.note import wrap_mg_note
+from margrete_rpc.chart.note import wrap_mg_note
 
 
 def _collect_geometry(note: MgNote) -> list[tuple[int, int, int, int]]:

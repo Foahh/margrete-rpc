@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from margrete_rpc._errors import MargreteDiscoveryError, MargreteError
+from margrete_rpc.errors import MargreteDiscoveryError, MargreteError
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
 

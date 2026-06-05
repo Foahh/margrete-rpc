@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from margrete_rpc._errors import MargreteProtocolError, MargreteRemoteError
+from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient, decode_frame, encode_frame
 

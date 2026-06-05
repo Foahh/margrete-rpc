@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.model import Chart, MgChart, MgNote, normalize_event_operations
-from margrete_rpc.model.chart import ChartEvents
-from margrete_rpc.model.chart_time import Position, pop_tick_resolver, push_tick_resolver
+from margrete_rpc.chart import Chart, ChartEvents, MgChart, MgNote, normalize_event_operations
+from margrete_rpc.chart.time import Position, pop_tick_resolver, push_tick_resolver
 from margrete_rpc.trace import NoopTracer, Tracer
 
 
@@ -59,7 +58,7 @@ def _clone_mg_note(note: MgNote) -> MgNote:
 
 
 def _clone_chart_events(events: ChartEvents) -> ChartEvents:
-    from margrete_rpc.model.event import BeatEvent, BpmEvent, NoteSpeedEvent, TimelineSpeedEvent
+    from margrete_rpc.chart.events import BeatEvent, BpmEvent, NoteSpeedEvent, TimelineSpeedEvent
 
     return ChartEvents(
         bpm=[BpmEvent.from_proto(event.to_proto()) for event in events.bpm],

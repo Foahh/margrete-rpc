@@ -1,4 +1,4 @@
-from margrete_rpc._errors import (
+from margrete_rpc.errors import (
     MargreteDiscoveryError,
     MargreteError,
     MargreteProtocolError,
@@ -6,7 +6,7 @@ from margrete_rpc._errors import (
 )
 from margrete_rpc.client import Margrete, ServerStatus
 from margrete_rpc.discovery import MargreteInstance, discovery_dir, list_instances
-from margrete_rpc.model import (
+from margrete_rpc.chart import (
     TICKS_PER_BEAT,
     Air,
     AirCrush,
@@ -49,11 +49,12 @@ from margrete_rpc.model import (
     Tap,
     TimelineSpeedEvent,
     UnsupportedNoteTree,
+    b2t,
+    beats_to_ticks,
     p2t,
     t2p,
 )
 from margrete_rpc.trace import CallbackTracer, NoopTracer, TraceEvent, Tracer
-from margrete_rpc.util import b2t, beats_to_ticks
 
 __all__ = [
     "Air",

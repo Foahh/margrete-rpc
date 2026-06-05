@@ -3,9 +3,11 @@ from __future__ import annotations
 import contextvars
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from fractions import Fraction
 
-from margrete_rpc.model.constant import TICKS_PER_BEAT
-from margrete_rpc.model.event import BeatEvent
+from .events import BeatEvent
+
+TICKS_PER_BEAT = 1920
 
 type Position = tuple[int, int, int]
 
@@ -175,13 +177,33 @@ def resolve_tick(value: Tick) -> int:
     return value
 
 
+def beats_to_ticks(numerator: int, denominator: int) -> int:
+    if type(numerator) is not int or type(denominator) is not int:
+        raise TypeError("numerator and denominator must be ints")
+    if denominator <= 0:
+        raise ValueError("denominator must be positive")
+    if denominator > TICKS_PER_BEAT:
+        raise ValueError(f"denominator must not exceed {TICKS_PER_BEAT}")
+    frac = Fraction(numerator * TICKS_PER_BEAT, denominator)
+    if frac.denominator != 1:
+        raise ValueError("beat division must resolve to a whole tick")
+    return frac.numerator
+
+
+b2t = beats_to_ticks
+
+
 __all__ = [
+    "TICKS_PER_BEAT",
     "Position",
     "Tick",
     "TickResolver",
+    "ChartTime",
     "t2p",
     "p2t",
     "resolve_tick",
     "push_tick_resolver",
     "pop_tick_resolver",
+    "beats_to_ticks",
+    "b2t",
 ]

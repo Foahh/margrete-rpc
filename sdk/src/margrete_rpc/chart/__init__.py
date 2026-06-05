@@ -1,15 +1,11 @@
-"""Domain models."""
-
-from margrete_rpc.model.chart import Chart, ChartEvents, MgChart, normalize_event_operations
-from margrete_rpc.model.chart_time import Position, p2t, t2p
-from margrete_rpc.model.constant import TICKS_PER_BEAT
-from margrete_rpc.model.event import (
+from margrete_rpc.chart.chart import Chart, ChartEvents, MgChart, normalize_event_operations
+from margrete_rpc.chart.events import (
     BeatEvent,
     BpmEvent,
     NoteSpeedEvent,
     TimelineSpeedEvent,
 )
-from margrete_rpc.model.note import (
+from margrete_rpc.chart.note import (
     Air,
     AirCrush,
     AirCrushColor,
@@ -44,6 +40,14 @@ from margrete_rpc.model.note import (
     Tap,
     UnsupportedNoteTree,
     wrap_mg_note,
+)
+from margrete_rpc.chart.time import (
+    TICKS_PER_BEAT,
+    Position,
+    b2t,
+    beats_to_ticks,
+    p2t,
+    t2p,
 )
 
 __all__ = [
@@ -87,10 +91,12 @@ __all__ = [
     "p2t",
     "Slide",
     "Tap",
-    "t2p",
     "TICKS_PER_BEAT",
     "TimelineSpeedEvent",
     "UnsupportedNoteTree",
+    "b2t",
+    "beats_to_ticks",
     "normalize_event_operations",
+    "t2p",
     "wrap_mg_note",
 ]

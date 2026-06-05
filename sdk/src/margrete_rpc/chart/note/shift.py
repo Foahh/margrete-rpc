@@ -21,7 +21,7 @@ def _shift_mg(note: MgNote, *, t: int, x: int, w: int, h: int) -> MgNote:
 
 
 def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
-    from .hl import Joint
+    from ._joint import Joint
 
     assert isinstance(joint, Joint)
     joint._info.t = int(joint._info.t) + t
@@ -34,7 +34,7 @@ def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
 
 
 def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> None:
-    from .hl import Air, AirHold, AirSlide
+    from ._air import Air, AirHold, AirSlide
 
     if isinstance(air, Air):
         return
@@ -47,7 +47,7 @@ def _shift_attachable_air(air: object, *, t: int, x: int, w: int, h: int) -> Non
 
 
 def _shift_ground(note: object, *, t: int, x: int, w: int, h: int) -> None:
-    from .hl import Damage, Extap, Flick, Tap
+    from ._ground import Damage, Extap, Flick, Tap
 
     if not isinstance(note, (Tap, Extap, Flick, Damage)):
         raise TypeError(f"expected ground note, got {type(note).__name__}")
@@ -57,7 +57,7 @@ def _shift_ground(note: object, *, t: int, x: int, w: int, h: int) -> None:
 
 
 def _shift_long_builder(builder: object, *, t: int, x: int, w: int, h: int) -> None:
-    from .hl import AirCrush, Hold, Slide
+    from ._long import AirCrush, Hold, Slide
 
     if not isinstance(builder, (Slide, Hold, AirCrush)):
         raise TypeError(f"expected long builder, got {type(builder).__name__}")
@@ -71,7 +71,8 @@ def _shift_long_builder(builder: object, *, t: int, x: int, w: int, h: int) -> N
 def _shift_note(note: object, *, t: int, x: int, w: int, h: int) -> object:
     if t == x == w == h == 0:
         return note
-    from .hl import AirCrush, Damage, Extap, Flick, Hold, Slide, Tap
+    from ._ground import Damage, Extap, Flick, Tap
+    from ._long import AirCrush, Hold, Slide
 
     if isinstance(note, (Tap, Extap, Flick, Damage)):
         _shift_ground(note, t=t, x=x, w=w, h=h)

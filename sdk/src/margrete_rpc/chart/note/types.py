@@ -82,7 +82,7 @@ class NoteInfo:
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "t" and isinstance(value, tuple):
-            from ..chart_time import resolve_tick
+            from ..time import resolve_tick
 
             value = resolve_tick(value)
         object.__setattr__(self, name, value)
@@ -142,7 +142,7 @@ def _format_note_info(info: NoteInfo) -> str:
         f"til={info.til}",
         f"option_value={_option_line(info)}",
     ]
-    return "NoteInfo(" + ", ".join(parts) + ")"
+    return "NI(" + ", ".join(parts) + ")"
 
 
 __all__ = [

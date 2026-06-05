@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
 from margrete_rpc.discovery import resolve_endpoint
-from margrete_rpc.model import Chart, MgChart
+from margrete_rpc.chart import Chart, MgChart
 from margrete_rpc.trace import NoopTracer, Tracer
 from margrete_rpc.transaction import EditTransaction
 

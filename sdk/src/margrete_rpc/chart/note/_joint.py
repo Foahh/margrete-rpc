@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from ...chart_time import Tick
-from ..mg import MgNote
-from ..types import LongAttr, NoteInfo, NoteType
+from ..time import Tick
+from .mg import MgNote
+from .types import LongAttr, NoteInfo, NoteType
 from ._shared import (
     _check_tick,
     _check_width,

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..chart_time import Tick
+from ..time import Tick
 from .air_crush import (
     AirCrushOption,
     AirCrushOptionLike,
@@ -108,7 +108,7 @@ class MgNote:
 def _format_mg_note(note: MgNote, *, indent: int = 0) -> str:
     prefix = "  " * indent
     id_part = f"id={note._id}, " if note._id is not None else ""
-    line = f"{prefix}Mg({id_part}info={note.info!s})"
+    line = f"{prefix}M({id_part}info={note.info!s})"
     if not note.children:
         return line
     return line + "\n" + "\n".join(_format_mg_note(c, indent=indent + 1) for c in note.children)

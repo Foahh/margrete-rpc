@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from ...chart_time import Tick, resolve_tick
-from ..air_crush import (
+from ..time import Tick, resolve_tick
+from .air_crush import (
     AirCrushColor,
     AirCrushColorLike,
     AirCrushOptionLike,
     air_crush_color_from_value,
     air_crush_color_to_value,
 )
-from ..mg import MgNote
-from ..types import LongAttr, NoteInfo, NoteType
+from .mg import MgNote
+from .types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide, _AirAttachable
 from ._joint import Joint, _JointHost
 from ._shared import (
