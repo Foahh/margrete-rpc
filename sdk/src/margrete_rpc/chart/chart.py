@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
@@ -8,7 +9,6 @@ from margrete_rpc.chart.events import (
     BpmEvent,
     NoteSpeedEvent,
     TimelineSpeedEvent,
-    _last_by_key,
 )
 from margrete_rpc.chart.note import Node, Note, UnsupportedNoteTree, wrap_node
 
@@ -53,6 +53,13 @@ class Chart:
             nodes=nodes,
             events=_events_from_response(response),
         )
+
+
+def _last_by_key[T, K: Hashable](items: list[T], key: Callable[[T], K]) -> list[T]:
+    by_key: dict[K, T] = {}
+    for item in items:
+        by_key[key(item)] = item
+    return list(by_key.values())
 
 
 def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEvents:

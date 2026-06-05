@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Mapping
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from time import perf_counter_ns
 from typing import Any, Protocol
@@ -10,8 +10,12 @@ TraceAttrs = Mapping[str, Any]
 
 
 class Tracer(Protocol):
-    @contextmanager
-    def span(self, name: str, *, attrs: TraceAttrs | None = None) -> Iterator[None]: ...
+    def span(
+        self,
+        name: str,
+        *,
+        attrs: TraceAttrs | None = None,
+    ) -> AbstractContextManager[None]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +34,7 @@ class TraceEvent:
 
 class NoopTracer:
     @contextmanager
-    def span(self, name: str, *, attrs: TraceAttrs | None = None) -> Iterator[None]:
+    def span(self, name: str, *, attrs: TraceAttrs | None = None) -> Generator[None]:
         yield
 
 
@@ -39,7 +43,7 @@ class CallbackTracer:
         self._emit = emit
 
     @contextmanager
-    def span(self, name: str, *, attrs: TraceAttrs | None = None) -> Iterator[None]:
+    def span(self, name: str, *, attrs: TraceAttrs | None = None) -> Generator[None]:
         start_ns = perf_counter_ns()
         try:
             yield

@@ -65,10 +65,3 @@ class NoteSpeedEvent:
 
     def to_proto(self) -> messages_pb2.NoteSpeedEvent:
         return messages_pb2.NoteSpeedEvent(tick=self.t, speed=self.speed)
-
-
-def _last_by_key[T](items: list[T], key) -> list[T]:
-    by_key = {}
-    for item in items:
-        by_key[key(item)] = item
-    return list(by_key.values())

@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import contextvars
+from collections.abc import Iterable
+from contextlib import AbstractContextManager
+from dataclasses import dataclass, field
 from types import TracebackType
+from typing import Protocol
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart import Chart, ChartEvents, Node, normalize_event_operations
+from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     Position,
+    TickResolver,
     p2t,
     pop_beat_events,
     pop_tick_resolver,
@@ -14,6 +20,10 @@ from margrete_rpc.chart.time import (
     push_tick_resolver,
 )
 from margrete_rpc.trace import NoopTracer, Tracer
+
+
+class Transport(Protocol):
+    def request(self, envelope: messages_pb2.Envelope) -> messages_pb2.Envelope: ...
 
 
 def _final_notes(chart: Chart) -> list[Node]:
@@ -77,11 +87,14 @@ def _note_tree_sig(note: Node) -> bytes:
     return _strip_note_ids(note).to_proto().SerializeToString()
 
 
-def _id_structure(note: Node) -> tuple[int | None, tuple]:
+type IdStructure = tuple[int | None, tuple["IdStructure", ...]]
+
+
+def _id_structure(note: Node) -> IdStructure:
     return (note._id, tuple(_id_structure(child) for child in note.children))
 
 
-def _children_id_structure(note: Node) -> tuple:
+def _children_id_structure(note: Node) -> tuple[IdStructure, ...]:
     return tuple(_id_structure(child) for child in note.children)
 
 
@@ -173,28 +186,26 @@ def _append_scanned_event_diffs(
 @dataclass
 class EditTransaction:
     name: str
-    transport: object
+    transport: Transport
     current_tick: int
     chart: Chart
     scan: bool
-    tracer: Tracer | None = None
+    tracer: Tracer = field(default_factory=NoopTracer)
     tx_type: str = "edit"
     replace_all_notes: bool = False
-    _span_active: object | None = None
+    _span_active: AbstractContextManager[None] | None = None
 
     _orig_notes_sig: bytes = b""
     _orig_events_sig: bytes = b""
     _orig_notes: list[Node] | None = None
     _orig_events: ChartEvents | None = None
-    _resolver_token: object | None = None
-    _beat_events_token: object | None = None
+    _resolver_token: contextvars.Token[TickResolver | None] | None = None
+    _beat_events_token: contextvars.Token[Iterable[BeatEvent] | None] | None = None
 
     def _resolve_position(self, pos: Position) -> int:
         return p2t(*pos, beat_events=self.chart.events.beat)
 
     def __enter__(self) -> EditTransaction:
-        if self.tracer is None:
-            self.tracer = NoopTracer()
         self._span_active = self.tracer.span(
             "margrete.tx",
             attrs={"tx.type": self.tx_type, "tx.name": self.name},
@@ -217,8 +228,6 @@ class EditTransaction:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> bool:
-        if self.tracer is None:
-            self.tracer = NoopTracer()
         try:
             if exc_type is None:
                 normalized = normalize_event_operations(self.chart)

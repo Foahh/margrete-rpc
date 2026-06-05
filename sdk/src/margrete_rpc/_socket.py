@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import socket
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
@@ -49,15 +49,13 @@ def _recv_exact(sock: socket.socket, size: int) -> bytes:
 class SocketRpcClient:
     endpoint: str
     timeout: float = 60.0
-    tracer: Tracer | None = None
+    tracer: Tracer = field(default_factory=NoopTracer)
 
     def __post_init__(self) -> None:
         host, port_text = self.endpoint.rsplit(":", 1)
         self._host = host
         self._port = int(port_text)
         self._request_ids = itertools.count(1)
-        if self.tracer is None:
-            self.tracer = NoopTracer()
 
     def request(self, envelope: messages_pb2.Envelope) -> messages_pb2.Envelope:
         span_name = next(

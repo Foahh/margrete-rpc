@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from typing import Self
-
-from margrete_rpc._warnings import warnings
+from warnings import deprecated
 
 from ..time import Tick
 from .direction import AirDirection, AirDirectionLike
@@ -117,6 +116,10 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _JointHost):
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
 
+    def _terminus_attr(self, joint: Joint) -> LongAttr:
+        del joint
+        raise NotImplementedError
+
     @property
     def type(self) -> NoteType:
         return self._note_type
@@ -187,7 +190,7 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _JointHost):
 class AirSlide(_AttachableAirLong):
     _note_type = NoteType.AIRSLIDE
 
-    @warnings.deprecated("CURVE_CONTROL is deprecated in Margrete.")
+    @deprecated("CURVE_CONTROL is deprecated in Margrete.")
     def curve_control(
         self,
         t: Tick,

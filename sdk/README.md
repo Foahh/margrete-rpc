@@ -4,7 +4,7 @@ Python client for the **Margrete RPC** plugin.
 
 ## Requirements
 
-- Python **3.12+**
+- Python **3.13+**
 - A running Margrete RPC server
 
 ## Installation
@@ -20,6 +20,18 @@ Or install from a path to this folder:
 ```bash
 pip install /path/to/margrete-rpc/sdk
 ```
+
+## Development
+
+```bash
+uv run ruff check src tests
+uv run ruff format src tests
+uv run basedpyright
+uv run pytest
+```
+
+`basedpyright` runs in strict mode against handwritten SDK code; generated protobuf
+modules are excluded from static analysis.
 
 ## Quick start
 

@@ -136,12 +136,14 @@ _active_beat_events: contextvars.ContextVar[Iterable[BeatEvent] | None] = contex
 )
 
 
-def push_beat_events(beat_events: Iterable[BeatEvent]) -> contextvars.Token:
+def push_beat_events(
+    beat_events: Iterable[BeatEvent],
+) -> contextvars.Token[Iterable[BeatEvent] | None]:
     """Install ``beat_events`` as the active beat events; returns a reset token."""
     return _active_beat_events.set(beat_events)
 
 
-def pop_beat_events(token: contextvars.Token) -> None:
+def pop_beat_events(token: contextvars.Token[Iterable[BeatEvent] | None]) -> None:
     """Restore the beat events that were active before the matching ``push_beat_events``."""
     _active_beat_events.reset(token)
 
@@ -172,12 +174,12 @@ _active_tick_resolver: contextvars.ContextVar[TickResolver | None] = contextvars
 )
 
 
-def push_tick_resolver(resolver: TickResolver) -> contextvars.Token:
+def push_tick_resolver(resolver: TickResolver) -> contextvars.Token[TickResolver | None]:
     """Install ``resolver`` as the active position->tick resolver; returns a reset token."""
     return _active_tick_resolver.set(resolver)
 
 
-def pop_tick_resolver(token: contextvars.Token) -> None:
+def pop_tick_resolver(token: contextvars.Token[TickResolver | None]) -> None:
     """Restore the resolver that was active before the matching ``push_tick_resolver``."""
     _active_tick_resolver.reset(token)
 

@@ -7,7 +7,7 @@ This file provides guidance to agents when working with code in this repository.
 **Margrete RPC** is a plugin + SDK system that exposes scriptable chart editing for Margrete via a TCP/protobuf RPC server.
 
 - **Plugin** (`plugin/`): C++20 DLL that runs as a Margrete plugin, hosts a TCP server, translates RPC calls to Margrete SDK operations
-- **SDK** (`sdk/`): Python 3.12+ client library for chart scripting; provides high-level chart objects, transaction management, and time/position conversions
+- **SDK** (`sdk/`): Python 3.13+ client library for chart scripting; provides high-level chart objects, transaction management, and time/position conversions
 - **Proto** (`proto/`): protobuf message definitions (`margrete.rpc.v1`) used for wire protocol between plugin and SDK
 
 ## Building & Testing
@@ -59,6 +59,12 @@ pytest                          # All tests
 pytest tests/test_chart_objects.py  # Single file
 pytest -k test_name             # Single test by name
 pytest -v --tb=short           # Verbose with short tracebacks
+```
+
+**Type check:**
+```bash
+cd sdk
+uv run basedpyright
 ```
 
 **Format/lint:**

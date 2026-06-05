@@ -107,9 +107,9 @@ FLICK_DIRECTION_TO_PROTO = {
     FlickDirection.RIGHT: Direction.RIGHT,
 }
 
-AIR_DIRECTION_FROM_PROTO = {value: key for key, value in AIR_DIRECTION_TO_PROTO.items()}
-EXTAP_DIRECTION_FROM_PROTO = {value: key for key, value in EXTAP_DIRECTION_TO_PROTO.items()}
-FLICK_DIRECTION_FROM_PROTO = {value: key for key, value in FLICK_DIRECTION_TO_PROTO.items()}
+AIR_DIRECTION_FROM_PROTO = {int(value): key for key, value in AIR_DIRECTION_TO_PROTO.items()}
+EXTAP_DIRECTION_FROM_PROTO = {int(value): key for key, value in EXTAP_DIRECTION_TO_PROTO.items()}
+FLICK_DIRECTION_FROM_PROTO = {int(value): key for key, value in FLICK_DIRECTION_TO_PROTO.items()}
 
 
 def _note_type_value(note_type: SupportsInt) -> int:
@@ -140,11 +140,11 @@ def direction_from_proto(note_type: SupportsInt, value: int) -> DirectionValue:
 
 def direction_to_proto(note_type: SupportsInt, value: DirectionValue | str) -> int:
     if isinstance(value, AirDirection):
-        return AIR_DIRECTION_TO_PROTO[value]
+        return int(AIR_DIRECTION_TO_PROTO[value])
     if isinstance(value, ExtapDirection):
-        return EXTAP_DIRECTION_TO_PROTO[value]
+        return int(EXTAP_DIRECTION_TO_PROTO[value])
     if isinstance(value, FlickDirection):
-        return FLICK_DIRECTION_TO_PROTO[value]
+        return int(FLICK_DIRECTION_TO_PROTO[value])
     if isinstance(value, Direction):
         return int(value)
 
@@ -155,13 +155,13 @@ def direction_to_proto(note_type: SupportsInt, value: DirectionValue | str) -> i
         messages_pb2.NOTE_TYPE_AIRHOLD,
     ):
         if isinstance(value, str):
-            return AIR_DIRECTION_TO_PROTO[AirDirection(value)]
+            return int(AIR_DIRECTION_TO_PROTO[AirDirection(value)])
     elif note_type_value == messages_pb2.NOTE_TYPE_EXTAP:
         if isinstance(value, str):
-            return EXTAP_DIRECTION_TO_PROTO[ExtapDirection(value)]
+            return int(EXTAP_DIRECTION_TO_PROTO[ExtapDirection(value)])
     elif note_type_value == messages_pb2.NOTE_TYPE_FLICK:
         if isinstance(value, str):
-            return FLICK_DIRECTION_TO_PROTO[FlickDirection(value)]
+            return int(FLICK_DIRECTION_TO_PROTO[FlickDirection(value)])
     return int(value)
 
 

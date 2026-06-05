@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import IntEnum, StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
@@ -111,13 +111,13 @@ class NoteInfo:
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "t" and isinstance(value, tuple):
-            from ..time import resolve_tick
+            from ..time import Tick, resolve_tick
 
-            value = resolve_tick(value)
+            value = resolve_tick(cast(Tick, value))
         elif name == "option_value" and isinstance(value, tuple):
-            from ..time import resolve_density
+            from ..time import Division, resolve_density
 
-            value = resolve_density(value)
+            value = resolve_density(cast(Division, value))
         elif name == "direction":
             note_type = getattr(self, "type", NoteType.UNKNOWN)
             value = Direction(direction_to_proto(note_type, value))

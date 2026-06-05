@@ -97,7 +97,7 @@ def _info_value(value: Any, enum_type: type[IntEnum] | None) -> Any:
         return _stored_value(value)
 
 
-def _info_property(name: str, enum_type: type[IntEnum] | None = None):
+def _info_property(name: str, enum_type: type[IntEnum] | None = None) -> property:
     def getter(self):
         value = getattr(self._info, name)
         return _enum_value(enum_type, value) if enum_type is not None else value
@@ -108,7 +108,7 @@ def _info_property(name: str, enum_type: type[IntEnum] | None = None):
     return property(getter, setter)
 
 
-def _checked_info_property(name: str, check):
+def _checked_info_property(name: str, check: Callable[[int], None]) -> property:
     def getter(self):
         return getattr(self._info, name)
 
@@ -119,7 +119,7 @@ def _checked_info_property(name: str, check):
     return property(getter, setter)
 
 
-def _t_property():
+def _t_property() -> property:
     def getter(self):
         return self._info.t
 
@@ -130,7 +130,7 @@ def _t_property():
     return property(getter, setter)
 
 
-def _direction_property(enum_type: type[StrEnum], label: str):
+def _direction_property(enum_type: type[StrEnum], label: str) -> property:
     def getter(self):
         value = self._info.direction
         if isinstance(value, enum_type):
@@ -167,17 +167,57 @@ def _coerce_aircrush_density_value(value: object) -> int:
 
 
 class _GeometryInfoMixin:
-    t = _t_property()
-    x = _info_property("x")
-    w = _checked_info_property("w", _check_width)
-    til = _info_property("til")
+    _info: NoteInfo
+
+    @property
+    def t(self) -> int:
+        return self._info.t
+
+    @t.setter
+    def t(self, value: int | Tick) -> None:
+        self._info.t = value
+        _check_tick(self._info.t)
+
+    @property
+    def x(self) -> int:
+        return self._info.x
+
+    @x.setter
+    def x(self, value: int) -> None:
+        self._info.x = value
+
+    @property
+    def w(self) -> int:
+        return self._info.w
+
+    @w.setter
+    def w(self, value: int) -> None:
+        _check_width(value)
+        self._info.w = value
+
+    @property
+    def til(self) -> int:
+        return self._info.til
+
+    @til.setter
+    def til(self, value: int) -> None:
+        self._info.til = value
 
 
 class _HeightMixin:
-    h = _info_property("h")
+    _info: NoteInfo
+
+    @property
+    def h(self) -> int:
+        return self._info.h
+
+    @h.setter
+    def h(self, value: int) -> None:
+        self._info.h = value
 
 
 class _TransformMixin:
+    _info: NoteInfo
     _id: int | None
 
     def shift(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:

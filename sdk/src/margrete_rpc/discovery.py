@@ -5,7 +5,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
@@ -73,11 +73,12 @@ def resolve_endpoint(instance_id: str | None = None, *, timeout: float = 1.0) ->
 
 def _load_instance(path: Path) -> MargreteInstance | None:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        raw_data: object = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    if not isinstance(data, dict):
+    if not isinstance(raw_data, dict):
         return None
+    data = cast(dict[str, object], raw_data)
 
     instance_id = _string(data.get("instance_id"))
     endpoint = _string(data.get("endpoint"))

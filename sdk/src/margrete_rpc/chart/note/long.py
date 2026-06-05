@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from margrete_rpc._warnings import warnings
+from warnings import deprecated
 
 from ..time import Tick, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
@@ -139,7 +139,7 @@ class Slide(_AirAttachable, _PlaceableLong):
         self._add_control(t, x, w, 800)
         return self
 
-    @warnings.deprecated("CURVE_CONTROL is deprecated in Margrete.")
+    @deprecated("CURVE_CONTROL is deprecated in Margrete.")
     def curve_control(
         self,
         t: Tick,
