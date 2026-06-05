@@ -5,8 +5,8 @@ from typing import Self
 from margrete_rpc._warnings import warnings
 
 from ..time import Tick
-from ._joint import AirJoint, Joint, _JointHost
-from ._shared import (
+from .joint import AirJoint, Joint, _JointHost
+from .shared import (
     _copy_info,
     _direction_property,
     _HeightMixin,

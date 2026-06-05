@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..time import Tick
-from ._shared import (
+from .shared import (
     _check_tick,
     _check_width,
     _copy_info,

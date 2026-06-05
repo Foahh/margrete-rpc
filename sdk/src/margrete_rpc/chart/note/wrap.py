@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from ._air import Air, AirHold, AirSlide
-from ._ground import Damage, Extap, Flick, Tap, _GroundNote
-from ._joint import _JointHost
-from ._long import AirCrush, Hold, Slide
-from ._shared import Note, UnsupportedNoteTree
+from .air import Air, AirHold, AirSlide
+from .ground import Damage, Extap, Flick, Tap, _GroundNote
+from .joint import _JointHost
+from .long import AirCrush, Hold, Slide
+from .shared import Note, UnsupportedNoteTree
 from .color import color_from_value
 from .node import Node
 from .types import LongAttr, NoteInfo, NoteType

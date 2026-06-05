@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from ._air import Air, AirHold, AirSlide
-from ._ground import Damage, Extap, Flick, Tap
-from ._joint import AirJoint, Joint
-from ._long import AirCrush, Hold, Slide
-from ._shared import Note, UnsupportedNoteTree
-from ._wrap import wrap_node
+from .air import Air, AirHold, AirSlide
+from .ground import Damage, Extap, Flick, Tap
+from .joint import AirJoint, Joint
+from .long import AirCrush, Hold, Slide
+from .shared import Note, UnsupportedNoteTree
+from .wrap import wrap_node
 from .color import (
     Color,
     ColorLike,

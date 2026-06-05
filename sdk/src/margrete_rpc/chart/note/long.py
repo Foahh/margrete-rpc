@@ -3,9 +3,9 @@ from __future__ import annotations
 from margrete_rpc._warnings import warnings
 
 from ..time import Tick, resolve_tick
-from ._air import Air, AirHold, AirSlide, _AirAttachable
-from ._joint import AirJoint, Joint, _JointHost
-from ._shared import (
+from .air import Air, AirHold, AirSlide, _AirAttachable
+from .joint import AirJoint, Joint, _JointHost
+from .shared import (
     _check_tick,
     _check_width,
     _coerce_aircrush_density_value,

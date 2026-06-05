@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to agent when working with code in this repository.
+This file provides guidance to agents when working with code in this repository.
 
 ## Overview
 
@@ -113,19 +113,23 @@ pytest -v --tb=short           # Verbose with short tracebacks
 
 **Core modules:**
 
-- **`client.py`**: `Margrete` class, main entry point; manages socket connection, request/response, auto-discovery
+- **`client.py`**: `Margrete` class, main entry point; `status()`, `undo()`, `redo()`, `current_tick()`, `open_edit()`; manages socket connection and auto-discovery
 - **`transaction.py`**: `EditTransaction` context manager; buffers changes, applies at commit
-- **`discovery.py`**: `list_instances()`, `MargreteInstance`; polls DiscoveryRegistry for running servers
-- **`_socket.py`**: Low-level socket + framing protocol (send/recv length-prefixed messages)
-- **`_errors.py`**: `MargreteProtocolError` (socket/frame issues), `MargreteRemoteError` (RPC error responses)
-- **`chart/`**: Chart object models
-  - `chart.py`: `Chart` containing typed `notes`, raw fallback `nodes`, and chart events
-  - `event.py`: Event classes (BpmEvent, BeatEvent, ScrollSpeedEvent, etc.)
-  - `note/`: Note types (`Tap`, `Flick`, `Hold`, etc.) plus raw `Node` trees and `N` factories
-  - `chart_time.py`: Time/position conversion (tick -> bar/beat/offset tuple via `t2p()` and `p2t()`)
-  - `constant.py`: Lane/note constants
+- **`discovery.py`**: `list_instances()`, `MargreteInstance`, `resolve_endpoint()`; polls DiscoveryRegistry for running servers
+- **`_socket.py`**: Low-level socket + framing protocol (send/recv length-prefixed protobuf messages)
+- **`errors.py`**: `MargreteProtocolError` (socket/frame issues), `MargreteRemoteError` (RPC errors with code), `MargreteDiscoveryError`
+- **`chart/`**: Chart object models (see below)
+- **`trace.py`**: Request/response logging via `Tracer` interface; `NoopTracer`, `CallbackTracer`
+
+**Chart models** (`chart/` submodule):
+- **`chart.py`**: `Chart` class containing `notes` (typed SDK note objects), `nodes` (raw node fallback), and `events`
+- **`events.py`**: Event classes (`BpmEvent`, `BeatEvent`, `NoteSpeedEvent`, `TimelineSpeedEvent`)
+- **`time.py`**: Time/position conversion (`t2p`, `p2t`, `d2t`, `t2d`) with beat event context
+- **`note/`**: Note type modules and utilities
+  - `types.py`: Note protocol and SDK note classes (`Tap`, `Flick`, `Hold`, `Air`, `Extap`, `Slide`, `Joint`)
+  - `node.py`: Raw `Node` tree and factory `N` for building nodes (`N.tap()`, `N.hold()`, `N.slide_begin()`, etc.)
+  - `air.py`, `ground.py`, `long.py`, `color.py`, `direction.py`, `shared.py`, `wrap.py`: Note-type-specific details
   - `shift.py`: Utilities for shifting notes/events by tick offset
-- **`trace.py`**: Request/response logging (debug helper)
 
 **Transaction lifecycle:**
 ```python
@@ -209,18 +213,9 @@ The wire protocol is defined in `proto/margrete/rpc/v1/messages.proto`. Key mess
 .\build.ps1 -Configuration Debug -Test -SkipVcVars
 ```
 
-## Git Workflow
-
-Recent work has focused on:
-- RPC method implementations (status, undo, redo, current_tick)
-- Transaction and undo/redo state management
-- Chart serialization and mapping
-- SDK discovery and auto-connection
-
 Follow conventional commit style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`.
 
 ## User Notes
 
-- The project is still under development and not published yet, so a cleaner implementation and better future maintainability are preferred over maintaining backward compatibility.
-
-- Suggest commit message after completion.
+- **Development philosophy**: The project is not yet published, so cleaner implementation and future maintainability are prioritized over backward compatibility.
+- **Commit messages**: Suggest a concise commit message after task completion (conventional commit style).

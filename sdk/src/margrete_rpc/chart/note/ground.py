@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from ..time import Tick
-from ._air import Air, AirHold, AirSlide, _AirAttachable
-from ._shared import (
+from .air import Air, AirHold, AirSlide, _AirAttachable
+from .shared import (
     _check_tick,
     _check_width,
     _copy_info,
