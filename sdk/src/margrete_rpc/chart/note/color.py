@@ -5,12 +5,6 @@ from typing import Literal
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-
-class AirCrushOption(StrEnum):
-    TRACE = "trace"
-    HEAD_ONLY = "head_only"
-
-
 class AirCrushColor(StrEnum):
     DEFAULT = "default"
     RED = "red"
@@ -30,7 +24,6 @@ class AirCrushColor(StrEnum):
     NONE = "none"
 
 
-type AirCrushOptionLike = AirCrushOption | Literal["trace", "head_only"]
 type AirCrushColorLike = (
     AirCrushColor
     | Literal[
@@ -52,14 +45,8 @@ type AirCrushColorLike = (
         "none",
     ]
 )
-type AirCrushOptionValue = AirCrushOption | int
 type AirCrushColorValue = AirCrushColor | int
 
-
-AIR_CRUSH_OPTION_TO_VALUE = {
-    AirCrushOption.TRACE: 0,
-    AirCrushOption.HEAD_ONLY: 0x7FFFFFFF,
-}
 
 AIR_CRUSH_COLOR_TO_VALUE = {
     AirCrushColor.DEFAULT: messages_pb2.AIR_CRUSH_COLOR_DEFAULT,
@@ -80,20 +67,7 @@ AIR_CRUSH_COLOR_TO_VALUE = {
     AirCrushColor.NONE: messages_pb2.AIR_CRUSH_COLOR_NONE,
 }
 
-AIR_CRUSH_OPTION_FROM_VALUE = {value: key for key, value in AIR_CRUSH_OPTION_TO_VALUE.items()}
 AIR_CRUSH_COLOR_FROM_VALUE = {value: key for key, value in AIR_CRUSH_COLOR_TO_VALUE.items()}
-
-
-def air_crush_option_from_value(value: int) -> AirCrushOptionValue:
-    return AIR_CRUSH_OPTION_FROM_VALUE.get(value, value)
-
-
-def air_crush_option_to_value(value: AirCrushOptionValue | str) -> int:
-    if isinstance(value, str):
-        value = AirCrushOption(value)
-    if isinstance(value, AirCrushOption):
-        return AIR_CRUSH_OPTION_TO_VALUE[value]
-    return int(value)
 
 
 def air_crush_color_from_value(value: int) -> AirCrushColorValue:
@@ -112,11 +86,6 @@ __all__ = [
     "AirCrushColor",
     "AirCrushColorLike",
     "AirCrushColorValue",
-    "AirCrushOption",
-    "AirCrushOptionLike",
-    "AirCrushOptionValue",
     "air_crush_color_from_value",
     "air_crush_color_to_value",
-    "air_crush_option_from_value",
-    "air_crush_option_to_value",
 ]

@@ -5,12 +5,9 @@ from dataclasses import dataclass, field
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from ..time import Tick
-from .air_crush import (
-    AirCrushOption,
-    AirCrushOptionLike,
+from .color import (
     air_crush_color_from_value,
     air_crush_color_to_value,
-    air_crush_option_to_value,
 )
 from .direction import direction_from_proto, direction_to_proto
 from .types import (
@@ -92,7 +89,7 @@ class MgNote:
             height=self.h,
             tick=int(self.t),
             timeline_id=self.til,
-            option_value=air_crush_option_to_value(self.option_value),
+            option_value=self.option_value,
         )
         if self._id is not None:
             proto.id = self._id
@@ -521,7 +518,7 @@ class M:
         x: int,
         w: int,
         h: int,
-        option_value: AirCrushOptionLike | int = AirCrushOption.TRACE,
+        option_value: int = 0,
         *,
         til: int | None = None,
         **kwargs,
@@ -536,7 +533,7 @@ class M:
                 x=x,
                 w=w,
                 h=h,
-                option_value=air_crush_option_to_value(option_value),
+                option_value=option_value,
                 **kwargs,
             )
         )
@@ -547,7 +544,7 @@ class M:
         x: int,
         w: int,
         h: int,
-        option_value: AirCrushOptionLike | int = AirCrushOption.TRACE,
+        option_value: int = 0,
         *,
         til: int | None = None,
         **kwargs,
@@ -569,7 +566,7 @@ class M:
         x: int,
         w: int,
         h: int,
-        option_value: AirCrushOptionLike | int = AirCrushOption.TRACE,
+        option_value: int = 0,
         *,
         til: int | None = None,
         **kwargs,
@@ -591,7 +588,7 @@ class M:
         x: int,
         w: int,
         h: int,
-        option_value: AirCrushOptionLike | int = AirCrushOption.TRACE,
+        option_value: int = 0,
         *,
         til: int | None = None,
         **kwargs,

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from ..time import Tick, resolve_tick
-from .air_crush import (
+from .color import (
     AirCrushColor,
     AirCrushColorLike,
-    AirCrushOptionLike,
     air_crush_color_from_value,
     air_crush_color_to_value,
 )
@@ -181,7 +180,7 @@ class AirCrush(_HeightMixin, _PlaceableLong):
         w: int,
         *,
         h: int,
-        density: AirCrushOptionLike | int,
+        density: int,
         color: AirCrushColorLike | int = AirCrushColor.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,

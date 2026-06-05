@@ -6,15 +6,11 @@ from typing import Any
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from .air_crush import (
+from .color import (
     AirCrushColor,
     AirCrushColorLike,
     AirCrushColorValue,
-    AirCrushOption,
-    AirCrushOptionLike,
-    AirCrushOptionValue,
     air_crush_color_from_value,
-    air_crush_option_from_value,
 )
 from .direction import (
     AirDirection,
@@ -78,7 +74,13 @@ class NoteInfo:
     h: int = 80
     t: int = 0
     til: int = 0
-    option_value: AirCrushOptionValue = 0
+
+    option_value: int = 0
+    """
+    TRACE = 0
+
+    HEAD_ONLY = 0x7FFFFFFF
+    """
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "t" and isinstance(value, tuple):
@@ -118,16 +120,6 @@ def _variation_line(info: NoteInfo) -> str:
     return repr(v)
 
 
-def _option_line(info: NoteInfo) -> str:
-    o = info.option_value
-    if isinstance(o, StrEnum):
-        return _enum_line(o)
-    if info.type is NoteType.AIRCRUSH:
-        option = air_crush_option_from_value(int(o))
-        return _enum_line(option) if isinstance(option, StrEnum) else repr(option)
-    return repr(o)
-
-
 def _format_note_info(info: NoteInfo) -> str:
     parts = [
         f"type={_enum_line(info.type)}",
@@ -140,7 +132,7 @@ def _format_note_info(info: NoteInfo) -> str:
         f"ex_attr={_enum_line(info.ex_attr)}",
         f"variation_id={_variation_line(info)}",
         f"til={info.til}",
-        f"option_value={_option_line(info)}",
+        f"option_value={info.option_value}",
     ]
     return "NI(" + ", ".join(parts) + ")"
 
@@ -149,9 +141,6 @@ __all__ = [
     "AirCrushColor",
     "AirCrushColorLike",
     "AirCrushColorValue",
-    "AirCrushOption",
-    "AirCrushOptionLike",
-    "AirCrushOptionValue",
     "AirDirection",
     "AirDirectionLike",
     "Direction",

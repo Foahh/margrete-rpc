@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .air_crush import air_crush_color_from_value
+from .color import air_crush_color_from_value
 from .mg import MgNote
 from .types import LongAttr, NoteInfo, NoteType
 from ._air import Air, AirHold, AirSlide

@@ -3,7 +3,6 @@ from __future__ import annotations
 from enum import IntEnum, StrEnum
 from typing import Any, Protocol, Self, runtime_checkable
 
-from .air_crush import AirCrushOption, air_crush_option_to_value
 from .direction import direction_from_proto
 from .mg import MgNote
 from .types import NoteInfo, NoteType
@@ -128,11 +127,9 @@ def _direction_property(enum_type: type[StrEnum], label: str):
 
 
 def _coerce_aircrush_density_value(value: object) -> int:
-    if isinstance(value, (AirCrushOption, str)):
-        return air_crush_option_to_value(value)
     if type(value) is int:
         return value
-    raise TypeError(f"density must be int, str, or AirCrushOption, got {type(value).__name__}")
+    raise TypeError(f"density must be int, got {type(value).__name__}")
 
 
 class _GeometryInfoMixin:

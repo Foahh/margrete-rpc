@@ -4,7 +4,6 @@ from margrete_rpc import (
     Air,
     AirCrush,
     AirCrushColor,
-    AirCrushOption,
     AirDirection,
     AirHold,
     AirSlide,
@@ -53,11 +52,11 @@ def test_note_type_factories_set_kind_and_geometry():
     assert M.air_hold_begin(1, 2, 1, 80).type is NoteType.AIRHOLD
     assert M.air_hold_begin(1, 2, 1, 80).long_attr is LongAttr.BEGIN
     assert M.air_hold_end(1, 2, 1, 80).long_attr is LongAttr.END
-    crush0 = M.air_crush_begin(1, 2, 1, 80, AirCrushOption.TRACE)
+    crush0 = M.air_crush_begin(1, 2, 1, 80, 0)
     assert crush0.type is NoteType.AIRCRUSH
     assert crush0.long_attr is LongAttr.BEGIN
     assert crush0.option_value == 0
-    head = M.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY)
+    head = M.air_crush_begin(1, 2, 1, 80, 0x7FFFFFFF)
     assert head.option_value == 0x7FFFFFFF
     assert M.air_crush_begin(1, 2, 1, 80, 120).option_value == 120
 
@@ -87,7 +86,6 @@ def test_air_crush_color_values_match_variation_ids():
 def test_note_enums_remain_public_exports():
     from margrete_rpc import (
         AirCrushColor,
-        AirCrushOption,
         AirDirection,
         ExAttr,
         ExtapDirection,
@@ -103,13 +101,10 @@ def test_note_enums_remain_public_exports():
     assert ExtapDirection.OUT_IN.value == "out_in"
     assert FlickDirection.RIGHT.value == "right"
     assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
-    assert AirCrushOption.HEAD_ONLY == "head_only"
     assert AirCrushColor.NONE == "none"
 
 
-def test_air_crush_enums_are_user_facing_strings():
-    assert AirCrushOption.TRACE == "trace"
-    assert AirCrushOption.HEAD_ONLY == "head_only"
+def test_air_crush_color_enums_are_user_facing_strings():
     assert AirCrushColor.DEFAULT == "default"
     assert AirCrushColor.COBALT_BLUE == "cobalt_blue"
 
@@ -512,7 +507,7 @@ def test_l_factory_methods_build_low_level_notes():
     assert M.air(1, 2, 1, direction=AirDirection.UP).direction == AirDirection.UP
     assert M.air_slide_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
     assert M.air_hold_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
-    assert M.air_crush_begin(1, 2, 1, 80, AirCrushOption.HEAD_ONLY).option_value == 0x7FFFFFFF
+    assert M.air_crush_begin(1, 2, 1, 80, 0x7FFFFFFF).option_value == 0x7FFFFFFF
 
 
 def test_mgnote_round_trips_to_protobuf_with_children_and_id():
@@ -1143,7 +1138,7 @@ def test_air_crush_density_and_color_redirect_to_mg_storage_fields():
         x=4,
         w=2,
         h=80,
-        density=AirCrushOption.TRACE,
+        density=0,
         color=AirCrushColor.RED,
     )
     crush.density = 120
@@ -1158,20 +1153,6 @@ def test_air_crush_density_and_color_redirect_to_mg_storage_fields():
     assert mg_note.til == 2
     assert mg_note.children[0].option_value == 0
 
-
-def test_air_crush_accepts_string_density_options_and_colors():
-    trace = AirCrush(t=0, x=4, w=2, h=80, density="trace", color="red")
-    head = AirCrush(t=0, x=4, w=2, h=80, density="head_only", color="cobalt_blue")
-
-    assert trace.density == 0
-    assert trace.color is AirCrushColor.RED
-    assert trace.to_mg(skip_validation=True).option_value == 0
-    assert trace.to_mg(skip_validation=True).to_proto().variation_id == 1
-
-    assert head.density == 0x7FFFFFFF
-    assert head.color is AirCrushColor.COBALT_BLUE
-    assert head.to_mg(skip_validation=True).option_value == 0x7FFFFFFF
-    assert head.to_mg(skip_validation=True).to_proto().variation_id == 14
 
 
 def test_air_crush_density_is_plain_int():

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from .air_crush import (
+from .color import (
     AirCrushColor,
     AirCrushColorLike,
     AirCrushColorValue,
-    AirCrushOption,
-    AirCrushOptionLike,
-    AirCrushOptionValue,
 )
 from .direction import (
     AirDirection,
@@ -40,9 +37,6 @@ __all__ = [
     "AirCrushColor",
     "AirCrushColorLike",
     "AirCrushColorValue",
-    "AirCrushOption",
-    "AirCrushOptionLike",
-    "AirCrushOptionValue",
     "AirDirection",
     "AirDirectionLike",
     "Direction",
