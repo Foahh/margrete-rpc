@@ -138,7 +138,7 @@ def _format_note_info(info: NoteInfo) -> str:
         f"til={info.til}",
         f"option_value={info.option_value}",
     ]
-    return "NI(" + ", ".join(parts) + ")"
+    return "(" + ", ".join(parts) + ")"
 
 
 __all__ = [

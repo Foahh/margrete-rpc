@@ -89,11 +89,6 @@ class Node:
         proto.children.extend(child.to_proto() for child in self.children)
         return proto
 
-    def shift(self, *, t: int = 0, x: int = 0, w: int = 0, h: int = 0) -> Node:
-        from .shift import _shift_node
-
-        return _shift_node(self, t=t, x=x, w=w, h=h)
-
 
 def _format_node(note: Node, *, indent: int = 0) -> str:
     prefix = "  " * indent

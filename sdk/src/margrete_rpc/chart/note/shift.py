@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .node import Node
 from .types import NoteInfo
 
 
@@ -9,15 +8,6 @@ def _apply_deltas(info: NoteInfo, *, t: int, x: int, w: int, h: int) -> None:
     info.x += x
     info.w += w
     info.h += h
-
-
-def _shift_node(note: Node, *, t: int, x: int, w: int, h: int) -> Node:
-    if t == x == w == h == 0:
-        return note
-    _apply_deltas(note.info, t=t, x=x, w=w, h=h)
-    for child in note.children:
-        _shift_node(child, t=t, x=x, w=w, h=h)
-    return note
 
 
 def _shift_joint(joint: object, *, t: int, x: int, w: int, h: int) -> None:
