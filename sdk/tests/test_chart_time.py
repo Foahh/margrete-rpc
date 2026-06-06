@@ -191,11 +191,11 @@ def test_noteinfo_option_value_accepts_division_tuple():
     assert info.option_value == TICKS_PER_BEAT // 4
 
 
-def test_aircrush_density_accepts_division_tuple():
+def test_aircrush_gap_accepts_division_tuple():
     from margrete_rpc.chart import AirCrush
 
-    note = AirCrush(0, 0, 4, h=80, density=(1, 384))
-    assert note.density == 5
+    note = AirCrush(0, 0, 4, h=80, gap=(1, 384))
+    assert note.gap == 5
 
-    note.density = (1, 4)
-    assert note.density == TICKS_PER_BEAT // 4
+    note.gap = (1, 4)
+    assert note.gap == TICKS_PER_BEAT // 4

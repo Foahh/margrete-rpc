@@ -158,7 +158,7 @@ def _format_note_info(info: NoteInfo) -> str:
         f"x={info.x}",
         f"w={info.w}",
         f"h={info.h}",
-        f"direction={_direction_line(info)}",
+        f"dir={_direction_line(info)}",
         f"ex_attr={_enum_line(info.ex_attr)}",
         f"variation_id={_variation_line(info)}",
         f"til={info.til}",

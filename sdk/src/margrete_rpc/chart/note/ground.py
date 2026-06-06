@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from ..time import Tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
@@ -37,14 +39,6 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         self.w = w
         _check_tick(self.t)
         _check_width(self.w)
-
-    @property
-    def type(self) -> NoteType:
-        return self._type
-
-    @property
-    def long_attr(self) -> LongAttr:
-        return LongAttr.NONE
 
     def _base_node(self) -> Node:
         return Node(info=self._info.copy(), _id=self._id)
@@ -110,7 +104,7 @@ class Damage(_GroundNote):
 
 
 class Extap(_GroundNote):
-    direction = _direction_property(ExtapDirection, "extap")
+    dir = _direction_property(ExtapDirection, "extap")
 
     def __init__(
         self,
@@ -118,24 +112,24 @@ class Extap(_GroundNote):
         x: int,
         w: int,
         *,
-        direction: ExtapDirectionLike | int = ExtapDirection.UP,
+        dir: ExtapDirectionLike | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(t, x, w, NoteType.EXTAP, _copy_info(_info), _id)
-        self.direction = direction
+        self.dir = dir
 
     def _base_node(self) -> Node:
         note = super()._base_node()
-        note.direction = self.direction
+        note.dir = self.dir
         return note
 
     def _str_parts(self) -> list[str]:
-        return [*super()._str_parts(), f"direction={_note_enum_line(self.direction)}"]
+        return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
 
 class Flick(Extap):
-    direction = _direction_property(FlickDirection, "flick")
+    dir = _direction_property(FlickDirection, "flick")
 
     def __init__(
         self,
@@ -143,10 +137,10 @@ class Flick(Extap):
         x: int,
         w: int,
         *,
-        direction: FlickDirectionLike | int = FlickDirection.AUTO,
+        dir: FlickDirectionLike | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, direction=direction, _info=_info, _id=_id)
+        super().__init__(t, x, w, dir=cast("ExtapDirectionLike | int", dir), _info=_info, _id=_id)
         self._type = NoteType.FLICK
         self._info.type = NoteType.FLICK

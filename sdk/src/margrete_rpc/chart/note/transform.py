@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Sequence
 from typing import Any, NamedTuple, cast
 
 from ..time import Tick, resolve_tick
-from .air import Air, AirHold, AirSlide
+from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import ColorValue
 from .direction import Direction
 from .ground import Damage, Extap, Flick, Tap, _GroundNote
@@ -16,7 +16,7 @@ from .shared import AlignMode, Note
 from .types import JointKind, JointKindLike
 
 _DEFAULT_H = 80
-_DEFAULT_AIRCRUSH_DENSITY = 0
+_DEFAULT_AIRCRUSH_GAP = 0
 
 type SlideLike = Slide | AirSlide | AirCrush
 type LongLike = Slide | Hold | AirSlide | AirHold | AirCrush
@@ -158,19 +158,21 @@ def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) ->
     raise ValueError(f"cannot convert {type(note).__name__} to {target.__name__}")
 
 
-def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, Any]) -> Note:
+def _convert_ground(
+    note: _GroundNote, target: type[Note], overrides: dict[str, Any]
+) -> Note:
     new = target(int(note.t), note.x, note.w)  # type: ignore[call-arg]
     new._info.til = note._info.til
     new._info.ex_attr = note._info.ex_attr
     if isinstance(new, Extap):
-        if "direction" in overrides:
-            new.direction = overrides["direction"]
+        if "dir" in overrides:
+            new.dir = overrides["dir"]
         elif isinstance(note, Extap):
             try:
-                new.direction = note.direction
+                new.dir = note.dir
             except (ValueError, TypeError):
                 pass
-    if getattr(note, "_air", None) is not None:
+    if isinstance(new, _AirAttachable) and getattr(note, "_air", None) is not None:
         new._air = _clone_air(note._air)
     new._id = None
     return new
@@ -221,6 +223,9 @@ def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any])
     new: LongLike
     if issubclass(target, Slide):
         new = _build_slide(begin, joints)
+        source_air = getattr(note, "_air", None)
+        if source_air is not None:
+            new._air = _clone_air(source_air)
     else:
         new = _build_air_long(note, target, begin, joints, overrides)
     new._info.til = note._info.til
@@ -249,13 +254,13 @@ def _build_air_long(
     h0 = int(h0)
     new: AirSlide | AirHold | AirCrush
     if issubclass(target, AirCrush):
-        density = overrides.get(
-            "density", note.density if isinstance(note, AirCrush) else _DEFAULT_AIRCRUSH_DENSITY
+        gap = overrides.get(
+            "gap", note.gap if isinstance(note, AirCrush) else _DEFAULT_AIRCRUSH_GAP
         )
         color = overrides.get(
             "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
         )
-        new = AirCrush(begin.t, begin.x, begin.w, h=h0, density=density, color=color)
+        new = AirCrush(begin.t, begin.x, begin.w, h=h0, gap=gap, color=color)
     else:
         new_air: AirSlide | AirHold = (
             AirSlide(h=h0) if issubclass(target, AirSlide) else AirHold(h=h0)
@@ -263,8 +268,8 @@ def _build_air_long(
         new_air._info.t = begin.t
         new_air._info.x = begin.x
         new_air._info.w = begin.w
-        if "direction" in overrides:
-            new_air._air_info.direction = overrides["direction"]
+        if "dir" in overrides:
+            new_air._air_info.direction = overrides["dir"]
         elif isinstance(note, (AirSlide, AirHold)):
             new_air._air_info.direction = note._air_info.direction
         new = new_air
@@ -410,7 +415,7 @@ def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
         new: SlideLike = Slide(point.t, point.x, point.w)
     elif isinstance(note, AirCrush):
         h = point.h if point.h is not None else int(note._info.h)
-        new = AirCrush(point.t, point.x, point.w, h=h, density=note.density, color=note.color)
+        new = AirCrush(point.t, point.x, point.w, h=h, gap=note.gap, color=note.color)
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
         air = AirSlide(h=h)

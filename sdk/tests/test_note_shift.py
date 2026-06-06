@@ -21,7 +21,7 @@ def _collect_geometry(note: Node) -> list[tuple[int, int, int, int]]:
 
 
 def test_note_ground_with_air_and_air_slide_shifts_all_nodes():
-    tap = Tap(t=100, x=4, w=2).air(AirSlide(h=80).step(200, x=8, w=2, h=100))
+    tap = Tap(t=100, x=4, w=2).tie(AirSlide(h=80).step(200, x=8, w=2, h=100))
 
     tap.shift(t=5, h=10)
 
@@ -48,7 +48,7 @@ def test_note_slide_shifts_begin_and_all_joints():
 
 
 def test_note_hold_and_slide_air_shift():
-    hold = Hold(t=50, x=1, w=3).step(120, x=1, w=3).air(AirHold(h=70).step(160, x=1, w=3, h=70))
+    hold = Hold(t=50, x=1, w=3).step(120, x=1, w=3).tie(AirHold(h=70).step(160, x=1, w=3, h=70))
     hold.shift(t=3)
 
     assert hold.t == 53
@@ -57,7 +57,7 @@ def test_note_hold_and_slide_air_shift():
     assert isinstance(hold._air, AirHold)
     assert hold._air.joints[-1].t == 163
 
-    slide = Slide(t=10, x=0, w=2).step(30, x=4, w=2).air(AirDirection.DOWN)
+    slide = Slide(t=10, x=0, w=2).step(30, x=4, w=2).tie(AirDirection.DOWN)
     slide.shift(h=20)
     assert slide._info.h == 100
     assert isinstance(slide._air, Air)
@@ -65,7 +65,7 @@ def test_note_hold_and_slide_air_shift():
 
 def test_note_air_crush_shifts_begin_controls_and_end():
     crush = (
-        AirCrush(t=0, x=1, w=2, h=80, density=5, color=Color.RED)
+        AirCrush(t=0, x=1, w=2, h=80, gap=5, color=Color.RED)
         .control(50, x=2, w=2, h=90)
         .control(100, x=3, w=2, h=70)
     )
@@ -76,7 +76,7 @@ def test_note_air_crush_shifts_begin_controls_and_end():
     assert crush.joints[0].h == 93
     assert crush.joints[1].t == 107
     assert crush.joints[1].h == 73
-    assert crush.density == 5
+    assert crush.gap == 5
     assert crush.color is ColorValue.RED
 
 
@@ -97,7 +97,7 @@ def test_shift_does_not_validate_negative_tick_or_width():
 
 def test_shift_callable_maps_every_tick_across_tree():
     air = AirSlide(h=80).step(200, x=8, w=2, h=100)
-    slide = Slide(t=100, x=0, w=4).step(200, x=2, w=4).air(air)
+    slide = Slide(t=100, x=0, w=4).step(200, x=2, w=4).tie(air)
     slide.shift(t=lambda v: v * 2)
     assert slide.t == 200
     assert slide.joints[0].t == 400

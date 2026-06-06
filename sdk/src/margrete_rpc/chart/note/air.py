@@ -19,12 +19,12 @@ from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
 
 
 class Air:
-    direction = _direction_property(AirDirection, "air")
+    dir = _direction_property(AirDirection, "air")
     til = _info_property("til")
 
     def __init__(
         self,
-        direction: AirDirectionLike,
+        dir: AirDirectionLike,
         *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -33,7 +33,7 @@ class Air:
         self._id = _id
         self._info.type = NoteType.AIR
         self._info.long_attr = LongAttr.NONE
-        self.direction = direction
+        self.dir = dir
 
     @property
     def inverted(self) -> bool:
@@ -43,16 +43,8 @@ class Air:
     def inverted(self, value: bool) -> None:
         self._info.ex_attr = ExAttr.INVERT if value else ExAttr.NONE
 
-    @property
-    def type(self) -> NoteType:
-        return NoteType.AIR
-
-    @property
-    def long_attr(self) -> LongAttr:
-        return LongAttr.NONE
-
     def validate(self) -> None:
-        self.direction
+        self.dir
 
     def _validate_with_anchor(self, anchor: NoteInfo) -> None:
         del anchor
@@ -73,7 +65,7 @@ class Air:
         )
 
     def __str__(self) -> str:
-        parts = [f"direction={_note_enum_line(self.direction)}"]
+        parts = [f"dir={_note_enum_line(self.dir)}"]
         if self._id is not None:
             parts.append(f"id={self._id}")
         if self.inverted:
@@ -119,14 +111,6 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
     def _terminus_attr(self, joint: Joint) -> LongAttr:
         del joint
         raise NotImplementedError
-
-    @property
-    def type(self) -> NoteType:
-        return self._note_type
-
-    @property
-    def long_attr(self) -> LongAttr:
-        return LongAttr.BEGIN
 
     def _air_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
         return self._air_info.copy(t=anchor.t, x=anchor.x, w=anchor.w)
@@ -219,10 +203,22 @@ class AirHold(_AttachableAirLong):
 class _AirAttachable:
     _air: Air | AirSlide | AirHold | None
 
-    def air(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
-        if isinstance(air, (AirDirection, str)):
-            air = Air(air)
-        if not isinstance(air, (Air, AirSlide, AirHold)):
+    @property
+    def air(self) -> Air | AirSlide | AirHold | None:
+        return self._air
+
+    @air.setter
+    def air(self, value: AirDirectionLike | Air | AirSlide | AirHold | None) -> None:
+        if value is None:
+            self._air = None
+            return
+        if isinstance(value, (AirDirection, str)):
+            value = Air(value)
+        # Defensive guard for untyped callers passing an unsupported value.
+        if not isinstance(value, (Air, AirSlide, AirHold)):  # pyright: ignore[reportUnnecessaryIsInstance]
             raise TypeError("air expects air direction, Air, AirSlide, or AirHold")
-        self._air = air
+        self._air = value
+
+    def tie(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
+        self.air = air
         return self

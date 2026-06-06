@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import cast
 from warnings import deprecated
 
-from ..time import Tick, resolve_tick
+from ..time import Tick, resolve_density, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -16,7 +16,6 @@ from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
-    _coerce_aircrush_density_value,
     _copy_info,
     _GeometryInfoMixin,
     _HeightMixin,
@@ -24,6 +23,16 @@ from .shared import (
     _TransformMixin,
 )
 from .types import LongAttr, NoteInfo, NoteType
+
+
+def _coerce_aircrush_gap_value(value: object) -> int:
+    if type(value) is int:
+        return value
+    if isinstance(value, tuple):
+        return resolve_density(cast("tuple[int, int]", value))
+    raise TypeError(
+        f"gap must be int or (numerator, denominator) tuple, got {type(value).__name__}"
+    )
 
 
 class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
@@ -50,14 +59,6 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         self.t = t
         self.x = x
         self.w = w
-
-    @property
-    def type(self) -> NoteType:
-        return self._note_type
-
-    @property
-    def long_attr(self) -> LongAttr:
-        return LongAttr.BEGIN
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
         del joint
@@ -107,7 +108,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             parts.append(f"id={self._id}")
         if isinstance(self, AirCrush):
             parts.append(f"h={self.h}")
-            parts.append(f"density={self.density}")
+            parts.append(f"gap={self.gap}")
             parts.append(f"color={_note_enum_line(self.color)}")
         head = ", ".join(parts)
         lines = [f"{cls}({head}"]
@@ -187,23 +188,23 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         w: int,
         *,
         h: int,
-        density: int,
+        gap: int,
         color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(t, x, w, _info=_info, _id=_id)
         self.h = h
-        self.density = density
+        self.gap = gap
         self.color = color
 
     @property
-    def density(self) -> int:
+    def gap(self) -> int:
         return int(self._info.option_value)
 
-    @density.setter
-    def density(self, value: object) -> None:
-        self._info.option_value = _coerce_aircrush_density_value(value)
+    @gap.setter
+    def gap(self, value: object) -> None:
+        self._info.option_value = _coerce_aircrush_gap_value(value)
 
     @property
     def color(self) -> ColorValue | int:

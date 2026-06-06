@@ -64,7 +64,7 @@ def test_note_tap_accepts_position_tuple():
 
 
 def test_note_chained_joints_accept_positions():
-    note = Tap((1, 0), 0, 4).air(
+    note = Tap((1, 0), 0, 4).tie(
         AirSlide(h=80).control((1, 1), x=5, w=4, h=100).step((1, 2), x=5, w=4, h=100)
     )
     assert note.t == BAR

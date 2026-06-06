@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, Self, cast, overload, 
 from ..time import Tick
 from .direction import direction_from_proto
 from .node import Node
-from .types import NoteInfo, NoteType
+from .types import NoteInfo
 
 if TYPE_CHECKING:
     from .air import AirHold, AirSlide
@@ -31,9 +31,6 @@ class Note(Protocol):
     x: int
     w: int
     til: int
-
-    @property
-    def type(self) -> NoteType: ...
 
     def shift(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
 
@@ -60,7 +57,7 @@ class Note(Protocol):
     def to_node(self, *, skip_validation: bool = False) -> Node: ...
 
 
-def _note_enum_line(value: IntEnum | StrEnum | int) -> str:
+def _note_enum_line(value: object) -> str:
     if isinstance(value, (IntEnum, StrEnum)):
         return f"{type(value).__name__}.{value.name}({value.value!r})"
     return repr(value)
@@ -155,18 +152,6 @@ def _direction_property(enum_type: type[StrEnum], label: str) -> property:
         self._info.direction = direction
 
     return property(getter, setter)
-
-
-def _coerce_aircrush_density_value(value: object) -> int:
-    if type(value) is int:
-        return value
-    if isinstance(value, tuple):
-        from ..time import resolve_density
-
-        return resolve_density(value)
-    raise TypeError(
-        f"density must be int or (numerator, denominator) tuple, got {type(value).__name__}"
-    )
 
 
 class _GeometryInfoMixin:

@@ -46,7 +46,7 @@ def _wrap_ground(note: Node) -> Note:
     if len(note.children) > 1:
         raise UnsupportedNoteTree("only one air object may attach to one ground note")
     if note.children:
-        wrapped.air(_wrap_attached_air_note(note.children[0]))
+        wrapped.tie(_wrap_attached_air_note(note.children[0]))
     return wrapped
 
 
@@ -78,7 +78,7 @@ def _wrap_attached_air_note(note: Node) -> Air | AirSlide | AirHold:
         raise UnsupportedNoteTree("air may have only one long action")
     if not note.children:
         try:
-            return Air(note.direction, _info=note.info.copy(), _id=note._id)
+            return Air(note.dir, _info=note.info.copy(), _id=note._id)
         except ValueError as exc:
             raise UnsupportedNoteTree("unsupported air direction") from exc
     action = note.children[0]
@@ -115,7 +115,7 @@ def _wrap_slide(note: Node) -> Slide:
             raise UnsupportedNoteTree("unsupported slide joint")
         _copy_joint(slide, child)
         if child.children:
-            slide.air(_wrap_attached_air_note(child.children[0]))
+            slide.tie(_wrap_attached_air_note(child.children[0]))
         previous_t = int(child.t)
     return slide
 
@@ -130,7 +130,7 @@ def _wrap_hold(note: Node) -> Hold:
     hold._add_step(int(child.t), x=child.x, w=child.w)
     _copy_joint(hold, child)
     if child.children:
-        hold.air(_wrap_attached_air_note(child.children[0]))
+        hold.tie(_wrap_attached_air_note(child.children[0]))
     return hold
 
 
@@ -216,7 +216,7 @@ def _wrap_air_crush(note: Node) -> AirCrush:
         note.x,
         note.w,
         h=note.h,
-        density=note.option_value,
+        gap=note.option_value,
         color=color_from_value(int(note.variation_id)),
         _info=note.info,
         _id=note._id,

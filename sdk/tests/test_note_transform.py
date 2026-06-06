@@ -41,7 +41,7 @@ def test_clone_is_deep_and_detached():
 
 
 def test_clone_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=5).air(AirSlide(h=80).step(100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=5).tie(AirSlide(h=80).step(100, x=8, w=2, h=90))
     tap._air._air_id = 7
 
     clone = tap.clone()
@@ -142,8 +142,8 @@ def test_flip_mirrors_lane_and_is_self_inverse():
 
 
 def test_flip_swaps_left_right_directions():
-    assert Extap(t=0, x=0, w=2, direction="left").flipped().direction.value == "right"
-    assert Flick(t=0, x=0, w=2, direction="right").flipped().direction.value == "left"
+    assert Extap(t=0, x=0, w=2, dir="left").flipped().dir.value == "right"
+    assert Flick(t=0, x=0, w=2, dir="right").flipped().dir.value == "left"
 
 
 def test_flip_custom_field_width():
@@ -151,11 +151,11 @@ def test_flip_custom_field_width():
 
 
 def test_flip_recurses_into_joints_and_air():
-    slide = Slide(t=0, x=0, w=2).step(100, x=10, w=2).air("up_left")
+    slide = Slide(t=0, x=0, w=2).step(100, x=10, w=2).tie("up_left")
     slide.flip()
     assert slide.x == FIELD_WIDTH - 0 - 2
     assert slide.joints[0].x == FIELD_WIDTH - 10 - 2
-    assert slide._air.direction.value == "up_right"
+    assert slide._air.dir.value == "up_right"
 
 
 # --------------------------------------------------------------------------- convert
@@ -164,20 +164,20 @@ def test_flip_recurses_into_joints_and_air():
 def test_converted_returns_detached_copy_without_touching_original():
     tap = Tap(t=120, x=4, w=2, _id=7)
     tap._info.til = 3
-    flick = tap.converted(Flick, direction="left")
+    flick = tap.converted(Flick, dir="left")
 
     assert isinstance(flick, Flick)
     assert isinstance(tap, Tap)  # original is left alone
     assert (int(flick.t), flick.x, flick.w) == (120, 4, 2)
     assert flick._info.til == 3
-    assert flick.direction.value == "left"
+    assert flick.dir.value == "left"
     assert flick._id is None
 
     assert isinstance(flick.converted(Damage), Damage)
 
 
 def test_converted_ground_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=4).air(AirSlide(h=80).step(100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=4).tie(AirSlide(h=80).step(100, x=8, w=2, h=90))
     extap = tap.converted(Extap)
     assert isinstance(extap, Extap)
     assert extap._air is not tap._air
@@ -187,7 +187,7 @@ def test_converted_ground_preserves_attached_air_detached():
 
 def test_converted_slide_to_air_slide_and_back():
     slide = Slide(t=100, x=0, w=4).step(150, x=2, w=4).control(200, x=4, w=4)
-    air = slide.converted(AirSlide, h=80, direction="down")
+    air = slide.converted(AirSlide, h=80, dir="down")
 
     assert isinstance(air, AirSlide)
     assert isinstance(slide, Slide)  # original unchanged
@@ -219,16 +219,16 @@ def test_converted_hold_to_slide():
 
 def test_converted_slide_to_aircrush():
     slide = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
-    crush = slide.converted(AirCrush, h=80, density=4)
+    crush = slide.converted(AirCrush, h=80, gap=4)
     assert isinstance(crush, AirCrush)
     assert crush.h == 80
-    assert crush.density == 4
+    assert crush.gap == 4
     assert int(crush.joints[-1].t) == 100
 
 
 def test_converted_aircrush_to_airslide():
-    crush = AirCrush(t=0, x=2, w=2, h=80, density=5).control(100, x=4, w=2, h=100)
-    air = crush.converted(AirSlide, direction="up")
+    crush = AirCrush(t=0, x=2, w=2, h=80, gap=5).control(100, x=4, w=2, h=100)
+    air = crush.converted(AirSlide, dir="up")
     assert isinstance(air, AirSlide)
     assert (int(air._info.t), air._info.x, air._info.w) == (0, 2, 2)
     assert air.joints[-1].h == 100
@@ -246,7 +246,23 @@ def test_convert_cross_shape_raises():
     with pytest.raises(ValueError):
         Slide(t=0, x=0, w=4).step(100, x=2, w=4).converted(AirHold)
     with pytest.raises(ValueError):
-        AirCrush(t=0, x=0, w=2, h=80, density=4).control(100, x=2, w=2, h=80).converted(Hold)
+        AirCrush(t=0, x=0, w=2, h=80, gap=4).control(100, x=2, w=2, h=80).converted(Hold)
+
+
+def test_convert_with_air_to_non_attachable_target_drops_air_silently():
+    slide = Slide(t=0, x=0, w=4).step(100, x=2, w=4).tie("up")
+    crush = slide.converted(AirCrush, h=80, gap=4)
+    assert isinstance(crush, AirCrush)
+    assert getattr(crush, "_air", None) is None
+
+
+def test_convert_with_air_to_attachable_target_carries_air():
+    hold = Hold(t=0, x=1, w=3).step(120, x=1, w=3).tie(AirSlide(h=80).step(150, x=4, w=2, h=90))
+    slide = hold.converted(Slide)
+    assert isinstance(slide, Slide)
+    assert slide._air is not None
+    assert slide._air is not hold._air
+    assert slide._air.joints[-1].h == 90
 
 
 # ----------------------------------------------------------------------------- merge
@@ -291,7 +307,7 @@ def test_merge_sorts_unordered_input_by_start_tick():
 
 def test_merge_rejects_mismatched_types_and_overlap():
     slide = Slide(0, 0, 4).step(100, 2, 4)
-    crush = AirCrush(200, 0, 2, h=80, density=4).control(300, 2, 2, h=80)
+    crush = AirCrush(200, 0, 2, h=80, gap=4).control(300, 2, 2, h=80)
     with pytest.raises(TypeError):
         merge([slide, crush])
     with pytest.raises(ValueError):  # second note starts before the first ends
@@ -331,12 +347,12 @@ def test_split_at_tick_interpolates_mid_segment():
 
 def test_split_then_merge_round_trips_air_crush():
     crush = (
-        AirCrush(t=0, x=2, w=2, h=80, density=5, color=Color.RED)
+        AirCrush(t=0, x=2, w=2, h=80, gap=5, color=Color.RED)
         .control(100, x=4, w=2, h=100)
         .control(200, x=6, w=2, h=120)
     )
     first, second = split(crush, 100)
-    assert first.density == 5
+    assert first.gap == 5
     assert first.color is ColorValue.RED
 
     merged = merge([first, second])
