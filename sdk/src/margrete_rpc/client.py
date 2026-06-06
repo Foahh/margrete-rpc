@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
-from margrete_rpc.chart import Chart
+from margrete_rpc._transport import RpcTransport
 from margrete_rpc.discovery import resolve_endpoint
 from margrete_rpc.trace import NoopTracer, Tracer
-from margrete_rpc.transaction import EditTransaction
 
-
-class Transport(Protocol):
-    def request(self, envelope: messages_pb2.Envelope) -> messages_pb2.Envelope: ...
+if TYPE_CHECKING:
+    from margrete_rpc.transaction import EditTransaction
 
 
 @dataclass(frozen=True)
@@ -34,7 +32,7 @@ class Margrete:
         *,
         instance_id: str | None = None,
         timeout: float = 60.0,
-        transport: Transport | None = None,
+        transport: RpcTransport | None = None,
         tracer: Tracer | None = None,
     ) -> None:
         self._tracer = tracer if tracer is not None else NoopTracer()
@@ -102,6 +100,9 @@ class Margrete:
         raw: bool = False,
         replace_all: bool = False,
     ) -> EditTransaction:
+        from margrete_rpc.chart import Chart
+        from margrete_rpc.transaction import EditTransaction
+
         tx_type = "edit_raw" if raw else "edit"
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type, "tx.name": name}):
             req = messages_pb2.BeginEditRequest(

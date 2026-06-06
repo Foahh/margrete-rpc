@@ -1,4 +1,4 @@
-from margrete_rpc import (
+from margrete_rpc.chart import (
     Air,
     AirCrush,
     AirDirection,

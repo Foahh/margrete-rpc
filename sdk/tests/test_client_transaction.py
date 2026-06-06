@@ -1,7 +1,8 @@
 import pytest
 
-from margrete_rpc import Chart, Margrete, N, Tap
+from margrete_rpc import Margrete
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.chart import Chart, N, Tap
 
 
 class FakeTransport:

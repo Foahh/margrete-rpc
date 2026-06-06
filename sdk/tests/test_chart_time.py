@@ -192,7 +192,7 @@ def test_noteinfo_option_value_accepts_division_tuple():
 
 
 def test_aircrush_density_accepts_division_tuple():
-    from margrete_rpc import AirCrush
+    from margrete_rpc.chart import AirCrush
 
     note = AirCrush(0, 0, 4, h=80, density=(1, 384))
     assert note.density == 5

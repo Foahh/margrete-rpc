@@ -1,6 +1,7 @@
 import pytest
 
-from margrete_rpc import (
+from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.chart import (
     Air,
     AirCrush,
     AirDirection,
@@ -34,9 +35,8 @@ from margrete_rpc import (
     Tap,
     TimelineSpeedEvent,
     UnsupportedNoteTree,
+    normalize_event_operations,
 )
-from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart import normalize_event_operations
 from margrete_rpc.chart.note import wrap_node
 from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
 
@@ -87,8 +87,8 @@ def test_air_crush_color_values_match_variation_ids():
     assert none.to_proto().variation_id == 35
 
 
-def test_note_enums_remain_public_exports():
-    from margrete_rpc import (
+def test_note_enums_remain_chart_exports():
+    from margrete_rpc.chart import (
         AirDirection,
         Color,
         ColorValue,
@@ -125,8 +125,9 @@ def test_direction_enum_values_are_user_facing_strings():
     assert FlickDirection.AUTO == "auto"
 
 
-def test_new_note_api_is_exported_from_root_package():
-    from margrete_rpc import (
+def test_new_note_api_is_exported_from_chart_package():
+    from margrete_rpc import NoopTracer
+    from margrete_rpc.chart import (
         TICKS_PER_BEAT,
         Air,
         AirCrush,
@@ -135,7 +136,6 @@ def test_new_note_api_is_exported_from_root_package():
         Hold,
         N,
         Node,
-        NoopTracer,
         Note,
         NoteInfo,
         Slide,
@@ -159,8 +159,8 @@ def test_new_note_api_is_exported_from_root_package():
     assert NoopTracer() is not None
 
 
-def test_margrete_native_and_sdk_note_names_are_exported_from_root_package():
-    from margrete_rpc import N, Node, Note
+def test_margrete_native_and_sdk_note_names_are_exported_from_chart_package():
+    from margrete_rpc.chart import N, Node, Note
 
     assert N.tap(0, 4, 2).type is NoteType.TAP
     assert Node().info == NoteInfo()

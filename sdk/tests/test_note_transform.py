@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from margrete_rpc import (
+from margrete_rpc.chart import (
     AirCrush,
     AirHold,
     AirSlide,

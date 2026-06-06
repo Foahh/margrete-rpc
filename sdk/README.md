@@ -64,7 +64,8 @@ mg = Margrete("127.0.0.1:48731")
 ## Chart Editing
 
 ```python
-from margrete_rpc import BpmEvent, Margrete, N, Tap
+from margrete_rpc import Margrete
+from margrete_rpc.chart import BpmEvent, N, Tap
 
 mg = Margrete()
 
@@ -93,7 +94,8 @@ See [`example`](example/) for more complex usage.
 Convert absolute ticks to bar/beat/offset (and back), including time signature changes from `BeatEvent` data:
 
 ```python
-from margrete_rpc import Margrete, p2t, t2p
+from margrete_rpc import Margrete
+from margrete_rpc.chart import p2t, t2p
 
 with Margrete().open_edit("...") as tx:
     p = t2p(tx.current_tick)       # (bar, beat, offset) - beat events from context
@@ -104,7 +106,7 @@ with Margrete().open_edit("...") as tx:
 Outside a transaction, pass `beat_events` explicitly:
 
 ```python
-from margrete_rpc import p2t, t2p
+from margrete_rpc.chart import p2t, t2p
 
 p = t2p(960, beat_events=chart.events.beat)
 tick = p2t(*p, beat_events=chart.events.beat)
@@ -128,6 +130,9 @@ from margrete_rpc import Margrete
 - `redo() -> bool`
 - `current_tick() -> int`
 - `open_edit(name: str, *, scan: bool = True, raw: bool = False, ...) -> EditTransaction`
+
+Chart objects, note builders, event models, and time helpers are exported from
+`margrete_rpc.chart`.
 
 Discovery helpers:
 
