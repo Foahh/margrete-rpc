@@ -1,4 +1,4 @@
-from margrete_rpc.chart import (
+from margrete_rpc.chart.notes import (
     Air,
     AirCrush,
     AirDirection,
@@ -7,13 +7,13 @@ from margrete_rpc.chart import (
     Color,
     ColorValue,
     Hold,
-    Node,
     Slide,
     Tap,
 )
+from margrete_rpc.chart.raw import RawNote
 
 
-def _collect_geometry(note: Node) -> list[tuple[int, int, int, int]]:
+def _collect_geometry(note: RawNote) -> list[tuple[int, int, int, int]]:
     rows = [(int(note.t), note.x, note.w, note.h)]
     for child in note.children:
         rows.extend(_collect_geometry(child))
@@ -126,4 +126,4 @@ def test_shift_callable_raises_if_non_monotone():
 
     slide = Slide(t=100, x=0, w=4).step(500, x=2, w=4)
     with pytest.raises(ValueError, match="non-monotone"):
-        slide.shift(t=lambda v: v % 480)  # 100%480=100, 500%480=20 → joint before begin
+        slide.shift(t=lambda v: v % 480)  # 100%480=100, 500%480=20 鈫?joint before begin

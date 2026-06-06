@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Self
 from warnings import deprecated
 
+from ..raw import RawNote
 from ..time import Tick
 from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _AirJointHost
-from .node import Node
 from .shared import (
     _copy_info,
     _direction_property,
@@ -50,10 +50,10 @@ class Air:
         del anchor
         self.validate()
 
-    def _to_node(self, anchor: NoteInfo, *, skip_validation: bool = False) -> Node:
+    def _to_node(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self._validate_with_anchor(anchor)
-        return Node(
+        return RawNote(
             info=self._info.copy(
                 type=NoteType.AIR,
                 long_attr=LongAttr.NONE,
@@ -124,18 +124,18 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
     def _validate_with_anchor(self, anchor: NoteInfo) -> None:
         self._validate_joints(self._begin_info_with_anchor(anchor))
 
-    def _to_node(self, anchor: NoteInfo, *, skip_validation: bool = False) -> Node:
+    def _to_node(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
         begin_info = self._begin_info_with_anchor(anchor)
         if not skip_validation:
             self._validate_joints(begin_info)
-        action = Node(info=begin_info, _id=self._id)
+        action = RawNote(info=begin_info, _id=self._id)
         action.children = self._build_long_children(
             self._note_type,
             self._terminus_attr,
             begin_info,
             skip_validation=skip_validation,
         )
-        air = Node(info=self._air_info_with_anchor(anchor), _id=self._air_id)
+        air = RawNote(info=self._air_info_with_anchor(anchor), _id=self._air_id)
         air.children.append(action)
         return air
 

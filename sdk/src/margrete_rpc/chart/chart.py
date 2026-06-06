@@ -10,7 +10,11 @@ from margrete_rpc.chart.events import (
     NoteSpeedEvent,
     TimelineSpeedEvent,
 )
-from margrete_rpc.chart.note import Node, Note, UnsupportedNoteTree, wrap_node
+from margrete_rpc.chart.notes import Note, UnsupportedNoteTree
+from margrete_rpc.chart.notes.wrap import wrap_raw_note
+from margrete_rpc.chart.raw import RawNote
+
+type ChartNote = Note | RawNote
 
 
 @dataclass
@@ -20,11 +24,21 @@ class ChartEvents:
     til: list[TimelineSpeedEvent] = field(default_factory=list)
     note_speed: list[NoteSpeedEvent] = field(default_factory=list)
 
+    def normalized(self) -> ChartEvents:
+        return ChartEvents(
+            bpm=_last_by_key(self.bpm, lambda event: event.t),
+            beat=_last_by_key(self.beat, lambda event: event.bar),
+            til=_last_by_key(
+                self.til,
+                lambda event: (event.t, event.til),
+            ),
+            note_speed=_last_by_key(self.note_speed, lambda event: event.t),
+        )
+
 
 @dataclass
 class Chart:
-    notes: list[Note] = field(default_factory=list)
-    nodes: list[Node] = field(default_factory=list)
+    notes: list[ChartNote] = field(default_factory=list)
     events: ChartEvents = field(default_factory=ChartEvents)
 
     @classmethod
@@ -34,25 +48,23 @@ class Chart:
         *,
         raw: bool = False,
     ) -> Chart:
-        if raw:
-            return cls(
-                nodes=[Node.from_proto(note) for note in response.notes],
-                events=_events_from_response(response),
-            )
-
-        notes: list[Note] = []
-        nodes: list[Node] = []
+        notes: list[ChartNote] = []
         for proto in response.notes:
-            node = Node.from_proto(proto)
+            raw_note = RawNote.from_proto(proto)
+            if raw:
+                notes.append(raw_note)
+                continue
             try:
-                notes.append(wrap_node(node))
+                notes.append(wrap_raw_note(raw_note))
             except UnsupportedNoteTree:
-                nodes.append(node)
+                notes.append(raw_note)
         return cls(
             notes=notes,
-            nodes=nodes,
             events=_events_from_response(response),
         )
+
+    def normalized_events(self) -> Chart:
+        return Chart(notes=self.notes, events=self.events.normalized())
 
 
 def _last_by_key[T, K: Hashable](items: list[T], key: Callable[[T], K]) -> list[T]:
@@ -69,17 +81,3 @@ def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEven
         til=[TimelineSpeedEvent.from_proto(event) for event in response.timeline_speed_events],
         note_speed=[NoteSpeedEvent.from_proto(event) for event in response.note_speed_events],
     )
-
-
-def normalize_event_operations(chart: Chart) -> Chart:
-    ev = chart.events
-    events = ChartEvents(
-        bpm=_last_by_key(ev.bpm, lambda event: event.t),
-        beat=_last_by_key(ev.beat, lambda event: event.bar),
-        til=_last_by_key(
-            ev.til,
-            lambda event: (event.t, event.til),
-        ),
-        note_speed=_last_by_key(ev.note_speed, lambda event: event.t),
-    )
-    return Chart(notes=chart.notes, nodes=chart.nodes, events=events)

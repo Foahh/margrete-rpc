@@ -19,7 +19,6 @@ from .direction import (
 from .ground import Damage, Extap, Flick, Tap
 from .joint import AirJoint, Joint
 from .long import AirCrush, Hold, Slide
-from .node import N, Node
 from .shared import FIELD_WIDTH, Note, UnsupportedNoteTree
 from .transform import merge, split
 from .types import (
@@ -30,7 +29,7 @@ from .types import (
     NoteInfo,
     NoteType,
 )
-from .wrap import wrap_node
+from .wrap import wrap_raw_note
 
 __all__ = [
     "Air",
@@ -59,8 +58,6 @@ __all__ = [
     "Joint",
     "JointKind",
     "JointKindLike",
-    "N",
-    "Node",
     "LongAttr",
     "NoteInfo",
     "NoteType",
@@ -69,5 +66,5 @@ __all__ = [
     "UnsupportedNoteTree",
     "merge",
     "split",
-    "wrap_node",
+    "wrap_raw_note",
 ]

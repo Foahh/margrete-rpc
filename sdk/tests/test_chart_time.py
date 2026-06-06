@@ -182,7 +182,7 @@ def test_resolve_density_rejects_wrong_tuple_length():
 
 
 def test_noteinfo_option_value_accepts_division_tuple():
-    from margrete_rpc.chart.note.types import NoteInfo
+    from margrete_rpc.chart.notes.types import NoteInfo
 
     info = NoteInfo(option_value=(1, 384))
     assert info.option_value == 5
@@ -192,7 +192,7 @@ def test_noteinfo_option_value_accepts_division_tuple():
 
 
 def test_aircrush_gap_accepts_division_tuple():
-    from margrete_rpc.chart import AirCrush
+    from margrete_rpc.chart.notes import AirCrush
 
     note = AirCrush(0, 0, 4, h=80, gap=(1, 384))
     assert note.gap == 5

@@ -3,24 +3,25 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart import Chart, ChartEvents, Node, normalize_event_operations
+from margrete_rpc.chart.chart import Chart, ChartEvents, ChartNote
+from margrete_rpc.chart.raw import RawNote
 
 
 @dataclass
 class EditSnapshot:
     notes_signature: bytes = b""
     events_signature: bytes = b""
-    notes: list[Node] = field(default_factory=list)
+    notes: list[RawNote] = field(default_factory=list)
     events: ChartEvents = field(default_factory=ChartEvents)
 
 
 def capture_edit_snapshot(chart: Chart) -> EditSnapshot:
-    normalized = normalize_event_operations(chart)
+    normalized_events = chart.events.normalized()
     return EditSnapshot(
         notes_signature=_notes_signature(_final_notes_without_ids(chart)),
-        events_signature=_event_signature_from_chart(normalized),
+        events_signature=_event_signature_from_events(normalized_events),
         notes=[_clone_node(note) for note in _final_notes(chart)],
-        events=_clone_chart_events(normalized.events),
+        events=_clone_chart_events(normalized_events),
     )
 
 
@@ -32,20 +33,20 @@ def build_apply_edit_request(
     replace_all_notes: bool,
     snapshot: EditSnapshot | None,
 ) -> messages_pb2.ApplyEditRequest | None:
-    normalized = normalize_event_operations(chart)
+    normalized_events = chart.events.normalized()
     request = messages_pb2.ApplyEditRequest(name=name)
 
     if replace_all_notes:
         final_notes = _final_notes_without_ids(chart)
         request.replace_all_notes = True
         request.notes_upsert.extend(note.to_proto() for note in final_notes)
-        _append_all_event_upserts(request, normalized.events)
+        _append_all_event_upserts(request, normalized_events)
         return request
 
     if scan:
         snapshot = snapshot or EditSnapshot()
         final_notes = _final_notes_without_ids(chart)
-        final_events_sig = _event_signature_from_chart(normalized)
+        final_events_sig = _event_signature_from_events(normalized_events)
         if (
             _notes_signature(final_notes) == snapshot.notes_signature
             and final_events_sig == snapshot.events_signature
@@ -54,7 +55,7 @@ def build_apply_edit_request(
 
         request.replace_all_notes = False
         _append_scanned_note_diffs(request, snapshot.notes, _final_notes(chart))
-        _append_scanned_event_diffs(request, snapshot.events, normalized.events)
+        _append_scanned_event_diffs(request, snapshot.events, normalized_events)
         return request
 
     final_notes = _final_notes(chart)
@@ -63,31 +64,37 @@ def build_apply_edit_request(
 
     request.replace_all_notes = False
     request.notes_upsert.extend(note.to_proto() for note in final_notes)
-    _append_all_event_upserts(request, normalized.events)
+    _append_all_event_upserts(request, normalized_events)
     return request
 
 
-def _final_notes(chart: Chart) -> list[Node]:
-    return [note.to_node() for note in chart.notes] + chart.nodes
+def _note_to_raw(note: ChartNote) -> RawNote:
+    if isinstance(note, RawNote):
+        return note
+    return note.to_node()
 
 
-def _strip_note_ids(note: Node) -> Node:
-    return Node(
+def _final_notes(chart: Chart) -> list[RawNote]:
+    return [_note_to_raw(note) for note in chart.notes]
+
+
+def _strip_note_ids(note: RawNote) -> RawNote:
+    return RawNote(
         info=note.info.copy(),
         children=[_strip_note_ids(child) for child in note.children],
     )
 
 
-def _final_notes_without_ids(chart: Chart) -> list[Node]:
+def _final_notes_without_ids(chart: Chart) -> list[RawNote]:
     return [_strip_note_ids(note) for note in _final_notes(chart)]
 
 
-def _notes_signature(notes: list[Node]) -> bytes:
+def _notes_signature(notes: list[RawNote]) -> bytes:
     return b"\n".join(note.to_proto().SerializeToString() for note in notes)
 
 
-def _event_signature_from_chart(chart: Chart) -> bytes:
-    ev = chart.events
+def _event_signature_from_events(events: ChartEvents) -> bytes:
+    ev = events
     bpm = sorted(ev.bpm, key=lambda event: int(event.t))
     beat = sorted(ev.beat, key=lambda event: int(event.bar))
     til = sorted(ev.til, key=lambda event: (int(event.t), int(event.til)))
@@ -102,15 +109,15 @@ def _event_signature_from_chart(chart: Chart) -> bytes:
     )
 
 
-def _has_existing_note_id(notes: list[Node]) -> bool:
+def _has_existing_note_id(notes: list[RawNote]) -> bool:
     for note in notes:
         if note._id is not None or _has_existing_note_id(note.children):
             return True
     return False
 
 
-def _clone_node(note: Node) -> Node:
-    return Node.from_proto(note.to_proto())
+def _clone_node(note: RawNote) -> RawNote:
+    return RawNote.from_proto(note.to_proto())
 
 
 def _clone_chart_events(events: ChartEvents) -> ChartEvents:
@@ -124,25 +131,25 @@ def _clone_chart_events(events: ChartEvents) -> ChartEvents:
     )
 
 
-def _note_tree_sig(note: Node) -> bytes:
+def _note_tree_sig(note: RawNote) -> bytes:
     return _strip_note_ids(note).to_proto().SerializeToString()
 
 
 type IdStructure = tuple[int | None, tuple["IdStructure", ...]]
 
 
-def _id_structure(note: Node) -> IdStructure:
+def _id_structure(note: RawNote) -> IdStructure:
     return (note._id, tuple(_id_structure(child) for child in note.children))
 
 
-def _children_id_structure(note: Node) -> tuple[IdStructure, ...]:
+def _children_id_structure(note: RawNote) -> tuple[IdStructure, ...]:
     return tuple(_id_structure(child) for child in note.children)
 
 
 def _append_scanned_note_diffs(
     request: messages_pb2.ApplyEditRequest,
-    orig_notes: list[Node],
-    final_notes: list[Node],
+    orig_notes: list[RawNote],
+    final_notes: list[RawNote],
 ) -> None:
     orig_by_id = {note._id: note for note in orig_notes if note._id is not None}
     final_ids = {note._id for note in final_notes if note._id is not None}

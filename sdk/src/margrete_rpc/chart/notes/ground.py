@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import cast
 
+from ..raw import RawNote
 from ..time import Tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
-from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
@@ -40,8 +40,8 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         _check_tick(self.t)
         _check_width(self.w)
 
-    def _base_node(self) -> Node:
-        return Node(info=self._info.copy(), _id=self._id)
+    def _base_node(self) -> RawNote:
+        return RawNote(info=self._info.copy(), _id=self._id)
 
     def _str_parts(self) -> list[str]:
         return [
@@ -68,7 +68,7 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         if self._air is not None:
             self._air._validate_with_anchor(self._info)
 
-    def to_node(self, *, skip_validation: bool = False) -> Node:
+    def to_node(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self.validate()
         note = self._base_node()
@@ -119,7 +119,7 @@ class Extap(_GroundNote):
         super().__init__(t, x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.dir = dir
 
-    def _base_node(self) -> Node:
+    def _base_node(self) -> RawNote:
         note = super()._base_node()
         note.dir = self.dir
         return note

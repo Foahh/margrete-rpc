@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+from ..raw import RawNote
 from .air import Air, AirHold, AirSlide
 from .color import color_from_value
 from .ground import Damage, Extap, Flick, Tap, _GroundNote
 from .joint import _JointHostBase
 from .long import AirCrush, Hold, Slide
-from .node import Node
 from .shared import Note, UnsupportedNoteTree
 from .types import LongAttr, NoteInfo, NoteType
 
 
-def wrap_node(note: Node) -> Note:
+def wrap_raw_note(note: RawNote) -> Note:
     if note.type in (NoteType.TAP, NoteType.EXTAP, NoteType.FLICK, NoteType.DAMAGE):
         return _wrap_ground(note)
     if note.type is NoteType.HOLD:
@@ -22,12 +22,12 @@ def wrap_node(note: Node) -> Note:
     raise UnsupportedNoteTree(f"unsupported root note type: {note.type.name}")
 
 
-def _restore_wrapped_info(wrapped: _GroundNote, note: Node) -> None:
+def _restore_wrapped_info(wrapped: _GroundNote, note: RawNote) -> None:
     wrapped._info = note.info.copy()
     wrapped._id = note._id
 
 
-def _wrap_ground(note: Node) -> Note:
+def _wrap_ground(note: RawNote) -> Note:
     if note.long_attr is not LongAttr.NONE:
         raise UnsupportedNoteTree("ground note must not have long_attr")
     if note.type is NoteType.TAP:
@@ -50,7 +50,7 @@ def _wrap_ground(note: Node) -> Note:
     return wrapped
 
 
-def _check_node_root_begin(note: Node, expected: NoteType) -> None:
+def _check_node_root_begin(note: RawNote, expected: NoteType) -> None:
     if note.type is not expected or note.long_attr is not LongAttr.BEGIN:
         raise UnsupportedNoteTree("long note root must be BEGIN")
 
@@ -60,18 +60,18 @@ def _check_order(previous_t: int, t: int) -> None:
         raise UnsupportedNoteTree("long note joints must be strictly chronological")
 
 
-def _require_final_end(children: list[Node], allowed: set[LongAttr]) -> None:
+def _require_final_end(children: list[RawNote], allowed: set[LongAttr]) -> None:
     if not children or children[-1].long_attr not in allowed:
         raise UnsupportedNoteTree("long note must end with an end joint")
 
 
-def _copy_joint(builder: _JointHostBase, child: Node) -> None:
+def _copy_joint(builder: _JointHostBase, child: RawNote) -> None:
     joint = builder._joints[-1]
     joint._info = child.info.copy(type=NoteType.UNKNOWN, long_attr=LongAttr.NONE)
     joint._id = child._id
 
 
-def _wrap_attached_air_note(note: Node) -> Air | AirSlide | AirHold:
+def _wrap_attached_air_note(note: RawNote) -> Air | AirSlide | AirHold:
     if note.type is not NoteType.AIR:
         raise UnsupportedNoteTree("attached note child must be AIR")
     if len(note.children) > 1:
@@ -89,12 +89,12 @@ def _wrap_attached_air_note(note: Node) -> Air | AirSlide | AirHold:
     raise UnsupportedNoteTree("air child must be AIRSLIDE or AIRHOLD")
 
 
-def _ensure_air_only_on_end(child: Node, is_final: bool) -> None:
+def _ensure_air_only_on_end(child: RawNote, is_final: bool) -> None:
     if child.children and not is_final:
         raise UnsupportedNoteTree("air may attach only to the end joint")
 
 
-def _wrap_slide(note: Node) -> Slide:
+def _wrap_slide(note: RawNote) -> Slide:
     _check_node_root_begin(note, NoteType.SLIDE)
     _require_final_end(note.children, {LongAttr.END})
     slide = Slide(int(note.t), note.x, note.w, _info=note.info, _id=note._id)
@@ -120,7 +120,7 @@ def _wrap_slide(note: Node) -> Slide:
     return slide
 
 
-def _wrap_hold(note: Node) -> Hold:
+def _wrap_hold(note: RawNote) -> Hold:
     _check_node_root_begin(note, NoteType.HOLD)
     if len(note.children) != 1 or note.children[0].long_attr is not LongAttr.END:
         raise UnsupportedNoteTree("hold must have exactly one end joint")
@@ -135,7 +135,7 @@ def _wrap_hold(note: Node) -> Hold:
 
 
 def _wrap_air_slide(
-    note: Node,
+    note: RawNote,
     *,
     air_info: NoteInfo | None = None,
     air_id: int | None = None,
@@ -173,7 +173,7 @@ def _wrap_air_slide(
 
 
 def _wrap_air_hold(
-    note: Node,
+    note: RawNote,
     *,
     air_info: NoteInfo | None = None,
     air_id: int | None = None,
@@ -208,7 +208,7 @@ def _wrap_air_hold(
     return hold
 
 
-def _wrap_air_crush(note: Node) -> AirCrush:
+def _wrap_air_crush(note: RawNote) -> AirCrush:
     _check_node_root_begin(note, NoteType.AIRCRUSH)
     _require_final_end(note.children, {LongAttr.END})
     crush = AirCrush(

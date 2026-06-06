@@ -6,14 +6,14 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from types import TracebackType
 
-from margrete_rpc._edit_apply import (
+from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc._transport import RpcTransport
+from margrete_rpc.chart import Chart
+from margrete_rpc.chart.diff import (
     EditSnapshot,
     build_apply_edit_request,
     capture_edit_snapshot,
 )
-from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc._transport import RpcTransport
-from margrete_rpc.chart import Chart
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     Position,

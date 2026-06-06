@@ -1,6 +1,6 @@
 {
     "files": {
-        "./src/margrete_rpc/chart/note/air.py": [
+        "./src/margrete_rpc/chart/notes/air.py": [
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
@@ -18,7 +18,7 @@
                 }
             }
         ],
-        "./src/margrete_rpc/chart/note/joint.py": [
+        "./src/margrete_rpc/chart/notes/joint.py": [
             {
                 "code": "reportUnknownMemberType",
                 "range": {
@@ -44,7 +44,7 @@
                 }
             }
         ],
-        "./src/margrete_rpc/chart/note/long.py": [
+        "./src/margrete_rpc/chart/notes/long.py": [
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
@@ -54,81 +54,7 @@
                 }
             }
         ],
-        "./src/margrete_rpc/chart/note/node.py": [
-            {
-                "code": "reportUnknownParameterType",
-                "range": {
-                    "startColumn": 27,
-                    "endColumn": 32,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportMissingParameterType",
-                "range": {
-                    "startColumn": 27,
-                    "endColumn": 32,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportUnknownArgumentType",
-                "range": {
-                    "startColumn": 28,
-                    "endColumn": 34,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 26,
-                    "endColumn": 41,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 29,
-                    "endColumn": 47,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 17,
-                    "endColumn": 31,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 22,
-                    "endColumn": 41,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 20,
-                    "endColumn": 37,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 25,
-                    "endColumn": 47,
-                    "lineCount": 1
-                }
-            }
-        ],
-        "./src/margrete_rpc/chart/note/shared.py": [
+        "./src/margrete_rpc/chart/notes/shared.py": [
             {
                 "code": "reportUnusedFunction",
                 "range": {
@@ -770,7 +696,7 @@
                 }
             }
         ],
-        "./src/margrete_rpc/chart/note/shift.py": [
+        "./src/margrete_rpc/chart/notes/shift.py": [
             {
                 "code": "reportUnusedFunction",
                 "range": {
@@ -780,7 +706,7 @@
                 }
             }
         ],
-        "./src/margrete_rpc/chart/note/transform.py": [
+        "./src/margrete_rpc/chart/notes/transform.py": [
             {
                 "code": "reportUnknownMemberType",
                 "range": {
@@ -882,14 +808,6 @@
                 "range": {
                     "startColumn": 8,
                     "endColumn": 13,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 12,
-                    "endColumn": 16,
                     "lineCount": 1
                 }
             },
@@ -1014,7 +932,7 @@
                 }
             }
         ],
-        "./src/margrete_rpc/chart/note/wrap.py": [
+        "./src/margrete_rpc/chart/notes/wrap.py": [
             {
                 "code": "reportReturnType",
                 "range": {
@@ -1044,6 +962,80 @@
                 "range": {
                     "startColumn": 11,
                     "endColumn": 18,
+                    "lineCount": 1
+                }
+            }
+        ],
+        "./src/margrete_rpc/chart/raw.py": [
+            {
+                "code": "reportUnknownParameterType",
+                "range": {
+                    "startColumn": 30,
+                    "endColumn": 35,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportMissingParameterType",
+                "range": {
+                    "startColumn": 30,
+                    "endColumn": 35,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportUnknownArgumentType",
+                "range": {
+                    "startColumn": 28,
+                    "endColumn": 34,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 26,
+                    "endColumn": 41,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 29,
+                    "endColumn": 47,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 17,
+                    "endColumn": 31,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 22,
+                    "endColumn": 41,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 20,
+                    "endColumn": 37,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 25,
+                    "endColumn": 47,
                     "lineCount": 1
                 }
             }

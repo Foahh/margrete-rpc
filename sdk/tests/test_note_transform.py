@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from margrete_rpc.chart import (
+from margrete_rpc.chart.notes import (
+    FIELD_WIDTH,
     AirCrush,
     AirHold,
     AirSlide,
@@ -18,8 +19,8 @@ from margrete_rpc.chart import (
     Tap,
     merge,
     split,
+    wrap_raw_note,
 )
-from margrete_rpc.chart.note import FIELD_WIDTH, wrap_node
 
 # --------------------------------------------------------------------------- clone
 
@@ -379,4 +380,4 @@ def test_produced_notes_round_trip_through_node():
     first, second = split(slide, 100)
     merged = merge([first, second])
     for note in (first, second, merged, slide.flipped(), slide.shifted(t=480)):
-        assert wrap_node(note.to_node()) is not None
+        assert wrap_raw_note(note.to_node()) is not None

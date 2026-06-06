@@ -4,9 +4,9 @@ from collections.abc import Callable
 from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, Self, cast, overload, runtime_checkable
 
+from ..raw import RawNote
 from ..time import Tick
 from .direction import direction_from_proto
-from .node import Node
 from .types import NoteInfo
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ class Note(Protocol):
 
     def validate(self) -> None: ...
 
-    def to_node(self, *, skip_validation: bool = False) -> Node: ...
+    def to_node(self, *, skip_validation: bool = False) -> RawNote: ...
 
 
 def _note_enum_line(value: object) -> str:

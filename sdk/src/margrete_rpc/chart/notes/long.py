@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import cast
 from warnings import deprecated
 
+from ..raw import RawNote
 from ..time import Tick, resolve_density, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
@@ -12,7 +13,6 @@ from .color import (
     color_value_from_proto,
 )
 from .joint import AirJoint, Joint, _AirJointHost, _JointHost, _JointHostBase
-from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
@@ -78,11 +78,11 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             )
             self._air._validate_with_anchor(children[-1].info)
 
-    def _to_node_tree(self, *, skip_validation: bool = False) -> Node:
+    def _to_node_tree(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self.validate()
         host = cast(_JointHostBase, self)
-        root = Node(info=self._info.copy(long_attr=LongAttr.BEGIN), _id=self._id)
+        root = RawNote(info=self._info.copy(long_attr=LongAttr.BEGIN), _id=self._id)
         root.children = host._build_long_children(
             self._note_type,
             self._terminus_attr,
@@ -153,7 +153,7 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
         self._add_curve_control(t, x, w)
         return self
 
-    def to_node(self, *, skip_validation: bool = False) -> Node:
+    def to_node(self, *, skip_validation: bool = False) -> RawNote:
         return self._to_node_tree(skip_validation=skip_validation)
 
 
@@ -173,7 +173,7 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
             self._add_step(t, x, w)
         return self
 
-    def to_node(self, *, skip_validation: bool = False) -> Node:
+    def to_node(self, *, skip_validation: bool = False) -> RawNote:
         return self._to_node_tree(skip_validation=skip_validation)
 
 
@@ -224,5 +224,5 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         self._add_control(t, x, w, h)
         return self
 
-    def to_node(self, *, skip_validation: bool = False) -> Node:
+    def to_node(self, *, skip_validation: bool = False) -> RawNote:
         return self._to_node_tree(skip_validation=skip_validation)

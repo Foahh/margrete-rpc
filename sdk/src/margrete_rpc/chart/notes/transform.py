@@ -72,7 +72,7 @@ def _detach(note: object) -> None:
             joint._id = None
 
 
-def _clone[N: Note](note: N) -> N:
+def _clone[T: Note](note: T) -> T:
     new = copy.deepcopy(note)
     _detach(new)
     return new
@@ -158,9 +158,7 @@ def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) ->
     raise ValueError(f"cannot convert {type(note).__name__} to {target.__name__}")
 
 
-def _convert_ground(
-    note: _GroundNote, target: type[Note], overrides: dict[str, Any]
-) -> Note:
+def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, Any]) -> Note:
     new = target(int(note.t), note.x, note.w)  # type: ignore[call-arg]
     new._info.til = note._info.til
     new._info.ex_attr = note._info.ex_attr

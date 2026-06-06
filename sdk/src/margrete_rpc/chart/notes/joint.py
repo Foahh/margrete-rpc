@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import ClassVar
 
+from ..raw import RawNote
 from ..time import Tick
-from .node import Node
 from .shared import (
     _check_tick,
     _check_width,
@@ -134,11 +134,11 @@ class _JointHostBase:
         begin_info: NoteInfo,
         *,
         skip_validation: bool = False,
-    ) -> list[Node]:
+    ) -> list[RawNote]:
         if not skip_validation:
             self._validate_joints(begin_info)
 
-        children: list[Node] = []
+        children: list[RawNote] = []
         for index, joint in enumerate(self._joints):
             long_attr = joint_kind_to_long_attr(joint.kind)
             if not skip_validation and index == len(self._joints) - 1:
@@ -146,7 +146,7 @@ class _JointHostBase:
             jinfo = self._resolve_joint_info(joint, note_type, long_attr)
             if note_type is NoteType.AIRCRUSH:
                 jinfo = jinfo.copy(option_value=0)
-            children.append(Node(info=jinfo, _id=joint._id))
+            children.append(RawNote(info=jinfo, _id=joint._id))
         return children
 
     def _joint_strs(self) -> list[str]:

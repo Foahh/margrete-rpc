@@ -133,7 +133,7 @@ uv run basedpyright
 - **`time.py`**: Time/position conversion (`t2p`, `p2t`, `d2t`, `t2d`) with beat event context
 - **`note/`**: Note type modules and utilities
   - `types.py`: Note protocol and SDK note classes (`Tap`, `Flick`, `Hold`, `Air`, `Extap`, `Slide`, `Joint`)
-  - `node.py`: Raw `Node` tree and factory `N` for building nodes (`N.tap()`, `N.hold()`, `N.slide_begin()`, etc.)
+  - `node.py`: Raw `Node` tree and factory `R` for building nodes (`R.tap()`, `R.hold()`, `R.slide_begin()`, etc.)
   - `air.py`, `ground.py`, `long.py`, `color.py`, `direction.py`, `shared.py`, `wrap.py`: Note-type-specific details
   - `shift.py`: Utilities for shifting notes/events by tick offset
 
@@ -147,7 +147,7 @@ with mg.open_edit("name") as tx:
 
 **Note object hierarchy:**
 - **SDK notes**: `Note` protocol implemented by `Tap`, `Flick`, `Hold`, etc.; these are typed Python objects for normal scripting
-- **raw notes**: `Node` trees built with `N.tap(...)`, `N.slide_begin(...)`, etc.; used for raw Margrete/plugin note structures
+- **raw notes**: `Node` trees built with `R.tap(...)`, `R.slide_begin(...)`, etc.; used for raw Margrete/plugin note structures
 - `chart.notes` -> typed SDK note interface; `chart.nodes` -> raw node trees that could not or should not be wrapped
 - Use `open_edit(raw=True)` to receive a `Chart` and work entirely with `Node` trees
 

@@ -65,27 +65,29 @@ mg = Margrete("127.0.0.1:48731")
 
 ```python
 from margrete_rpc import Margrete
-from margrete_rpc.chart import BpmEvent, N, Tap
+from margrete_rpc.chart import BpmEvent
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.raw import R
 
 mg = Margrete()
 
 with mg.open_edit("move notes") as tx:
     tx.chart.notes[0].x += 1
-    tx.chart.nodes.append(N.tap(tx.current_tick, 0, 1))
+    tx.chart.notes.append(R.tap(tx.current_tick, 0, 1))
     tx.chart.events.bpm.append(BpmEvent(tick=0, bpm=180.0))
 
 with mg.open_edit("append pattern", scan=False) as tx:
     tx.chart.notes.append(Tap(tx.current_tick, 4, 1))
 
 with mg.open_edit("raw edit", raw=True) as tx:
-    tx.chart.nodes[0].x += 1
+    tx.chart.notes[0].x += 1
 ```
 
 `open_edit()` fetches the current chart and the current tick by default.
 
 Due to the limitation of plugin, see [`plugin/README.md`](../plugin/README.md), if you just want adding notes and events, use `open_edit(scan=False)`.
 
-Use `open_edit(raw=True)` to work entirely with raw `Node` trees (`Chart`) instead of wrapped note types.
+Use `open_edit(raw=True)` to work entirely with raw `RawNote` trees in `Chart.notes` instead of wrapped note types.
 
 See [`example`](example/) for more complex usage.
 
