@@ -2,12 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import IntEnum, StrEnum
-from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, Self, cast, overload, runtime_checkable
 
 from ..time import Tick
 from .direction import direction_from_proto
 from .node import Node
 from .types import NoteInfo, NoteType
+
+if TYPE_CHECKING:
+    from .air import AirHold, AirSlide
+    from .ground import Damage, Extap, Flick, Tap
+    from .long import AirCrush, Hold, Slide
 
 FIELD_WIDTH = 16
 
@@ -47,8 +52,6 @@ class Note(Protocol):
     def flipped(self, *, field: int = FIELD_WIDTH) -> Self: ...
 
     def clone(self) -> Self: ...
-
-    def convert[T: Note](self, target: type[T], **overrides: Any) -> T: ...
 
     def converted[T: Note](self, target: type[T], **overrides: Any) -> T: ...
 
@@ -257,19 +260,63 @@ class _TransformMixin:
 
         return _clone(self)
 
-    def convert[T: Note](self, target: type[T], **overrides: Any) -> T:
-        """Convert this note to ``target`` in place; returns ``self`` reclassed."""
+    @overload
+    def converted[T: (Extap, Flick, Damage)](
+        self: Tap,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (Tap, Flick, Damage)](
+        self: Extap,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (Tap, Extap, Damage)](
+        self: Flick,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (Tap, Extap, Flick)](
+        self: Damage,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (AirSlide, AirCrush)](
+        self: Slide,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (Slide, AirCrush)](
+        self: AirSlide,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (Slide, AirSlide)](
+        self: AirCrush,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    @overload
+    def converted[T: (Slide, AirSlide, AirCrush, AirHold)](
+        self: Hold,
+        target: type[T],
+        **overrides: Any,
+    ) -> T: ...
+
+    def converted(self: object, target: type[object], **overrides: Any) -> Any:
         from .transform import _convert
 
-        new = _convert(self, target, overrides)
-        keep_id = self._id
-        self.__class__ = type(new)
-        self.__dict__ = new.__dict__
-        self._id = keep_id
-        return cast(T, self)
-
-    def converted[T: Note](self, target: type[T], **overrides: Any) -> T:
-        """Return a detached new note of ``target`` type, leaving this note unchanged."""
-        from .transform import _convert
-
-        return _convert(self, target, overrides)
+        return _convert(cast(Any, self), cast(Any, target), overrides)

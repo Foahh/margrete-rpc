@@ -5,7 +5,7 @@ from warnings import deprecated
 
 from ..time import Tick
 from .direction import AirDirection, AirDirectionLike
-from .joint import AirJoint, Joint, _JointHost
+from .joint import AirJoint, Joint, _AirJointHost
 from .node import Node
 from .shared import (
     _copy_info,
@@ -83,7 +83,7 @@ class Air:
     __repr__ = __str__
 
 
-class _AttachableAirLong(_HeightMixin, _TransformMixin, _JointHost):
+class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
     _note_type: NoteType
     _joint_type = AirJoint
 

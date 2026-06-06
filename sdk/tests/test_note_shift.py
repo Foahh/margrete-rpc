@@ -40,7 +40,7 @@ def test_note_slide_shifts_begin_and_all_joints():
     assert slide.t == 110
     assert slide.x == 1
     assert slide.w == 5
-    assert slide._info.h == 805
+    assert slide._info.h == 85
     assert slide.joints[0].t == 160
     assert slide.joints[0].x == 3
     assert slide.joints[1].t == 210
@@ -59,7 +59,7 @@ def test_note_hold_and_slide_air_shift():
 
     slide = Slide(t=10, x=0, w=2).step(30, x=4, w=2).air(AirDirection.DOWN)
     slide.shift(h=20)
-    assert slide._info.h == 820
+    assert slide._info.h == 100
     assert isinstance(slide._air, Air)
 
 
@@ -119,3 +119,11 @@ def test_shift_air_slide_standalone_shifts_begin_and_joints():
     assert air._air_info.h == 90
     assert air.joints[-1].t == 205
     assert air.joints[-1].h == 110
+
+
+def test_shift_callable_raises_if_non_monotone():
+    import pytest
+
+    slide = Slide(t=100, x=0, w=4).step(500, x=2, w=4)
+    with pytest.raises(ValueError, match="non-monotone"):
+        slide.shift(t=lambda v: v % 480)  # 100%480=100, 500%480=20 → joint before begin

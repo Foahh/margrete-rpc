@@ -5,7 +5,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
@@ -114,9 +114,9 @@ def _validated(instance: MargreteInstance, timeout: float) -> MargreteInstance |
     )
 
 
-def _string(value: Any) -> str | None:
+def _string(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _int_or_none(value: Any) -> int | None:
+def _int_or_none(value: object) -> int | None:
     return value if isinstance(value, int) else None

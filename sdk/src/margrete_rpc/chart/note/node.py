@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.chart.note.color import Color
 
 from ..time import Tick
 from .types import (
@@ -106,7 +107,6 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -118,7 +118,6 @@ class N:
                 t=t,
                 x=x,
                 w=w,
-                h=h,
                 **kwargs,
             )
         )
@@ -129,7 +128,6 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -141,7 +139,6 @@ class N:
                 t=t,
                 x=x,
                 w=w,
-                h=h,
                 **kwargs,
             )
         )
@@ -152,7 +149,6 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -164,7 +160,6 @@ class N:
                 t=t,
                 x=x,
                 w=w,
-                h=h,
                 **kwargs,
             )
         )
@@ -175,7 +170,6 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -187,7 +181,6 @@ class N:
                 t=t,
                 x=x,
                 w=w,
-                h=h,
                 **kwargs,
             )
         )
@@ -224,11 +217,10 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
-        return N._segment(NoteType.HOLD, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
+        return N._segment(NoteType.HOLD, LongAttr.BEGIN, t, x, w, til=til, **kwargs)
 
     @staticmethod
     def hold_end(
@@ -236,11 +228,10 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
-        return N._segment(NoteType.HOLD, LongAttr.END, t, x, w, h, til=til, **kwargs)
+        return N._segment(NoteType.HOLD, LongAttr.END, t, x, w, til=til, **kwargs)
 
     @staticmethod
     def slide_begin(
@@ -248,11 +239,10 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
-        return N._segment(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, h, til=til, **kwargs)
+        return N._segment(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, til=til, **kwargs)
 
     @staticmethod
     def slide_step(
@@ -260,11 +250,10 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
-        return N._segment(NoteType.SLIDE, LongAttr.STEP, t, x, w, h, til=til, **kwargs)
+        return N._segment(NoteType.SLIDE, LongAttr.STEP, t, x, w, til=til, **kwargs)
 
     @staticmethod
     def slide_control(
@@ -272,7 +261,6 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -282,7 +270,6 @@ class N:
             t,
             x,
             w=w,
-            h=h,
             til=til,
             **kwargs,
         )
@@ -293,7 +280,6 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -303,7 +289,6 @@ class N:
             t,
             x,
             w=w,
-            h=h,
             til=til,
             **kwargs,
         )
@@ -314,11 +299,10 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
         til: int | None = None,
         **kwargs,
     ) -> Node:
-        return N._segment(NoteType.SLIDE, LongAttr.END, t, x, w, h, til=til, **kwargs)
+        return N._segment(NoteType.SLIDE, LongAttr.END, t, x, w, til=til, **kwargs)
 
     @staticmethod
     def air(
@@ -326,7 +310,7 @@ class N:
         x: int,
         w: int,
         *,
-        h: int = 800,
+        ex_attr: ExAttr = ExAttr.DEFAULT,
         til: int | None = None,
         **kwargs,
     ) -> Node:
@@ -338,7 +322,7 @@ class N:
                 t=t,
                 x=x,
                 w=w,
-                h=h,
+                ex_attr=ex_attr,
                 **kwargs,
             )
         )
@@ -506,9 +490,9 @@ class N:
         x: int,
         w: int,
         h: int,
-        option_value: int = 0,
         *,
         til: int | None = None,
+        density: int = 0,
         **kwargs,
     ) -> Node:
         if til is not None:
@@ -521,7 +505,7 @@ class N:
                 x=x,
                 w=w,
                 h=h,
-                option_value=option_value,
+                density=density,
                 **kwargs,
             )
         )
@@ -532,7 +516,8 @@ class N:
         x: int,
         w: int,
         h: int,
-        option_value: int = 0,
+        density: int = 0,
+        color: Color | int = 0,
         *,
         til: int | None = None,
         **kwargs,
@@ -543,7 +528,8 @@ class N:
             x,
             w,
             h,
-            option_value,
+            density=density,
+            color=color,
             til=til,
             **kwargs,
         )
@@ -554,7 +540,6 @@ class N:
         x: int,
         w: int,
         h: int,
-        option_value: int = 0,
         *,
         til: int | None = None,
         **kwargs,
@@ -565,7 +550,6 @@ class N:
             x,
             w,
             h,
-            option_value,
             til=til,
             **kwargs,
         )
@@ -576,7 +560,6 @@ class N:
         x: int,
         w: int,
         h: int,
-        option_value: int = 0,
         *,
         til: int | None = None,
         **kwargs,
@@ -587,7 +570,6 @@ class N:
             x,
             w,
             h,
-            option_value,
             til=til,
             **kwargs,
         )

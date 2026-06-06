@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import ClassVar
 
 from ..time import Tick
 from .node import Node
@@ -38,7 +39,7 @@ class Joint(_GeometryInfoMixin):
         self.t = t
         self._info.x = x
         self._info.w = w
-        self._info.h = 800
+        self._info.h = 80
         self.kind = kind
         _check_width(w)
 
@@ -66,9 +67,9 @@ class AirJoint(Joint, _HeightMixin):
         self.h = h
 
 
-class _JointHost:
+class _JointHostBase:
     _joints: list[Joint]
-    _joint_type: type[Joint] = Joint
+    _joint_type: ClassVar[type[Joint]] = Joint
 
     @property
     def joints(self) -> list[Joint]:
@@ -82,29 +83,6 @@ class _JointHost:
 
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
-
-    def _make_joint(
-        self,
-        t: Tick,
-        kind: JointKind,
-        x: int,
-        w: int,
-        h: int,
-    ) -> Joint:
-        if issubclass(self._joint_type, AirJoint):
-            return self._joint_type(
-                t,
-                x,
-                w,
-                h,
-                kind=kind,
-            )
-        return self._joint_type(
-            t=t,
-            x=x,
-            w=w,
-            kind=kind,
-        )
 
     def _add_joint(self, joint: Joint) -> None:
         if type(joint) is not self._joint_type:
@@ -137,6 +115,136 @@ class _JointHost:
 
         if self._joints[-1].kind not in (JointKind.STEP, JointKind.CONTROL):
             raise ValueError("long note must end with a step or control joint")
+
+    def _resolve_joint_info(
+        self,
+        joint: Joint,
+        note_type: NoteType,
+        long_attr: LongAttr,
+    ) -> NoteInfo:
+        return joint._info.copy(
+            type=note_type,
+            long_attr=long_attr,
+        )
+
+    def _build_long_children(
+        self,
+        note_type: NoteType,
+        terminus_attr: Callable[[Joint], LongAttr],
+        begin_info: NoteInfo,
+        *,
+        skip_validation: bool = False,
+    ) -> list[Node]:
+        if not skip_validation:
+            self._validate_joints(begin_info)
+
+        children: list[Node] = []
+        for index, joint in enumerate(self._joints):
+            long_attr = joint_kind_to_long_attr(joint.kind)
+            if not skip_validation and index == len(self._joints) - 1:
+                long_attr = terminus_attr(joint)
+            jinfo = self._resolve_joint_info(joint, note_type, long_attr)
+            if note_type is NoteType.AIRCRUSH:
+                jinfo = jinfo.copy(option_value=0)
+            children.append(Node(info=jinfo, _id=joint._id))
+        return children
+
+    def _joint_strs(self) -> list[str]:
+        joint_strs: list[str] = []
+        for j in self._joints:
+            jbits = [
+                f"t={int(j.t)}",
+                f"kind={_note_enum_line(j.kind)}",
+                f"x={j.x}",
+                f"w={j.w}",
+            ]
+            if isinstance(j, AirJoint):
+                jbits.append(f"h={j.h}")
+            if j._info.option_value != 0:
+                jbits.append(f"option_value={j._info.option_value}")
+            joint_strs.append(f"{j.__class__.__name__}({', '.join(jbits)})")
+        return joint_strs
+
+
+class _JointHost(_JointHostBase):
+    def _make_joint(
+        self,
+        t: Tick,
+        kind: JointKind,
+        x: int,
+        w: int,
+    ) -> Joint:
+        return self._joint_type(
+            t=t,
+            x=x,
+            w=w,
+            kind=kind,
+        )
+
+    def _add_step(
+        self,
+        t: Tick,
+        x: int,
+        w: int,
+    ) -> None:
+        self._add_joint(
+            self._make_joint(
+                t,
+                JointKind.STEP,
+                x,
+                w,
+            )
+        )
+
+    def _add_control(
+        self,
+        t: Tick,
+        x: int,
+        w: int,
+    ) -> None:
+        self._add_joint(
+            self._make_joint(
+                t,
+                JointKind.CONTROL,
+                x,
+                w,
+            )
+        )
+
+    def _add_curve_control(
+        self,
+        t: Tick,
+        x: int,
+        w: int,
+    ) -> None:
+        self._add_joint(
+            self._make_joint(
+                t,
+                JointKind.CURVE_CONTROL,
+                x,
+                w,
+            )
+        )
+
+
+class _AirJointHost(_JointHostBase):
+    _joint_type: ClassVar[type[Joint]] = AirJoint
+
+    def _make_joint(
+        self,
+        t: Tick,
+        kind: JointKind,
+        x: int,
+        w: int,
+        h: int,
+    ) -> AirJoint:
+        return AirJoint(
+            t,
+            x,
+            w,
+            h,
+            kind=kind,
+        )
 
     def _add_step(
         self,
@@ -189,51 +297,5 @@ class _JointHost:
             )
         )
 
-    def _resolve_joint_info(
-        self,
-        joint: Joint,
-        note_type: NoteType,
-        long_attr: LongAttr,
-    ) -> NoteInfo:
-        return joint._info.copy(
-            type=note_type,
-            long_attr=long_attr,
-        )
 
-    def _build_long_children(
-        self,
-        note_type: NoteType,
-        terminus_attr: Callable[[Joint], LongAttr],
-        begin_info: NoteInfo,
-        *,
-        skip_validation: bool = False,
-    ) -> list[Node]:
-        if not skip_validation:
-            self._validate_joints(begin_info)
-
-        children: list[Node] = []
-        for index, joint in enumerate(self._joints):
-            long_attr = joint_kind_to_long_attr(joint.kind)
-            if not skip_validation and index == len(self._joints) - 1:
-                long_attr = terminus_attr(joint)
-            jinfo = self._resolve_joint_info(joint, note_type, long_attr)
-            if note_type is NoteType.AIRCRUSH:
-                jinfo = jinfo.copy(option_value=0)
-            children.append(Node(info=jinfo, _id=joint._id))
-        return children
-
-    def _joint_strs(self) -> list[str]:
-        joint_strs: list[str] = []
-        for j in self._joints:
-            jbits = [
-                f"t={int(j.t)}",
-                f"kind={_note_enum_line(j.kind)}",
-                f"x={j.x}",
-                f"w={j.w}",
-            ]
-            if isinstance(j, AirJoint):
-                jbits.append(f"h={j.h}")
-            if j._info.option_value != 0:
-                jbits.append(f"option_value={j._info.option_value}")
-            joint_strs.append(f"{j.__class__.__name__}({', '.join(jbits)})")
-        return joint_strs
+__all__ = ["AirJoint", "Joint", "_AirJointHost", "_JointHost", "_JointHostBase"]

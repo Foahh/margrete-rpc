@@ -272,18 +272,18 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
     assert note.t == 960
     assert note.x == 4
     assert note.w == 1
-    assert note.h == 800
+    assert note.h == 80
     assert note._id is None
     assert note.children == []
 
 
 def test_non_air_shape_factories_default_height_to_800():
-    assert N.extap(1, 2, 1).h == 800
-    assert N.flick(1, 2, 1).h == 800
-    assert N.damage(1, 2, 1).h == 800
-    assert N.hold_begin(1, 2, 1).h == 800
-    assert N.slide_begin(1, 2, 1).h == 800
-    assert N.air(1, 2, 1).h == 800
+    assert N.extap(1, 2, 1).h == 80
+    assert N.flick(1, 2, 1).h == 80
+    assert N.damage(1, 2, 1).h == 80
+    assert N.hold_begin(1, 2, 1).h == 80
+    assert N.slide_begin(1, 2, 1).h == 80
+    assert N.air(1, 2, 1).h == 80
 
 
 def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
@@ -295,7 +295,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
         2,
         4,
         1,
-        800,
+        80,
         960,
         3,
         7,
@@ -310,7 +310,7 @@ def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
     assert note.t == 960
     assert note.x == 4
     assert note.w == 1
-    assert note.h == 800
+    assert note.h == 80
     assert note.til == 3
     assert note.option_value == 7
     assert note._id == 12
@@ -430,11 +430,11 @@ def test_raw_note_api_accepts_short_geometry_aliases():
 
     note.t = 480
     note.w = 3
-    note.h = 800
+    note.h = 80
     note.til = 4
     assert note.t == 480
     assert note.w == 3
-    assert note.h == 800
+    assert note.h == 80
     assert note.til == 4
 
 
@@ -482,7 +482,7 @@ def test_node_info_properties_delegate_to_info():
     note.variation_id = 2
     note.x = 4
     note.w = 1
-    note.h = 800
+    note.h = 80
     note.t = 960
     note.til = 3
     note.option_value = 7
@@ -495,7 +495,7 @@ def test_node_info_properties_delegate_to_info():
         variation_id=2,
         x=4,
         w=1,
-        h=800,
+        h=80,
         t=960,
         til=3,
         option_value=7,
@@ -982,10 +982,10 @@ def test_slide_joints_use_explicit_geometry():
         LongAttr.END,
     ]
     assert [(child.x, child.w, child.h) for child in node.children] == [
-        (5, 2, 800),
-        (6, 3, 800),
-        (7, 4, 800),
-        (8, 5, 800),
+        (5, 2, 80),
+        (6, 3, 80),
+        (7, 4, 80),
+        (8, 5, 80),
     ]
 
 
@@ -1204,8 +1204,8 @@ def test_wrap_node_supports_air_hold_with_steps_attached_to_air():
     node = N.tap(19200, 4, 8).child(
         N.air(19200, 4, 8, direction=AirDirection.UP).child(
             N.air_hold_begin(19200, 4, 8, 80).child(
-                N.air_hold_step(19680, 4, 8, 800),
-                N.air_hold_end(20160, 4, 8, 800),
+                N.air_hold_step(19680, 4, 8, 80),
+                N.air_hold_end(20160, 4, 8, 80),
             )
         )
     )
@@ -1222,7 +1222,7 @@ def test_long_note_begin_geometry_is_backed_by_note_info():
     assert slide._info.t == 960
     assert slide._info.x == 0
     assert slide._info.w == 4
-    assert slide._info.h == 800
+    assert slide._info.h == 80
 
     slide.t = 480
     slide.x = 2

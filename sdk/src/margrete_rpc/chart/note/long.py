@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import cast
 from warnings import deprecated
 
 from ..time import Tick, resolve_tick
@@ -10,7 +11,7 @@ from .color import (
     color_to_value,
     color_value_from_proto,
 )
-from .joint import AirJoint, Joint, _JointHost
+from .joint import AirJoint, Joint, _AirJointHost, _JointHost, _JointHostBase
 from .node import Node
 from .shared import (
     _check_tick,
@@ -25,7 +26,7 @@ from .shared import (
 from .types import LongAttr, NoteInfo, NoteType
 
 
-class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
+class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
     _note_type: NoteType
 
     def __init__(
@@ -45,7 +46,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
         if _info is None:
-            self._info.h = 800
+            self._info.h = 80
         self.t = t
         self.x = x
         self.w = w
@@ -65,9 +66,10 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
     def validate(self) -> None:
         _check_tick(self.t)
         _check_width(self.w)
-        self._validate_joints(self._info)
+        host = cast(_JointHostBase, self)
+        host._validate_joints(self._info)
         if self._air is not None:
-            children = self._build_long_children(
+            children = host._build_long_children(
                 self._note_type,
                 self._terminus_attr,
                 self._info,
@@ -78,8 +80,9 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
     def _to_node_tree(self, *, skip_validation: bool = False) -> Node:
         if not skip_validation:
             self.validate()
+        host = cast(_JointHostBase, self)
         root = Node(info=self._info.copy(long_attr=LongAttr.BEGIN), _id=self._id)
-        root.children = self._build_long_children(
+        root.children = host._build_long_children(
             self._note_type,
             self._terminus_attr,
             root.info,
@@ -109,7 +112,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
         head = ", ".join(parts)
         lines = [f"{cls}({head}"]
         if self._joints:
-            lines[0] += f", joints=[{', '.join(self._joint_strs())}]"
+            lines[0] += f", joints=[{', '.join(cast(_JointHostBase, self)._joint_strs())}]"
         lines[0] += ")"
         if self._air is not None:
             lines.extend(f"  {line}" for line in str(self._air).splitlines())
@@ -118,7 +121,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin, _JointHost):
     __repr__ = __str__
 
 
-class Slide(_AirAttachable, _PlaceableLong):
+class Slide(_AirAttachable, _PlaceableLong, _JointHost):
     _note_type = NoteType.SLIDE
 
     def step(
@@ -127,7 +130,7 @@ class Slide(_AirAttachable, _PlaceableLong):
         x: int,
         w: int,
     ) -> Slide:
-        self._add_step(t, x, w, 800)
+        self._add_step(t, x, w)
         return self
 
     def control(
@@ -136,7 +139,7 @@ class Slide(_AirAttachable, _PlaceableLong):
         x: int,
         w: int,
     ) -> Slide:
-        self._add_control(t, x, w, 800)
+        self._add_control(t, x, w)
         return self
 
     @deprecated("CURVE_CONTROL is deprecated in Margrete.")
@@ -146,14 +149,14 @@ class Slide(_AirAttachable, _PlaceableLong):
         x: int,
         w: int,
     ) -> Slide:
-        self._add_curve_control(t, x, w, 800)
+        self._add_curve_control(t, x, w)
         return self
 
     def to_node(self, *, skip_validation: bool = False) -> Node:
         return self._to_node_tree(skip_validation=skip_validation)
 
 
-class Hold(_AirAttachable, _PlaceableLong):
+class Hold(_AirAttachable, _PlaceableLong, _JointHost):
     _note_type = NoteType.HOLD
 
     def step(self, t: Tick, x: int, w: int) -> Hold:
@@ -166,14 +169,14 @@ class Hold(_AirAttachable, _PlaceableLong):
             joint.x = x
             joint.w = w
         else:
-            self._add_step(t, x, w, 800)
+            self._add_step(t, x, w)
         return self
 
     def to_node(self, *, skip_validation: bool = False) -> Node:
         return self._to_node_tree(skip_validation=skip_validation)
 
 
-class AirCrush(_HeightMixin, _PlaceableLong):
+class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     _note_type = NoteType.AIRCRUSH
     _joint_type = AirJoint
 

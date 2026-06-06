@@ -7,6 +7,7 @@ from typing import Any, NamedTuple, cast
 
 from ..time import Tick, resolve_tick
 from .air import Air, AirHold, AirSlide
+from .color import ColorValue
 from .direction import Direction
 from .ground import Damage, Extap, Flick, Tap, _GroundNote
 from .joint import AirJoint, Joint
@@ -14,12 +15,14 @@ from .long import AirCrush, Hold, Slide
 from .shared import AlignMode, Note
 from .types import JointKind, JointKindLike
 
-_DEFAULT_AIR_H = 80
+_DEFAULT_H = 80
+_DEFAULT_AIRCRUSH_DENSITY = 0
 
 type SlideLike = Slide | AirSlide | AirCrush
 type LongLike = Slide | Hold | AirSlide | AirHold | AirCrush
 
 _GROUND_TYPES = (Tap, Extap, Flick, Damage)
+_SLIDE_LIKE = (Slide, AirSlide, AirCrush)
 _MERGEABLE = (Slide, AirSlide, AirCrush)
 _SPLITTABLE = (Slide, AirSlide, AirCrush)
 
@@ -56,7 +59,7 @@ def _iter_infos(note: Note) -> Iterator[Any]:
 # ------------------------------------------------------------------------------- clone
 
 
-def _detach(note: Note) -> None:
+def _detach(note: object) -> None:
     note._id = None
     for joint in getattr(note, "_joints", ()) or ():
         joint._id = None
@@ -77,11 +80,9 @@ def _clone[N: Note](note: N) -> N:
 
 def _clone_air(air: Air | AirSlide | AirHold) -> Air | AirSlide | AirHold:
     new = copy.deepcopy(air)
-    new._id = None
+    _detach(new)
     if hasattr(new, "_air_id"):
         new._air_id = None
-    for joint in getattr(new, "_joints", ()) or ():
-        joint._id = None
     return new
 
 
@@ -150,9 +151,9 @@ def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) ->
         raise TypeError("convert target must be a note class")
     if isinstance(note, _GROUND_TYPES) and issubclass(target, _GROUND_TYPES):
         return cast(T, _convert_ground(note, target, overrides))
-    if isinstance(note, (Slide, Hold, AirSlide, AirHold)) and issubclass(
-        target, (Slide, Hold, AirSlide, AirHold)
-    ):
+    if isinstance(note, Hold) and issubclass(target, (*_SLIDE_LIKE, AirHold)):
+        return cast(T, _convert_long(note, target, overrides))
+    if isinstance(note, _SLIDE_LIKE) and issubclass(target, _SLIDE_LIKE):
         return cast(T, _convert_long(note, target, overrides))
     raise ValueError(f"cannot convert {type(note).__name__} to {target.__name__}")
 
@@ -185,14 +186,32 @@ def _read_long(note: LongLike) -> tuple[_Point, list[_Point]]:
     return begin, joints
 
 
-def _add_kind(note: LongLike, kind: JointKindLike | None, t: int, x: int, w: int, h: int) -> None:
+def _add_kind(
+    note: LongLike,
+    kind: JointKindLike | None,
+    t: int,
+    x: int,
+    w: int,
+    h: int | None,
+) -> None:
     resolved = JointKind(kind) if kind is not None else JointKind.STEP
+    if isinstance(note, (AirSlide, AirHold, AirCrush)):
+        if h is None:
+            raise ValueError("air long joints require height")
+        if resolved is JointKind.STEP:
+            note._add_step(t, x, w, h)
+        elif resolved is JointKind.CONTROL:
+            note._add_control(t, x, w, h)
+        else:
+            note._add_curve_control(t, x, w, h)
+        return
+
     if resolved is JointKind.STEP:
-        note._add_step(t, x, w, h)
+        note._add_step(t, x, w)
     elif resolved is JointKind.CONTROL:
-        note._add_control(t, x, w, h)
+        note._add_control(t, x, w)
     else:
-        note._add_curve_control(t, x, w, h)
+        note._add_curve_control(t, x, w)
 
 
 def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any]) -> LongLike:
@@ -200,8 +219,8 @@ def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any])
     if not joints:
         raise ValueError("long note requires at least one joint to convert")
     new: LongLike
-    if issubclass(target, (Slide, Hold)):
-        new = _build_ground_long(target, begin, joints)
+    if issubclass(target, Slide):
+        new = _build_slide(begin, joints)
     else:
         new = _build_air_long(note, target, begin, joints, overrides)
     new._info.til = note._info.til
@@ -209,15 +228,10 @@ def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any])
     return new
 
 
-def _build_ground_long(target: type[Note], begin: _Point, joints: list[_Point]) -> Slide | Hold:
-    if issubclass(target, Hold):
-        end = joints[-1]
-        hold = Hold(begin.t, begin.x, begin.w)
-        hold._add_step(end.t, end.x, end.w, 800)
-        return hold
+def _build_slide(begin: _Point, joints: list[_Point]) -> Slide:
     slide = Slide(begin.t, begin.x, begin.w)
     for point in joints:
-        _add_kind(slide, point.kind, point.t, point.x, point.w, 800)
+        _add_kind(slide, point.kind, point.t, point.x, point.w, None)
     return slide
 
 
@@ -227,19 +241,33 @@ def _build_air_long(
     begin: _Point,
     joints: list[_Point],
     overrides: dict[str, Any],
-) -> AirSlide | AirHold:
-    is_air_source = isinstance(note, (AirSlide, AirHold))
+) -> AirSlide | AirHold | AirCrush:
+    is_air_source = isinstance(note, (AirSlide, AirHold, AirCrush))
     h0 = overrides.get("h")
     if h0 is None:
-        h0 = begin.h if is_air_source else _DEFAULT_AIR_H
-    new: AirSlide | AirHold = AirSlide(h=h0) if issubclass(target, AirSlide) else AirHold(h=h0)
-    new._info.t = begin.t
-    new._info.x = begin.x
-    new._info.w = begin.w
-    if "direction" in overrides:
-        new._air_info.direction = overrides["direction"]
-    elif isinstance(note, (AirSlide, AirHold)):
-        new._air_info.direction = note._air_info.direction
+        h0 = begin.h if is_air_source and begin.h is not None else _DEFAULT_H
+    h0 = int(h0)
+    new: AirSlide | AirHold | AirCrush
+    if issubclass(target, AirCrush):
+        density = overrides.get(
+            "density", note.density if isinstance(note, AirCrush) else _DEFAULT_AIRCRUSH_DENSITY
+        )
+        color = overrides.get(
+            "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
+        )
+        new = AirCrush(begin.t, begin.x, begin.w, h=h0, density=density, color=color)
+    else:
+        new_air: AirSlide | AirHold = (
+            AirSlide(h=h0) if issubclass(target, AirSlide) else AirHold(h=h0)
+        )
+        new_air._info.t = begin.t
+        new_air._info.x = begin.x
+        new_air._info.w = begin.w
+        if "direction" in overrides:
+            new_air._air_info.direction = overrides["direction"]
+        elif isinstance(note, (AirSlide, AirHold)):
+            new_air._air_info.direction = note._air_info.direction
+        new = new_air
     for point in joints:
         jh = point.h if point.h is not None else h0
         _add_kind(new, point.kind, point.t, point.x, point.w, jh)
@@ -249,8 +277,8 @@ def _build_air_long(
 # ------------------------------------------------------------------------------- merge
 
 
-def _joint_h(point: _Point) -> int:
-    return point.h if point.h is not None else 800
+def _joint_h(point: _Point) -> int | None:
+    return point.h
 
 
 def _resolve_join[T: SlideLike](
@@ -286,19 +314,17 @@ def merge[T: SlideLike](
         if not note._joints:
             raise ValueError("each note to merge must have at least one joint")
     items.sort(key=lambda note: int(note._info.t))
+    result = _clone(items[0])
     for prev, nxt in zip(items, items[1:]):
         if int(nxt._info.t) < int(prev._joints[-1].t):
             raise ValueError("notes to merge must not overlap")
-
-    result = _clone(items[0])
-    for prev, nxt in zip(items, items[1:]):
         seam = _resolve_join(join, prev, nxt, note_type)
         result._joints[-1].kind = seam
         if int(nxt._info.t) > int(result._joints[-1].t):
-            nb_h = int(nxt._info.h) if isinstance(nxt, (AirSlide, AirCrush)) else 800
+            nb_h = int(nxt._info.h) if isinstance(nxt, (AirSlide, AirCrush)) else None
             _add_kind(result, seam, int(nxt._info.t), nxt._info.x, nxt._info.w, nb_h)
         for joint in nxt._joints:
-            jh = joint.h if isinstance(joint, AirJoint) else 800
+            jh = joint.h if isinstance(joint, AirJoint) else None
             _add_kind(result, joint.kind, int(joint.t), joint.x, joint.w, jh)
     result.validate()
     return result
@@ -334,18 +360,14 @@ def _locate_split(
     ts = int(resolve_tick(at))
     if not begin.t < ts < joints[-1].t:
         raise ValueError("split tick must fall strictly inside the note")
-    for idx, point in enumerate(joints):
-        if point.t == ts:
-            if idx == len(joints) - 1:
-                raise ValueError("cannot split at the final joint")
-            return point, joints[:idx], joints[idx + 1 :]
     anchors = [begin, *joints]
-    for a, b in zip(anchors, anchors[1:]):
+    for i, (a, b) in enumerate(zip(anchors, anchors[1:])):
+        if b.t == ts:
+            if i == len(joints) - 1:
+                raise ValueError("cannot split at the final joint")
+            return joints[i], joints[:i], joints[i + 1 :]
         if a.t < ts < b.t:
-            split_point = _interpolate(a, b, ts)
-            left = [p for p in joints if p.t < ts]
-            right = [p for p in joints if p.t > ts]
-            return split_point, left, right
+            return _interpolate(a, b, ts), joints[:i], joints[i:]
     raise ValueError("could not locate split segment")
 
 

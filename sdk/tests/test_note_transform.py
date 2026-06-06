@@ -161,16 +161,6 @@ def test_flip_recurses_into_joints_and_air():
 # --------------------------------------------------------------------------- convert
 
 
-def test_convert_in_place_mutates_and_keeps_id():
-    tap = Tap(t=120, x=4, w=2, _id=7)
-    result = tap.convert(Flick, direction="right")
-
-    assert result is tap  # same object, reclassed in place
-    assert isinstance(tap, Flick)
-    assert tap.direction.value == "right"
-    assert tap._id == 7  # identity preserved for in-place edits
-
-
 def test_converted_returns_detached_copy_without_touching_original():
     tap = Tap(t=120, x=4, w=2, _id=7)
     tap._info.til = 3
@@ -219,11 +209,44 @@ def test_converted_hold_to_air_hold():
     assert air.joints[-1].h == 70
 
 
+def test_converted_hold_to_slide():
+    hold = Hold(t=0, x=1, w=3).step(120, x=1, w=3)
+    slide = hold.converted(Slide)
+    assert isinstance(slide, Slide)
+    assert (int(slide.t), slide.x, slide.w) == (0, 1, 3)
+    assert int(slide.joints[-1].t) == 120
+
+
+def test_converted_slide_to_aircrush():
+    slide = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
+    crush = slide.converted(AirCrush, h=80, density=4)
+    assert isinstance(crush, AirCrush)
+    assert crush.h == 80
+    assert crush.density == 4
+    assert int(crush.joints[-1].t) == 100
+
+
+def test_converted_aircrush_to_airslide():
+    crush = AirCrush(t=0, x=2, w=2, h=80, density=5).control(100, x=4, w=2, h=100)
+    air = crush.converted(AirSlide, direction="up")
+    assert isinstance(air, AirSlide)
+    assert (int(air._info.t), air._info.x, air._info.w) == (0, 2, 2)
+    assert air.joints[-1].h == 100
+    assert air._id is None  # detached
+
+
 def test_convert_cross_shape_raises():
     with pytest.raises(ValueError):
         Tap(t=0, x=0, w=2).converted(Slide)
     with pytest.raises(ValueError):
         Slide(t=0, x=0, w=2).step(100, x=2, w=2).converted(Tap)
+    # Slide-like group cannot convert to Hold or AirHold
+    with pytest.raises(ValueError):
+        Slide(t=0, x=0, w=4).step(100, x=2, w=4).converted(Hold)
+    with pytest.raises(ValueError):
+        Slide(t=0, x=0, w=4).step(100, x=2, w=4).converted(AirHold)
+    with pytest.raises(ValueError):
+        AirCrush(t=0, x=0, w=2, h=80, density=4).control(100, x=2, w=2, h=80).converted(Hold)
 
 
 # ----------------------------------------------------------------------------- merge

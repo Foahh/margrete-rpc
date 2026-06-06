@@ -78,6 +78,24 @@ def _is_noop(delta: Delta) -> bool:
     return not callable(delta) and delta == 0
 
 
+def _check_joint_order(note: object) -> None:
+    for obj in (note, getattr(note, "_air", None)):
+        if obj is None:
+            continue
+        info = getattr(obj, "_info", None)
+        joints = getattr(obj, "_joints", ())
+        if not joints:
+            continue
+        prev = int(info.t) if info is not None else None
+        for j in joints:
+            jt = int(j.t)
+            if prev is not None and jt <= prev:
+                raise ValueError(
+                    f"t callable produced non-monotone joint ordering: tick {jt} <= {prev}"
+                )
+            prev = jt
+
+
 def _shift_note(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> object:
     if _is_noop(t) and _is_noop(x) and _is_noop(w) and _is_noop(h):
         return note
@@ -93,4 +111,6 @@ def _shift_note(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> obje
         _shift_air_long(note, t=t, x=x, w=w, h=h)
     else:
         raise TypeError(f"unsupported note type for shift: {type(note).__name__}")
+    if callable(t):
+        _check_joint_order(note)
     return note

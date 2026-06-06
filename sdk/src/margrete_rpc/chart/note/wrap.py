@@ -3,7 +3,7 @@ from __future__ import annotations
 from .air import Air, AirHold, AirSlide
 from .color import color_from_value
 from .ground import Damage, Extap, Flick, Tap, _GroundNote
-from .joint import _JointHost
+from .joint import _JointHostBase
 from .long import AirCrush, Hold, Slide
 from .node import Node
 from .shared import Note, UnsupportedNoteTree
@@ -65,7 +65,7 @@ def _require_final_end(children: list[Node], allowed: set[LongAttr]) -> None:
         raise UnsupportedNoteTree("long note must end with an end joint")
 
 
-def _copy_joint(builder: _JointHost, child: Node) -> None:
+def _copy_joint(builder: _JointHostBase, child: Node) -> None:
     joint = builder._joints[-1]
     joint._info = child.info.copy(type=NoteType.UNKNOWN, long_attr=LongAttr.NONE)
     joint._id = child._id
@@ -108,7 +108,7 @@ def _wrap_slide(note: Node) -> Slide:
         elif child.long_attr is LongAttr.CONTROL:
             slide.control(int(child.t), x=child.x, w=child.w)
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide._add_curve_control(int(child.t), child.x, child.w, 800)
+            slide._add_curve_control(int(child.t), child.x, child.w)
         elif child.long_attr is LongAttr.END and is_final:
             slide.step(int(child.t), x=child.x, w=child.w)
         else:
@@ -127,7 +127,7 @@ def _wrap_hold(note: Node) -> Hold:
     child = note.children[0]
     _check_order(int(note.t), int(child.t))
     hold = Hold(int(note.t), note.x, note.w, _info=note.info, _id=note._id)
-    hold._add_step(int(child.t), x=child.x, w=child.w, h=child.h)
+    hold._add_step(int(child.t), x=child.x, w=child.w)
     _copy_joint(hold, child)
     if child.children:
         hold.air(_wrap_attached_air_note(child.children[0]))
