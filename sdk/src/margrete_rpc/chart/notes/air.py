@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Self
-from warnings import deprecated
+from typing import Any, Self, cast
 
 from ..raw import RawNote
 from ..time import Tick
@@ -50,7 +49,7 @@ class Air:
         del anchor
         self.validate()
 
-    def _to_node(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
+    def _to_raw(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self._validate_with_anchor(anchor)
         return RawNote(
@@ -124,7 +123,7 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
     def _validate_with_anchor(self, anchor: NoteInfo) -> None:
         self._validate_joints(self._begin_info_with_anchor(anchor))
 
-    def _to_node(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
+    def _to_raw(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
         begin_info = self._begin_info_with_anchor(anchor)
         if not skip_validation:
             self._validate_joints(begin_info)
@@ -139,25 +138,15 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
         air.children.append(action)
         return air
 
-    def step(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-        h: int,
-    ) -> Self:
-        self._add_step(t, x, w, h)
-        return self
+    def with_step(self, *, t: Tick, x: int, w: int, h: int) -> Self:
+        copy = self.clone()
+        copy.add_step(t=t, x=x, w=w, h=h)
+        return copy
 
-    def control(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-        h: int,
-    ) -> Self:
-        self._add_control(t, x, w, h)
-        return self
+    def with_ctrl(self, *, t: Tick, x: int, w: int, h: int) -> Self:
+        copy = self.clone()
+        copy.add_ctrl(t=t, x=x, w=w, h=h)
+        return copy
 
     def __str__(self) -> str:
         parts = [f"h={self.h}"]
@@ -173,17 +162,6 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
 
 class AirSlide(_AttachableAirLong):
     _note_type = NoteType.AIRSLIDE
-
-    @deprecated("CURVE_CONTROL is deprecated in Margrete.")
-    def curve_control(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-        h: int,
-    ) -> Self:
-        self._add_curve_control(t, x, w, h)
-        return self
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
         if joint.kind is JointKind.CONTROL:
@@ -214,11 +192,17 @@ class _AirAttachable:
             return
         if isinstance(value, (AirDirection, str)):
             value = Air(value)
-        # Defensive guard for untyped callers passing an unsupported value.
         if not isinstance(value, (Air, AirSlide, AirHold)):  # pyright: ignore[reportUnnecessaryIsInstance]
             raise TypeError("air expects air direction, Air, AirSlide, or AirHold")
         self._air = value
 
-    def tie(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
+    def with_air(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
+        from .transform import _clone
+
+        new: Self = _clone(cast(Any, self))
+        new.air = air
+        return new
+
+    def add_air(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
         self.air = air
         return self

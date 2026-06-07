@@ -194,7 +194,7 @@ def test_noteinfo_option_value_accepts_division_tuple():
 def test_aircrush_gap_accepts_division_tuple():
     from margrete_rpc.chart.notes import AirCrush
 
-    note = AirCrush(0, 0, 4, h=80, gap=(1, 384))
+    note = AirCrush(t=0, x=0, w=4, h=80, gap=(1, 384))
     assert note.gap == 5
 
     note.gap = (1, 4)

@@ -42,27 +42,27 @@ from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
 
 
 def test_note_type_factories_set_kind_and_geometry():
-    assert R.tap(1, 2, 1).type is NoteType.TAP
-    assert R.extap(1, 2, 1).type is NoteType.EXTAP
-    assert R.flick(1, 2, 1).type is NoteType.FLICK
-    assert R.damage(1, 2, 1).type is NoteType.DAMAGE
-    assert R.hold_begin(1, 2, 1).type is NoteType.HOLD
-    assert R.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
-    assert R.hold_end(1, 2, 1).long_attr is LongAttr.END
-    assert R.slide_begin(1, 2, 1).type is NoteType.SLIDE
-    assert R.slide_begin(1, 2, 1).long_attr is LongAttr.BEGIN
-    assert R.air(1, 2, 1).type is NoteType.AIR
-    assert R.air_slide_begin(1, 2, 1, 80).type is NoteType.AIRSLIDE
-    assert R.air_hold_begin(1, 2, 1, 80).type is NoteType.AIRHOLD
-    assert R.air_hold_begin(1, 2, 1, 80).long_attr is LongAttr.BEGIN
-    assert R.air_hold_end(1, 2, 1, 80).long_attr is LongAttr.END
-    crush0 = R.air_crush_begin(1, 2, 1, 80, 0)
+    assert R.tap(t=1, x=2, w=1).type is NoteType.TAP
+    assert R.extap(t=1, x=2, w=1).type is NoteType.EXTAP
+    assert R.flick(t=1, x=2, w=1).type is NoteType.FLICK
+    assert R.damage(t=1, x=2, w=1).type is NoteType.DAMAGE
+    assert R.hold_begin(t=1, x=2, w=1).type is NoteType.HOLD
+    assert R.hold_begin(t=1, x=2, w=1).long_attr is LongAttr.BEGIN
+    assert R.hold_end(t=1, x=2, w=1).long_attr is LongAttr.END
+    assert R.slide_begin(t=1, x=2, w=1).type is NoteType.SLIDE
+    assert R.slide_begin(t=1, x=2, w=1).long_attr is LongAttr.BEGIN
+    assert R.air(t=1, x=2, w=1).type is NoteType.AIR
+    assert R.air_slide_begin(t=1, x=2, w=1, h=80).type is NoteType.AIRSLIDE
+    assert R.air_hold_begin(t=1, x=2, w=1, h=80).type is NoteType.AIRHOLD
+    assert R.air_hold_begin(t=1, x=2, w=1, h=80).long_attr is LongAttr.BEGIN
+    assert R.air_hold_end(t=1, x=2, w=1, h=80).long_attr is LongAttr.END
+    crush0 = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0)
     assert crush0.type is NoteType.AIRCRUSH
     assert crush0.long_attr is LongAttr.BEGIN
     assert crush0.option_value == 0
-    head = R.air_crush_begin(1, 2, 1, 80, 0x7FFFFFFF)
+    head = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0x7FFFFFFF)
     assert head.option_value == 0x7FFFFFFF
-    assert R.air_crush_begin(1, 2, 1, 80, 120).option_value == 120
+    assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap=120).option_value == 120
 
 
 def test_air_crush_color_values_match_variation_ids():
@@ -82,7 +82,7 @@ def test_air_crush_color_values_match_variation_ids():
     assert Color.COBALT_BLUE == messages_pb2.COLOR_COBALT_BLUE
     assert Color.PURPLE == messages_pb2.COLOR_PURPLE
     assert Color.NONE == messages_pb2.COLOR_NONE
-    none = R.air_crush_begin(1, 2, 1, 80, 0, color=Color.NONE)
+    none = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0, color=Color.NONE)
     assert none.variation_id is Color.NONE
     assert none.to_proto().variation_id == 35
 
@@ -105,7 +105,7 @@ def test_note_enums_remain_notes_exports():
     assert Direction.DOWN_RIGHT.value == messages_pb2.DIRECTION_DOWNRIGHT
     assert ExtapDirection.UP.value == "up"
     assert AirDirection.DOWN_RIGHT.value == "down_right"
-    assert ExtapDirection.OUT_IR.value == "out_in"
+    assert ExtapDirection.OUT_IN.value == "out_in"
     assert FlickDirection.RIGHT.value == "right"
     assert ExAttr.INVERT.value == messages_pb2.EX_ATTR_INVERT
     assert Color.NONE.value == messages_pb2.COLOR_NONE
@@ -142,9 +142,9 @@ def test_new_note_api_is_exported_from_namespaced_packages():
     from margrete_rpc.chart.raw import R, RawNote
     from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
 
-    assert R.tap(0, 4, 2).type is NoteType.TAP
+    assert R.tap(t=0, x=4, w=2).type is NoteType.TAP
     assert RawNote().info == NoteInfo()
-    assert isinstance(Tap(0, 4, 2), Note)
+    assert isinstance(Tap(t=0, x=4, w=2), Note)
     assert Hold is not None
     assert Slide is not None
     assert AirCrush is not None
@@ -161,67 +161,67 @@ def test_margrete_native_and_sdk_note_names_are_namespaced():
     from margrete_rpc.chart.notes import Note
     from margrete_rpc.chart.raw import R, RawNote
 
-    assert R.tap(0, 4, 2).type is NoteType.TAP
+    assert R.tap(t=0, x=4, w=2).type is NoteType.TAP
     assert RawNote().info == NoteInfo()
-    assert isinstance(Tap(0, 4, 2), Note)
+    assert isinstance(Tap(t=0, x=4, w=2), Note)
 
 
 def test_note_factories_require_geometry_and_specific_fields():
     with pytest.raises(TypeError):
         R.tap(t=1, x=2)
     with pytest.raises(TypeError):
-        R.air_crush_begin(1, 2, 1)
+        R.air_crush_begin(t=1, x=2, w=1)
     with pytest.raises(TypeError):
-        R.air_slide_begin(1, 2, 1)
+        R.air_slide_begin(t=1, x=2, w=1)
     with pytest.raises(TypeError):
-        R.air_hold_begin(1, 2, 1)
+        R.air_hold_begin(t=1, x=2, w=1)
 
 
 def test_child_builds_long_note_chains():
-    slide_begin = R.slide_begin(10, 0, 4)
-    slide_step = R.slide_step(20, 6, 4)
-    slide_end = R.slide_end(30, 12, 4)
+    slide_begin = R.slide_begin(t=10, x=0, w=4)
+    slide_step = R.slide_step(t=20, x=6, w=4)
+    slide_end = R.slide_end(t=30, x=12, w=4)
 
     slide = slide_begin.child(slide_step, slide_end)
 
     assert slide is slide_begin
     assert slide.children == [slide_step, slide_end]
 
-    hold_begin = R.hold_begin(40, 2, 4)
-    hold_end = R.hold_end(50, 2, 4)
+    hold_begin = R.hold_begin(t=40, x=2, w=4)
+    hold_end = R.hold_end(t=50, x=2, w=4)
     assert hold_begin.child(hold_end) is hold_begin
     assert hold_begin.children == [hold_end]
 
-    air_slide_begin = R.air_slide_begin(60, 4, 8, 80)
-    air_slide_step = R.air_slide_step(70, 8, 8, 120)
-    air_slide_end = R.air_slide_end(80, 12, 8, 80)
+    air_slide_begin = R.air_slide_begin(t=60, x=4, w=8, h=80)
+    air_slide_step = R.air_slide_step(t=70, x=8, w=8, h=120)
+    air_slide_end = R.air_slide_end(t=80, x=12, w=8, h=80)
     assert air_slide_begin.child(air_slide_step, air_slide_end) is air_slide_begin
     assert air_slide_begin.children == [air_slide_step, air_slide_end]
 
-    air_hold_begin = R.air_hold_begin(90, 4, 8, 80)
-    air_hold_end = R.air_hold_end(100, 4, 8, 80)
+    air_hold_begin = R.air_hold_begin(t=90, x=4, w=8, h=80)
+    air_hold_end = R.air_hold_end(t=100, x=4, w=8, h=80)
     assert air_hold_begin.child(air_hold_end) is air_hold_begin
     assert air_hold_begin.children == [air_hold_end]
 
-    air_crush_begin = R.air_crush_begin(110, 4, 8, 80, 5)
-    air_crush_control = R.air_crush_control(120, 8, 8, 120)
-    air_crush_end = R.air_crush_end(130, 12, 8, 80)
+    air_crush_begin = R.air_crush_begin(t=110, x=4, w=8, h=80, gap=5)
+    air_crush_control = R.air_crush_control(t=120, x=8, w=8, h=120)
+    air_crush_end = R.air_crush_end(t=130, x=12, w=8, h=80)
     assert air_crush_begin.child(air_crush_control, air_crush_end) is air_crush_begin
     assert air_crush_begin.children == [air_crush_control, air_crush_end]
 
 
 def test_child_with_no_arguments_clears_children():
-    note = R.tap(960, 4, 2)
+    note = R.tap(t=960, x=4, w=2)
 
     assert note.child() is note
     assert note.children == []
 
 
 def test_child_adds_airlike_children_to_single_note():
-    note = R.tap(960, 4, 2)
-    air = R.air(960, 4, 2, dir=AirDirection.UP)
-    air_slide = R.air_slide_begin(960, 4, 2, 80).child(
-        R.air_slide_end(1440, 8, 2, 80),
+    note = R.tap(t=960, x=4, w=2)
+    air = R.air(t=960, x=4, w=2, dir=AirDirection.UP)
+    air_slide = R.air_slide_begin(t=960, x=4, w=2, h=80).child(
+        R.air_slide_end(t=1440, x=8, w=2, h=80),
     )
 
     assert note.child(air, air_slide) is note
@@ -229,39 +229,39 @@ def test_child_adds_airlike_children_to_single_note():
 
 
 def test_slide_segment_factories_match_long_attr():
-    assert R.slide_step(10, 3, 1).long_attr is LongAttr.STEP
-    assert R.slide_control(10, 3, 1).long_attr is LongAttr.CONTROL
-    assert R.slide_curve_control(10, 3, 1).long_attr is LongAttr.CURVE_CONTROL
-    assert R.slide_end(10, 3, 1).long_attr is LongAttr.END
+    assert R.slide_step(t=10, x=3, w=1).long_attr is LongAttr.STEP
+    assert R.slide_control(t=10, x=3, w=1).long_attr is LongAttr.CONTROL
+    assert R.slide_curve_control(t=10, x=3, w=1).long_attr is LongAttr.CURVE_CONTROL
+    assert R.slide_end(t=10, x=3, w=1).long_attr is LongAttr.END
 
 
 def test_air_slide_segment_factories_match_long_attr():
-    begin = R.air_slide_begin(11, 4, 1, 80)
+    begin = R.air_slide_begin(t=11, x=4, w=1, h=80)
     assert begin.long_attr is LongAttr.BEGIN
-    assert R.air_slide_step(11, 4, 1, 80).long_attr is LongAttr.STEP
-    assert R.air_slide_control(11, 4, 1, 80).long_attr is LongAttr.CONTROL
-    assert R.air_slide_curve_control(11, 4, 1, 80).long_attr is LongAttr.CURVE_CONTROL
-    assert R.air_slide_end(11, 4, 1, 80).long_attr is LongAttr.END
-    assert R.air_slide_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
+    assert R.air_slide_step(t=11, x=4, w=1, h=80).long_attr is LongAttr.STEP
+    assert R.air_slide_control(t=11, x=4, w=1, h=80).long_attr is LongAttr.CONTROL
+    assert R.air_slide_curve_control(t=11, x=4, w=1, h=80).long_attr is LongAttr.CURVE_CONTROL
+    assert R.air_slide_end(t=11, x=4, w=1, h=80).long_attr is LongAttr.END
+    assert R.air_slide_end_noact(t=11, x=4, w=1, h=80).long_attr is LongAttr.END_NOACT
 
 
 def test_air_hold_segment_factories_match_long_attr():
-    assert R.air_hold_begin(11, 4, 1, 80).long_attr is LongAttr.BEGIN
-    assert R.air_hold_step(11, 4, 1, 80).long_attr is LongAttr.STEP
-    assert R.air_hold_end(11, 4, 1, 80).long_attr is LongAttr.END
-    assert R.air_hold_end_noact(11, 4, 1, 80).long_attr is LongAttr.END_NOACT
+    assert R.air_hold_begin(t=11, x=4, w=1, h=80).long_attr is LongAttr.BEGIN
+    assert R.air_hold_step(t=11, x=4, w=1, h=80).long_attr is LongAttr.STEP
+    assert R.air_hold_end(t=11, x=4, w=1, h=80).long_attr is LongAttr.END
+    assert R.air_hold_end_noact(t=11, x=4, w=1, h=80).long_attr is LongAttr.END_NOACT
 
 
 def test_air_crush_segment_factories_match_long_attr():
-    begin = R.air_crush_begin(11, 4, 1, 80, 5)
+    begin = R.air_crush_begin(t=11, x=4, w=1, h=80, gap=5)
     assert begin.long_attr is LongAttr.BEGIN
     assert begin.option_value == 5
-    assert R.air_crush_control(11, 4, 1, 80).long_attr is LongAttr.CONTROL
-    assert R.air_crush_end(11, 4, 1, 80).long_attr is LongAttr.END
+    assert R.air_crush_control(t=11, x=4, w=1, h=80).long_attr is LongAttr.CONTROL
+    assert R.air_crush_end(t=11, x=4, w=1, h=80).long_attr is LongAttr.END
 
 
 def test_note_defaults_and_tap_constructor_are_pythonic():
-    note = R.tap(960, 4, 1)
+    note = R.tap(t=960, x=4, w=1)
 
     assert note.type is NoteType.TAP
     assert note.long_attr is LongAttr.NONE
@@ -277,12 +277,12 @@ def test_note_defaults_and_tap_constructor_are_pythonic():
 
 
 def test_non_air_shape_factories_default_height_to_800():
-    assert R.extap(1, 2, 1).h == 80
-    assert R.flick(1, 2, 1).h == 80
-    assert R.damage(1, 2, 1).h == 80
-    assert R.hold_begin(1, 2, 1).h == 80
-    assert R.slide_begin(1, 2, 1).h == 80
-    assert R.air(1, 2, 1).h == 80
+    assert R.extap(t=1, x=2, w=1).h == 80
+    assert R.flick(t=1, x=2, w=1).h == 80
+    assert R.damage(t=1, x=2, w=1).h == 80
+    assert R.hold_begin(t=1, x=2, w=1).h == 80
+    assert R.slide_begin(t=1, x=2, w=1).h == 80
+    assert R.air(t=1, x=2, w=1).h == 80
 
 
 def test_noteinfo_dataclass_accepts_mp_noteinfo_order_as_positional_arguments():
@@ -330,8 +330,8 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
     assert NoteSpeedEvent(960, 1.25) == NoteSpeedEvent(t=960, speed=1.25)
 
 
-def test_node_tick_uses_int_and_d2t_for_fractions():
-    note = R.tap(0, 4, 1)
+def test_raw_tick_uses_int_and_d2t_for_fractions():
+    note = R.tap(t=0, x=4, w=1)
     assert note.t == 0
     note.t = note.t + d2t(1, 8)
     assert note.t == 240
@@ -341,8 +341,8 @@ def test_node_tick_uses_int_and_d2t_for_fractions():
     assert note.t == 0
 
 
-def test_node_tick_augmented_assignment_matches_direct_tick_math():
-    note = R.tap(240, 4, 1)
+def test_raw_tick_augmented_assignment_matches_direct_tick_math():
+    note = R.tap(t=240, x=4, w=1)
     note.t = 480
     assert note.t == 480
     note.t = 1920
@@ -368,8 +368,8 @@ def test_d2t_rejects_non_int_types():
         d2t("bad", 4)  # type: ignore[arg-type]
 
 
-def test_note_and_node_tick_are_plain_int():
-    note = R.tap(0, 4, 1)
+def test_note_and_raw_tick_are_plain_int():
+    note = R.tap(t=0, x=4, w=1)
     assert type(note.t) is int
     note.t = note.t + d2t(1, 8)
     assert note.info.t == 240
@@ -392,7 +392,7 @@ def test_high_level_notes_accept_short_geometry_aliases():
     assert tap.t == d2t(1, 4)
     assert tap.w == 3
 
-    slide = Slide(t=0, x=4, w=2).step(t=480, x=6, w=3)
+    slide = Slide(t=0, x=4, w=2).with_step(t=480, x=6, w=3)
     assert slide.t == 0
     assert slide.w == 2
     assert slide.joints[0].t == 480
@@ -400,14 +400,14 @@ def test_high_level_notes_accept_short_geometry_aliases():
 
 
 def test_air_notes_accept_short_height_aliases():
-    air_slide = AirSlide(h=80).control(t=480, x=6, w=2, h=120)
+    air_slide = AirSlide(h=80).with_ctrl(t=480, x=6, w=2, h=120)
     assert air_slide.h == 80
     assert air_slide.h == 80
     assert air_slide.joints[0].t == 480
     assert air_slide.joints[0].h == 120
     assert air_slide.joints[0].h == 120
 
-    crush = AirCrush(t=0, x=4, w=2, h=80, gap=5).control(t=480, x=6, w=3, h=120)
+    crush = AirCrush(t=0, x=4, w=2, h=80, gap=5).with_ctrl(t=480, x=6, w=3, h=120)
     assert crush.t == 0
     assert crush.w == 2
     assert crush.h == 80
@@ -438,8 +438,11 @@ def test_raw_note_api_accepts_short_geometry_aliases():
 
 
 def test_tick_subtracts_between_int_ticks():
-    crush = AirCrush(t=100, x=4, w=2, h=80, gap=5)
-    crush.control(105, x=6, w=2, h=120).control(110, x=8, w=2, h=80)
+    crush = (
+        AirCrush(t=100, x=4, w=2, h=80, gap=5)
+        .with_ctrl(t=105, x=6, w=2, h=120)
+        .with_ctrl(t=110, x=8, w=2, h=80)
+    )
     assert crush.joints[-1].t - crush.t == 10
 
 
@@ -459,7 +462,7 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
             til=4,
             option_value=9,
         ),
-        children=[R.tap(180, 5, 1)],
+        children=[R.tap(t=180, x=5, w=1)],
     )
 
     proto = note.to_proto()
@@ -471,7 +474,7 @@ def test_note_round_trips_to_protobuf_with_children_and_id():
     assert restored == note
 
 
-def test_node_info_properties_delegate_to_info():
+def test_raw_info_properties_delegate_to_info():
     note = RawNote()
 
     note.type = NoteType.TAP
@@ -502,20 +505,20 @@ def test_node_info_properties_delegate_to_info():
 
 
 def test_l_factory_methods_build_low_level_notes():
-    assert R.tap(1, 2, 1).type is NoteType.TAP
-    assert R.extap(1, 2, 1).type is NoteType.EXTAP
-    assert R.flick(1, 2, 1).type is NoteType.FLICK
-    assert R.damage(1, 2, 1).type is NoteType.DAMAGE
-    assert R.hold_begin(1, 2, 1).long_attr is LongAttr.BEGIN
-    assert R.hold_end(2, 2, 1).long_attr is LongAttr.END
-    assert R.slide_begin(1, 2, 1).type is NoteType.SLIDE
-    assert R.air(1, 2, 1, dir=AirDirection.UP).dir is Direction.UP
-    assert R.air_slide_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
-    assert R.air_hold_end_noact(2, 4, 1, 80).long_attr is LongAttr.END_NOACT
-    assert R.air_crush_begin(1, 2, 1, 80, 0x7FFFFFFF).option_value == 0x7FFFFFFF
+    assert R.tap(t=1, x=2, w=1).type is NoteType.TAP
+    assert R.extap(t=1, x=2, w=1).type is NoteType.EXTAP
+    assert R.flick(t=1, x=2, w=1).type is NoteType.FLICK
+    assert R.damage(t=1, x=2, w=1).type is NoteType.DAMAGE
+    assert R.hold_begin(t=1, x=2, w=1).long_attr is LongAttr.BEGIN
+    assert R.hold_end(t=2, x=2, w=1).long_attr is LongAttr.END
+    assert R.slide_begin(t=1, x=2, w=1).type is NoteType.SLIDE
+    assert R.air(t=1, x=2, w=1, dir=AirDirection.UP).dir is Direction.UP
+    assert R.air_slide_end_noact(t=2, x=4, w=1, h=80).long_attr is LongAttr.END_NOACT
+    assert R.air_hold_end_noact(t=2, x=4, w=1, h=80).long_attr is LongAttr.END_NOACT
+    assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0x7FFFFFFF).option_value == 0x7FFFFFFF
 
 
-def test_node_round_trips_to_protobuf_with_children_and_id():
+def test_raw_round_trips_to_protobuf_with_children_and_id():
     note = RawNote(
         _id=10,
         info=NoteInfo(
@@ -531,7 +534,7 @@ def test_node_round_trips_to_protobuf_with_children_and_id():
             til=4,
             option_value=9,
         ),
-        children=[R.tap(180, 5, 1)],
+        children=[R.tap(t=180, x=5, w=1)],
     )
 
     proto = note.to_proto()
@@ -543,14 +546,14 @@ def test_node_round_trips_to_protobuf_with_children_and_id():
     assert restored == note
 
 
-def test_tap_redirects_shared_mg_fields_and_converts_to_node():
+def test_tap_redirects_shared_mg_fields_and_converts_to_raw():
     tap = Tap(t=960, x=4, w=2)
     tap.x = 5
     tap.til = 3
     tap._info.ex_attr = ExAttr.HAS_NOTE
     tap.t = 480
 
-    RawNote = tap.to_node()
+    RawNote = tap.to_raw()
 
     assert tap.t == 480
     assert tap.x == 5
@@ -567,10 +570,10 @@ def test_tap_redirects_shared_mg_fields_and_converts_to_node():
     assert RawNote.children == []
 
 
-def test_note_to_node_copies_note_info_instead_of_aliasing():
+def test_note_to_raw_copies_note_info_instead_of_aliasing():
     tap = Tap(t=960, x=4, w=2)
 
-    RawNote = tap.to_node()
+    RawNote = tap.to_raw()
     RawNote.t = 480
     RawNote.x = 8
 
@@ -611,17 +614,17 @@ def test_tap_air_adds_single_air_child():
     tap = Tap(t=0, x=4, w=2)
 
     air = Air(AirDirection.DOWN)
-    result = tap.tie(air)
-    RawNote = tap.to_node()
+    result = tap.with_air(air)
+    RawNote = result.to_raw()
 
-    assert result is tap
+    assert result is not tap
     assert air.dir is AirDirection.DOWN
     assert len(RawNote.children) == 1
     assert RawNote.children[0].type is NoteType.AIR
     assert RawNote.children[0].dir is Direction.DOWN
-    assert RawNote.children[0].t == tap.t
-    assert RawNote.children[0].x == tap.x
-    assert RawNote.children[0].w == tap.w
+    assert RawNote.children[0].t == result.t
+    assert RawNote.children[0].x == result.x
+    assert RawNote.children[0].w == result.w
 
 
 def test_air_replaces_existing_air_object():
@@ -629,22 +632,25 @@ def test_air_replaces_existing_air_object():
     first = Air(AirDirection.UP)
     second = Air(AirDirection.DOWN)
 
-    assert tap.tie(first).tie(second) is tap
-    assert tap.to_node().children[0].dir is Direction.DOWN
+    result = tap.with_air(first).with_air(second)
+    assert result is not tap
+    assert result.to_raw().children[0].dir is Direction.DOWN
 
 
 def test_air_direction_shorthand_attaches_plain_air():
     tap = Tap(t=0, x=4, w=2)
 
-    assert tap.tie(AirDirection.DOWN) is tap
-    assert tap.to_node().children[0].dir is Direction.DOWN
+    result = tap.with_air(AirDirection.DOWN)
+    assert result is not tap
+    assert result.to_raw().children[0].dir is Direction.DOWN
 
 
 def test_air_direction_string_shorthand_attaches_plain_air():
     tap = Tap(t=0, x=4, w=2)
 
-    assert tap.tie("down") is tap
-    assert tap.to_node().children[0].dir is Direction.DOWN
+    result = tap.with_air("down")
+    assert result is not tap
+    assert result.to_raw().children[0].dir is Direction.DOWN
 
 
 def test_height_is_absent_from_floor_notes_and_bare_air():
@@ -666,8 +672,8 @@ def test_attachable_air_objects_are_not_placeable_notes():
     assert not isinstance(Air(AirDirection.UP), Note)
     assert not isinstance(AirSlide(h=80), Note)
     assert not isinstance(AirHold(h=80), Note)
-    assert not hasattr(AirSlide(h=80), "to_node")
-    assert not hasattr(AirHold(h=80), "to_node")
+    assert not hasattr(AirSlide(h=80), "to_raw")
+    assert not hasattr(AirHold(h=80), "to_raw")
     assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "air")
 
 
@@ -677,9 +683,9 @@ def test_all_high_level_notes_expose_validate():
         Damage(t=0, x=4, w=2),
         Extap(t=0, x=4, w=2),
         Flick(t=0, x=4, w=2),
-        Slide(t=0, x=4, w=2).step(960, x=4, w=2),
-        Hold(t=0, x=4, w=2).step(960, x=4, w=2),
-        AirCrush(t=0, x=4, w=2, h=80, gap=5).control(960, x=4, w=2, h=80),
+        Slide(t=0, x=4, w=2).with_step(t=960, x=4, w=2),
+        Hold(t=0, x=4, w=2).with_step(t=960, x=4, w=2),
+        AirCrush(t=0, x=4, w=2, h=80, gap=5).with_ctrl(t=960, x=4, w=2, h=80),
     ]
 
     for note in notes:
@@ -703,7 +709,7 @@ def test_ground_note_validate_catches_invalid_mutated_info():
         tap.validate()
 
     with pytest.raises(ValueError, match="w must be at least 1"):
-        tap.to_node()
+        tap.to_raw()
 
 
 def test_ground_note_direction_is_available_only_on_extap_and_flick():
@@ -747,7 +753,7 @@ def test_extap_accepts_string_direction_and_serializes_to_proto_value():
 
     extap.dir = "in_out"
     assert extap.dir is ExtapDirection.IN_OUT
-    assert extap.to_node().to_proto().direction == messages_pb2.DIRECTION_INOUT
+    assert extap.to_raw().to_proto().direction == messages_pb2.DIRECTION_INOUT
 
 
 @pytest.mark.parametrize(
@@ -784,7 +790,7 @@ def test_flick_accepts_string_direction_and_serializes_to_proto_value():
 
     assert flick.dir is FlickDirection.LEFT
     assert flick.dir == "left"
-    assert flick.to_node().to_proto().direction == messages_pb2.DIRECTION_LEFT
+    assert flick.to_raw().to_proto().direction == messages_pb2.DIRECTION_LEFT
 
 
 @pytest.mark.parametrize(
@@ -832,7 +838,7 @@ def test_air_accepts_string_direction_and_serializes_to_proto_value():
 
     air.dir = "down_right"
     assert air.dir is AirDirection.DOWN_RIGHT
-    assert air._to_node(NoteInfo()).to_proto().direction == messages_pb2.DIRECTION_DOWNRIGHT
+    assert air._to_raw(NoteInfo()).to_proto().direction == messages_pb2.DIRECTION_DOWNRIGHT
 
 
 @pytest.mark.parametrize(
@@ -854,16 +860,16 @@ def test_air_rejects_invalid_directions(direction):
 
 
 def test_slide_promotes_last_joint_to_end_and_preserves_partial_debug_tree():
-    slide = Slide(t=960, x=0, w=4).step(1440, x=6, w=4).control(1680, x=8, w=4)
+    slide = Slide(t=960, x=0, w=4).with_step(t=1440, x=6, w=4).with_ctrl(t=1680, x=8, w=4)
 
-    partial = slide.to_node(skip_validation=True)
+    partial = slide.to_raw(skip_validation=True)
     assert partial.type is NoteType.SLIDE
     assert [c.long_attr for c in partial.children] == [
         LongAttr.STEP,
         LongAttr.CONTROL,
     ]
 
-    RawNote = slide.to_node()
+    RawNote = slide.to_raw()
 
     assert RawNote.type is NoteType.SLIDE
     assert RawNote.long_attr is LongAttr.BEGIN
@@ -875,41 +881,41 @@ def test_slide_promotes_last_joint_to_end_and_preserves_partial_debug_tree():
 
 def test_long_note_requires_at_least_one_serializable_joint():
     with pytest.raises(ValueError, match="requires at least one joint"):
-        Slide(t=960, x=0, w=4).to_node()
+        Slide(t=960, x=0, w=4).to_raw()
 
     with pytest.raises(ValueError, match="requires at least one joint"):
-        AirCrush(t=0, x=4, w=2, h=80, gap=5).to_node()
+        AirCrush(t=0, x=4, w=2, h=80, gap=5).to_raw()
 
 
 def test_long_note_validate_catches_invalid_begin_geometry():
-    slide = Slide(t=0, x=4, w=2).step(960, x=4, w=2)
+    slide = Slide(t=0, x=4, w=2).with_step(t=960, x=4, w=2)
     slide._info.w = 0
 
     with pytest.raises(ValueError, match="w must be at least 1"):
         slide.validate()
 
     with pytest.raises(ValueError, match="w must be at least 1"):
-        slide.to_node()
+        slide.to_raw()
 
 
 def test_note_validate_catches_invalid_attached_air_builder():
-    tap = Tap(t=0, x=4, w=2).tie(AirSlide(h=80))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80))
 
     with pytest.raises(ValueError, match="requires at least one joint"):
         tap.validate()
 
     with pytest.raises(ValueError, match="requires at least one joint"):
-        tap.to_node()
+        tap.to_raw()
 
 
 def test_note_validate_checks_attached_air_against_anchor_tick():
-    tap = Tap(t=1000, x=4, w=2).tie(AirSlide(h=80).step(960, x=4, w=2, h=80))
+    tap = Tap(t=1000, x=4, w=2).with_air(AirSlide(h=80).with_step(t=960, x=4, w=2, h=80))
 
     with pytest.raises(ValueError, match="joint t must be later than previous joint"):
         tap.validate()
 
     with pytest.raises(ValueError, match="joint t must be later than previous joint"):
-        tap.to_node()
+        tap.to_raw()
 
 
 def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
@@ -917,15 +923,14 @@ def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
     assert str(tap) == repr(tap)
     assert "Tap(" in str(tap)
     assert "t=1920" in str(tap)
-    RawNote = R.tap(1920, 1, 2)
+    RawNote = R.tap(t=1920, x=1, w=2)
     assert str(RawNote) == repr(RawNote)
     assert "t=1920" in str(RawNote)
     assert "NoteType.TAP(" in str(RawNote) and ")" in str(RawNote)
 
 
 def test_high_level_str_prints_attached_air_as_children():
-    tap = Tap(t=0, x=4, w=2)
-    tap.tie(AirSlide(h=80).step(960, x=8, w=2, h=100))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80).with_step(t=960, x=8, w=2, h=100))
 
     lines = str(tap).splitlines()
 
@@ -939,12 +944,12 @@ def test_slide_rejects_non_increasing_ticks():
     slide = Slide(t=960, x=0, w=4)
 
     with pytest.raises(ValueError, match="must be later"):
-        slide.step(960, x=6, w=4)
+        slide.with_step(t=960, x=6, w=4)
 
 
 def test_hold_step_promotes_to_end_with_explicit_geometry():
     hold = Hold(t=0, x=4, w=2)
-    RawNote = hold.step(960, x=4, w=2).to_node()
+    RawNote = hold.with_step(t=960, x=4, w=2).to_raw()
 
     assert RawNote.type is NoteType.HOLD
     assert len(RawNote.children) == 1
@@ -954,8 +959,8 @@ def test_hold_step_promotes_to_end_with_explicit_geometry():
 
 
 def test_hold_has_a_single_end_and_step_replaces_it():
-    hold = Hold(t=0, x=4, w=2).step(960, x=4, w=2).step(1920, x=6, w=2)
-    RawNote = hold.to_node()
+    hold = Hold(t=0, x=4, w=2).with_step(t=960, x=4, w=2).with_step(t=1920, x=6, w=2)
+    RawNote = hold.to_raw()
 
     assert len(RawNote.children) == 1
     assert RawNote.children[0].long_attr is LongAttr.END
@@ -963,38 +968,38 @@ def test_hold_has_a_single_end_and_step_replaces_it():
     assert RawNote.children[0].x == 6
 
     with pytest.raises(ValueError, match="must be later"):
-        Hold(t=1000, x=4, w=2).step(2000, x=4, w=2).step(1000, x=4, w=2)
+        Hold(t=1000, x=4, w=2).with_step(t=2000, x=4, w=2).with_step(t=1000, x=4, w=2)
 
 
 def test_slide_joints_use_explicit_geometry():
-    slide = Slide(t=0, x=4, w=2).control(480, 5, 2).step(960, 6, 3)
-    with pytest.deprecated_call():
-        slide.curve_control(1440, 7, 4)
-    slide.step(1920, 8, 5)
+    slide = (
+        Slide(t=0, x=4, w=2)
+        .with_ctrl(t=480, x=5, w=2)
+        .with_step(t=960, x=6, w=3)
+        .with_step(t=1920, x=8, w=5)
+    )
 
-    RawNote = slide.to_node()
+    RawNote = slide.to_raw()
 
     assert [child.long_attr for child in RawNote.children] == [
         LongAttr.CONTROL,
         LongAttr.STEP,
-        LongAttr.CURVE_CONTROL,
         LongAttr.END,
     ]
     assert [(child.x, child.w, child.h) for child in RawNote.children] == [
         (5, 2, 80),
         (6, 3, 80),
-        (7, 4, 80),
         (8, 5, 80),
     ]
 
 
 def test_joint_kind_is_public_editable_property():
-    slide = Slide(t=0, x=4, w=2).control(480, x=4, w=2).step(960, x=4, w=2)
+    slide = Slide(t=0, x=4, w=2).with_ctrl(t=480, x=4, w=2).with_step(t=960, x=4, w=2)
 
     assert slide.joints[0].kind is JointKind.CONTROL
     slide.joints[0].kind = "step"
 
-    RawNote = slide.to_node()
+    RawNote = slide.to_raw()
 
     assert slide.joints[0].kind is JointKind.STEP
     assert [child.long_attr for child in RawNote.children] == [LongAttr.STEP, LongAttr.END]
@@ -1015,7 +1020,7 @@ def test_public_joints_list_can_be_mutated_and_validated():
     slide.joints.append(Joint(t=960, x=8, w=2, kind="step"))
 
     slide.validate()
-    RawNote = slide.to_node()
+    RawNote = slide.to_raw()
 
     assert len(RawNote.children) == 1
     assert RawNote.children[0].long_attr is LongAttr.END
@@ -1033,7 +1038,7 @@ def test_public_joints_list_rejects_wrong_joint_shape():
     with pytest.raises(TypeError, match="Joint"):
         slide.validate()
 
-    tap = Tap(t=0, x=4, w=2).tie(AirSlide(h=80))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80))
     air_slide = tap._air
     assert isinstance(air_slide, AirSlide)
     air_slide.joints.append(Joint(t=960, x=8, w=2, kind="step"))
@@ -1043,25 +1048,28 @@ def test_public_joints_list_rejects_wrong_joint_shape():
 
 
 def test_air_long_joints_use_explicit_geometry():
-    slide_tap = Tap(t=0, x=4, w=2).tie(AirSlide(h=80).control(480, 4, 2, 80).step(960, 5, 2, 90))
+    slide_tap = Tap(t=0, x=4, w=2).with_air(
+        AirSlide(h=80)
+        .with_ctrl(t=480, x=4, w=2, h=80)
+        .with_step(t=960, x=5, w=2, h=90)
+        .with_ctrl(t=1920, x=7, w=2, h=110)
+    )
     air_slide = slide_tap._air
     assert isinstance(air_slide, AirSlide)
-    with pytest.deprecated_call():
-        air_slide.curve_control(1440, 6, 2, 100)
-    air_slide.control(1920, 7, 2, 110)
     assert all(isinstance(joint, AirJoint) for joint in air_slide.joints)
-    hold_tap = Tap(t=0, x=6, w=2).tie(AirHold(h=120).step(480, 6, 2, 120).control(960, 7, 2, 130))
+    hold_tap = Tap(t=0, x=6, w=2).with_air(
+        AirHold(h=120).with_step(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=7, w=2, h=130)
+    )
 
-    slide_node = slide_tap.to_node().children[0].children[0]
-    hold_node = hold_tap.to_node().children[0].children[0]
+    slide_raw = slide_tap.to_raw().children[0].children[0]
+    hold_raw = hold_tap.to_raw().children[0].children[0]
 
-    assert [(child.x, child.w, child.h) for child in slide_node.children] == [
+    assert [(child.x, child.w, child.h) for child in slide_raw.children] == [
         (4, 2, 80),
         (5, 2, 90),
-        (6, 2, 100),
         (7, 2, 110),
     ]
-    assert [(child.x, child.w, child.h) for child in hold_node.children] == [
+    assert [(child.x, child.w, child.h) for child in hold_raw.children] == [
         (6, 2, 120),
         (7, 2, 130),
     ]
@@ -1070,11 +1078,11 @@ def test_air_long_joints_use_explicit_geometry():
 def test_air_crush_joints_use_explicit_geometry():
     crush = (
         AirCrush(t=0, x=4, w=2, h=80, gap=0)
-        .control(480, x=4, w=2, h=80)
-        .control(960, x=6, w=3, h=100)
+        .with_ctrl(t=480, x=4, w=2, h=80)
+        .with_ctrl(t=960, x=6, w=3, h=100)
     )
 
-    RawNote = crush.to_node()
+    RawNote = crush.to_raw()
 
     assert all(isinstance(joint, AirJoint) for joint in crush.joints)
     assert [(child.long_attr, child.x, child.w, child.h) for child in RawNote.children] == [
@@ -1084,11 +1092,11 @@ def test_air_crush_joints_use_explicit_geometry():
 
 
 def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
-    tap = Tap(t=0, x=4, w=2).tie(
-        AirSlide(h=80).control(480, x=6, w=2, h=120).control(960, x=8, w=2, h=80)
+    tap = Tap(t=0, x=4, w=2).with_air(
+        AirSlide(h=80).with_ctrl(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=8, w=2, h=80)
     )
 
-    RawNote = tap.to_node()
+    RawNote = tap.to_raw()
 
     air = RawNote.children[0]
     air_long = air.children[0]
@@ -1098,31 +1106,24 @@ def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
 
 
 def test_control_terminus_differs_between_air_slide_and_ground_slide():
-    air_slide = Tap(t=0, x=4, w=2).tie(AirSlide(h=80).control(480, x=4, w=2, h=80))
-    slide = Slide(t=0, x=4, w=2).control(480, x=4, w=2)
+    air_slide = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80).with_ctrl(t=480, x=4, w=2, h=80))
+    slide = Slide(t=0, x=4, w=2).with_ctrl(t=480, x=4, w=2)
 
-    air_slide_node = air_slide.to_node().children[0].children[0]
-    slide_node = slide.to_node()
+    air_slide_raw = air_slide.to_raw().children[0].children[0]
+    slide_raw = slide.to_raw()
 
-    assert air_slide_node.children[-1].long_attr is LongAttr.END_NOACT
-    assert slide_node.children[-1].long_attr is LongAttr.END
-
-
-def test_air_hold_has_no_curve_control_but_air_slide_does():
-    assert hasattr(AirSlide(h=80), "curve_control")
-    assert not hasattr(AirHold(h=80), "curve_control")
-    assert hasattr(AirHold(h=80), "control")
+    assert air_slide_raw.children[-1].long_attr is LongAttr.END_NOACT
+    assert slide_raw.children[-1].long_attr is LongAttr.END
 
 
 def test_air_invert_maps_to_ex_attr_invert_on_ll():
-    tap = Tap(t=0, x=4, w=2)
     air = Air(AirDirection.DOWN)
-    tap.tie(air)
+    tap = Tap(t=0, x=4, w=2).with_air(air)
     air.inverted = True
     air.til = 3
     tap.t = tap.t + d2t(1, 4)
 
-    RawNote = tap.to_node().children[0]
+    RawNote = tap.to_raw().children[0]
 
     assert air.inverted is True
     assert RawNote.ex_attr is ExAttr.INVERT
@@ -1131,7 +1132,7 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
 
 
 def test_air_geometry_is_derived_from_anchor_on_serialization():
-    tap = Tap(t=0, x=4, w=2).tie(Air(AirDirection.DOWN))
+    tap = Tap(t=0, x=4, w=2).with_air(Air(AirDirection.DOWN))
     air = tap._air
 
     assert isinstance(air, Air)
@@ -1142,7 +1143,7 @@ def test_air_geometry_is_derived_from_anchor_on_serialization():
     tap.w = 3
     air.dir = AirDirection.UP
 
-    RawNote = tap.to_node().children[0]
+    RawNote = tap.to_raw().children[0]
 
     assert air._info.direction is Direction.UP
     assert RawNote.t == 480
@@ -1152,23 +1153,23 @@ def test_air_geometry_is_derived_from_anchor_on_serialization():
 
 
 def test_air_slide_and_air_hold_do_not_expose_color_on_note_builder():
-    tap = Tap(t=0, x=4, w=2).tie(AirSlide(h=80).step(960, x=8, w=2, h=100))
-    hold = Tap(t=1200, x=4, w=2).tie(AirHold(h=120).control(1680, x=4, w=2, h=140))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80).with_step(t=960, x=8, w=2, h=100))
+    hold = Tap(t=1200, x=4, w=2).with_air(AirHold(h=120).with_ctrl(t=1680, x=4, w=2, h=140))
 
-    assert tap.to_node().children[0].children[0].variation_id == 0
-    assert hold.to_node().children[0].children[0].variation_id == 0
+    assert tap.to_raw().children[0].children[0].variation_id == 0
+    assert hold.to_raw().children[0].children[0].variation_id == 0
 
 
 def test_air_crush_allows_controls_and_promotes_last_to_end():
     crush = AirCrush(t=0, x=4, w=2, h=80, gap=5)
 
-    RawNote = crush.control(480, x=6, w=2, h=120).control(960, x=8, w=2, h=80).to_node()
+    RawNote = crush.with_ctrl(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=8, w=2, h=80).to_raw()
 
     assert RawNote.type is NoteType.AIRCRUSH
     assert [child.long_attr for child in RawNote.children] == [LongAttr.CONTROL, LongAttr.END]
 
 
-def test_air_crush_gap_and_color_redirect_to_node_storage_fields():
+def test_air_crush_gap_and_color_redirect_to_raw_storage_fields():
     crush = AirCrush(
         t=0,
         x=4,
@@ -1180,7 +1181,7 @@ def test_air_crush_gap_and_color_redirect_to_node_storage_fields():
     crush.gap = 120
     crush.color = Color.NONE
     crush.til = 2
-    RawNote = crush.control(960, x=8, w=2, h=100).to_node()
+    RawNote = crush.with_ctrl(t=960, x=8, w=2, h=100).to_raw()
 
     assert crush.gap == 120
     assert crush.color is ColorValue.NONE
@@ -1200,17 +1201,17 @@ def test_air_crush_gap_is_plain_int():
 
 
 def test_wrap_raw_note_supports_air_hold_with_steps_attached_to_air():
-    RawNote = R.tap(19200, 4, 8).child(
-        R.air(19200, 4, 8, dir=AirDirection.UP).child(
-            R.air_hold_begin(19200, 4, 8, 80).child(
-                R.air_hold_step(19680, 4, 8, 80),
-                R.air_hold_end(20160, 4, 8, 80),
+    RawNote = R.tap(t=19200, x=4, w=8).child(
+        R.air(t=19200, x=4, w=8, dir=AirDirection.UP).child(
+            R.air_hold_begin(t=19200, x=4, w=8, h=80).child(
+                R.air_hold_step(t=19680, x=4, w=8, h=80),
+                R.air_hold_end(t=20160, x=4, w=8, h=80),
             )
         )
     )
 
     wrapped = wrap_raw_note(RawNote)
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert restored == RawNote
 
@@ -1242,7 +1243,7 @@ def test_long_note_begin_geometry_is_backed_by_note_info():
 
 
 def test_long_note_joint_geometry_is_backed_by_internal_storage_without_proto_kind():
-    slide = Slide(t=960, x=0, w=4).step(1440, x=6, w=3)
+    slide = Slide(t=960, x=0, w=4).with_step(t=1440, x=6, w=3)
     joint = slide.joints[0]
 
     assert not hasattr(joint, "info")
@@ -1264,7 +1265,7 @@ def test_long_note_joint_geometry_is_backed_by_internal_storage_without_proto_ki
 
 
 def test_long_note_exposes_joints_for_iteration():
-    slide = Slide(t=960, x=0, w=4).step(1440, x=6, w=3).step(1920, x=12, w=4)
+    slide = Slide(t=960, x=0, w=4).with_step(t=1440, x=6, w=3).with_step(t=1920, x=12, w=4)
 
     assert slide.joints is slide._joints
     assert [joint.kind for joint in slide.joints] == [
@@ -1275,17 +1276,17 @@ def test_long_note_exposes_joints_for_iteration():
 
 
 def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
-    step = R.slide_step(1440, 6, 3, til=2)
+    step = R.slide_step(t=1440, x=6, w=3, til=2)
     step.ex_attr = ExAttr.HAS_NOTE
-    RawNote = R.slide_begin(960, 0, 4).child(
+    RawNote = R.slide_begin(t=960, x=0, w=4).child(
         step,
-        R.slide_end(1920, 12, 4),
+        R.slide_end(t=1920, x=12, w=4),
     )
 
     wrapped = wrap_raw_note(RawNote)
     joint = wrapped.joints[0]
     joint.t = 1680
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert isinstance(wrapped, Slide)
     assert restored.children[0].t == 1680
@@ -1294,12 +1295,12 @@ def test_wrapped_long_note_joint_info_redirects_and_preserves_metadata():
 
 
 def test_wrap_raw_note_wraps_tap_and_preserves_noop_info():
-    RawNote = R.tap(240, 1, 2, til=4)
+    RawNote = R.tap(t=240, x=1, w=2, til=4)
     RawNote.h = 123
 
     wrapped = wrap_raw_note(RawNote)
     wrapped.x = 5
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert isinstance(wrapped, Tap)
     assert restored.x == 5
@@ -1308,24 +1309,24 @@ def test_wrap_raw_note_wraps_tap_and_preserves_noop_info():
 
 
 def test_wrap_raw_note_wraps_slide_with_ordered_joints():
-    RawNote = R.slide_begin(960, 0, 4, til=2).child(
-        R.slide_step(1440, 6, 4),
-        R.slide_control(1680, 8, 4),
-        R.slide_end(1920, 12, 4),
+    RawNote = R.slide_begin(t=960, x=0, w=4, til=2).child(
+        R.slide_step(t=1440, x=6, w=4),
+        R.slide_control(t=1680, x=8, w=4),
+        R.slide_end(t=1920, x=12, w=4),
     )
 
     wrapped = wrap_raw_note(RawNote)
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert isinstance(wrapped, Slide)
     assert restored == RawNote
 
 
 def test_wrap_raw_note_rejects_invalid_begin_end_placement():
-    invalid = R.slide_begin(960, 0, 4).child(
-        R.slide_step(1440, 6, 4),
-        R.slide_control(1200, 8, 4),
-        R.slide_end(1920, 12, 4),
+    invalid = R.slide_begin(t=960, x=0, w=4).child(
+        R.slide_step(t=1440, x=6, w=4),
+        R.slide_control(t=1200, x=8, w=4),
+        R.slide_end(t=1920, x=12, w=4),
     )
 
     with pytest.raises(UnsupportedNoteTree):
@@ -1333,9 +1334,9 @@ def test_wrap_raw_note_rejects_invalid_begin_end_placement():
 
 
 def test_wrap_raw_note_rejects_air_on_non_end_slide_joint():
-    invalid = R.slide_begin(960, 0, 4).child(
-        R.slide_step(1440, 6, 4).child(R.air(1440, 6, 4, dir=AirDirection.UP)),
-        R.slide_end(1920, 12, 4),
+    invalid = R.slide_begin(t=960, x=0, w=4).child(
+        R.slide_step(t=1440, x=6, w=4).child(R.air(t=1440, x=6, w=4, dir=AirDirection.UP)),
+        R.slide_end(t=1920, x=12, w=4),
     )
 
     with pytest.raises(UnsupportedNoteTree):
@@ -1343,9 +1344,9 @@ def test_wrap_raw_note_rejects_air_on_non_end_slide_joint():
 
 
 def test_wrap_raw_note_rejects_many_air_children():
-    invalid = R.tap(0, 4, 2).child(
-        R.air(0, 4, 2, dir=AirDirection.UP),
-        R.air(0, 4, 2, dir=AirDirection.DOWN),
+    invalid = R.tap(t=0, x=4, w=2).child(
+        R.air(t=0, x=4, w=2, dir=AirDirection.UP),
+        R.air(t=0, x=4, w=2, dir=AirDirection.DOWN),
     )
 
     with pytest.raises(UnsupportedNoteTree):
@@ -1353,10 +1354,10 @@ def test_wrap_raw_note_rejects_many_air_children():
 
 
 def test_wrap_raw_note_preserves_raw_extap_none_direction():
-    RawNote = R.extap(0, 4, 2, dir=messages_pb2.DIRECTION_NONE)
+    RawNote = R.extap(t=0, x=4, w=2, dir=messages_pb2.DIRECTION_NONE)
 
     wrapped = wrap_raw_note(RawNote)
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert isinstance(wrapped, Extap)
     assert wrapped.dir == messages_pb2.DIRECTION_NONE
@@ -1365,15 +1366,15 @@ def test_wrap_raw_note_preserves_raw_extap_none_direction():
 
 def test_wrap_raw_note_preserves_transformed_extap_direction_with_air():
     RawNote = R.extap(
-        79200,
-        8,
-        4,
+        t=79200,
+        x=8,
+        w=4,
         dir=messages_pb2.DIRECTION_AUTO,
     ).child(
         R.air(
-            79200,
-            8,
-            4,
+            t=79200,
+            x=8,
+            w=4,
             dir=AirDirection.DOWN_RIGHT,
         )
     )
@@ -1381,7 +1382,7 @@ def test_wrap_raw_note_preserves_transformed_extap_direction_with_air():
     RawNote.children[0]._id = 1104
 
     wrapped = wrap_raw_note(RawNote)
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert isinstance(wrapped, Extap)
     assert wrapped.dir == messages_pb2.DIRECTION_AUTO
@@ -1396,18 +1397,18 @@ def test_wrap_raw_note_preserves_transformed_extap_direction_with_air():
     ],
 )
 def test_wrap_raw_note_preserves_transformed_flick_direction(direction):
-    RawNote = R.flick(153440, 2, 12, dir=direction).child(
+    RawNote = R.flick(t=153440, x=2, w=12, dir=direction).child(
         R.air(
-            153440,
-            2,
-            12,
+            t=153440,
+            x=2,
+            w=12,
             dir=AirDirection.UP_RIGHT,
             inverted=True,
         )
     )
 
     wrapped = wrap_raw_note(RawNote)
-    restored = wrapped.to_node()
+    restored = wrapped.to_raw()
 
     assert isinstance(wrapped, Flick)
     assert wrapped.dir == direction

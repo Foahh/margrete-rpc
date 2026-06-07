@@ -26,7 +26,8 @@ from margrete_rpc.chart.notes import (
 
 
 def test_clone_is_deep_and_detached():
-    slide = Slide(t=0, x=0, w=4, _id=9).step(100, x=4, w=4)
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4)
+    slide._id = 9
     slide.joints[0]._id = 11
 
     clone = slide.clone()
@@ -42,7 +43,7 @@ def test_clone_is_deep_and_detached():
 
 
 def test_clone_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=5).tie(AirSlide(h=80).step(100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=5).with_air(AirSlide(h=80).with_step(t=100, x=8, w=2, h=90))
     tap._air._air_id = 7
 
     clone = tap.clone()
@@ -65,7 +66,7 @@ def test_shifted_returns_detached_copy_without_touching_original():
 
 
 def test_shift_callable_scales_every_tick():
-    slide = Slide(t=100, x=0, w=4).step(150, x=2, w=4).step(200, x=4, w=4)
+    slide = Slide(t=100, x=0, w=4).with_step(t=150, x=2, w=4).with_step(t=200, x=4, w=4)
     result = slide.shift(t=lambda v: v * 2)
 
     assert result is slide
@@ -94,7 +95,7 @@ def test_align_floor_and_ceil_modes():
 
 
 def test_align_mutates_joints_too():
-    slide = Slide(t=10, x=0, w=4).step(470, x=2, w=4).step(965, x=4, w=4)
+    slide = Slide(t=10, x=0, w=4).with_step(t=470, x=2, w=4).with_step(t=965, x=4, w=4)
     slide.align(480)
     assert slide.t == 0
     assert [int(j.t) for j in slide.joints] == [480, 960]
@@ -109,7 +110,7 @@ def test_align_rejects_non_positive_interval():
 
 
 def test_scale_multiplies_every_tick():
-    slide = Slide(t=100, x=0, w=4).step(200, x=2, w=4)
+    slide = Slide(t=100, x=0, w=4).with_step(t=200, x=2, w=4)
     result = slide.scale(2)
     assert result is slide
     assert slide.t == 200
@@ -125,7 +126,7 @@ def test_scaled_returns_copy_and_supports_fractional_factor():
 
 
 def test_scale_about_pivot_keeps_pivot_fixed():
-    slide = Slide(t=100, x=0, w=4).step(300, x=2, w=4)
+    slide = Slide(t=100, x=0, w=4).with_step(t=300, x=2, w=4)
     slide.scale(2, pivot=100)
     assert slide.t == 100  # pivot stays put
     assert int(slide.joints[-1].t) == 500  # 100 + (300 - 100) * 2
@@ -152,7 +153,7 @@ def test_flip_custom_field_width():
 
 
 def test_flip_recurses_into_joints_and_air():
-    slide = Slide(t=0, x=0, w=2).step(100, x=10, w=2).tie("up_left")
+    slide = Slide(t=0, x=0, w=2).with_step(t=100, x=10, w=2).with_air("up_left")
     slide.flip()
     assert slide.x == FIELD_WIDTH - 0 - 2
     assert slide.joints[0].x == FIELD_WIDTH - 10 - 2
@@ -178,7 +179,7 @@ def test_converted_returns_detached_copy_without_touching_original():
 
 
 def test_converted_ground_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=4).tie(AirSlide(h=80).step(100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=4).with_air(AirSlide(h=80).with_step(t=100, x=8, w=2, h=90))
     extap = tap.converted(Extap)
     assert isinstance(extap, Extap)
     assert extap._air is not tap._air
@@ -187,7 +188,7 @@ def test_converted_ground_preserves_attached_air_detached():
 
 
 def test_converted_slide_to_air_slide_and_back():
-    slide = Slide(t=100, x=0, w=4).step(150, x=2, w=4).control(200, x=4, w=4)
+    slide = Slide(t=100, x=0, w=4).with_step(t=150, x=2, w=4).with_ctrl(t=200, x=4, w=4)
     air = slide.converted(AirSlide, h=80, dir="down")
 
     assert isinstance(air, AirSlide)
@@ -204,14 +205,14 @@ def test_converted_slide_to_air_slide_and_back():
 
 
 def test_converted_hold_to_air_hold():
-    hold = Hold(t=0, x=1, w=3).step(120, x=1, w=3)
+    hold = Hold(t=0, x=1, w=3).with_step(t=120, x=1, w=3)
     air = hold.converted(AirHold, h=70)
     assert isinstance(air, AirHold)
     assert air.joints[-1].h == 70
 
 
 def test_converted_hold_to_slide():
-    hold = Hold(t=0, x=1, w=3).step(120, x=1, w=3)
+    hold = Hold(t=0, x=1, w=3).with_step(t=120, x=1, w=3)
     slide = hold.converted(Slide)
     assert isinstance(slide, Slide)
     assert (int(slide.t), slide.x, slide.w) == (0, 1, 3)
@@ -219,7 +220,7 @@ def test_converted_hold_to_slide():
 
 
 def test_converted_slide_to_aircrush():
-    slide = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
     crush = slide.converted(AirCrush, h=80, gap=4)
     assert isinstance(crush, AirCrush)
     assert crush.h == 80
@@ -228,7 +229,7 @@ def test_converted_slide_to_aircrush():
 
 
 def test_converted_aircrush_to_airslide():
-    crush = AirCrush(t=0, x=2, w=2, h=80, gap=5).control(100, x=4, w=2, h=100)
+    crush = AirCrush(t=0, x=2, w=2, h=80, gap=5).with_ctrl(t=100, x=4, w=2, h=100)
     air = crush.converted(AirSlide, dir="up")
     assert isinstance(air, AirSlide)
     assert (int(air._info.t), air._info.x, air._info.w) == (0, 2, 2)
@@ -240,25 +241,29 @@ def test_convert_cross_shape_raises():
     with pytest.raises(ValueError):
         Tap(t=0, x=0, w=2).converted(Slide)
     with pytest.raises(ValueError):
-        Slide(t=0, x=0, w=2).step(100, x=2, w=2).converted(Tap)
+        Slide(t=0, x=0, w=2).with_step(t=100, x=2, w=2).converted(Tap)
     # Slide-like group cannot convert to Hold or AirHold
     with pytest.raises(ValueError):
-        Slide(t=0, x=0, w=4).step(100, x=2, w=4).converted(Hold)
+        Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).converted(Hold)
     with pytest.raises(ValueError):
-        Slide(t=0, x=0, w=4).step(100, x=2, w=4).converted(AirHold)
+        Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).converted(AirHold)
     with pytest.raises(ValueError):
-        AirCrush(t=0, x=0, w=2, h=80, gap=4).control(100, x=2, w=2, h=80).converted(Hold)
+        AirCrush(t=0, x=0, w=2, h=80, gap=4).with_ctrl(t=100, x=2, w=2, h=80).converted(Hold)
 
 
 def test_convert_with_air_to_non_attachable_target_drops_air_silently():
-    slide = Slide(t=0, x=0, w=4).step(100, x=2, w=4).tie("up")
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).with_air("up")
     crush = slide.converted(AirCrush, h=80, gap=4)
     assert isinstance(crush, AirCrush)
     assert getattr(crush, "_air", None) is None
 
 
 def test_convert_with_air_to_attachable_target_carries_air():
-    hold = Hold(t=0, x=1, w=3).step(120, x=1, w=3).tie(AirSlide(h=80).step(150, x=4, w=2, h=90))
+    hold = (
+        Hold(t=0, x=1, w=3)
+        .with_step(t=120, x=1, w=3)
+        .with_air(AirSlide(h=80).with_step(t=150, x=4, w=2, h=90))
+    )
     slide = hold.converted(Slide)
     assert isinstance(slide, Slide)
     assert slide._air is not None
@@ -270,8 +275,8 @@ def test_convert_with_air_to_attachable_target_carries_air():
 
 
 def test_merge_as_steps_concatenates_joints():
-    a = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
-    b = Slide(t=200, x=4, w=4).step(300, x=6, w=4)
+    a = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
+    b = Slide(t=200, x=4, w=4).with_step(t=300, x=6, w=4)
     merged = merge([a, b], join=JointKind.STEP)
 
     assert isinstance(merged, Slide)
@@ -281,42 +286,47 @@ def test_merge_as_steps_concatenates_joints():
         (200, "step"),
         (300, "step"),
     ]
-    merged.to_node()  # stays a valid slide
+    merged.to_raw()  # stays a valid slide
 
 
 def test_merge_as_control_points():
-    a = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
-    b = Slide(t=200, x=4, w=4).step(300, x=6, w=4)
+    a = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
+    b = Slide(t=200, x=4, w=4).with_step(t=300, x=6, w=4)
     merged = merge([a, b], join="control")
     assert [str(j.kind) for j in merged.joints] == ["control", "control", "step"]
 
 
 def test_merge_custom_strategy_callable():
-    a = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
-    b = Slide(t=200, x=4, w=4).step(300, x=6, w=4)
+    a = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
+    b = Slide(t=200, x=4, w=4).with_step(t=300, x=6, w=4)
     merged = merge([a, b], join=lambda prev, nxt: JointKind.CONTROL)
     assert str(merged.joints[0].kind) == "control"
 
 
 def test_merge_sorts_unordered_input_by_start_tick():
-    a = Slide(t=0, x=0, w=4).step(100, x=2, w=4)
-    b = Slide(t=200, x=4, w=4).step(300, x=6, w=4)
+    a = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
+    b = Slide(t=200, x=4, w=4).with_step(t=300, x=6, w=4)
     merged = merge([b, a], join=JointKind.STEP)  # given out of order
     assert isinstance(merged, Slide)
     assert [int(j.t) for j in merged.joints] == [100, 200, 300]
 
 
 def test_merge_rejects_mismatched_types_and_overlap():
-    slide = Slide(0, 0, 4).step(100, 2, 4)
-    crush = AirCrush(200, 0, 2, h=80, gap=4).control(300, 2, 2, h=80)
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
+    crush = AirCrush(t=200, x=0, w=2, h=80, gap=4).with_ctrl(t=300, x=2, w=2, h=80)
     with pytest.raises(TypeError):
         merge([slide, crush])
     with pytest.raises(ValueError):  # second note starts before the first ends
-        merge([Slide(0, 0, 4).step(100, 2, 4), Slide(50, 4, 4).step(150, 6, 4)])
+        merge(
+            [
+                Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4),
+                Slide(t=50, x=4, w=4).with_step(t=150, x=6, w=4),
+            ]
+        )
 
 
 def test_merge_single_note_returns_detached_clone():
-    a = Slide(t=0, x=0, w=4, _id=8).step(100, x=2, w=4)
+    a = Slide(t=0, x=0, w=4, _id=8).with_step(t=100, x=2, w=4)
     merged = merge([a])
     assert merged is not a
     assert merged._id is None
@@ -326,18 +336,18 @@ def test_merge_single_note_returns_detached_clone():
 
 
 def test_split_at_existing_joint():
-    slide = Slide(t=0, x=0, w=4).step(100, x=4, w=4).step(200, x=8, w=4)
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4).with_step(t=200, x=8, w=4)
     first, second = split(slide, slide.joints[0])
 
     assert int(first.joints[-1].t) == 100
     assert (int(second.t), second.x) == (100, 4)
     assert [int(j.t) for j in second.joints] == [200]
-    first.to_node()
-    second.to_node()
+    first.to_raw()
+    second.to_raw()
 
 
 def test_split_at_tick_interpolates_mid_segment():
-    slide = Slide(t=0, x=0, w=4).step(100, x=4, w=4).step(200, x=8, w=4)
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4).with_step(t=200, x=8, w=4)
     first, second = split(slide, 50)
 
     # halfway between (0,0) and (100,4) -> x == 2
@@ -349,8 +359,8 @@ def test_split_at_tick_interpolates_mid_segment():
 def test_split_then_merge_round_trips_air_crush():
     crush = (
         AirCrush(t=0, x=2, w=2, h=80, gap=5, color=Color.RED)
-        .control(100, x=4, w=2, h=100)
-        .control(200, x=6, w=2, h=120)
+        .with_ctrl(t=100, x=4, w=2, h=100)
+        .with_ctrl(t=200, x=6, w=2, h=120)
     )
     first, second = split(crush, 100)
     assert first.gap == 5
@@ -360,24 +370,26 @@ def test_split_then_merge_round_trips_air_crush():
     assert [(int(j.t), j.x, j.w, j.h) for j in merged.joints] == [
         (int(j.t), j.x, j.w, j.h) for j in crush.joints
     ]
-    merged.to_node()
+    merged.to_raw()
 
 
 def test_split_errors():
     with pytest.raises(ValueError):
-        split(Slide(t=0, x=0, w=4).step(100, x=4, w=4), 50)  # only one joint
+        split(Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4), 50)  # only one joint
     with pytest.raises(ValueError):
-        split(Slide(0, 0, 4).step(100, 4, 4).step(200, 8, 4), 500)  # tick out of range
+        split(
+            Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4).with_step(t=200, x=8, w=4), 500
+        )  # tick out of range
     with pytest.raises(TypeError):
-        split(Hold(0, 1, 3).step(100, 1, 3), 50)  # holds are not splittable
+        split(Hold(t=0, x=1, w=3).with_step(t=100, x=1, w=3), 50)  # holds are not splittable
 
 
 # ----------------------------------------------------------------- round-trip safety
 
 
-def test_produced_notes_round_trip_through_node():
-    slide = Slide(t=0, x=0, w=4).step(100, x=4, w=4).step(200, x=8, w=4)
+def test_produced_notes_round_trip_through_raw():
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4).with_step(t=200, x=8, w=4)
     first, second = split(slide, 100)
     merged = merge([first, second])
     for note in (first, second, merged, slide.flipped(), slide.shifted(t=480)):
-        assert wrap_raw_note(note.to_node()) is not None
+        assert wrap_raw_note(note.to_raw()) is not None

@@ -158,8 +158,8 @@ def main() -> None:
         type=float,
         default=0.0,
         metavar="S",
-        help="A/V sync offset in seconds: " \
-        "+S trims audio start (video leads), " \
+        help="A/V sync offset in seconds: "
+        "+S trims audio start (video leads), "
         "-S pads silence (audio leads)",
     )
     parser.add_argument("--width", type=int, default=16, help="Canvas width in lanes (default 16)")
@@ -175,7 +175,7 @@ def main() -> None:
         type=int,
         default=_color.DARK_L_THRESHOLD,
         metavar="L",
-        help="[color mode] LAB L cutoff (0-255): " \
+        help="[color mode] LAB L cutoff (0-255): "
         "pixels below this become BLACK (default %(default)s)",
     )
     args = parser.parse_args()

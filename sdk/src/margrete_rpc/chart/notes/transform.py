@@ -159,7 +159,7 @@ def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) ->
 
 
 def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, Any]) -> Note:
-    new = target(int(note.t), note.x, note.w)  # type: ignore[call-arg]
+    new = target(t=int(note.t), x=note.x, w=note.w)  # type: ignore[call-arg]
     new._info.til = note._info.til
     new._info.ex_attr = note._info.ex_attr
     if isinstance(new, Extap):
@@ -199,19 +199,19 @@ def _add_kind(
         if h is None:
             raise ValueError("air long joints require height")
         if resolved is JointKind.STEP:
-            note._add_step(t, x, w, h)
+            note.add_step(t=t, x=x, w=w, h=h)
         elif resolved is JointKind.CONTROL:
-            note._add_control(t, x, w, h)
+            note.add_ctrl(t=t, x=x, w=w, h=h)
         else:
-            note._add_curve_control(t, x, w, h)
+            note._add_curve_control(t=t, x=x, w=w, h=h)
         return
 
     if resolved is JointKind.STEP:
-        note._add_step(t, x, w)
+        note.add_step(t=t, x=x, w=w)
     elif resolved is JointKind.CONTROL:
-        note._add_control(t, x, w)
+        note.add_ctrl(t=t, x=x, w=w)
     else:
-        note._add_curve_control(t, x, w)
+        note._add_curve_control(t=t, x=x, w=w)
 
 
 def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any]) -> LongLike:
@@ -232,7 +232,7 @@ def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any])
 
 
 def _build_slide(begin: _Point, joints: list[_Point]) -> Slide:
-    slide = Slide(begin.t, begin.x, begin.w)
+    slide = Slide(t=begin.t, x=begin.x, w=begin.w)
     for point in joints:
         _add_kind(slide, point.kind, point.t, point.x, point.w, None)
     return slide
@@ -258,7 +258,7 @@ def _build_air_long(
         color = overrides.get(
             "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
         )
-        new = AirCrush(begin.t, begin.x, begin.w, h=h0, gap=gap, color=color)
+        new = AirCrush(t=begin.t, x=begin.x, w=begin.w, h=h0, gap=gap, color=color)
     else:
         new_air: AirSlide | AirHold = (
             AirSlide(h=h0) if issubclass(target, AirSlide) else AirHold(h=h0)
@@ -410,10 +410,10 @@ def split[T: SlideLike](note: T, at: Joint | int | Tick) -> tuple[T, T]:
 
 def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
     if isinstance(note, Slide):
-        new: SlideLike = Slide(point.t, point.x, point.w)
+        new: SlideLike = Slide(t=point.t, x=point.x, w=point.w)
     elif isinstance(note, AirCrush):
         h = point.h if point.h is not None else int(note._info.h)
-        new = AirCrush(point.t, point.x, point.w, h=h, gap=note.gap, color=note.color)
+        new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color)
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
         air = AirSlide(h=h)

@@ -20,7 +20,7 @@ def capture_edit_snapshot(chart: Chart) -> EditSnapshot:
     return EditSnapshot(
         notes_signature=_notes_signature(_final_notes_without_ids(chart)),
         events_signature=_event_signature_from_events(normalized_events),
-        notes=[_clone_node(note) for note in _final_notes(chart)],
+        notes=[_clone_raw(note) for note in _final_notes(chart)],
         events=_clone_chart_events(normalized_events),
     )
 
@@ -71,7 +71,7 @@ def build_apply_edit_request(
 def _note_to_raw(note: ChartNote) -> RawNote:
     if isinstance(note, RawNote):
         return note
-    return note.to_node()
+    return note.to_raw()
 
 
 def _final_notes(chart: Chart) -> list[RawNote]:
@@ -116,7 +116,7 @@ def _has_existing_note_id(notes: list[RawNote]) -> bool:
     return False
 
 
-def _clone_node(note: RawNote) -> RawNote:
+def _clone_raw(note: RawNote) -> RawNote:
     return RawNote.from_proto(note.to_proto())
 
 

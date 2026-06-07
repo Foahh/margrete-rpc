@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
-from warnings import deprecated
+from typing import Self, cast
 
 from ..raw import RawNote
 from ..time import Tick, resolve_density, resolve_tick
@@ -40,10 +39,10 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
 
     def __init__(
         self,
+        *,
         t: Tick,
         x: int,
         w: int,
-        *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -78,7 +77,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             )
             self._air._validate_with_anchor(children[-1].info)
 
-    def _to_node_tree(self, *, skip_validation: bool = False) -> RawNote:
+    def _to_raw_tree(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self.validate()
         host = cast(_JointHostBase, self)
@@ -93,7 +92,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             if not root.children:
                 raise ValueError("attached air requires an end joint")
             root.children[-1].children.append(
-                self._air._to_node(root.children[-1].info, skip_validation=skip_validation)
+                self._air._to_raw(root.children[-1].info, skip_validation=skip_validation)
             )
         return root
 
@@ -125,56 +124,39 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
 class Slide(_AirAttachable, _PlaceableLong, _JointHost):
     _note_type = NoteType.SLIDE
 
-    def step(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-    ) -> Slide:
-        self._add_step(t, x, w)
-        return self
+    def with_step(self, *, t: Tick, x: int, w: int) -> Self:
+        copy = self.clone()
+        copy.add_step(t=t, x=x, w=w)
+        return copy
 
-    def control(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-    ) -> Slide:
-        self._add_control(t, x, w)
-        return self
+    def with_ctrl(self, *, t: Tick, x: int, w: int) -> Self:
+        copy = self.clone()
+        copy.add_ctrl(t=t, x=x, w=w)
+        return copy
 
-    @deprecated("CURVE_CONTROL is deprecated in Margrete.")
-    def curve_control(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-    ) -> Slide:
-        self._add_curve_control(t, x, w)
-        return self
-
-    def to_node(self, *, skip_validation: bool = False) -> RawNote:
-        return self._to_node_tree(skip_validation=skip_validation)
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        return self._to_raw_tree(skip_validation=skip_validation)
 
 
 class Hold(_AirAttachable, _PlaceableLong, _JointHost):
     _note_type = NoteType.HOLD
 
-    def step(self, t: Tick, x: int, w: int) -> Hold:
+    def with_step(self, *, t: Tick, x: int, w: int) -> Self:
         t = resolve_tick(t)
-        if self._joints:
-            if int(t) <= int(self._info.t):
+        copy = self.clone()
+        if copy._joints:
+            if int(t) <= int(copy._info.t):
                 raise ValueError("end t must be later than the begin")
-            joint = self._joints[-1]
+            joint = copy._joints[-1]
             joint.t = t
             joint.x = x
             joint.w = w
         else:
-            self._add_step(t, x, w)
-        return self
+            copy.add_step(t=t, x=x, w=w)
+        return copy
 
-    def to_node(self, *, skip_validation: bool = False) -> RawNote:
-        return self._to_node_tree(skip_validation=skip_validation)
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        return self._to_raw_tree(skip_validation=skip_validation)
 
 
 class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
@@ -183,17 +165,17 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
 
     def __init__(
         self,
+        *,
         t: Tick,
         x: int,
         w: int,
-        *,
         h: int,
         gap: int,
         color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, _info=_info, _id=_id)
+        super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
         self.h = h
         self.gap = gap
         self.color = color
@@ -214,15 +196,10 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def color(self, value: ColorLike | int) -> None:
         self._info.variation_id = color_to_value(value)
 
-    def control(
-        self,
-        t: Tick,
-        x: int,
-        w: int,
-        h: int,
-    ) -> AirCrush:
-        self._add_control(t, x, w, h)
-        return self
+    def with_ctrl(self, *, t: Tick, x: int, w: int, h: int) -> Self:
+        copy = self.clone()
+        copy.add_ctrl(t=t, x=x, w=w, h=h)
+        return copy
 
-    def to_node(self, *, skip_validation: bool = False) -> RawNote:
-        return self._to_node_tree(skip_validation=skip_validation)
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        return self._to_raw_tree(skip_validation=skip_validation)

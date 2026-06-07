@@ -40,7 +40,7 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         _check_tick(self.t)
         _check_width(self.w)
 
-    def _base_node(self) -> RawNote:
+    def _base_raw(self) -> RawNote:
         return RawNote(info=self._info.copy(), _id=self._id)
 
     def _str_parts(self) -> list[str]:
@@ -68,22 +68,22 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         if self._air is not None:
             self._air._validate_with_anchor(self._info)
 
-    def to_node(self, *, skip_validation: bool = False) -> RawNote:
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self.validate()
-        note = self._base_node()
+        note = self._base_raw()
         if self._air is not None:
-            note.children.append(self._air._to_node(note.info, skip_validation=skip_validation))
+            note.children.append(self._air._to_raw(note.info, skip_validation=skip_validation))
         return note
 
 
 class Tap(_GroundNote):
     def __init__(
         self,
+        *,
         t: Tick,
         x: int,
         w: int,
-        *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -93,10 +93,10 @@ class Tap(_GroundNote):
 class Damage(_GroundNote):
     def __init__(
         self,
+        *,
         t: Tick,
         x: int,
         w: int,
-        *,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -108,10 +108,10 @@ class Extap(_GroundNote):
 
     def __init__(
         self,
+        *,
         t: Tick,
         x: int,
         w: int,
-        *,
         dir: ExtapDirectionLike | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -119,8 +119,8 @@ class Extap(_GroundNote):
         super().__init__(t, x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.dir = dir
 
-    def _base_node(self) -> RawNote:
-        note = super()._base_node()
+    def _base_raw(self) -> RawNote:
+        note = super()._base_raw()
         note.dir = self.dir
         return note
 
@@ -133,14 +133,16 @@ class Flick(Extap):
 
     def __init__(
         self,
+        *,
         t: Tick,
         x: int,
         w: int,
-        *,
         dir: FlickDirectionLike | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, dir=cast("ExtapDirectionLike | int", dir), _info=_info, _id=_id)
+        super().__init__(
+            t=t, x=x, w=w, dir=cast("ExtapDirectionLike | int", dir), _info=_info, _id=_id
+        )
         self._type = NoteType.FLICK
         self._info.type = NoteType.FLICK

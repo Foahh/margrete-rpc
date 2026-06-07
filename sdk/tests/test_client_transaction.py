@@ -130,8 +130,8 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     with mg.open_edit("append", scan=False) as tx:
         assert tx.current_tick == 480
         assert tx.chart.notes == []
-        tx.chart.notes.append(Tap(480, 2, 1))
-        tx.chart.notes.append(R.tap(720, 4, 1))
+        tx.chart.notes.append(Tap(t=480, x=2, w=1))
+        tx.chart.notes.append(R.tap(t=720, x=4, w=1))
 
     begin_request = transport.requests[0].begin_edit_request
     apply_request = transport.requests[1].apply_edit_request
@@ -164,7 +164,7 @@ def test_scan_false_rejects_existing_note_ids_before_commit_request():
 
     with pytest.raises(ValueError, match="scan=false transactions cannot send existing note ids"):
         with mg.open_edit("bad", scan=False) as tx:
-            note = R.tap(480, 2, 1)
+            note = R.tap(t=480, x=2, w=1)
             note._id = 99
             tx.chart.notes.append(note)
 
@@ -343,7 +343,7 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     mg = Margrete(transport=transport)
 
     with mg.open_edit("child", raw=True) as tx:
-        tx.chart.notes[0].children.insert(0, R.hold_end(240, 1, 2))
+        tx.chart.notes[0].children.insert(0, R.hold_end(t=240, x=1, w=2))
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.replace_all_notes is False
