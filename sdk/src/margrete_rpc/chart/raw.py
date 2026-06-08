@@ -4,10 +4,12 @@ from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from .notes.color import ColorLike, ColorValue
+from .notes.color import Color, ColorLike, ColorValue
 from .notes.direction import (
     AirDirection,
     AirDirectionLike,
+    Direction,
+    DirectionValue,
     ExtapDirection,
     ExtapDirectionLike,
     FlickDirection,
@@ -19,17 +21,7 @@ from .notes.types import (
     NoteInfo,
     NoteType,
 )
-from .time import Tick
-
-
-def _info_property(name: str):
-    def getter(self: RawNote):
-        return getattr(self.info, name)
-
-    def setter(self: RawNote, value):
-        setattr(self.info, name, value)
-
-    return property(getter, setter)
+from .time import Division, Tick
 
 
 @dataclass
@@ -38,17 +30,93 @@ class RawNote:
     children: list[RawNote] = field(default_factory=list)
     _id: int | None = field(default=None)
 
-    type = _info_property("type")
-    long_attr = _info_property("long_attr")
-    dir = _info_property("direction")
-    ex_attr = _info_property("ex_attr")
-    variation_id = _info_property("variation_id")
-    x = _info_property("x")
-    option_value = _info_property("option_value")
-    t = _info_property("t")
-    w = _info_property("w")
-    h = _info_property("h")
-    til = _info_property("til")
+    @property
+    def type(self) -> NoteType:
+        return self.info.type
+
+    @type.setter
+    def type(self, value: NoteType) -> None:
+        self.info.type = value
+
+    @property
+    def long_attr(self) -> LongAttr:
+        return self.info.long_attr
+
+    @long_attr.setter
+    def long_attr(self, value: LongAttr) -> None:
+        self.info.long_attr = value
+
+    @property
+    def dir(self) -> Direction:
+        return self.info.direction
+
+    @dir.setter
+    def dir(self, value: DirectionValue | str) -> None:
+        self.info.direction = value 
+
+    @property
+    def ex_attr(self) -> ExAttr:
+        return self.info.ex_attr
+
+    @ex_attr.setter
+    def ex_attr(self, value: ExAttr) -> None:
+        self.info.ex_attr = value
+
+    @property
+    def variation_id(self) -> Color:
+        return self.info.variation_id
+
+    @variation_id.setter
+    def variation_id(self, value: ColorLike | int) -> None:
+        self.info.variation_id = value 
+
+    @property
+    def x(self) -> int:
+        return self.info.x
+
+    @x.setter
+    def x(self, value: int) -> None:
+        self.info.x = value
+
+    @property
+    def option_value(self) -> int:
+        return self.info.option_value
+
+    @option_value.setter
+    def option_value(self, value: Division) -> None:
+        self.info.option_value = value 
+
+    @property
+    def t(self) -> int:
+        return self.info.t
+
+    @t.setter
+    def t(self, value: Tick) -> None:
+        self.info.t = value 
+
+    @property
+    def w(self) -> int:
+        return self.info.w
+
+    @w.setter
+    def w(self, value: int) -> None:
+        self.info.w = value
+
+    @property
+    def h(self) -> int:
+        return self.info.h
+
+    @h.setter
+    def h(self, value: int) -> None:
+        self.info.h = value
+
+    @property
+    def til(self) -> int:
+        return self.info.til
+
+    @til.setter
+    def til(self, value: int) -> None:
+        self.info.til = value
 
     def __str__(self) -> str:
         return _format_raw(self, indent=0)
@@ -66,9 +134,9 @@ class RawNote:
             info=NoteInfo(
                 type=NoteType(proto.type),
                 long_attr=LongAttr(proto.long_attr),
-                direction=proto.direction,
+                direction=int(proto.direction),
                 ex_attr=ExAttr(proto.ex_attr),
-                variation_id=proto.variation_id,
+                variation_id=int(proto.variation_id),
                 x=proto.x,
                 w=proto.width,
                 h=proto.height,
@@ -81,11 +149,11 @@ class RawNote:
 
     def to_proto(self) -> messages_pb2.Note:
         proto = messages_pb2.Note(
-            type=int(self.type),
-            long_attr=int(self.long_attr),
-            direction=self.dir,
-            ex_attr=int(self.ex_attr),
-            variation_id=int(self.variation_id),
+            type=messages_pb2.NoteType(int(self.type)),
+            long_attr=messages_pb2.LongAttr(int(self.long_attr)),
+            direction=messages_pb2.Direction(int(self.dir)),
+            ex_attr=messages_pb2.ExAttr(int(self.ex_attr)),
+            variation_id=messages_pb2.Color(int(self.variation_id)),
             x=self.x,
             width=self.w,
             height=self.h,
@@ -131,7 +199,7 @@ class R:
         if til is not None:
             note.til = til
         if dir is not None:
-            note.dir = dir
+            note.dir = dir 
         if inverted is not None:
             note.ex_attr = ExAttr.INVERT if inverted else ExAttr.NONE
         if gap is not None:

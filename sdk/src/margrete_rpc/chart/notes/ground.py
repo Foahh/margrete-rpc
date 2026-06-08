@@ -11,7 +11,8 @@ from .shared import (
     _check_tick,
     _check_width,
     _copy_info,
-    _direction_property,
+    _get_direction,
+    _set_direction,
     _GeometryInfoMixin,
     _note_enum_line,
     _TransformMixin,
@@ -106,7 +107,13 @@ class Damage(_GroundNote):
 
 
 class Extap(_GroundNote):
-    dir = _direction_property(ExtapDirection, "extap")
+    @property
+    def dir(self) -> ExtapDirection:
+        return _get_direction(ExtapDirection, self._info)
+
+    @dir.setter
+    def dir(self, value: ExtapDirectionLike | int) -> None:
+        _set_direction(ExtapDirection, "extap", self._info, value)
 
     def __init__(
         self,
@@ -130,8 +137,14 @@ class Extap(_GroundNote):
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
 
-class Flick(Extap):
-    dir = _direction_property(FlickDirection, "flick")
+class Flick(_GroundNote):
+    @property
+    def dir(self) -> FlickDirection:
+        return _get_direction(FlickDirection, self._info)
+
+    @dir.setter
+    def dir(self, value: FlickDirectionLike | int) -> None:
+        _set_direction(FlickDirection, "flick", self._info, value)
 
     def __init__(
         self,
@@ -143,8 +156,14 @@ class Flick(Extap):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(
-            t=t, x=x, w=w, dir=cast("ExtapDirectionLike | int", dir), _info=_info, _id=_id
-        )
-        self._type = NoteType.FLICK
-        self._info.type = NoteType.FLICK
+        super().__init__(t, x, w, NoteType.FLICK, _copy_info(_info), _id)
+        self.dir = dir
+
+    def _base_raw(self) -> RawNote:
+        note = super()._base_raw()
+        note.dir = self.dir
+        return note
+
+    def _str_parts(self) -> list[str]:
+        return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
+

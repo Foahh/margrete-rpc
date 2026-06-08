@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from enum import IntEnum, StrEnum
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
+from ..time import Division, Tick, resolve_density, resolve_tick
 from .color import (
     Color,
     ColorLike,
@@ -89,44 +89,97 @@ def _enum_line(value: IntEnum | StrEnum) -> str:
     return f"{type(value).__name__}.{value.name}({value.value!r})"
 
 
-@dataclass
 class NoteInfo:
-    type: NoteType = NoteType.UNKNOWN
-    long_attr: LongAttr = LongAttr.NONE
-    direction: Direction = Direction.UP
-    ex_attr: ExAttr = ExAttr.NONE
-    variation_id: Color = Color.DEFAULT
-    x: int = 0
-    w: int = 0
-    h: int = 80
-    t: int = 0
-    til: int = 0
+    def __init__(
+        self,
+        *,
+        type: NoteType = NoteType.UNKNOWN,
+        long_attr: LongAttr = LongAttr.NONE,
+        direction: DirectionValue | str = Direction.UP,
+        ex_attr: ExAttr = ExAttr.NONE,
+        variation_id: ColorLike | int = Color.DEFAULT,
+        x: int = 0,
+        w: int = 0,
+        h: int = 80,
+        t: Tick = 0,
+        til: int = 0,
+        option_value: Division = 0,
+    ) -> None:
+        self.type = type
+        self.long_attr = long_attr
+        self.ex_attr = ex_attr
+        self.x = x
+        self.w = w
+        self.h = h
+        self.til = til
+        self._direction = Direction(direction_to_proto(type, direction))
+        self._variation_id = Color(color_to_value(variation_id))
+        self._t = resolve_tick(t)
+        self._option_value = resolve_density(option_value)
 
-    option_value: int = 0
-    """
-    TRACE = 0
+    @property
+    def direction(self) -> Direction:
+        return self._direction
 
-    HEAD_ONLY = 0x7FFFFFFF
-    """
+    @direction.setter
+    def direction(self, value: DirectionValue | str) -> None:
+        self._direction = Direction(direction_to_proto(self.type, value))
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name == "t" and isinstance(value, tuple):
-            from ..time import Tick, resolve_tick
+    @property
+    def variation_id(self) -> Color:
+        return self._variation_id
 
-            value = resolve_tick(cast(Tick, value))
-        elif name == "option_value" and isinstance(value, tuple):
-            from ..time import Division, resolve_density
+    @variation_id.setter
+    def variation_id(self, value: ColorLike | int) -> None:
+        self._variation_id = Color(color_to_value(value))
 
-            value = resolve_density(cast(Division, value))
-        elif name == "direction":
-            note_type = getattr(self, "type", NoteType.UNKNOWN)
-            value = Direction(direction_to_proto(note_type, value))
-        elif name == "variation_id":
-            value = Color(color_to_value(value))
-        object.__setattr__(self, name, value)
+    @property
+    def t(self) -> int:
+        return self._t
+
+    @t.setter
+    def t(self, value: Tick) -> None:
+        self._t = resolve_tick(value)
+
+    @property
+    def option_value(self) -> int:
+        return self._option_value
+
+    @option_value.setter
+    def option_value(self, value: Division) -> None:
+        self._option_value = resolve_density(value)
 
     def copy(self, **changes: Any) -> NoteInfo:
-        return replace(self, **changes)
+        return NoteInfo(
+            type=changes.get("type", self.type),
+            long_attr=changes.get("long_attr", self.long_attr),
+            direction=changes.get("direction", self.direction),
+            ex_attr=changes.get("ex_attr", self.ex_attr),
+            variation_id=changes.get("variation_id", self.variation_id),
+            x=changes.get("x", self.x),
+            w=changes.get("w", self.w),
+            h=changes.get("h", self.h),
+            t=changes.get("t", self.t),
+            til=changes.get("til", self.til),
+            option_value=changes.get("option_value", self.option_value),
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, NoteInfo):
+            return NotImplemented
+        return (
+            self.type == other.type
+            and self.long_attr == other.long_attr
+            and self.direction == other.direction
+            and self.ex_attr == other.ex_attr
+            and self.variation_id == other.variation_id
+            and self.x == other.x
+            and self.w == other.w
+            and self.h == other.h
+            and self.t == other.t
+            and self.til == other.til
+            and self.option_value == other.option_value
+        )
 
     def __str__(self) -> str:
         return _format_note_info(self)

@@ -149,7 +149,7 @@ def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) ->
 
 
 def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, Any]) -> Note:
-    new = target(t=int(note.t), x=note.x, w=note.w)  # type: ignore[call-arg]
+    new = target(t=int(note.t), x=note.x, w=note.w)
     new._info.til = note._info.til
     new._info.ex_attr = note._info.ex_attr
     if isinstance(new, Extap):

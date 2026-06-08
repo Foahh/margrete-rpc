@@ -10,7 +10,8 @@ from .shared import (
     _check_tick,
     _check_width,
     _copy_info,
-    _direction_property,
+    _get_direction,
+    _set_direction,
     _GeometryInfoMixin,
     _HeightMixin,
     _note_enum_line,
@@ -20,7 +21,13 @@ from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
 
 
 class Air(_GeometryInfoMixin, _TransformMixin):
-    dir = _direction_property(AirDirection, "air")
+    @property
+    def dir(self) -> AirDirection:
+        return _get_direction(AirDirection, self._info)
+
+    @dir.setter
+    def dir(self, value: AirDirectionLike | int) -> None:
+        _set_direction(AirDirection, "air", self._info, value)
 
     def __init__(
         self,
@@ -177,7 +184,7 @@ class _AirAttachable:
         if value is None:
             self._air = None
             return
-        if not isinstance(value, (Air, AirSlide, AirHold)):  # pyright: ignore[reportUnnecessaryIsInstance]
+        if not isinstance(value, (Air, AirSlide, AirHold)):
             raise TypeError("air expects Air, AirSlide, or AirHold")
         self._air = value
 

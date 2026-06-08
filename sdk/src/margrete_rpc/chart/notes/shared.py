@@ -85,81 +85,29 @@ def _copy_info(info: NoteInfo | None) -> NoteInfo:
     return info.copy() if info is not None else NoteInfo()
 
 
-def _stored_value(value: Any) -> Any:
-    return int(value) if isinstance(value, IntEnum) else value
-
-
-def _enum_value(enum_type: type[IntEnum], value: int) -> IntEnum | int:
-    try:
-        return enum_type(value)
-    except ValueError:
+def _get_direction[E: StrEnum](enum_type: type[E], info: NoteInfo) -> E:
+    value = info.direction
+    if isinstance(value, enum_type):
         return value
-
-
-def _info_value(value: Any, enum_type: type[IntEnum] | None) -> Any:
-    if enum_type is None:
-        return _stored_value(value)
-    try:
+    if isinstance(value, str):
         return enum_type(value)
-    except ValueError:
-        return _stored_value(value)
+    return direction_from_proto(info.type, int(value))
 
 
-def _info_property(name: str, enum_type: type[IntEnum] | None = None) -> property:
-    def getter(self):
-        value = getattr(self._info, name)
-        return _enum_value(enum_type, value) if enum_type is not None else value
-
-    def setter(self, value):
-        setattr(self._info, name, _info_value(value, enum_type))
-
-    return property(getter, setter)
-
-
-def _checked_info_property(name: str, check: Callable[[int], None]) -> property:
-    def getter(self):
-        return getattr(self._info, name)
-
-    def setter(self, value):
-        check(value)
-        setattr(self._info, name, value)
-
-    return property(getter, setter)
-
-
-def _t_property() -> property:
-    def getter(self):
-        return self._info.t
-
-    def setter(self, value):
-        self._info.t = value
-        _check_tick(self._info.t)
-
-    return property(getter, setter)
-
-
-def _direction_property(enum_type: type[StrEnum], label: str) -> property:
-    def getter(self):
-        value = self._info.direction
-        if isinstance(value, enum_type):
-            return value
+def _set_direction[E: StrEnum](
+    enum_type: type[E], label: str, info: NoteInfo, value: E | str | int
+) -> None:
+    try:
         if isinstance(value, str):
-            return enum_type(value)
-        return direction_from_proto(self._info.type, int(value))
-
-    def setter(self, value):
-        try:
-            if isinstance(value, str):
-                direction = enum_type(value)
-            else:
-                direction = direction_from_proto(self._info.type, int(value))
-                if not isinstance(direction, enum_type):
-                    raise ValueError
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"invalid {label} direction") from exc
-        self._info.direction = direction
-
-    return property(getter, setter)
+            direction: E = enum_type(value)
+        else:
+            result = direction_from_proto(info.type, int(value))
+            if not isinstance(result, enum_type):
+                raise ValueError
+            direction = result 
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {label} direction") from exc
+    info.direction = direction 
 
 
 class _GeometryInfoMixin:
