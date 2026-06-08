@@ -59,7 +59,7 @@ pytest -v --tb=short           # Verbose with short tracebacks
 **Type check:**
 ```bash
 cd sdk
-uv run basedpyright
+uv run pyright
 ```
 
 **Format/lint:**
