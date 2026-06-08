@@ -7,6 +7,7 @@ from ..time import Tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
 from .shared import (
+    _check_air_matches,
     _check_tick,
     _check_width,
     _copy_info,
@@ -66,14 +67,15 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         _check_tick(self.t)
         _check_width(self.w)
         if self._air is not None:
-            self._air._validate_with_anchor(self._info)
+            self._air.validate()
+            _check_air_matches(int(self._air.t), self._air.x, self._air.w, int(self.t), self.x, self.w)
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
             self.validate()
         note = self._base_raw()
         if self._air is not None:
-            note.children.append(self._air._to_raw(note.info, skip_validation=skip_validation))
+            note.children.append(self._air.to_raw(skip_validation=skip_validation))
         return note
 
 

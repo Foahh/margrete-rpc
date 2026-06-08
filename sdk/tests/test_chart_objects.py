@@ -400,7 +400,7 @@ def test_high_level_notes_accept_short_geometry_aliases():
 
 
 def test_air_notes_accept_short_height_aliases():
-    air_slide = AirSlide(h=80).with_ctrl(t=480, x=6, w=2, h=120)
+    air_slide = AirSlide(t=0, x=4, w=2, h=80).with_ctrl(t=480, x=6, w=2, h=120)
     assert air_slide.h == 80
     assert air_slide.h == 80
     assert air_slide.joints[0].t == 480
@@ -613,7 +613,7 @@ def test_high_level_ground_note_geometry_is_backed_by_note_info():
 def test_tap_air_adds_single_air_child():
     tap = Tap(t=0, x=4, w=2)
 
-    air = Air(AirDirection.DOWN)
+    air = Air(AirDirection.DOWN, t=0, x=4, w=2)
     result = tap.with_air(air)
     RawNote = result.to_raw()
 
@@ -622,35 +622,29 @@ def test_tap_air_adds_single_air_child():
     assert len(RawNote.children) == 1
     assert RawNote.children[0].type is NoteType.AIR
     assert RawNote.children[0].dir is Direction.DOWN
-    assert RawNote.children[0].t == result.t
-    assert RawNote.children[0].x == result.x
-    assert RawNote.children[0].w == result.w
+    assert RawNote.children[0].t == air.t
+    assert RawNote.children[0].x == air.x
+    assert RawNote.children[0].w == air.w
 
 
 def test_air_replaces_existing_air_object():
     tap = Tap(t=0, x=4, w=2)
-    first = Air(AirDirection.UP)
-    second = Air(AirDirection.DOWN)
+    first = Air(AirDirection.UP, t=0, x=4, w=2)
+    second = Air(AirDirection.DOWN, t=0, x=4, w=2)
 
     result = tap.with_air(first).with_air(second)
     assert result is not tap
     assert result.to_raw().children[0].dir is Direction.DOWN
 
 
-def test_air_direction_shorthand_attaches_plain_air():
+def test_air_direction_shorthand_no_longer_accepted():
     tap = Tap(t=0, x=4, w=2)
 
-    result = tap.with_air(AirDirection.DOWN)
-    assert result is not tap
-    assert result.to_raw().children[0].dir is Direction.DOWN
+    with pytest.raises(TypeError):
+        tap.with_air(AirDirection.DOWN)  # type: ignore[arg-type]
 
-
-def test_air_direction_string_shorthand_attaches_plain_air():
-    tap = Tap(t=0, x=4, w=2)
-
-    result = tap.with_air("down")
-    assert result is not tap
-    assert result.to_raw().children[0].dir is Direction.DOWN
+    with pytest.raises(TypeError):
+        tap.with_air("down")  # type: ignore[arg-type]
 
 
 def test_height_is_absent_from_floor_notes_and_bare_air():
@@ -658,22 +652,22 @@ def test_height_is_absent_from_floor_notes_and_bare_air():
     assert not hasattr(Damage(t=0, x=4, w=2), "height")
     assert not hasattr(Slide(t=0, x=4, w=2), "height")
     assert not hasattr(Hold(t=0, x=4, w=2), "height")
-    assert not hasattr(Air(AirDirection.UP), "height")
-    assert not hasattr(AirSlide(h=80), "height")
-    assert not hasattr(AirHold(h=80), "height")
+    assert not hasattr(Air(AirDirection.UP, t=0, x=0, w=1), "height")
+    assert not hasattr(AirSlide(t=0, x=0, w=1, h=80), "height")
+    assert not hasattr(AirHold(t=0, x=0, w=1, h=80), "height")
     assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "height")
-    assert hasattr(AirSlide(h=80), "h")
-    assert hasattr(AirHold(h=80), "h")
+    assert hasattr(AirSlide(t=0, x=0, w=1, h=80), "h")
+    assert hasattr(AirHold(t=0, x=0, w=1, h=80), "h")
     assert hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "h")
 
 
-def test_attachable_air_objects_are_not_placeable_notes():
+def test_air_objects_are_placeable_notes():
     assert isinstance(Tap(t=0, x=4, w=2), Note)
-    assert not isinstance(Air(AirDirection.UP), Note)
-    assert not isinstance(AirSlide(h=80), Note)
-    assert not isinstance(AirHold(h=80), Note)
-    assert not hasattr(AirSlide(h=80), "to_raw")
-    assert not hasattr(AirHold(h=80), "to_raw")
+    assert isinstance(Air(AirDirection.UP, t=0, x=0, w=1), Note)
+    assert isinstance(AirSlide(t=0, x=0, w=1, h=80), Note)
+    assert isinstance(AirHold(t=0, x=0, w=1, h=80), Note)
+    assert hasattr(AirSlide(t=0, x=0, w=1, h=80), "to_raw")
+    assert hasattr(AirHold(t=0, x=0, w=1, h=80), "to_raw")
     assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "air")
 
 
@@ -822,7 +816,7 @@ def test_flick_rejects_invalid_directions(direction):
     ],
 )
 def test_air_accepts_only_air_directions(direction):
-    air = Air(direction)
+    air = Air(direction, t=0, x=0, w=1)
 
     assert air.dir is direction
 
@@ -831,14 +825,14 @@ def test_air_accepts_only_air_directions(direction):
 
 
 def test_air_accepts_string_direction_and_serializes_to_proto_value():
-    air = Air("up_left")
+    air = Air("up_left", t=0, x=4, w=2)
 
     assert air.dir is AirDirection.UP_LEFT
     assert air.dir == "up_left"
 
     air.dir = "down_right"
     assert air.dir is AirDirection.DOWN_RIGHT
-    assert air._to_raw(NoteInfo()).to_proto().direction == messages_pb2.DIRECTION_DOWNRIGHT
+    assert air.to_raw().to_proto().direction == messages_pb2.DIRECTION_DOWNRIGHT
 
 
 @pytest.mark.parametrize(
@@ -852,9 +846,9 @@ def test_air_accepts_string_direction_and_serializes_to_proto_value():
 )
 def test_air_rejects_invalid_directions(direction):
     with pytest.raises(ValueError, match="invalid air direction"):
-        Air(direction)
+        Air(direction, t=0, x=0, w=1)
 
-    air = Air(AirDirection.UP)
+    air = Air(AirDirection.UP, t=0, x=0, w=1)
     with pytest.raises(ValueError, match="invalid air direction"):
         air.dir = direction
 
@@ -899,7 +893,7 @@ def test_long_note_validate_catches_invalid_begin_geometry():
 
 
 def test_note_validate_catches_invalid_attached_air_builder():
-    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80))
 
     with pytest.raises(ValueError, match="requires at least one joint"):
         tap.validate()
@@ -908,14 +902,45 @@ def test_note_validate_catches_invalid_attached_air_builder():
         tap.to_raw()
 
 
-def test_note_validate_checks_attached_air_against_anchor_tick():
-    tap = Tap(t=1000, x=4, w=2).with_air(AirSlide(h=80).with_step(t=960, x=4, w=2, h=80))
+def test_note_validate_checks_attached_air_joint_ordering():
+    air_slide = AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=4, w=2, h=80)
+    air_slide._info.t = 1000  # mutate begin tick past the joint
+    tap = Tap(t=1000, x=4, w=2).with_air(air_slide)
 
     with pytest.raises(ValueError, match="joint t must be later than previous joint"):
         tap.validate()
 
     with pytest.raises(ValueError, match="joint t must be later than previous joint"):
         tap.to_raw()
+
+
+def test_note_validate_checks_air_geometry_matches_parent():
+    # ground note: air t/x/w must equal the note's own t/x/w
+    with pytest.raises(ValueError, match="does not match parent"):
+        Tap(t=100, x=4, w=2).with_air(Air(AirDirection.UP, t=200, x=4, w=2)).validate()
+
+    with pytest.raises(ValueError, match="does not match parent"):
+        Tap(t=100, x=4, w=2).with_air(Air(AirDirection.UP, t=100, x=5, w=2)).validate()
+
+    with pytest.raises(ValueError, match="does not match parent"):
+        Tap(t=100, x=4, w=2).with_air(Air(AirDirection.UP, t=100, x=4, w=3)).validate()
+
+    # same for AirSlide/AirHold
+    with pytest.raises(ValueError, match="does not match parent"):
+        Tap(t=0, x=4, w=2).with_air(
+            AirSlide(t=0, x=5, w=2, h=80).with_step(t=480, x=5, w=2, h=80)
+        ).validate()
+
+    # long note: air must match the last joint, not the begin
+    with pytest.raises(ValueError, match="does not match parent"):
+        Slide(t=0, x=0, w=4).with_step(t=100, x=6, w=2).with_air(
+            Air(AirDirection.UP, t=100, x=0, w=4)  # matches begin, not end joint
+        ).validate()
+
+    with pytest.raises(ValueError, match="does not match parent"):
+        Hold(t=0, x=0, w=4).with_step(t=100, x=6, w=2).with_air(
+            AirHold(t=0, x=0, w=4, h=80).with_step(t=480, x=0, w=4, h=80)  # matches begin t/x/w
+        ).validate()
 
 
 def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
@@ -930,7 +955,7 @@ def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
 
 
 def test_high_level_str_prints_attached_air_as_children():
-    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80).with_step(t=960, x=8, w=2, h=100))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=8, w=2, h=100))
 
     lines = str(tap).splitlines()
 
@@ -1038,7 +1063,7 @@ def test_public_joints_list_rejects_wrong_joint_shape():
     with pytest.raises(TypeError, match="Joint"):
         slide.validate()
 
-    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80))
     air_slide = tap._air
     assert isinstance(air_slide, AirSlide)
     air_slide.joints.append(Joint(t=960, x=8, w=2, kind="step"))
@@ -1049,7 +1074,7 @@ def test_public_joints_list_rejects_wrong_joint_shape():
 
 def test_air_long_joints_use_explicit_geometry():
     slide_tap = Tap(t=0, x=4, w=2).with_air(
-        AirSlide(h=80)
+        AirSlide(t=0, x=4, w=2, h=80)
         .with_ctrl(t=480, x=4, w=2, h=80)
         .with_step(t=960, x=5, w=2, h=90)
         .with_ctrl(t=1920, x=7, w=2, h=110)
@@ -1058,7 +1083,7 @@ def test_air_long_joints_use_explicit_geometry():
     assert isinstance(air_slide, AirSlide)
     assert all(isinstance(joint, AirJoint) for joint in air_slide.joints)
     hold_tap = Tap(t=0, x=6, w=2).with_air(
-        AirHold(h=120).with_step(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=7, w=2, h=130)
+        AirHold(t=0, x=6, w=2, h=120).with_step(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=7, w=2, h=130)
     )
 
     slide_raw = slide_tap.to_raw().children[0].children[0]
@@ -1093,7 +1118,7 @@ def test_air_crush_joints_use_explicit_geometry():
 
 def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
     tap = Tap(t=0, x=4, w=2).with_air(
-        AirSlide(h=80).with_ctrl(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=8, w=2, h=80)
+        AirSlide(t=0, x=4, w=2, h=80).with_ctrl(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=8, w=2, h=80)
     )
 
     RawNote = tap.to_raw()
@@ -1106,7 +1131,7 @@ def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
 
 
 def test_control_terminus_differs_between_air_slide_and_ground_slide():
-    air_slide = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80).with_ctrl(t=480, x=4, w=2, h=80))
+    air_slide = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80).with_ctrl(t=480, x=4, w=2, h=80))
     slide = Slide(t=0, x=4, w=2).with_ctrl(t=480, x=4, w=2)
 
     air_slide_raw = air_slide.to_raw().children[0].children[0]
@@ -1117,11 +1142,10 @@ def test_control_terminus_differs_between_air_slide_and_ground_slide():
 
 
 def test_air_invert_maps_to_ex_attr_invert_on_ll():
-    air = Air(AirDirection.DOWN)
-    tap = Tap(t=0, x=4, w=2).with_air(air)
+    air = Air(AirDirection.DOWN, t=480, x=4, w=2)
+    tap = Tap(t=480, x=4, w=2).with_air(air)
     air.inverted = True
     air.til = 3
-    tap.t = tap.t + d2t(1, 4)
 
     RawNote = tap.to_raw().children[0]
 
@@ -1131,30 +1155,29 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
     assert RawNote.t == 480
 
 
-def test_air_geometry_is_derived_from_anchor_on_serialization():
-    tap = Tap(t=0, x=4, w=2).with_air(Air(AirDirection.DOWN))
-    air = tap._air
+def test_air_note_owns_its_own_geometry_in_raw_output():
+    # Air stores its own t/x/w — serialization uses the air's values, not the parent's.
+    # skip_validation=True isolates the ownership assertion from the geometry-match rule.
+    air = Air(AirDirection.DOWN, t=480, x=5, w=3)
+    tap = Tap(t=0, x=4, w=2).with_air(air)
 
     assert isinstance(air, Air)
-    assert air._info.direction is Direction.DOWN
+    assert air.t == 480
+    assert air.x == 5
+    assert air.w == 3
 
-    tap.t = 480
-    tap.x = 5
-    tap.w = 3
     air.dir = AirDirection.UP
+    raw_air = tap.to_raw(skip_validation=True).children[0]
 
-    RawNote = tap.to_raw().children[0]
-
-    assert air._info.direction is Direction.UP
-    assert RawNote.t == 480
-    assert RawNote.x == 5
-    assert RawNote.w == 3
-    assert RawNote.dir is Direction.UP
+    assert raw_air.t == 480  # air's own t, not tap's t=0
+    assert raw_air.x == 5   # air's own x, not tap's x=4
+    assert raw_air.w == 3   # air's own w, not tap's w=2
+    assert raw_air.dir is Direction.UP
 
 
 def test_air_slide_and_air_hold_do_not_expose_color_on_note_builder():
-    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(h=80).with_step(t=960, x=8, w=2, h=100))
-    hold = Tap(t=1200, x=4, w=2).with_air(AirHold(h=120).with_ctrl(t=1680, x=4, w=2, h=140))
+    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=8, w=2, h=100))
+    hold = Tap(t=1200, x=4, w=2).with_air(AirHold(t=1200, x=4, w=2, h=120).with_ctrl(t=1680, x=4, w=2, h=140))
 
     assert tap.to_raw().children[0].children[0].variation_id == 0
     assert hold.to_raw().children[0].children[0].variation_id == 0

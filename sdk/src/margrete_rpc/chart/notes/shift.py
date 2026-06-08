@@ -32,11 +32,11 @@ def _shift_attachable_air(air: object, *, t: Delta, x: Delta, w: Delta, h: Delta
     from .air import Air, AirHold, AirSlide
 
     if isinstance(air, Air):
+        _apply_deltas(air._info, t=t, x=x, w=w, h=h)
         return
     if not isinstance(air, (AirSlide, AirHold)):
         raise TypeError(f"expected attachable air, got {type(air).__name__}")
-    air._air_info.h = _combine(air._air_info.h, h)
-    air._info.h = _combine(air._info.h, h)
+    _apply_deltas(air._info, t=t, x=x, w=w, h=h)
     for joint in air._joints:
         _shift_joint(joint, t=t, x=x, w=w, h=h)
 
@@ -69,7 +69,6 @@ def _shift_air_long(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> 
     if not isinstance(note, (AirSlide, AirHold)):
         raise TypeError(f"expected air long, got {type(note).__name__}")
     _apply_deltas(note._info, t=t, x=x, w=w, h=h)
-    note._air_info.h = _combine(note._air_info.h, h)
     for joint in note._joints:
         _shift_joint(joint, t=t, x=x, w=w, h=h)
 
@@ -99,7 +98,7 @@ def _check_joint_order(note: object) -> None:
 def _shift_note(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> object:
     if _is_noop(t) and _is_noop(x) and _is_noop(w) and _is_noop(h):
         return note
-    from .air import AirHold, AirSlide
+    from .air import Air, AirHold, AirSlide
     from .ground import Damage, Extap, Flick, Tap
     from .long import AirCrush, Hold, Slide
 
@@ -109,6 +108,8 @@ def _shift_note(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> obje
         _shift_long_builder(note, t=t, x=x, w=w, h=h)
     elif isinstance(note, (AirSlide, AirHold)):
         _shift_air_long(note, t=t, x=x, w=w, h=h)
+    elif isinstance(note, Air):
+        _apply_deltas(note._info, t=t, x=x, w=w, h=h)
     else:
         raise TypeError(f"unsupported note type for shift: {type(note).__name__}")
     if callable(t):

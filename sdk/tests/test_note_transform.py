@@ -10,7 +10,6 @@ from margrete_rpc.chart.notes import (
     Color,
     ColorValue,
     Damage,
-    Direction,
     Extap,
     Flick,
     Hold,
@@ -43,12 +42,12 @@ def test_clone_is_deep_and_detached():
 
 
 def test_clone_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=5).with_air(AirSlide(h=80).with_step(t=100, x=8, w=2, h=90))
-    tap._air._air_id = 7
+    tap = Tap(t=0, x=4, w=2, _id=5).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=100, x=8, w=2, h=90))
+    tap._air._id = 7
 
     clone = tap.clone()
     assert clone._air is not tap._air
-    assert clone._air._air_id is None
+    assert clone._air._id is None
     assert clone._air.joints[-1].h == 90
 
 
@@ -153,7 +152,11 @@ def test_flip_custom_field_width():
 
 
 def test_flip_recurses_into_joints_and_air():
-    slide = Slide(t=0, x=0, w=2).with_step(t=100, x=10, w=2).with_air("up_left")
+    from margrete_rpc.chart.notes import Air, AirDirection
+
+    slide = Slide(t=0, x=0, w=2).with_step(t=100, x=10, w=2).with_air(
+        Air(AirDirection.UP_LEFT, t=100, x=10, w=2)
+    )
     slide.flip()
     assert slide.x == FIELD_WIDTH - 0 - 2
     assert slide.joints[0].x == FIELD_WIDTH - 10 - 2
@@ -179,7 +182,7 @@ def test_converted_returns_detached_copy_without_touching_original():
 
 
 def test_converted_ground_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=4).with_air(AirSlide(h=80).with_step(t=100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=4).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=100, x=8, w=2, h=90))
     extap = tap.converted(Extap)
     assert isinstance(extap, Extap)
     assert extap._air is not tap._air
@@ -189,12 +192,11 @@ def test_converted_ground_preserves_attached_air_detached():
 
 def test_converted_slide_to_air_slide_and_back():
     slide = Slide(t=100, x=0, w=4).with_step(t=150, x=2, w=4).with_ctrl(t=200, x=4, w=4)
-    air = slide.converted(AirSlide, h=80, dir="down")
+    air = slide.converted(AirSlide, h=80)
 
     assert isinstance(air, AirSlide)
     assert isinstance(slide, Slide)  # original unchanged
-    assert (int(air._info.t), air._info.x, air._info.w) == (100, 0, 4)
-    assert air._air_info.direction == Direction.DOWN
+    assert (int(air.t), air.x, air.w) == (100, 0, 4)
     assert air.joints[-1].h == 80
     assert [(int(j.t), str(j.kind)) for j in air.joints] == [(150, "step"), (200, "control")]
 
@@ -230,9 +232,9 @@ def test_converted_slide_to_aircrush():
 
 def test_converted_aircrush_to_airslide():
     crush = AirCrush(t=0, x=2, w=2, h=80, gap=5).with_ctrl(t=100, x=4, w=2, h=100)
-    air = crush.converted(AirSlide, dir="up")
+    air = crush.converted(AirSlide)
     assert isinstance(air, AirSlide)
-    assert (int(air._info.t), air._info.x, air._info.w) == (0, 2, 2)
+    assert (int(air.t), air.x, air.w) == (0, 2, 2)
     assert air.joints[-1].h == 100
     assert air._id is None  # detached
 
@@ -252,7 +254,9 @@ def test_convert_cross_shape_raises():
 
 
 def test_convert_with_air_to_non_attachable_target_drops_air_silently():
-    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).with_air("up")
+    from margrete_rpc.chart.notes import Air, AirDirection
+
+    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).with_air(Air(AirDirection.UP, t=100, x=2, w=4))
     crush = slide.converted(AirCrush, h=80, gap=4)
     assert isinstance(crush, AirCrush)
     assert getattr(crush, "_air", None) is None
@@ -262,7 +266,7 @@ def test_convert_with_air_to_attachable_target_carries_air():
     hold = (
         Hold(t=0, x=1, w=3)
         .with_step(t=120, x=1, w=3)
-        .with_air(AirSlide(h=80).with_step(t=150, x=4, w=2, h=90))
+        .with_air(AirSlide(t=120, x=1, w=3, h=80).with_step(t=150, x=4, w=2, h=90))
     )
     slide = hold.converted(Slide)
     assert isinstance(slide, Slide)

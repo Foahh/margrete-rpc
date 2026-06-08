@@ -73,6 +73,14 @@ def _check_width(w: int) -> None:
         raise ValueError("w must be at least 1")
 
 
+def _check_air_matches(air_t: int, air_x: int, air_w: int, ref_t: int, ref_x: int, ref_w: int) -> None:
+    if air_t != ref_t or air_x != ref_x or air_w != ref_w:
+        raise ValueError(
+            f"air geometry (t={air_t}, x={air_x}, w={air_w}) "
+            f"does not match parent (t={ref_t}, x={ref_x}, w={ref_w})"
+        )
+
+
 def _copy_info(info: NoteInfo | None) -> NoteInfo:
     return info.copy() if info is not None else NoteInfo()
 

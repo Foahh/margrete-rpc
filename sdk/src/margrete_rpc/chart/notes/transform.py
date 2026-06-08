@@ -40,17 +40,11 @@ class _Point(NamedTuple):
 
 def _iter_infos(note: Note) -> Iterator[Any]:
     """Yield every ``NoteInfo`` reachable from a note builder (begin, joints, air)."""
-    own_air_info = getattr(note, "_air_info", None)
-    if own_air_info is not None:
-        yield own_air_info
     yield note._info
     for joint in getattr(note, "_joints", ()) or ():
         yield joint._info
     air = getattr(note, "_air", None)
     if air is not None:
-        air_info = getattr(air, "_air_info", None)
-        if air_info is not None:
-            yield air_info
         yield air._info
         for joint in getattr(air, "_joints", ()) or ():
             yield joint._info
@@ -66,8 +60,6 @@ def _detach(note: object) -> None:
     air = getattr(note, "_air", None)
     if air is not None:
         air._id = None
-        if hasattr(air, "_air_id"):
-            air._air_id = None
         for joint in getattr(air, "_joints", ()) or ():
             joint._id = None
 
@@ -81,8 +73,6 @@ def _clone[T: Note](note: T) -> T:
 def _clone_air(air: Air | AirSlide | AirHold) -> Air | AirSlide | AirHold:
     new = copy.deepcopy(air)
     _detach(new)
-    if hasattr(new, "_air_id"):
-        new._air_id = None
     return new
 
 
@@ -261,15 +251,10 @@ def _build_air_long(
         new = AirCrush(t=begin.t, x=begin.x, w=begin.w, h=h0, gap=gap, color=color)
     else:
         new_air: AirSlide | AirHold = (
-            AirSlide(h=h0) if issubclass(target, AirSlide) else AirHold(h=h0)
+            AirSlide(t=begin.t, x=begin.x, w=begin.w, h=h0)
+            if issubclass(target, AirSlide)
+            else AirHold(t=begin.t, x=begin.x, w=begin.w, h=h0)
         )
-        new_air._info.t = begin.t
-        new_air._info.x = begin.x
-        new_air._info.w = begin.w
-        if "dir" in overrides:
-            new_air._air_info.direction = overrides["dir"]
-        elif isinstance(note, (AirSlide, AirHold)):
-            new_air._air_info.direction = note._air_info.direction
         new = new_air
     for point in joints:
         jh = point.h if point.h is not None else h0
@@ -416,12 +401,7 @@ def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
         new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color)
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
-        air = AirSlide(h=h)
-        air._info.t = point.t
-        air._info.x = point.x
-        air._info.w = point.w
-        air._air_info.direction = note._air_info.direction
-        new = air
+        new = AirSlide(t=point.t, x=point.x, w=point.w, h=h)
     else:
         raise TypeError(f"cannot rebuild {type(note).__name__}")
     new._info.til = note._info.til

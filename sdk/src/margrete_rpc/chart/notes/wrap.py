@@ -7,7 +7,7 @@ from .ground import Damage, Extap, Flick, Tap, _GroundNote
 from .joint import _JointHostBase
 from .long import AirCrush, Hold, Slide
 from .shared import Note, UnsupportedNoteTree
-from .types import LongAttr, NoteInfo, NoteType
+from .types import LongAttr, NoteType
 
 
 def wrap_raw_note(note: RawNote) -> Note:
@@ -78,14 +78,14 @@ def _wrap_attached_air_note(note: RawNote) -> Air | AirSlide | AirHold:
         raise UnsupportedNoteTree("air may have only one long action")
     if not note.children:
         try:
-            return Air(note.dir, _info=note.info.copy(), _id=note._id)
+            return Air(note.dir, t=int(note.t), x=note.x, w=note.w, _info=note.info.copy(), _id=note._id)
         except ValueError as exc:
             raise UnsupportedNoteTree("unsupported air direction") from exc
     action = note.children[0]
     if action.type is NoteType.AIRSLIDE:
-        return _wrap_air_slide(action, air_info=note.info.copy(), air_id=note._id)
+        return _wrap_air_slide(action, air_t=int(note.t), air_x=note.x, air_w=note.w)
     if action.type is NoteType.AIRHOLD:
-        return _wrap_air_hold(action, air_info=note.info.copy(), air_id=note._id)
+        return _wrap_air_hold(action, air_t=int(note.t), air_x=note.x, air_w=note.w)
     raise UnsupportedNoteTree("air child must be AIRSLIDE or AIRHOLD")
 
 
@@ -137,15 +137,17 @@ def _wrap_hold(note: RawNote) -> Hold:
 def _wrap_air_slide(
     note: RawNote,
     *,
-    air_info: NoteInfo | None = None,
-    air_id: int | None = None,
+    air_t: int,
+    air_x: int,
+    air_w: int,
 ) -> AirSlide:
     _check_raw_root_begin(note, NoteType.AIRSLIDE)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     slide = AirSlide(
+        t=air_t,
+        x=air_x,
+        w=air_w,
         h=note.h,
-        _air_info=air_info,
-        _air_id=air_id,
         _info=note.info,
         _id=note._id,
     )
@@ -175,15 +177,17 @@ def _wrap_air_slide(
 def _wrap_air_hold(
     note: RawNote,
     *,
-    air_info: NoteInfo | None = None,
-    air_id: int | None = None,
+    air_t: int,
+    air_x: int,
+    air_w: int,
 ) -> AirHold:
     _check_raw_root_begin(note, NoteType.AIRHOLD)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
     hold = AirHold(
+        t=air_t,
+        x=air_x,
+        w=air_w,
         h=note.h,
-        _air_info=air_info,
-        _air_id=air_id,
         _info=note.info,
         _id=note._id,
     )

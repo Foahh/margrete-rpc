@@ -21,15 +21,15 @@ def _collect_geometry(note: RawNote) -> list[tuple[int, int, int, int]]:
 
 
 def test_note_ground_with_air_and_air_slide_shifts_all_raw():
-    tap = Tap(t=100, x=4, w=2).with_air(AirSlide(h=80).with_step(t=200, x=8, w=2, h=100))
+    tap = Tap(t=100, x=4, w=2).with_air(AirSlide(t=100, x=4, w=2, h=80).with_step(t=200, x=8, w=2, h=100))
 
     tap.shift(t=5, h=10)
 
     assert tap.t == 105
     air = tap._air
     assert isinstance(air, AirSlide)
+    assert air.t == 105
     assert air.h == 90
-    assert air._air_info.h == 90
     assert air.joints[-1].t == 205
     assert air.joints[-1].h == 110
 
@@ -51,7 +51,7 @@ def test_note_hold_and_slide_air_shift():
     hold = (
         Hold(t=50, x=1, w=3)
         .with_step(t=120, x=1, w=3)
-        .with_air(AirHold(h=70).with_step(t=160, x=1, w=3, h=70))
+        .with_air(AirHold(t=120, x=1, w=3, h=70).with_step(t=160, x=1, w=3, h=70))
     )
     hold.shift(t=3)
 
@@ -59,9 +59,10 @@ def test_note_hold_and_slide_air_shift():
     end = hold.joints[-1]
     assert end.t == 123
     assert isinstance(hold._air, AirHold)
+    assert hold._air.t == 123
     assert hold._air.joints[-1].t == 163
 
-    slide = Slide(t=10, x=0, w=2).with_step(t=30, x=4, w=2).with_air(AirDirection.DOWN)
+    slide = Slide(t=10, x=0, w=2).with_step(t=30, x=4, w=2).with_air(Air(AirDirection.DOWN, t=30, x=4, w=2))
     slide.shift(h=20)
     assert slide._info.h == 100
     assert isinstance(slide._air, Air)
@@ -100,7 +101,7 @@ def test_shift_does_not_validate_negative_tick_or_width():
 
 
 def test_shift_callable_maps_every_tick_across_tree():
-    air = AirSlide(h=80).with_step(t=200, x=8, w=2, h=100)
+    air = AirSlide(t=100, x=2, w=4, h=80).with_step(t=200, x=8, w=2, h=100)
     slide = Slide(t=100, x=0, w=4).with_step(t=200, x=2, w=4).with_air(air)
     slide.shift(t=lambda v: v * 2)
     assert slide.t == 200
@@ -116,11 +117,10 @@ def test_shift_callable_per_field_mixes_with_int_delta():
 
 
 def test_shift_air_slide_standalone_shifts_begin_and_joints():
-    air = AirSlide(h=80).with_step(t=200, x=8, w=2, h=100)
-    air._info.t = 100
+    air = AirSlide(t=100, x=8, w=2, h=80).with_step(t=200, x=8, w=2, h=100)
     air.shift(t=5, h=10)
-    assert int(air._info.t) == 105
-    assert air._air_info.h == 90
+    assert air.t == 105
+    assert air.h == 90
     assert air.joints[-1].t == 205
     assert air.joints[-1].h == 110
 

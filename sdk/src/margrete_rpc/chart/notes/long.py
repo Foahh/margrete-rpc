@@ -13,6 +13,7 @@ from .color import (
 )
 from .joint import AirJoint, Joint, _AirJointHost, _JointHost, _JointHostBase
 from .shared import (
+    _check_air_matches,
     _check_tick,
     _check_width,
     _copy_info,
@@ -69,13 +70,9 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         host = cast(_JointHostBase, self)
         host._validate_joints(self._info)
         if self._air is not None:
-            children = host._build_long_children(
-                self._note_type,
-                self._terminus_attr,
-                self._info,
-                skip_validation=True,
-            )
-            self._air._validate_with_anchor(children[-1].info)
+            self._air.validate()
+            last = self._joints[-1]
+            _check_air_matches(int(self._air.t), self._air.x, self._air.w, int(last.t), last.x, last.w)
 
     def _to_raw_tree(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
@@ -92,7 +89,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             if not root.children:
                 raise ValueError("attached air requires an end joint")
             root.children[-1].children.append(
-                self._air._to_raw(root.children[-1].info, skip_validation=skip_validation)
+                self._air.to_raw(skip_validation=skip_validation)
             )
         return root
 

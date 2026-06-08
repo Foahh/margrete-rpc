@@ -7,24 +7,28 @@ from ..time import Tick
 from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _AirJointHost
 from .shared import (
+    _check_tick,
+    _check_width,
     _copy_info,
     _direction_property,
+    _GeometryInfoMixin,
     _HeightMixin,
-    _info_property,
     _note_enum_line,
     _TransformMixin,
 )
 from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
 
 
-class Air:
+class Air(_GeometryInfoMixin, _TransformMixin):
     dir = _direction_property(AirDirection, "air")
-    til = _info_property("til")
 
     def __init__(
         self,
         dir: AirDirectionLike,
         *,
+        t: Tick,
+        x: int,
+        w: int,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -32,6 +36,9 @@ class Air:
         self._id = _id
         self._info.type = NoteType.AIR
         self._info.long_attr = LongAttr.NONE
+        self.t = t
+        self.x = x
+        self.w = w
         self.dir = dir
 
     @property
@@ -43,28 +50,17 @@ class Air:
         self._info.ex_attr = ExAttr.INVERT if value else ExAttr.NONE
 
     def validate(self) -> None:
+        _check_tick(self.t)
+        _check_width(self.w)
         self.dir
 
-    def _validate_with_anchor(self, anchor: NoteInfo) -> None:
-        del anchor
-        self.validate()
-
-    def _to_raw(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
-            self._validate_with_anchor(anchor)
-        return RawNote(
-            info=self._info.copy(
-                type=NoteType.AIR,
-                long_attr=LongAttr.NONE,
-                t=anchor.t,
-                x=anchor.x,
-                w=anchor.w,
-            ),
-            _id=self._id,
-        )
+            self.validate()
+        return RawNote(info=self._info.copy(), _id=self._id)
 
     def __str__(self) -> str:
-        parts = [f"dir={_note_enum_line(self.dir)}"]
+        parts = [f"t={int(self.t)}", f"x={self.x}", f"w={self.w}", f"dir={_note_enum_line(self.dir)}"]
         if self._id is not None:
             parts.append(f"id={self._id}")
         if self.inverted:
@@ -74,35 +70,29 @@ class Air:
     __repr__ = __str__
 
 
-class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
+class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _AirJointHost):
     _note_type: NoteType
     _joint_type = AirJoint
 
     def __init__(
         self,
         *,
+        t: Tick,
+        x: int,
+        w: int,
         h: int,
-        _air_info: NoteInfo | None = None,
-        _air_id: int | None = None,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        self._air_info = _copy_info(_air_info)
-        self._air_id = _air_id
         self._info = _copy_info(_info)
         self._id = _id
         self._joints: list[Joint] = []
-        self._air_info.type = NoteType.AIR
-        self._air_info.long_attr = LongAttr.NONE
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
-        if _air_info is None:
-            self._air_info.direction = AirDirection.UP
-            self._air_info.h = h
-        if _info is None:
-            self._info.h = h
-        else:
-            self.h = h
+        self.t = t
+        self.x = x
+        self.w = w
+        self.h = h
 
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
@@ -111,30 +101,27 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
         del joint
         raise NotImplementedError
 
-    def _air_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
-        return self._air_info.copy(t=anchor.t, x=anchor.x, w=anchor.w)
-
-    def _begin_info_with_anchor(self, anchor: NoteInfo) -> NoteInfo:
-        return self._info.copy(t=anchor.t, x=anchor.x, w=anchor.w)
-
     def validate(self) -> None:
-        self._validate_with_anchor(self._begin_info_for_defaults())
+        _check_tick(self.t)
+        _check_width(self.w)
+        self._validate_joints(self._info)
 
-    def _validate_with_anchor(self, anchor: NoteInfo) -> None:
-        self._validate_joints(self._begin_info_with_anchor(anchor))
-
-    def _to_raw(self, anchor: NoteInfo, *, skip_validation: bool = False) -> RawNote:
-        begin_info = self._begin_info_with_anchor(anchor)
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
-            self._validate_joints(begin_info)
-        action = RawNote(info=begin_info, _id=self._id)
+            self._validate_joints(self._info)
+        action = RawNote(info=self._info.copy(), _id=self._id)
         action.children = self._build_long_children(
             self._note_type,
             self._terminus_attr,
-            begin_info,
+            self._info,
             skip_validation=skip_validation,
         )
-        air = RawNote(info=self._air_info_with_anchor(anchor), _id=self._air_id)
+        air_info = self._info.copy(
+            type=NoteType.AIR,
+            long_attr=LongAttr.NONE,
+            direction=AirDirection.UP,
+        )
+        air = RawNote(info=air_info, _id=None)
         air.children.append(action)
         return air
 
@@ -149,7 +136,7 @@ class _AttachableAirLong(_HeightMixin, _TransformMixin, _AirJointHost):
         return copy
 
     def __str__(self) -> str:
-        parts = [f"h={self.h}"]
+        parts = [f"t={int(self.t)}", f"x={self.x}", f"w={self.w}", f"h={self.h}"]
         if self._id is not None:
             parts.append(f"id={self._id}")
         head = ", ".join(parts)
@@ -186,23 +173,21 @@ class _AirAttachable:
         return self._air
 
     @air.setter
-    def air(self, value: AirDirectionLike | Air | AirSlide | AirHold | None) -> None:
+    def air(self, value: Air | AirSlide | AirHold | None) -> None:
         if value is None:
             self._air = None
             return
-        if isinstance(value, (AirDirection, str)):
-            value = Air(value)
         if not isinstance(value, (Air, AirSlide, AirHold)):  # pyright: ignore[reportUnnecessaryIsInstance]
-            raise TypeError("air expects air direction, Air, AirSlide, or AirHold")
+            raise TypeError("air expects Air, AirSlide, or AirHold")
         self._air = value
 
-    def with_air(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
+    def with_air(self, air: Air | AirSlide | AirHold) -> Self:
         from .transform import _clone
 
         new: Self = _clone(cast(Any, self))
         new.air = air
         return new
 
-    def add_air(self, air: AirDirectionLike | Air | AirSlide | AirHold) -> Self:
+    def add_air(self, air: Air | AirSlide | AirHold) -> Self:
         self.air = air
         return self
