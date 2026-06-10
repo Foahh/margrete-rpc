@@ -111,6 +111,19 @@ class Note(Protocol):
         """Return a :meth:`clone` flipped within ``field``, leaving ``self`` unchanged."""
         ...
 
+    def clamp_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+        """Clamp the note's lane extent to ``[left, right)``, in place; returns ``self``.
+
+        Args:
+            left: Inclusive left boundary lane index (default 0).
+            right: Exclusive right boundary lane index (default :data:`STANDARD_FIELD_WIDTH`).
+        """
+        ...
+
+    def clamped_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+        """Return a :meth:`clone` with the lane extent clamped, leaving ``self`` unchanged."""
+        ...
+
     def clone(self) -> Self:
         """Return a deep copy of the note (without its server-assigned id)."""
         ...
@@ -281,6 +294,14 @@ class _TransformMixin:
 
     def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
         return self.clone().flip(field=field)
+
+    def clamp_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+        from .transform import _clamp_w
+
+        return cast(Self, _clamp_w(cast(Any, self), left, right))
+
+    def clamped_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+        return self.clone().clamp_w(left=left, right=right)
 
     def clone(self) -> Self:
         from .transform import _clone

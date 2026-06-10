@@ -97,6 +97,28 @@ def _flip(note: Note, field: int) -> Note:
     return note
 
 
+# ---------------------------------------------------------------------------- clamp_w
+
+
+def _apply_clamp_w(x: int, w: int, left: int, right: int) -> tuple[int, int]:
+    if x < left:
+        w = max(1, w - (left - x))
+        x = left
+    if x + w > right:
+        if x >= right:
+            x = right - 1
+        w = max(1, right - x)
+    return x, w
+
+
+def _clamp_w(note: Note, left: int, right: int) -> Note:
+    if left >= right:
+        raise ValueError("left must be less than right")
+    for info in _iter_infos(note):
+        info.x, info.w = _apply_clamp_w(info.x, info.w, left, right)
+    return note
+
+
 # ------------------------------------------------------------------------------- align
 
 

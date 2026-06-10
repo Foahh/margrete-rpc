@@ -398,6 +398,80 @@ def test_split_errors():
         split(Hold(t=0, x=1, w=3).with_step(t=100, x=1, w=3), 50)  # holds are not splittable
 
 
+# --------------------------------------------------------------------------- clamp_w
+
+
+def test_clamp_w_left_moves_x_and_shrinks_w():
+    tap = Tap(t=0, x=2, w=4)
+    tap.clamp_w(left=4)
+    assert tap.x == 4
+    assert tap.w == 2  # was 4, lost 2 from left side
+
+
+def test_clamp_w_left_minimum_width_one():
+    tap = Tap(t=0, x=0, w=1)
+    tap.clamp_w(left=3)
+    assert tap.x == 3
+    assert tap.w == 1
+
+
+def test_clamp_w_right_shrinks_w():
+    tap = Tap(t=0, x=13, w=5)
+    tap.clamp_w(right=16)
+    assert tap.x == 13
+    assert tap.w == 3  # 16 - 13
+
+
+def test_clamp_w_right_note_entirely_past_boundary():
+    tap = Tap(t=0, x=16, w=2)
+    tap.clamp_w(right=16)
+    assert tap.x == 15
+    assert tap.w == 1
+
+
+def test_clamp_w_no_change_when_within_bounds():
+    tap = Tap(t=0, x=4, w=4)
+    tap.clamp_w(left=0, right=STANDARD_FIELD_WIDTH)
+    assert tap.x == 4
+    assert tap.w == 4
+
+
+def test_clamped_w_returns_copy_leaves_original():
+    tap = Tap(t=0, x=0, w=6)
+    result = tap.clamped_w(left=2)
+    assert result is not tap
+    assert result._id is None
+    assert result.x == 2
+    assert result.w == 4
+    assert tap.x == 0  # original untouched
+
+
+def test_clamp_w_slide_applies_to_all_joints():
+    slide = Slide(t=0, x=1, w=3).with_step(t=100, x=13, w=5).with_step(t=200, x=0, w=8)
+    slide.clamp_w(left=2, right=15)
+    assert slide.x == 2 and slide.w == 2  # x was 1 -> 2, w was 3 -> 3-(2-1)=2
+    assert slide.joints[0].x == 13 and slide.joints[0].w == 2  # 13+5=18 > 15 -> w=15-13=2
+    assert slide.joints[1].x == 2 and slide.joints[1].w == 6  # x=0 -> 2, w=8-2=6; 2+6=8 <= 15
+
+
+def test_clamp_w_tap_with_air_clamps_air_too():
+    from margrete_rpc.chart.notes import Air, AirDirection
+
+    tap = Tap(t=0, x=0, w=6).with_air(Air(AirDirection.UP, t=0, x=0, w=6))
+    tap.clamp_w(left=2, right=14)
+    assert tap.x == 2 and tap.w == 4
+    assert tap._air.x == 2 and tap._air.w == 4
+
+
+def test_clamp_w_rejects_invalid_bounds():
+    import pytest
+
+    with pytest.raises(ValueError):
+        Tap(t=0, x=0, w=2).clamp_w(left=8, right=4)
+    with pytest.raises(ValueError):
+        Tap(t=0, x=0, w=2).clamp_w(left=4, right=4)
+
+
 # ----------------------------------------------------------------- round-trip safety
 
 
