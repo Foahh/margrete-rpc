@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 
+from .constants import DEFAULT_AIRCRUSH_GAP
 from .constants import TICKS_PER_BEAT as TICKS_PER_BEAT
 from .events import BeatEvent
 
@@ -241,6 +242,22 @@ def resolve_density(value: Division) -> int:
     return value
 
 
+def resolve_gap(gap_t: int | None, gap_d: tuple[int, int] | None) -> int:
+    """Resolve the gap_t / gap_d gap arguments to an int tick count.
+
+    ``gap_t`` is an integer tick count; ``gap_d`` is a ``(numerator, denominator)`` beat
+    division resolved through :func:`resolve_density`. The two are mutually exclusive;
+    when neither is given the gap defaults to ``DEFAULT_AIRCRUSH_GAP``.
+    """
+    if gap_t is not None and gap_d is not None:
+        raise ValueError("provide either gap_t or gap_d, not both")
+    if gap_d is not None:
+        return resolve_density(gap_d)
+    if gap_t is not None:
+        return gap_t
+    return DEFAULT_AIRCRUSH_GAP
+
+
 __all__ = [
     "TICKS_PER_BEAT",
     "Division",
@@ -258,4 +275,5 @@ __all__ = [
     "d2t",
     "t2d",
     "resolve_density",
+    "resolve_gap",
 ]

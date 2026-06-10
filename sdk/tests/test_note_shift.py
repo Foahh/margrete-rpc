@@ -76,7 +76,7 @@ def test_note_hold_and_slide_air_shift():
 
 def test_note_air_crush_shifts_begin_controls_and_end():
     crush = (
-        AirCrush(t=0, x=1, w=2, h=80, gap=5, color=Color.RED)
+        AirCrush(t=0, x=1, w=2, h=80, gap_t=5, color=Color.RED)
         .with_ctrl(t=50, x=2, w=2, h=90)
         .with_ctrl(t=100, x=3, w=2, h=70)
     )
@@ -87,7 +87,7 @@ def test_note_air_crush_shifts_begin_controls_and_end():
     assert crush.joints[0].h == 93
     assert crush.joints[1].t == 107
     assert crush.joints[1].h == 73
-    assert crush.gap == 5
+    assert crush.gap_t == 5
     assert crush.color is ColorValue.RED
 
 

@@ -229,15 +229,15 @@ def test_converted_hold_to_slide():
 
 def test_converted_slide_to_aircrush():
     slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
-    crush = slide.converted(AirCrush, h=80, gap=4)
+    crush = slide.converted(AirCrush, h=80, gap_t=4)
     assert isinstance(crush, AirCrush)
     assert crush.h == 80
-    assert crush.gap == 4
+    assert crush.gap_t == 4
     assert int(crush.joints[-1].t) == 100
 
 
 def test_converted_aircrush_to_airslide():
-    crush = AirCrush(t=0, x=2, w=2, h=80, gap=5).with_ctrl(t=100, x=4, w=2, h=100)
+    crush = AirCrush(t=0, x=2, w=2, h=80, gap_t=5).with_ctrl(t=100, x=4, w=2, h=100)
     air = crush.converted(AirSlide)
     assert isinstance(air, AirSlide)
     assert (int(air.t), air.x, air.w) == (0, 2, 2)
@@ -256,7 +256,7 @@ def test_convert_cross_shape_raises():
     with pytest.raises(ValueError):
         Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).converted(AirHold)
     with pytest.raises(ValueError):
-        AirCrush(t=0, x=0, w=2, h=80, gap=4).with_ctrl(t=100, x=2, w=2, h=80).converted(Hold)
+        AirCrush(t=0, x=0, w=2, h=80, gap_t=4).with_ctrl(t=100, x=2, w=2, h=80).converted(Hold)
 
 
 def test_convert_with_air_to_non_attachable_target_drops_air_silently():
@@ -267,7 +267,7 @@ def test_convert_with_air_to_non_attachable_target_drops_air_silently():
         .with_step(t=100, x=2, w=4)
         .with_air(Air(AirDirection.UP, t=100, x=2, w=4))
     )
-    crush = slide.converted(AirCrush, h=80, gap=4)
+    crush = slide.converted(AirCrush, h=80, gap_t=4)
     assert isinstance(crush, AirCrush)
     assert getattr(crush, "_air", None) is None
 
@@ -327,7 +327,7 @@ def test_merge_sorts_unordered_input_by_start_tick():
 
 def test_merge_rejects_mismatched_types_and_overlap():
     slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4)
-    crush = AirCrush(t=200, x=0, w=2, h=80, gap=4).with_ctrl(t=300, x=2, w=2, h=80)
+    crush = AirCrush(t=200, x=0, w=2, h=80, gap_t=4).with_ctrl(t=300, x=2, w=2, h=80)
     with pytest.raises(TypeError):
         merge([slide, crush])
     with pytest.raises(ValueError):  # second note starts before the first ends
@@ -372,12 +372,12 @@ def test_split_at_tick_interpolates_mid_segment():
 
 def test_split_then_merge_round_trips_air_crush():
     crush = (
-        AirCrush(t=0, x=2, w=2, h=80, gap=5, color=Color.RED)
+        AirCrush(t=0, x=2, w=2, h=80, gap_t=5, color=Color.RED)
         .with_ctrl(t=100, x=4, w=2, h=100)
         .with_ctrl(t=200, x=6, w=2, h=120)
     )
     first, second = split(crush, 100)
-    assert first.gap == 5
+    assert first.gap_t == 5
     assert first.color is ColorValue.RED
 
     merged = merge([first, second])

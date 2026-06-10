@@ -222,7 +222,7 @@ def _wrap_air_crush(note: RawNote) -> AirCrush:
         x=note.x,
         w=note.w,
         h=note.h,
-        gap=note.option_value,
+        gap_t=note.option_value,
         color=color_from_value(int(note.variation_id)),
         _info=note.info,
         _id=note._id,

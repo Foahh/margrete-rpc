@@ -5,8 +5,7 @@ from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..constants import DEFAULT_AIRCRUSH_GAP
-from ..time import Division, Position, resolve_tp
+from ..time import Division, Position, resolve_gap, resolve_tp
 from .color import Color, ColorLike, ColorValue
 from .direction import (
     AirDirection,
@@ -200,7 +199,7 @@ class R:
         til: int | None = None,
         dir: DirectionValue | str | None = None,
         inverted: bool | None = None,
-        gap: int | tuple[int, int] | None = None,
+        gap: int | None = None,
         color: ColorLike | int | None = None,
     ) -> RawNote:
         note = RawNote(info=NoteInfo(type=note_type, long_attr=long_attr, x=x, w=w))
@@ -452,12 +451,22 @@ class R:
         x: int,
         w: int,
         h: int,
-        gap: int | tuple[int, int] = DEFAULT_AIRCRUSH_GAP,
+        gap_t: int | None = None,
+        gap_d: tuple[int, int] | None = None,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int | None = None,
     ) -> RawNote:
         return R._raw(
-            NoteType.AIRCRUSH, LongAttr.BEGIN, t, x, w, p=p, h=h, gap=gap, color=color, til=til
+            NoteType.AIRCRUSH,
+            LongAttr.BEGIN,
+            t,
+            x,
+            w,
+            p=p,
+            h=h,
+            gap=resolve_gap(gap_t, gap_d),
+            color=color,
+            til=til,
         )
 
     @staticmethod

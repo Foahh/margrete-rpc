@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Self, cast
 
 from ..constants import DEFAULT_H
-from ..time import Position, resolve_density, resolve_tp
+from ..time import Position, resolve_density, resolve_gap, resolve_tp, t2d
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -24,16 +24,6 @@ from .shared import (
     _TransformMixin,
 )
 from .types import LongAttr, NoteInfo, NoteType
-
-
-def _coerce_aircrush_gap_value(value: object) -> int:
-    if type(value) is int:
-        return value
-    if isinstance(value, tuple):
-        return resolve_density(cast("tuple[int, int]", value))
-    raise TypeError(
-        f"gap must be int or (numerator, denominator) tuple, got {type(value).__name__}"
-    )
 
 
 class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
@@ -106,7 +96,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             parts.append(f"id={self._id}")
         if isinstance(self, AirCrush):
             parts.append(f"h={self.h}")
-            parts.append(f"gap={self.gap}")
+            parts.append(f"gap_t={self.gap_t}")
             parts.append(f"color={_note_enum_line(self.color)}")
         head = ", ".join(parts)
         lines = [f"{cls}({head}"]
@@ -178,23 +168,32 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         x: int,
         w: int,
         h: int,
-        gap: int,
+        gap_t: int | None = None,
+        gap_d: tuple[int, int] | None = None,
         color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         super().__init__(t=t, p=p, x=x, w=w, _info=_info, _id=_id)
         self.h = h
-        self.gap = gap
+        self.gap_t = resolve_gap(gap_t, gap_d)
         self.color = color
 
     @property
-    def gap(self) -> int:
+    def gap_t(self) -> int:
         return int(self._info.option_value)
 
-    @gap.setter
-    def gap(self, value: object) -> None:
-        self._info.option_value = _coerce_aircrush_gap_value(value)
+    @gap_t.setter
+    def gap_t(self, value: int) -> None:
+        self._info.option_value = value
+
+    @property
+    def gap_d(self) -> tuple[int, int]:
+        return t2d(int(self._info.option_value))
+
+    @gap_d.setter
+    def gap_d(self, value: tuple[int, int]) -> None:
+        self._info.option_value = resolve_density(value)
 
     @property
     def color(self) -> ColorValue | int:

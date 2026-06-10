@@ -5,7 +5,7 @@ import math
 from collections.abc import Callable, Iterator, Sequence
 from typing import Any, NamedTuple, cast
 
-from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
+from ..constants import DEFAULT_H
 from ..time import Position, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import ColorValue
@@ -239,11 +239,14 @@ def _build_air_long(
     h0 = int(h0)
     new: AirSlide | AirHold | AirCrush
     if issubclass(target, AirCrush):
-        gap = overrides.get("gap", note.gap if isinstance(note, AirCrush) else DEFAULT_AIRCRUSH_GAP)
+        gap_t = overrides.get("gap_t")
+        gap_d = overrides.get("gap_d")
+        if gap_t is None and gap_d is None and isinstance(note, AirCrush):
+            gap_t = note.gap_t
         color = overrides.get(
             "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
         )
-        new = AirCrush(t=begin.t, x=begin.x, w=begin.w, h=h0, gap=gap, color=color)
+        new = AirCrush(t=begin.t, x=begin.x, w=begin.w, h=h0, gap_t=gap_t, gap_d=gap_d, color=color)
     else:
         new_air: AirSlide | AirHold = (
             AirSlide(t=begin.t, x=begin.x, w=begin.w, h=h0)
@@ -393,7 +396,7 @@ def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
         new: SlideLike = Slide(t=point.t, x=point.x, w=point.w)
     elif isinstance(note, AirCrush):
         h = point.h if point.h is not None else int(note._info.h)
-        new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color)
+        new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap_t=note.gap_t, color=note.color)
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
         new = AirSlide(t=point.t, x=point.x, w=point.w, h=h)
