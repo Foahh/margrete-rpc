@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from margrete_rpc.chart.notes import (
-    FIELD_WIDTH,
+    STANDARD_FIELD_WIDTH,
     AirCrush,
     AirHold,
     AirSlide,
@@ -139,7 +139,7 @@ def test_scale_about_pivot_keeps_pivot_fixed():
 def test_flip_mirrors_lane_and_is_self_inverse():
     tap = Tap(t=0, x=1, w=2)
     flipped = tap.flipped()
-    assert flipped.x == FIELD_WIDTH - 1 - 2
+    assert flipped.x == STANDARD_FIELD_WIDTH - 1 - 2
     assert flipped.flip().x == 1  # flipping twice restores
     assert tap.x == 1  # copy left original alone
 
@@ -162,8 +162,8 @@ def test_flip_recurses_into_joints_and_air():
         .with_air(Air(AirDirection.UP_LEFT, t=100, x=10, w=2))
     )
     slide.flip()
-    assert slide.x == FIELD_WIDTH - 0 - 2
-    assert slide.joints[0].x == FIELD_WIDTH - 10 - 2
+    assert slide.x == STANDARD_FIELD_WIDTH - 0 - 2
+    assert slide.joints[0].x == STANDARD_FIELD_WIDTH - 10 - 2
     assert slide._air.dir.value == "up_right"
 
 

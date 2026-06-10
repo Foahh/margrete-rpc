@@ -1,12 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-
-from ..time import Tick, resolve_tick
+from ..time import Position, resolve_tick
+from .shared import Delta
 from .types import NoteInfo
 
-type Delta = int | Callable[[int], int]
-type TickDelta = Tick | Callable[[int], int]
+
+def _resolve_shift_delta(t: Delta, p: Position | None) -> Delta:
+    """Pick the tick delta for a shift: ``t`` (int/callable) or a position ``p``.
+
+    The two are mutually exclusive; ``p`` is interpreted as a tick offset via ``resolve_tick``.
+    """
+    if p is None:
+        return t
+    if callable(t) or t != 0:
+        raise ValueError("provide either t or p to shift, not both")
+    return resolve_tick(p)
 
 
 def _combine(value: int, delta: Delta) -> int:
@@ -16,28 +24,21 @@ def _combine(value: int, delta: Delta) -> int:
     return int(value) + delta
 
 
-def _combine_tick(value: int, delta: TickDelta) -> int:
-    """Apply a tick delta: add a resolved tick, or map through a callable."""
-    if callable(delta):
-        return delta(int(value))
-    return int(value) + resolve_tick(delta)
-
-
-def _apply_deltas(info: NoteInfo, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> None:
-    info.t = _combine_tick(info.t, t)
+def _apply_deltas(info: NoteInfo, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
+    info.t = _combine(info.t, t)
     info.x = _combine(info.x, x)
     info.w = _combine(info.w, w)
     info.h = _combine(info.h, h)
 
 
-def _shift_joint(joint: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> None:
+def _shift_joint(joint: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .joint import Joint
 
     assert isinstance(joint, Joint)
     _apply_deltas(joint._info, t=t, x=x, w=w, h=h)
 
 
-def _shift_attachable_air(air: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> None:
+def _shift_attachable_air(air: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .air import Air, AirHold, AirSlide
 
     if isinstance(air, Air):
@@ -50,7 +51,7 @@ def _shift_attachable_air(air: object, *, t: TickDelta, x: Delta, w: Delta, h: D
         _shift_joint(joint, t=t, x=x, w=w, h=h)
 
 
-def _shift_ground(note: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> None:
+def _shift_ground(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .ground import Damage, Extap, Flick, Tap
 
     if not isinstance(note, (Tap, Extap, Flick, Damage)):
@@ -60,7 +61,7 @@ def _shift_ground(note: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -
         _shift_attachable_air(note._air, t=t, x=x, w=w, h=h)
 
 
-def _shift_long_builder(builder: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> None:
+def _shift_long_builder(builder: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .long import AirCrush, Hold, Slide
 
     if not isinstance(builder, (Slide, Hold, AirCrush)):
@@ -72,7 +73,7 @@ def _shift_long_builder(builder: object, *, t: TickDelta, x: Delta, w: Delta, h:
         _shift_attachable_air(builder._air, t=t, x=x, w=w, h=h)
 
 
-def _shift_air_long(note: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> None:
+def _shift_air_long(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> None:
     from .air import AirHold, AirSlide
 
     if not isinstance(note, (AirSlide, AirHold)):
@@ -82,7 +83,7 @@ def _shift_air_long(note: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta)
         _shift_joint(joint, t=t, x=x, w=w, h=h)
 
 
-def _is_noop(delta: TickDelta) -> bool:
+def _is_noop(delta: Delta) -> bool:
     return not callable(delta) and delta == 0
 
 
@@ -104,7 +105,7 @@ def _check_joint_order(note: object) -> None:
             prev = jt
 
 
-def _shift_note(note: object, *, t: TickDelta, x: Delta, w: Delta, h: Delta) -> object:
+def _shift_note(note: object, *, t: Delta, x: Delta, w: Delta, h: Delta) -> object:
     if _is_noop(t) and _is_noop(x) and _is_noop(w) and _is_noop(h):
         return note
     from .air import Air, AirHold, AirSlide

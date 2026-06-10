@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Self, cast
 
-from ..time import Tick, resolve_density, resolve_tick
+from ..constants import DEFAULT_H
+from ..time import Position, resolve_density, resolve_tp
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -41,7 +42,8 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -55,8 +57,8 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
         if _info is None:
-            self._info.h = 80
-        self.t = resolve_tick(t)
+            self._info.h = DEFAULT_H
+        self.t = resolve_tp(t, p)
         self.x = x
         self.w = w
 
@@ -121,14 +123,14 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
 class Slide(_AirAttachable, _PlaceableLong, _JointHost):
     _note_type = NoteType.SLIDE
 
-    def with_step(self, *, t: Tick, x: int, w: int) -> Self:
+    def with_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
         copy = self.clone()
-        copy.add_step(t=t, x=x, w=w)
+        copy.add_step(t=t, p=p, x=x, w=w)
         return copy
 
-    def with_ctrl(self, *, t: Tick, x: int, w: int) -> Self:
+    def with_ctrl(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
         copy = self.clone()
-        copy.add_ctrl(t=t, x=x, w=w)
+        copy.add_ctrl(t=t, p=p, x=x, w=w)
         return copy
 
     def converted[T: (AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
@@ -141,18 +143,18 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
 class Hold(_AirAttachable, _PlaceableLong, _JointHost):
     _note_type = NoteType.HOLD
 
-    def with_step(self, *, t: Tick, x: int, w: int) -> Self:
-        t = resolve_tick(t)
+    def with_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        tick = resolve_tp(t, p)
         copy = self.clone()
         if copy._joints:
-            if int(t) <= int(copy._info.t):
+            if int(tick) <= int(copy._info.t):
                 raise ValueError("end t must be later than the begin")
             joint = copy._joints[-1]
-            joint.t = t
+            joint.t = tick
             joint.x = x
             joint.w = w
         else:
-            copy.add_step(t=t, x=x, w=w)
+            copy.add_step(t=tick, x=x, w=w)
         return copy
 
     def converted[T: (Slide, AirSlide, AirCrush, AirHold)](
@@ -171,7 +173,8 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         h: int,
@@ -180,7 +183,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
+        super().__init__(t=t, p=p, x=x, w=w, _info=_info, _id=_id)
         self.h = h
         self.gap = gap
         self.color = color
@@ -201,9 +204,11 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def color(self, value: ColorLike | int) -> None:
         self._info.variation_id = color_to_value(value)
 
-    def with_ctrl(self, *, t: Tick, x: int, w: int, h: int) -> Self:
+    def with_ctrl(
+        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
+    ) -> Self:
         copy = self.clone()
-        copy.add_ctrl(t=t, x=x, w=w, h=h)
+        copy.add_ctrl(t=t, p=p, x=x, w=w, h=h)
         return copy
 
     def converted[T: (Slide, AirSlide)](self, target: type[T], **overrides: Any) -> T:

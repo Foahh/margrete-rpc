@@ -5,7 +5,8 @@ from typing import Any, Literal
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..time import Division, Tick, resolve_density, resolve_tick
+from ..constants import DEFAULT_H
+from ..time import Division, Position, resolve_density, resolve_tick, t2p
 from .color import (
     Color,
     ColorLike,
@@ -99,10 +100,12 @@ class NoteInfo:
         variation_id: ColorLike | int = Color.DEFAULT,
         x: int = 0,
         w: int = 0,
-        h: int = 80,
-        t: Tick = 0,
+        h: int = DEFAULT_H,
+        t: int = 0,
         til: int = 0,
         option_value: Division = 0,
+        *,
+        p: Position | None = None,
     ) -> None:
         self.type = type
         self.long_attr = long_attr
@@ -113,7 +116,7 @@ class NoteInfo:
         self.til = til
         self._direction = Direction(direction_to_proto(type, direction))
         self._variation_id = Color(color_to_value(variation_id))
-        self._t = resolve_tick(t)
+        self._t = resolve_tick(p) if p is not None else t
         self._option_value = resolve_density(option_value)
 
     @property
@@ -137,7 +140,15 @@ class NoteInfo:
         return self._t
 
     @t.setter
-    def t(self, value: Tick) -> None:
+    def t(self, value: int) -> None:
+        self._t = value
+
+    @property
+    def p(self) -> Position:
+        return t2p(self._t)
+
+    @p.setter
+    def p(self, value: Position) -> None:
         self._t = resolve_tick(value)
 
     @property
@@ -159,6 +170,7 @@ class NoteInfo:
             w=changes.get("w", self.w),
             h=changes.get("h", self.h),
             t=changes.get("t", self.t),
+            p=changes.get("p"),
             til=changes.get("til", self.til),
             option_value=changes.get("option_value", self.option_value),
         )

@@ -5,7 +5,8 @@ from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..time import Division, Tick
+from ..constants import DEFAULT_AIRCRUSH_GAP
+from ..time import Division, Position, resolve_tp
 from .color import Color, ColorLike, ColorValue
 from .direction import (
     AirDirection,
@@ -92,8 +93,16 @@ class RawNote:
         return self.info.t
 
     @t.setter
-    def t(self, value: Tick) -> None:
+    def t(self, value: int) -> None:
         self.info.t = value
+
+    @property
+    def p(self) -> Position:
+        return self.info.p
+
+    @p.setter
+    def p(self, value: Position) -> None:
+        self.info.p = value
 
     @property
     def w(self) -> int:
@@ -182,10 +191,11 @@ class R:
     def _raw(
         note_type: NoteType,
         long_attr: LongAttr,
-        t: Tick,
+        t: int | None,
         x: int,
         w: int,
         *,
+        p: Position | None = None,
         h: int | None = None,
         til: int | None = None,
         dir: DirectionValue | str | None = None,
@@ -194,7 +204,7 @@ class R:
         color: ColorLike | int | None = None,
     ) -> RawNote:
         note = RawNote(info=NoteInfo(type=note_type, long_attr=long_attr, x=x, w=w))
-        note.t = t
+        note.t = resolve_tp(t, p)
         if h is not None:
             note.h = h
         if til is not None:
@@ -212,149 +222,267 @@ class R:
     # --------------------------------------------------------------------- ground
 
     @staticmethod
-    def tap(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.TAP, LongAttr.NONE, t, x, w, til=til)
+    def tap(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.TAP, LongAttr.NONE, t, x, w, p=p, til=til)
 
     @staticmethod
     def extap(
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         dir: ExtapDirectionLike | int = ExtapDirection.UP,
         til: int | None = None,
     ) -> RawNote:
-        return R._raw(NoteType.EXTAP, LongAttr.NONE, t, x, w, dir=dir, til=til)
+        return R._raw(NoteType.EXTAP, LongAttr.NONE, t, x, w, p=p, dir=dir, til=til)
 
     @staticmethod
     def flick(
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         dir: FlickDirectionLike | int = FlickDirection.AUTO,
         til: int | None = None,
     ) -> RawNote:
-        return R._raw(NoteType.FLICK, LongAttr.NONE, t, x, w, dir=dir, til=til)
+        return R._raw(NoteType.FLICK, LongAttr.NONE, t, x, w, p=p, dir=dir, til=til)
 
     @staticmethod
-    def damage(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.DAMAGE, LongAttr.NONE, t, x, w, til=til)
+    def damage(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.DAMAGE, LongAttr.NONE, t, x, w, p=p, til=til)
 
     # ----------------------------------------------------------------- ground long
 
     @staticmethod
-    def hold_begin(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.HOLD, LongAttr.BEGIN, t, x, w, til=til)
+    def hold_begin(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.HOLD, LongAttr.BEGIN, t, x, w, p=p, til=til)
 
     @staticmethod
-    def hold_end(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.HOLD, LongAttr.END, t, x, w, til=til)
+    def hold_end(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.HOLD, LongAttr.END, t, x, w, p=p, til=til)
 
     @staticmethod
-    def slide_begin(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, til=til)
+    def slide_begin(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, p=p, til=til)
 
     @staticmethod
-    def slide_step(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.SLIDE, LongAttr.STEP, t, x, w, til=til)
+    def slide_step(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.SLIDE, LongAttr.STEP, t, x, w, p=p, til=til)
 
     @staticmethod
-    def slide_control(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.SLIDE, LongAttr.CONTROL, t, x, w, til=til)
+    def slide_control(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.SLIDE, LongAttr.CONTROL, t, x, w, p=p, til=til)
 
     @staticmethod
-    def slide_curve_control(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.SLIDE, LongAttr.CURVE_CONTROL, t, x, w, til=til)
+    def slide_curve_control(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.SLIDE, LongAttr.CURVE_CONTROL, t, x, w, p=p, til=til)
 
     @staticmethod
-    def slide_end(*, t: Tick, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.SLIDE, LongAttr.END, t, x, w, til=til)
+    def slide_end(
+        *, t: int | None = None, p: Position | None = None, x: int, w: int, til: int | None = None
+    ) -> RawNote:
+        return R._raw(NoteType.SLIDE, LongAttr.END, t, x, w, p=p, til=til)
 
     # ------------------------------------------------------------------------- air
 
     @staticmethod
     def air(
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         dir: AirDirectionLike | int = AirDirection.UP,
         inverted: bool = False,
         til: int | None = None,
     ) -> RawNote:
-        return R._raw(NoteType.AIR, LongAttr.NONE, t, x, w, dir=dir, inverted=inverted, til=til)
+        return R._raw(
+            NoteType.AIR, LongAttr.NONE, t, x, w, p=p, dir=dir, inverted=inverted, til=til
+        )
 
     # -------------------------------------------------------------------- air slide
 
     @staticmethod
-    def air_slide_begin(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRSLIDE, LongAttr.BEGIN, t, x, w, h=h, til=til)
+    def air_slide_begin(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRSLIDE, LongAttr.BEGIN, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_slide_step(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRSLIDE, LongAttr.STEP, t, x, w, h=h, til=til)
+    def air_slide_step(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRSLIDE, LongAttr.STEP, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_slide_control(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRSLIDE, LongAttr.CONTROL, t, x, w, h=h, til=til)
+    def air_slide_control(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRSLIDE, LongAttr.CONTROL, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
     def air_slide_curve_control(
-        *, t: Tick, x: int, w: int, h: int, til: int | None = None
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
     ) -> RawNote:
-        return R._raw(NoteType.AIRSLIDE, LongAttr.CURVE_CONTROL, t, x, w, h=h, til=til)
+        return R._raw(NoteType.AIRSLIDE, LongAttr.CURVE_CONTROL, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_slide_end(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRSLIDE, LongAttr.END, t, x, w, h=h, til=til)
+    def air_slide_end(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRSLIDE, LongAttr.END, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_slide_end_noact(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRSLIDE, LongAttr.END_NOACT, t, x, w, h=h, til=til)
+    def air_slide_end_noact(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRSLIDE, LongAttr.END_NOACT, t, x, w, p=p, h=h, til=til)
 
     # --------------------------------------------------------------------- air hold
 
     @staticmethod
-    def air_hold_begin(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRHOLD, LongAttr.BEGIN, t, x, w, h=h, til=til)
+    def air_hold_begin(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRHOLD, LongAttr.BEGIN, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_hold_step(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRHOLD, LongAttr.STEP, t, x, w, h=h, til=til)
+    def air_hold_step(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRHOLD, LongAttr.STEP, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_hold_end(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRHOLD, LongAttr.END, t, x, w, h=h, til=til)
+    def air_hold_end(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRHOLD, LongAttr.END, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_hold_end_noact(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRHOLD, LongAttr.END_NOACT, t, x, w, h=h, til=til)
+    def air_hold_end_noact(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRHOLD, LongAttr.END_NOACT, t, x, w, p=p, h=h, til=til)
 
     # -------------------------------------------------------------------- air crush
 
     @staticmethod
     def air_crush_begin(
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         h: int,
-        gap: int | tuple[int, int] = 0,
+        gap: int | tuple[int, int] = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int | None = None,
     ) -> RawNote:
         return R._raw(
-            NoteType.AIRCRUSH, LongAttr.BEGIN, t, x, w, h=h, gap=gap, color=color, til=til
+            NoteType.AIRCRUSH, LongAttr.BEGIN, t, x, w, p=p, h=h, gap=gap, color=color, til=til
         )
 
     @staticmethod
-    def air_crush_control(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRCRUSH, LongAttr.CONTROL, t, x, w, h=h, til=til)
+    def air_crush_control(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRCRUSH, LongAttr.CONTROL, t, x, w, p=p, h=h, til=til)
 
     @staticmethod
-    def air_crush_end(*, t: Tick, x: int, w: int, h: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.AIRCRUSH, LongAttr.END, t, x, w, h=h, til=til)
+    def air_crush_end(
+        *,
+        t: int | None = None,
+        p: Position | None = None,
+        x: int,
+        w: int,
+        h: int,
+        til: int | None = None,
+    ) -> RawNote:
+        return R._raw(NoteType.AIRCRUSH, LongAttr.END, t, x, w, p=p, h=h, til=til)
 
 
 __all__ = ["R", "RawNote"]

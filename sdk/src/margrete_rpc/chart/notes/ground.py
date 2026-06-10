@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from ..time import Tick, resolve_tick
+from ..time import Position, resolve_tp
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
 from .raw import RawNote
@@ -23,7 +23,7 @@ from .types import LongAttr, NoteInfo, NoteType
 class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
     def __init__(
         self,
-        t: Tick,
+        t: int,
         x: int,
         w: int,
         _type: NoteType,
@@ -36,7 +36,7 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         self._air: Air | AirSlide | AirHold | None = None
         self._info.type = _type
         self._info.long_attr = LongAttr.NONE
-        self.t = resolve_tick(t)
+        self.t = t
         self.x = x
         self.w = w
         _check_tick(self.t)
@@ -86,13 +86,14 @@ class Tap(_GroundNote):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, NoteType.TAP, _copy_info(_info), _id)
+        super().__init__(resolve_tp(t, p), x, w, NoteType.TAP, _copy_info(_info), _id)
 
     def converted[T: (Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
         return cast(T, self._converted_to(target, **overrides))
@@ -102,13 +103,14 @@ class Damage(_GroundNote):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, NoteType.DAMAGE, _copy_info(_info), _id)
+        super().__init__(resolve_tp(t, p), x, w, NoteType.DAMAGE, _copy_info(_info), _id)
 
     def converted[T: (Tap, Extap, Flick)](self, target: type[T], **overrides: Any) -> T:
         return cast(T, self._converted_to(target, **overrides))
@@ -126,14 +128,15 @@ class Extap(_GroundNote):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         dir: ExtapDirectionLike | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, NoteType.EXTAP, _copy_info(_info), _id)
+        super().__init__(resolve_tp(t, p), x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.dir = dir
 
     def _base_raw(self) -> RawNote:
@@ -160,14 +163,15 @@ class Flick(_GroundNote):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         dir: FlickDirectionLike | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(t, x, w, NoteType.FLICK, _copy_info(_info), _id)
+        super().__init__(resolve_tp(t, p), x, w, NoteType.FLICK, _copy_info(_info), _id)
         self.dir = dir
 
     def _base_raw(self) -> RawNote:

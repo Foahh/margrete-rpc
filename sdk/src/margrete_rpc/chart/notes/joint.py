@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import ClassVar, Self
 
-from ..time import Tick, resolve_tick
+from ..constants import DEFAULT_H
+from ..time import Position, resolve_tp
 from .raw import RawNote
 from .shared import (
     _check_tick,
@@ -27,7 +28,8 @@ class Joint(_GeometryInfoMixin):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         _id: int | None = None,
@@ -36,10 +38,10 @@ class Joint(_GeometryInfoMixin):
         self._info = _copy_info(None)
         self._id = _id
         self._kind = JointKind.STEP
-        self.t = resolve_tick(t)
+        self.t = resolve_tp(t, p)
         self._info.x = x
         self._info.w = w
-        self._info.h = 80
+        self._info.h = DEFAULT_H
         self.kind = kind
         _check_width(w)
 
@@ -56,14 +58,15 @@ class AirJoint(Joint, _HeightMixin):
     def __init__(
         self,
         *,
-        t: Tick,
+        t: int | None = None,
+        p: Position | None = None,
         x: int,
         w: int,
         h: int,
         _id: int | None = None,
         kind: JointKindLike,
     ) -> None:
-        super().__init__(t=t, x=x, w=w, _id=_id, kind=kind)
+        super().__init__(t=t, p=p, x=x, w=w, _id=_id, kind=kind)
         self.h = h
 
 
@@ -170,7 +173,7 @@ class _JointHostBase:
 class _JointHost(_JointHostBase):
     def _make_joint(
         self,
-        t: Tick,
+        t: int,
         kind: JointKind,
         x: int,
         w: int,
@@ -182,16 +185,18 @@ class _JointHost(_JointHostBase):
             kind=kind,
         )
 
-    def add_step(self, *, t: Tick, x: int, w: int) -> Self:
-        self._add_joint(self._make_joint(t, JointKind.STEP, x, w))
+    def add_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.STEP, x, w))
         return self
 
-    def add_ctrl(self, *, t: Tick, x: int, w: int) -> Self:
-        self._add_joint(self._make_joint(t, JointKind.CONTROL, x, w))
+    def add_ctrl(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CONTROL, x, w))
         return self
 
-    def _add_curve_control(self, *, t: Tick, x: int, w: int) -> None:
-        self._add_joint(self._make_joint(t, JointKind.CURVE_CONTROL, x, w))
+    def _add_curve_control(
+        self, *, t: int | None = None, p: Position | None = None, x: int, w: int
+    ) -> None:
+        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CURVE_CONTROL, x, w))
 
 
 class _AirJointHost(_JointHostBase):
@@ -199,7 +204,7 @@ class _AirJointHost(_JointHostBase):
 
     def _make_joint(
         self,
-        t: Tick,
+        t: int,
         kind: JointKind,
         x: int,
         w: int,
@@ -207,16 +212,22 @@ class _AirJointHost(_JointHostBase):
     ) -> AirJoint:
         return AirJoint(t=t, x=x, w=w, h=h, kind=kind)
 
-    def add_step(self, *, t: Tick, x: int, w: int, h: int) -> Self:
-        self._add_joint(self._make_joint(t, JointKind.STEP, x, w, h))
+    def add_step(
+        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
+    ) -> Self:
+        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.STEP, x, w, h))
         return self
 
-    def add_ctrl(self, *, t: Tick, x: int, w: int, h: int) -> Self:
-        self._add_joint(self._make_joint(t, JointKind.CONTROL, x, w, h))
+    def add_ctrl(
+        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
+    ) -> Self:
+        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CONTROL, x, w, h))
         return self
 
-    def _add_curve_control(self, *, t: Tick, x: int, w: int, h: int) -> None:
-        self._add_joint(self._make_joint(t, JointKind.CURVE_CONTROL, x, w, h))
+    def _add_curve_control(
+        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
+    ) -> None:
+        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CURVE_CONTROL, x, w, h))
 
 
 __all__ = ["AirJoint", "Joint", "_AirJointHost", "_JointHost", "_JointHostBase"]

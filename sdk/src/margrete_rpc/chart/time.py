@@ -5,13 +5,10 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 
+from .constants import TICKS_PER_BEAT as TICKS_PER_BEAT
 from .events import BeatEvent
 
-TICKS_PER_BEAT = 1920
-
-type Position = tuple[int, int, int]
-
-type Tick = int | Position
+type Position = tuple[int] | tuple[int, int] | tuple[int, int, int]
 type TickResolver = Callable[[Position], int]
 
 type Division = int | tuple[int, int]
@@ -184,13 +181,8 @@ def pop_tick_resolver(token: contextvars.Token[TickResolver | None]) -> None:
     _active_tick_resolver.reset(token)
 
 
-def resolve_tick(value: Tick) -> int:
-    """Coerce a tick argument to an int.
-
-    An int passes through unchanged. A ``(bar[, beat[, offset]])`` tuple is resolved
-    against the active edit context (set by ``open_edit``); with no active context it
-    falls back to a plain 4/4 time signature.
-    """
+def resolve_tick(value: int | Position) -> int:
+    """Coerce a tick argument to an int."""
     if isinstance(value, tuple):
         if not 1 <= len(value) <= 3:
             raise ValueError(
@@ -201,6 +193,16 @@ def resolve_tick(value: Tick) -> int:
             return resolver(value)
         return p2t(*value, beat_events=())
     return value
+
+
+def resolve_tp(t: int | None, p: Position | None) -> int:
+    if t is not None and p is not None:
+        raise ValueError("provide either t or p, not both")
+    if p is not None:
+        return resolve_tick(p)
+    if t is not None:
+        return t
+    raise ValueError("either t or p must be provided")
 
 
 def d2t(numerator: int, denominator: int) -> int:
@@ -243,7 +245,6 @@ __all__ = [
     "TICKS_PER_BEAT",
     "Division",
     "Position",
-    "Tick",
     "TickResolver",
     "TimeCalculator",
     "t2p",
@@ -251,6 +252,7 @@ __all__ = [
     "push_beat_events",
     "pop_beat_events",
     "resolve_tick",
+    "resolve_tp",
     "push_tick_resolver",
     "pop_tick_resolver",
     "d2t",

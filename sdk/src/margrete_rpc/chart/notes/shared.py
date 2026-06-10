@@ -4,15 +4,13 @@ from collections.abc import Callable
 from enum import IntEnum, StrEnum
 from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
 
-from ..time import Tick
+from ..constants import STANDARD_FIELD_WIDTH
+from ..time import Position
 from .direction import direction_from_proto
 from .raw import RawNote
 from .types import NoteInfo
 
-FIELD_WIDTH = 16
-
 type Delta = int | Callable[[int], int]
-type TickDelta = Tick | Callable[[int], int]
 
 type AlignMode = Literal["round", "floor", "ceil"]
 
@@ -26,7 +24,11 @@ class Note(Protocol):
     @property
     def t(self) -> int: ...
     @t.setter
-    def t(self, value: int | Tick) -> None: ...
+    def t(self, value: int) -> None: ...
+    @property
+    def p(self) -> Position: ...
+    @p.setter
+    def p(self, value: Position) -> None: ...
     @property
     def x(self) -> int: ...
     @property
@@ -34,21 +36,25 @@ class Note(Protocol):
     @property
     def til(self) -> int: ...
 
-    def shift(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
+    def shift(
+        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self: ...
 
-    def shifted(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
+    def shifted(
+        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self: ...
 
-    def scale(self, factor: float, *, pivot: int | Tick = 0) -> Self: ...
+    def scale(self, factor: float, *, pivot: int | Position = 0) -> Self: ...
 
-    def scaled(self, factor: float, *, pivot: int | Tick = 0) -> Self: ...
+    def scaled(self, factor: float, *, pivot: int | Position = 0) -> Self: ...
 
-    def align(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self: ...
+    def align(self, interval: int | Position, *, mode: AlignMode = "round") -> Self: ...
 
-    def aligned(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self: ...
+    def aligned(self, interval: int | Position, *, mode: AlignMode = "round") -> Self: ...
 
-    def flip(self, *, field: int = FIELD_WIDTH) -> Self: ...
+    def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self: ...
 
-    def flipped(self, *, field: int = FIELD_WIDTH) -> Self: ...
+    def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self: ...
 
     def clone(self) -> Self: ...
 
@@ -120,8 +126,17 @@ class _GeometryInfoMixin:
         return self._info.t
 
     @t.setter
-    def t(self, value: int | Tick) -> None:
+    def t(self, value: int) -> None:
         self._info.t = value
+        _check_tick(self._info.t)
+
+    @property
+    def p(self) -> Position:
+        return self._info.p
+
+    @p.setter
+    def p(self, value: Position) -> None:
+        self._info.p = value
         _check_tick(self._info.t)
 
     @property
@@ -166,36 +181,40 @@ class _TransformMixin:
     _info: NoteInfo
     _id: int | None
 
-    def shift(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
-        from .shift import _shift_note
+    def shift(
+        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self:
+        from .shift import _resolve_shift_delta, _shift_note
 
-        return cast(Self, _shift_note(self, t=t, x=x, w=w, h=h))
+        return cast(Self, _shift_note(self, t=_resolve_shift_delta(t, p), x=x, w=w, h=h))
 
-    def shifted(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
-        return self.clone().shift(t=t, x=x, w=w, h=h)
+    def shifted(
+        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self:
+        return self.clone().shift(t=t, p=p, x=x, w=w, h=h)
 
-    def scale(self, factor: float, *, pivot: int | Tick = 0) -> Self:
+    def scale(self, factor: float, *, pivot: int | Position = 0) -> Self:
         from .transform import _scale
 
         return cast(Self, _scale(cast(Any, self), factor, pivot))
 
-    def scaled(self, factor: float, *, pivot: int | Tick = 0) -> Self:
+    def scaled(self, factor: float, *, pivot: int | Position = 0) -> Self:
         return self.clone().scale(factor, pivot=pivot)
 
-    def align(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self:
+    def align(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
         from .transform import _align
 
         return cast(Self, _align(cast(Any, self), interval, mode))
 
-    def aligned(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self:
+    def aligned(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
         return self.clone().align(interval, mode=mode)
 
-    def flip(self, *, field: int = FIELD_WIDTH) -> Self:
+    def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
         from .transform import _flip
 
         return cast(Self, _flip(cast(Any, self), field))
 
-    def flipped(self, *, field: int = FIELD_WIDTH) -> Self:
+    def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
         return self.clone().flip(field=field)
 
     def clone(self) -> Self:

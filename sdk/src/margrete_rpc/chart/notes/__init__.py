@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ..constants import STANDARD_FIELD_WIDTH
 from .air import Air, AirHold, AirSlide
 from .color import (
     Color,
@@ -20,7 +21,7 @@ from .ground import Damage, Extap, Flick, Tap
 from .joint import AirJoint, Joint
 from .long import AirCrush, Hold, Slide
 from .raw import R, RawNote
-from .shared import FIELD_WIDTH, Note, UnsupportedNoteTree
+from .shared import Note, UnsupportedNoteTree
 from .transform import merge, split
 from .types import (
     ExAttr,
@@ -50,7 +51,7 @@ __all__ = [
     "Extap",
     "ExtapDirection",
     "ExtapDirectionLike",
-    "FIELD_WIDTH",
+    "STANDARD_FIELD_WIDTH",
     "Flick",
     "FlickDirection",
     "FlickDirectionLike",

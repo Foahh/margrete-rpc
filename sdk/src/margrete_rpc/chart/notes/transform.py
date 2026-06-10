@@ -5,7 +5,8 @@ import math
 from collections.abc import Callable, Iterator, Sequence
 from typing import Any, NamedTuple, cast
 
-from ..time import Tick, resolve_tick
+from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
+from ..time import Position, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import ColorValue
 from .direction import Direction
@@ -14,9 +15,6 @@ from .joint import AirJoint, Joint
 from .long import AirCrush, Hold, Slide
 from .shared import AlignMode, Note
 from .types import JointKind, JointKindLike
-
-_DEFAULT_H = 80
-_DEFAULT_AIRCRUSH_GAP = 0
 
 type SlideLike = Slide | AirSlide | AirCrush
 type LongLike = Slide | Hold | AirSlide | AirHold | AirCrush
@@ -118,7 +116,7 @@ def _snapper(step: int, mode: AlignMode) -> Callable[[int], int]:
     return snap
 
 
-def _align(note: Note, interval: int | Tick, mode: AlignMode) -> Note:
+def _align(note: Note, interval: int | Position, mode: AlignMode) -> Note:
     step = resolve_tick(interval)
     if step <= 0:
         raise ValueError("align interval must be positive")
@@ -128,7 +126,7 @@ def _align(note: Note, interval: int | Tick, mode: AlignMode) -> Note:
 # ------------------------------------------------------------------------------- scale
 
 
-def _scale(note: Note, factor: float, pivot: int | Tick) -> Note:
+def _scale(note: Note, factor: float, pivot: int | Position) -> Note:
     origin = int(resolve_tick(pivot))
     return note.shift(t=lambda v: round(origin + (v - origin) * factor))
 
@@ -237,13 +235,11 @@ def _build_air_long(
     is_air_source = isinstance(note, (AirSlide, AirHold, AirCrush))
     h0 = overrides.get("h")
     if h0 is None:
-        h0 = begin.h if is_air_source and begin.h is not None else _DEFAULT_H
+        h0 = begin.h if is_air_source and begin.h is not None else DEFAULT_H
     h0 = int(h0)
     new: AirSlide | AirHold | AirCrush
     if issubclass(target, AirCrush):
-        gap = overrides.get(
-            "gap", note.gap if isinstance(note, AirCrush) else _DEFAULT_AIRCRUSH_GAP
-        )
+        gap = overrides.get("gap", note.gap if isinstance(note, AirCrush) else DEFAULT_AIRCRUSH_GAP)
         color = overrides.get(
             "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
         )
@@ -333,7 +329,7 @@ def _interpolate(a: _Point, b: _Point, ts: int) -> _Point:
 
 
 def _locate_split(
-    note: SlideLike, begin: _Point, joints: list[_Point], at: Joint | int | Tick
+    note: SlideLike, begin: _Point, joints: list[_Point], at: Joint | int | Position
 ) -> tuple[_Point, list[_Point], list[_Point]]:
     if isinstance(at, Joint):
         try:
@@ -358,7 +354,7 @@ def _locate_split(
     raise ValueError("could not locate split segment")
 
 
-def split[T: SlideLike](note: T, at: Joint | int | Tick) -> tuple[T, T]:
+def split[T: SlideLike](note: T, at: Joint | int | Position) -> tuple[T, T]:
     """Divide a slide / air-slide / air-crush into two at a joint or tick."""
     if not isinstance(note, _SPLITTABLE):
         raise TypeError(

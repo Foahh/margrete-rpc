@@ -47,47 +47,58 @@ def test_resolve_tick_uses_active_resolver():
 
 def test_noteinfo_is_the_resolution_sink():
     # Construction resolves a tuple position to a tick (4/4 fallback).
-    assert NoteInfo(t=(1, 0, 0)).t == BAR
-    # Later assignment resolves too, and copy() (dataclasses.replace) goes through __init__.
+    assert NoteInfo(p=(1, 0, 0)).t == BAR
+    # The p setter resolves a position, and copy() (dataclasses.replace) goes through __init__.
     info = NoteInfo()
-    info.t = (0, 1)
+    info.p = (0, 1, 0)
     assert info.t == BEAT
-    assert info.copy(t=(2, 0)).t == 2 * BAR
-    # Plain ints pass straight through, including negatives (RawNote stays permissive).
+    assert info.copy(p=(2, 0)).t == 2 * BAR
+    # Plain ints pass straight through t, including negatives (RawNote stays permissive).
     info.t = -5
     assert info.t == -5
 
 
 def test_note_tap_accepts_position_tuple():
-    assert Tap(t=(1, 0), x=0, w=4).t == BAR
+    assert Tap(p=(1, 0), x=0, w=4).t == BAR
     assert Tap(t=1920, x=0, w=4).t == 1920  # int still works
 
 
 def test_note_chained_joints_accept_positions():
-    note = Tap(t=(1, 0), x=0, w=4).with_air(
-        AirSlide(t=(1, 0), x=0, w=4, h=80)
-        .with_ctrl(t=(1, 1), x=5, w=4, h=100)
-        .with_step(t=(1, 2), x=5, w=4, h=100)
+    note = Tap(p=(1, 0), x=0, w=4).with_air(
+        AirSlide(p=(1, 0), x=0, w=4, h=80)
+        .with_ctrl(p=(1, 1), x=5, w=4, h=100)
+        .with_step(p=(1, 2), x=5, w=4, h=100)
     )
     assert note.t == BAR
     assert [int(j.t) for j in note._air.joints] == [BAR + BEAT, BAR + 2 * BEAT]
 
 
 def test_note_slide_and_hold_steps_accept_positions():
-    slide = Slide(t=(0, 0), x=0, w=4).with_step(t=(0, 1), x=0, w=4).with_step(t=(0, 2), x=0, w=4)
+    slide = Slide(p=(0, 0), x=0, w=4).with_step(p=(0, 1), x=0, w=4).with_step(p=(0, 2), x=0, w=4)
     assert [int(j.t) for j in slide.joints] == [BEAT, 2 * BEAT]
 
-    hold = Hold(t=(0, 0), x=1, w=3).with_step(t=(1, 0), x=1, w=3)
+    hold = Hold(p=(0, 0), x=1, w=3).with_step(p=(1, 0), x=1, w=3)
     assert int(hold.joints[-1].t) == BAR
 
 
-def test_raw_factory_and_setter_accept_positions():
-    note = R.tap(t=(2, 0), x=4, w=2)
+def test_p_getter_computes_position_from_tick():
+    # p is computed from t (4/4 fallback): beat 1 of bar 1, plus a 1/8 offset.
+    tap = Tap(t=BAR + BEAT + 240, x=0, w=4)
+    assert tap.p == (1, 1, 240)
+    # round-trips back through the p setter
+    tap.p = tap.p
+    assert tap.t == BAR + BEAT + 240
+    assert NoteInfo(t=BAR).p == (1, 0, 0)
+    assert R.tap(t=BEAT, x=0, w=2).p == (0, 1, 0)
+
+
+def test_raw_factory_accepts_positions_and_p_setter_resolves():
+    note = R.tap(p=(2, 0), x=4, w=2)
     assert note.t == 2 * BAR
-    note.t = (0, 1, 0)
+    note.p = (0, 1, 0)
     assert note.t == BEAT
 
-    seg = R.slide_begin(t=(1, 0), x=0, w=4)
+    seg = R.slide_begin(p=(1, 0), x=0, w=4)
     assert seg.t == BAR
 
 
@@ -116,11 +127,11 @@ def test_open_edit_resolves_positions_against_chart_time_signature():
 
     with mg.open_edit("pos") as tx:
         # 3/4 => bar length is 3 * 480 = 1440 ticks
-        tap = Tap(t=(1, 0), x=0, w=4)
+        tap = Tap(p=(1, 0), x=0, w=4)
         assert tap.t == 3 * BEAT
-        assert Tap(t=(0, 2), x=0, w=4).t == 2 * BEAT  # beat 2 is valid in 3/4
+        assert Tap(p=(0, 2), x=0, w=4).t == 2 * BEAT  # beat 2 is valid in 3/4
         # the NoteInfo sink resolves against the same active context
-        assert NoteInfo(t=(1, 0)).t == 3 * BEAT
+        assert NoteInfo(p=(1, 0)).t == 3 * BEAT
         tx.chart.notes.append(tap)
 
     # resolver is removed once the transaction exits

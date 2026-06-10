@@ -382,13 +382,13 @@ def test_note_and_raw_tick_are_plain_int():
 
 
 def test_high_level_notes_accept_short_geometry_aliases():
-    tap = Tap(t=(1, 0), x=4, w=2)
+    tap = Tap(p=(1, 0), x=4, w=2)
     assert tap.t == TICKS_PER_BEAT
     assert tap.t == TICKS_PER_BEAT
     assert tap.w == 2
     assert tap.w == 2
 
-    tap.t = (0, 1)
+    tap.p = (0, 1, 0)
     tap.w = 3
     assert tap.t == d2t(1, 4)
     assert tap.w == 3
