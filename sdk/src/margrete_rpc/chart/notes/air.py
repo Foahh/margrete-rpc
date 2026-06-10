@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self, cast
 
-from ..time import Tick
+from ..time import Tick, resolve_tick
 from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _AirJointHost
 from .raw import RawNote
@@ -46,7 +46,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         self._id = _id
         self._info.type = NoteType.AIR
         self._info.long_attr = LongAttr.NONE
-        self.t = t
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
         self.dir = dir
@@ -104,7 +104,7 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         self._joints: list[Joint] = []
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
-        self.t = t
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
         self.h = h

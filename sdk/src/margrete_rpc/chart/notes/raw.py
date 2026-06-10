@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
@@ -149,11 +150,11 @@ class RawNote:
 
     def to_proto(self) -> messages_pb2.Note:
         proto = messages_pb2.Note(
-            type=messages_pb2.NoteType(int(self.type)),
-            long_attr=messages_pb2.LongAttr(int(self.long_attr)),
-            direction=messages_pb2.Direction(int(self.dir)),
-            ex_attr=messages_pb2.ExAttr(int(self.ex_attr)),
-            variation_id=messages_pb2.Color(int(self.variation_id)),
+            type=cast("messages_pb2.NoteType", int(self.type)),
+            long_attr=cast("messages_pb2.LongAttr", int(self.long_attr)),
+            direction=cast("messages_pb2.Direction", int(self.dir)),
+            ex_attr=cast("messages_pb2.ExAttr", int(self.ex_attr)),
+            variation_id=cast("messages_pb2.Color", int(self.variation_id)),
             x=self.x,
             width=self.w,
             height=self.h,
@@ -187,7 +188,7 @@ class R:
         *,
         h: int | None = None,
         til: int | None = None,
-        dir: object | None = None,
+        dir: DirectionValue | str | None = None,
         inverted: bool | None = None,
         gap: int | tuple[int, int] | None = None,
         color: ColorLike | int | None = None,

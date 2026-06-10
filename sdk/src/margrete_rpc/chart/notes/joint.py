@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import ClassVar, Self
 
-from ..time import Tick
+from ..time import Tick, resolve_tick
 from .raw import RawNote
 from .shared import (
     _check_tick,
@@ -36,7 +36,7 @@ class Joint(_GeometryInfoMixin):
         self._info = _copy_info(None)
         self._id = _id
         self._kind = JointKind.STEP
-        self.t = t
+        self.t = resolve_tick(t)
         self._info.x = x
         self._info.w = w
         self._info.h = 80

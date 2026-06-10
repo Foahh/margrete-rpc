@@ -56,7 +56,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         self._info.long_attr = LongAttr.BEGIN
         if _info is None:
             self._info.h = 80
-        self.t = t
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
 

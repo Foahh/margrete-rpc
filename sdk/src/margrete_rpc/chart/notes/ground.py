@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from ..time import Tick
+from ..time import Tick, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
 from .raw import RawNote
@@ -36,7 +36,7 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         self._air: Air | AirSlide | AirHold | None = None
         self._info.type = _type
         self._info.long_attr = LongAttr.NONE
-        self.t = t
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
         _check_tick(self.t)

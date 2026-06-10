@@ -152,14 +152,11 @@ def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, 
     new: _GroundNote = cast(Any, target)(t=int(note.t), x=note.x, w=note.w)
     new._info.til = note._info.til
     new._info.ex_attr = note._info.ex_attr
-    if isinstance(new, Extap):
+    if isinstance(new, (Extap, Flick)):
         if "dir" in overrides:
             new.dir = overrides["dir"]
-        elif isinstance(note, Extap):
-            try:
-                new.dir = note.dir
-            except (ValueError, TypeError):
-                pass
+        elif type(note) is type(new):
+            new._info.direction = note._info.direction
     if isinstance(new, _AirAttachable):
         air = note._air
         if air is not None:

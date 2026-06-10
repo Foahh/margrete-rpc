@@ -92,7 +92,6 @@ def _enum_line(value: IntEnum | StrEnum) -> str:
 class NoteInfo:
     def __init__(
         self,
-        *,
         type: NoteType = NoteType.UNKNOWN,
         long_attr: LongAttr = LongAttr.NONE,
         direction: DirectionValue | str = Direction.UP,
