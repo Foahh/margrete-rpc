@@ -32,12 +32,13 @@ from margrete_rpc.chart.notes import (
     Note,
     NoteInfo,
     NoteType,
+    R,
+    RawNote,
     Slide,
     Tap,
     UnsupportedNoteTree,
     wrap_raw_note,
 )
-from margrete_rpc.chart.raw import R, RawNote
 from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
 
 
@@ -135,11 +136,12 @@ def test_new_note_api_is_exported_from_namespaced_packages():
         Hold,
         Note,
         NoteInfo,
+        R,
+        RawNote,
         Slide,
         Tap,
         UnsupportedNoteTree,
     )
-    from margrete_rpc.chart.raw import R, RawNote
     from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
 
     assert R.tap(t=0, x=4, w=2).type is NoteType.TAP
@@ -158,8 +160,7 @@ def test_new_note_api_is_exported_from_namespaced_packages():
 
 
 def test_margrete_native_and_sdk_note_names_are_namespaced():
-    from margrete_rpc.chart.notes import Note
-    from margrete_rpc.chart.raw import R, RawNote
+    from margrete_rpc.chart.notes import Note, R, RawNote
 
     assert R.tap(t=0, x=4, w=2).type is NoteType.TAP
     assert RawNote().info == NoteInfo()
@@ -955,7 +956,9 @@ def test_debug_str_matches_repr_and_includes_tick_and_enum_name_value():
 
 
 def test_high_level_str_prints_attached_air_as_children():
-    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=8, w=2, h=100))
+    tap = Tap(t=0, x=4, w=2).with_air(
+        AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=8, w=2, h=100)
+    )
 
     lines = str(tap).splitlines()
 
@@ -1083,7 +1086,9 @@ def test_air_long_joints_use_explicit_geometry():
     assert isinstance(air_slide, AirSlide)
     assert all(isinstance(joint, AirJoint) for joint in air_slide.joints)
     hold_tap = Tap(t=0, x=6, w=2).with_air(
-        AirHold(t=0, x=6, w=2, h=120).with_step(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=7, w=2, h=130)
+        AirHold(t=0, x=6, w=2, h=120)
+        .with_step(t=480, x=6, w=2, h=120)
+        .with_ctrl(t=960, x=7, w=2, h=130)
     )
 
     slide_raw = slide_tap.to_raw().children[0].children[0]
@@ -1118,7 +1123,9 @@ def test_air_crush_joints_use_explicit_geometry():
 
 def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
     tap = Tap(t=0, x=4, w=2).with_air(
-        AirSlide(t=0, x=4, w=2, h=80).with_ctrl(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=8, w=2, h=80)
+        AirSlide(t=0, x=4, w=2, h=80)
+        .with_ctrl(t=480, x=6, w=2, h=120)
+        .with_ctrl(t=960, x=8, w=2, h=80)
     )
 
     RawNote = tap.to_raw()
@@ -1131,7 +1138,9 @@ def test_air_slide_forces_upward_air_and_promotes_control_to_end_noact():
 
 
 def test_control_terminus_differs_between_air_slide_and_ground_slide():
-    air_slide = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80).with_ctrl(t=480, x=4, w=2, h=80))
+    air_slide = Tap(t=0, x=4, w=2).with_air(
+        AirSlide(t=0, x=4, w=2, h=80).with_ctrl(t=480, x=4, w=2, h=80)
+    )
     slide = Slide(t=0, x=4, w=2).with_ctrl(t=480, x=4, w=2)
 
     air_slide_raw = air_slide.to_raw().children[0].children[0]
@@ -1170,14 +1179,18 @@ def test_air_note_owns_its_own_geometry_in_raw_output():
     raw_air = tap.to_raw(skip_validation=True).children[0]
 
     assert raw_air.t == 480  # air's own t, not tap's t=0
-    assert raw_air.x == 5   # air's own x, not tap's x=4
-    assert raw_air.w == 3   # air's own w, not tap's w=2
+    assert raw_air.x == 5  # air's own x, not tap's x=4
+    assert raw_air.w == 3  # air's own w, not tap's w=2
     assert raw_air.dir is Direction.UP
 
 
 def test_air_slide_and_air_hold_do_not_expose_color_on_note_builder():
-    tap = Tap(t=0, x=4, w=2).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=8, w=2, h=100))
-    hold = Tap(t=1200, x=4, w=2).with_air(AirHold(t=1200, x=4, w=2, h=120).with_ctrl(t=1680, x=4, w=2, h=140))
+    tap = Tap(t=0, x=4, w=2).with_air(
+        AirSlide(t=0, x=4, w=2, h=80).with_step(t=960, x=8, w=2, h=100)
+    )
+    hold = Tap(t=1200, x=4, w=2).with_air(
+        AirHold(t=1200, x=4, w=2, h=120).with_ctrl(t=1680, x=4, w=2, h=140)
+    )
 
     assert tap.to_raw().children[0].children[0].variation_id == 0
     assert hold.to_raw().children[0].children[0].variation_id == 0

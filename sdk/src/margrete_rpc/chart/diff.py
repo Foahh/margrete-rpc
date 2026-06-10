@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart.chart import Chart, ChartEvents, ChartNote
-from margrete_rpc.chart.raw import RawNote
+from margrete_rpc.chart.notes import RawNote
 
 
 @dataclass

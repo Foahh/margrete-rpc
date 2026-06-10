@@ -13,8 +13,8 @@ Anything below ``dark_threshold`` (L in OpenCV 0-255 scale) also becomes BLACK.
 import cv2
 import numpy as np
 
+from margrete_rpc.chart.notes import R, RawNote
 from margrete_rpc.chart.notes.color import Color
-from margrete_rpc.chart.raw import R, RawNote
 
 # ---------------------------------------------------------------------------
 # Palette

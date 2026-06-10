@@ -10,9 +10,8 @@ from margrete_rpc.chart.events import (
     NoteSpeedEvent,
     TimelineSpeedEvent,
 )
-from margrete_rpc.chart.notes import Note, UnsupportedNoteTree
+from margrete_rpc.chart.notes import Note, RawNote, UnsupportedNoteTree
 from margrete_rpc.chart.notes.wrap import wrap_raw_note
-from margrete_rpc.chart.raw import RawNote
 
 type ChartNote = Note | RawNote
 

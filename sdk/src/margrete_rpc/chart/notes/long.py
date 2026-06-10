@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Self, cast
+from typing import Any, Self, cast
 
-from ..raw import RawNote
 from ..time import Tick, resolve_density, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
@@ -12,6 +11,7 @@ from .color import (
     color_value_from_proto,
 )
 from .joint import AirJoint, Joint, _AirJointHost, _JointHost, _JointHostBase
+from .raw import RawNote
 from .shared import (
     _check_air_matches,
     _check_tick,
@@ -72,7 +72,9 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         if self._air is not None:
             self._air.validate()
             last = self._joints[-1]
-            _check_air_matches(int(self._air.t), self._air.x, self._air.w, int(last.t), last.x, last.w)
+            _check_air_matches(
+                int(self._air.t), self._air.x, self._air.w, int(last.t), last.x, last.w
+            )
 
     def _to_raw_tree(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
@@ -88,9 +90,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         if self._air is not None:
             if not root.children:
                 raise ValueError("attached air requires an end joint")
-            root.children[-1].children.append(
-                self._air.to_raw(skip_validation=skip_validation)
-            )
+            root.children[-1].children.append(self._air.to_raw(skip_validation=skip_validation))
         return root
 
     def __str__(self) -> str:
@@ -131,6 +131,9 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
         copy.add_ctrl(t=t, x=x, w=w)
         return copy
 
+    def converted[T: (AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))
+
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         return self._to_raw_tree(skip_validation=skip_validation)
 
@@ -151,6 +154,11 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
         else:
             copy.add_step(t=t, x=x, w=w)
         return copy
+
+    def converted[T: (Slide, AirSlide, AirCrush, AirHold)](
+        self, target: type[T], **overrides: Any
+    ) -> T:
+        return cast(T, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         return self._to_raw_tree(skip_validation=skip_validation)
@@ -197,6 +205,9 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         copy = self.clone()
         copy.add_ctrl(t=t, x=x, w=w, h=h)
         return copy
+
+    def converted[T: (Slide, AirSlide)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         return self._to_raw_tree(skip_validation=skip_validation)

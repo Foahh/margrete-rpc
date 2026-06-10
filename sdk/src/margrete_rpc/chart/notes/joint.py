@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import ClassVar, Self
 
-from ..raw import RawNote
 from ..time import Tick
+from .raw import RawNote
 from .shared import (
     _check_tick,
     _check_width,
@@ -70,6 +70,7 @@ class AirJoint(Joint, _HeightMixin):
 class _JointHostBase:
     _joints: list[Joint]
     _joint_type: ClassVar[type[Joint]] = Joint
+    _info: NoteInfo
 
     @property
     def joints(self) -> list[Joint]:

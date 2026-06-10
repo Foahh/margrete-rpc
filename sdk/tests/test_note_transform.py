@@ -42,7 +42,9 @@ def test_clone_is_deep_and_detached():
 
 
 def test_clone_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=5).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=5).with_air(
+        AirSlide(t=0, x=4, w=2, h=80).with_step(t=100, x=8, w=2, h=90)
+    )
     tap._air._id = 7
 
     clone = tap.clone()
@@ -154,8 +156,10 @@ def test_flip_custom_field_width():
 def test_flip_recurses_into_joints_and_air():
     from margrete_rpc.chart.notes import Air, AirDirection
 
-    slide = Slide(t=0, x=0, w=2).with_step(t=100, x=10, w=2).with_air(
-        Air(AirDirection.UP_LEFT, t=100, x=10, w=2)
+    slide = (
+        Slide(t=0, x=0, w=2)
+        .with_step(t=100, x=10, w=2)
+        .with_air(Air(AirDirection.UP_LEFT, t=100, x=10, w=2))
     )
     slide.flip()
     assert slide.x == FIELD_WIDTH - 0 - 2
@@ -182,7 +186,9 @@ def test_converted_returns_detached_copy_without_touching_original():
 
 
 def test_converted_ground_preserves_attached_air_detached():
-    tap = Tap(t=0, x=4, w=2, _id=4).with_air(AirSlide(t=0, x=4, w=2, h=80).with_step(t=100, x=8, w=2, h=90))
+    tap = Tap(t=0, x=4, w=2, _id=4).with_air(
+        AirSlide(t=0, x=4, w=2, h=80).with_step(t=100, x=8, w=2, h=90)
+    )
     extap = tap.converted(Extap)
     assert isinstance(extap, Extap)
     assert extap._air is not tap._air
@@ -256,7 +262,11 @@ def test_convert_cross_shape_raises():
 def test_convert_with_air_to_non_attachable_target_drops_air_silently():
     from margrete_rpc.chart.notes import Air, AirDirection
 
-    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=2, w=4).with_air(Air(AirDirection.UP, t=100, x=2, w=4))
+    slide = (
+        Slide(t=0, x=0, w=4)
+        .with_step(t=100, x=2, w=4)
+        .with_air(Air(AirDirection.UP, t=100, x=2, w=4))
+    )
     crush = slide.converted(AirCrush, h=80, gap=4)
     assert isinstance(crush, AirCrush)
     assert getattr(crush, "_air", None) is None

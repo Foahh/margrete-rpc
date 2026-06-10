@@ -7,10 +7,10 @@ from margrete_rpc.chart.notes import (
     Color,
     ColorValue,
     Hold,
+    RawNote,
     Slide,
     Tap,
 )
-from margrete_rpc.chart.raw import RawNote
 
 
 def _collect_geometry(note: RawNote) -> list[tuple[int, int, int, int]]:
@@ -21,7 +21,9 @@ def _collect_geometry(note: RawNote) -> list[tuple[int, int, int, int]]:
 
 
 def test_note_ground_with_air_and_air_slide_shifts_all_raw():
-    tap = Tap(t=100, x=4, w=2).with_air(AirSlide(t=100, x=4, w=2, h=80).with_step(t=200, x=8, w=2, h=100))
+    tap = Tap(t=100, x=4, w=2).with_air(
+        AirSlide(t=100, x=4, w=2, h=80).with_step(t=200, x=8, w=2, h=100)
+    )
 
     tap.shift(t=5, h=10)
 
@@ -62,7 +64,11 @@ def test_note_hold_and_slide_air_shift():
     assert hold._air.t == 123
     assert hold._air.joints[-1].t == 163
 
-    slide = Slide(t=10, x=0, w=2).with_step(t=30, x=4, w=2).with_air(Air(AirDirection.DOWN, t=30, x=4, w=2))
+    slide = (
+        Slide(t=10, x=0, w=2)
+        .with_step(t=30, x=4, w=2)
+        .with_air(Air(AirDirection.DOWN, t=30, x=4, w=2))
+    )
     slide.shift(h=20)
     assert slide._info.h == 100
     assert isinstance(slide._air, Air)

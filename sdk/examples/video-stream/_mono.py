@@ -7,7 +7,7 @@ frame, so the threshold adapts to each frame's histogram automatically.
 import cv2
 import numpy as np
 
-from margrete_rpc.chart.raw import R, RawNote
+from margrete_rpc.chart.notes import R, RawNote
 
 
 def frame_to_notes(

@@ -41,7 +41,7 @@ import psutil
 import sounddevice as sd
 
 from margrete_rpc import Margrete
-from margrete_rpc.chart.raw import RawNote
+from margrete_rpc.chart.notes import RawNote
 
 # A renderer maps (frame_bgr, base_tick, tick_per_row, x_offset) -> notes.
 type FrameConverter = Callable[[np.ndarray, int, int, int], list[RawNote]]

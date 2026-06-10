@@ -2,21 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import IntEnum, StrEnum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, Self, cast, overload, runtime_checkable
+from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
 
-from ..raw import RawNote
 from ..time import Tick
 from .direction import direction_from_proto
+from .raw import RawNote
 from .types import NoteInfo
-
-if TYPE_CHECKING:
-    from .air import AirHold, AirSlide
-    from .ground import Damage, Extap, Flick, Tap
-    from .long import AirCrush, Hold, Slide
 
 FIELD_WIDTH = 16
 
 type Delta = int | Callable[[int], int]
+type TickDelta = Tick | Callable[[int], int]
 
 type AlignMode = Literal["round", "floor", "ceil"]
 
@@ -27,14 +23,20 @@ class UnsupportedNoteTree(ValueError):
 
 @runtime_checkable
 class Note(Protocol):
-    t: int
-    x: int
-    w: int
-    til: int
+    @property
+    def t(self) -> int: ...
+    @t.setter
+    def t(self, value: int | Tick) -> None: ...
+    @property
+    def x(self) -> int: ...
+    @property
+    def w(self) -> int: ...
+    @property
+    def til(self) -> int: ...
 
-    def shift(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
+    def shift(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
 
-    def shifted(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
+    def shifted(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self: ...
 
     def scale(self, factor: float, *, pivot: int | Tick = 0) -> Self: ...
 
@@ -49,8 +51,6 @@ class Note(Protocol):
     def flipped(self, *, field: int = FIELD_WIDTH) -> Self: ...
 
     def clone(self) -> Self: ...
-
-    def converted[T: Note](self, target: type[T], **overrides: Any) -> T: ...
 
     def validate(self) -> None: ...
 
@@ -73,7 +73,9 @@ def _check_width(w: int) -> None:
         raise ValueError("w must be at least 1")
 
 
-def _check_air_matches(air_t: int, air_x: int, air_w: int, ref_t: int, ref_x: int, ref_w: int) -> None:
+def _check_air_matches(
+    air_t: int, air_x: int, air_w: int, ref_t: int, ref_x: int, ref_w: int
+) -> None:
     if air_t != ref_t or air_x != ref_x or air_w != ref_w:
         raise ValueError(
             f"air geometry (t={air_t}, x={air_x}, w={air_w}) "
@@ -91,7 +93,7 @@ def _get_direction[E: StrEnum](enum_type: type[E], info: NoteInfo) -> E:
         return value
     if isinstance(value, str):
         return enum_type(value)
-    return direction_from_proto(info.type, int(value))
+    return cast(E, direction_from_proto(info.type, int(value)))
 
 
 def _set_direction[E: StrEnum](
@@ -104,10 +106,10 @@ def _set_direction[E: StrEnum](
             result = direction_from_proto(info.type, int(value))
             if not isinstance(result, enum_type):
                 raise ValueError
-            direction = result 
+            direction = result
     except (TypeError, ValueError) as exc:
         raise ValueError(f"invalid {label} direction") from exc
-    info.direction = direction 
+    info.direction = direction
 
 
 class _GeometryInfoMixin:
@@ -164,18 +166,18 @@ class _TransformMixin:
     _info: NoteInfo
     _id: int | None
 
-    def shift(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+    def shift(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
         from .shift import _shift_note
 
-        return _shift_note(self, t=t, x=x, w=w, h=h)
+        return cast(Self, _shift_note(self, t=t, x=x, w=w, h=h))
 
-    def shifted(self, *, t: Delta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+    def shifted(self, *, t: TickDelta = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
         return self.clone().shift(t=t, x=x, w=w, h=h)
 
     def scale(self, factor: float, *, pivot: int | Tick = 0) -> Self:
         from .transform import _scale
 
-        return _scale(self, factor, pivot)
+        return cast(Self, _scale(cast(Any, self), factor, pivot))
 
     def scaled(self, factor: float, *, pivot: int | Tick = 0) -> Self:
         return self.clone().scale(factor, pivot=pivot)
@@ -183,7 +185,7 @@ class _TransformMixin:
     def align(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self:
         from .transform import _align
 
-        return _align(self, interval, mode)
+        return cast(Self, _align(cast(Any, self), interval, mode))
 
     def aligned(self, interval: int | Tick, *, mode: AlignMode = "round") -> Self:
         return self.clone().align(interval, mode=mode)
@@ -191,7 +193,7 @@ class _TransformMixin:
     def flip(self, *, field: int = FIELD_WIDTH) -> Self:
         from .transform import _flip
 
-        return _flip(self, field)
+        return cast(Self, _flip(cast(Any, self), field))
 
     def flipped(self, *, field: int = FIELD_WIDTH) -> Self:
         return self.clone().flip(field=field)
@@ -199,65 +201,9 @@ class _TransformMixin:
     def clone(self) -> Self:
         from .transform import _clone
 
-        return _clone(self)
+        return cast(Self, _clone(cast(Any, self)))
 
-    @overload
-    def converted[T: (Extap, Flick, Damage)](
-        self: Tap,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (Tap, Flick, Damage)](
-        self: Extap,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (Tap, Extap, Damage)](
-        self: Flick,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (Tap, Extap, Flick)](
-        self: Damage,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (AirSlide, AirCrush)](
-        self: Slide,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (Slide, AirCrush)](
-        self: AirSlide,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (Slide, AirSlide)](
-        self: AirCrush,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    @overload
-    def converted[T: (Slide, AirSlide, AirCrush, AirHold)](
-        self: Hold,
-        target: type[T],
-        **overrides: Any,
-    ) -> T: ...
-
-    def converted(self: object, target: type[object], **overrides: Any) -> Any:
+    def _converted_to(self, target: type[object], **overrides: Any) -> Any:
         from .transform import _convert
 
         return _convert(cast(Any, self), cast(Any, target), overrides)

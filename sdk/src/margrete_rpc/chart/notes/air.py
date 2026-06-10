@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-from typing import Any, Self, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
-from ..raw import RawNote
 from ..time import Tick
 from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _AirJointHost
+from .raw import RawNote
 from .shared import (
     _check_tick,
     _check_width,
     _copy_info,
-    _get_direction,
-    _set_direction,
     _GeometryInfoMixin,
+    _get_direction,
     _HeightMixin,
     _note_enum_line,
+    _set_direction,
     _TransformMixin,
 )
 from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
+
+if TYPE_CHECKING:
+    from .long import AirCrush, Slide
 
 
 class Air(_GeometryInfoMixin, _TransformMixin):
@@ -31,7 +34,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
 
     def __init__(
         self,
-        dir: AirDirectionLike,
+        dir: AirDirectionLike | int,
         *,
         t: Tick,
         x: int,
@@ -67,7 +70,12 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         return RawNote(info=self._info.copy(), _id=self._id)
 
     def __str__(self) -> str:
-        parts = [f"t={int(self.t)}", f"x={self.x}", f"w={self.w}", f"dir={_note_enum_line(self.dir)}"]
+        parts = [
+            f"t={int(self.t)}",
+            f"x={self.x}",
+            f"w={self.w}",
+            f"dir={_note_enum_line(self.dir)}",
+        ]
         if self._id is not None:
             parts.append(f"id={self._id}")
         if self.inverted:
@@ -161,6 +169,9 @@ class AirSlide(_AttachableAirLong):
         if joint.kind is JointKind.CONTROL:
             return LongAttr.END_NOACT
         return LongAttr.END
+
+    def converted[T: (Slide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))
 
 
 class AirHold(_AttachableAirLong):

@@ -19,6 +19,7 @@ from .direction import (
 from .ground import Damage, Extap, Flick, Tap
 from .joint import AirJoint, Joint
 from .long import AirCrush, Hold, Slide
+from .raw import R, RawNote
 from .shared import FIELD_WIDTH, Note, UnsupportedNoteTree
 from .transform import merge, split
 from .types import (
@@ -61,6 +62,8 @@ __all__ = [
     "LongAttr",
     "NoteInfo",
     "NoteType",
+    "R",
+    "RawNote",
     "Slide",
     "Tap",
     "UnsupportedNoteTree",

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
-from ..raw import RawNote
 from ..time import Tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
+from .raw import RawNote
 from .shared import (
     _check_air_matches,
     _check_tick,
     _check_width,
     _copy_info,
-    _get_direction,
-    _set_direction,
     _GeometryInfoMixin,
+    _get_direction,
     _note_enum_line,
+    _set_direction,
     _TransformMixin,
 )
 from .types import LongAttr, NoteInfo, NoteType
@@ -69,7 +69,9 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
         _check_width(self.w)
         if self._air is not None:
             self._air.validate()
-            _check_air_matches(int(self._air.t), self._air.x, self._air.w, int(self.t), self.x, self.w)
+            _check_air_matches(
+                int(self._air.t), self._air.x, self._air.w, int(self.t), self.x, self.w
+            )
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         if not skip_validation:
@@ -92,6 +94,9 @@ class Tap(_GroundNote):
     ) -> None:
         super().__init__(t, x, w, NoteType.TAP, _copy_info(_info), _id)
 
+    def converted[T: (Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))
+
 
 class Damage(_GroundNote):
     def __init__(
@@ -104,6 +109,9 @@ class Damage(_GroundNote):
         _id: int | None = None,
     ) -> None:
         super().__init__(t, x, w, NoteType.DAMAGE, _copy_info(_info), _id)
+
+    def converted[T: (Tap, Extap, Flick)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))
 
 
 class Extap(_GroundNote):
@@ -136,6 +144,9 @@ class Extap(_GroundNote):
     def _str_parts(self) -> list[str]:
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
+    def converted[T: (Tap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))
+
 
 class Flick(_GroundNote):
     @property
@@ -167,3 +178,5 @@ class Flick(_GroundNote):
     def _str_parts(self) -> list[str]:
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
+    def converted[T: (Tap, Extap, Damage)](self, target: type[T], **overrides: Any) -> T:
+        return cast(T, self._converted_to(target, **overrides))

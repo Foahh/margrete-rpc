@@ -67,7 +67,7 @@ mg = Margrete("127.0.0.1:48731")
 from margrete_rpc import Margrete
 from margrete_rpc.chart import BpmEvent
 from margrete_rpc.chart.notes import Tap
-from margrete_rpc.chart.raw import R
+from margrete_rpc.chart.notes import R
 
 mg = Margrete()
 

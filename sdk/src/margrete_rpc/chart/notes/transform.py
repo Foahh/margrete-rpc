@@ -38,7 +38,7 @@ class _Point(NamedTuple):
 # --------------------------------------------------------------------------- info walk
 
 
-def _iter_infos(note: Note) -> Iterator[Any]:
+def _iter_infos(note: Any) -> Iterator[Any]:
     """Yield every ``NoteInfo`` reachable from a note builder (begin, joints, air)."""
     yield note._info
     for joint in getattr(note, "_joints", ()) or ():
@@ -53,7 +53,7 @@ def _iter_infos(note: Note) -> Iterator[Any]:
 # ------------------------------------------------------------------------------- clone
 
 
-def _detach(note: object) -> None:
+def _detach(note: Any) -> None:
     note._id = None
     for joint in getattr(note, "_joints", ()) or ():
         joint._id = None
@@ -149,7 +149,7 @@ def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) ->
 
 
 def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, Any]) -> Note:
-    new = target(t=int(note.t), x=note.x, w=note.w)
+    new: _GroundNote = cast(Any, target)(t=int(note.t), x=note.x, w=note.w)
     new._info.til = note._info.til
     new._info.ex_attr = note._info.ex_attr
     if isinstance(new, Extap):
@@ -160,8 +160,10 @@ def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, 
                 new.dir = note.dir
             except (ValueError, TypeError):
                 pass
-    if isinstance(new, _AirAttachable) and getattr(note, "_air", None) is not None:
-        new._air = _clone_air(note._air)
+    if isinstance(new, _AirAttachable):
+        air = note._air
+        if air is not None:
+            new._air = _clone_air(air)
     new._id = None
     return new
 

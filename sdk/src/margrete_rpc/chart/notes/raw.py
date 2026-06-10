@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from .notes.color import Color, ColorLike, ColorValue
-from .notes.direction import (
+from ..time import Division, Tick
+from .color import Color, ColorLike, ColorValue
+from .direction import (
     AirDirection,
     AirDirectionLike,
     Direction,
@@ -15,13 +16,12 @@ from .notes.direction import (
     FlickDirection,
     FlickDirectionLike,
 )
-from .notes.types import (
+from .types import (
     ExAttr,
     LongAttr,
     NoteInfo,
     NoteType,
 )
-from .time import Division, Tick
 
 
 @dataclass
@@ -52,7 +52,7 @@ class RawNote:
 
     @dir.setter
     def dir(self, value: DirectionValue | str) -> None:
-        self.info.direction = value 
+        self.info.direction = value
 
     @property
     def ex_attr(self) -> ExAttr:
@@ -68,7 +68,7 @@ class RawNote:
 
     @variation_id.setter
     def variation_id(self, value: ColorLike | int) -> None:
-        self.info.variation_id = value 
+        self.info.variation_id = value
 
     @property
     def x(self) -> int:
@@ -84,7 +84,7 @@ class RawNote:
 
     @option_value.setter
     def option_value(self, value: Division) -> None:
-        self.info.option_value = value 
+        self.info.option_value = value
 
     @property
     def t(self) -> int:
@@ -92,7 +92,7 @@ class RawNote:
 
     @t.setter
     def t(self, value: Tick) -> None:
-        self.info.t = value 
+        self.info.t = value
 
     @property
     def w(self) -> int:
@@ -199,7 +199,7 @@ class R:
         if til is not None:
             note.til = til
         if dir is not None:
-            note.dir = dir 
+            note.dir = dir
         if inverted is not None:
             note.ex_attr = ExAttr.INVERT if inverted else ExAttr.NONE
         if gap is not None:

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from ..raw import RawNote
 from .air import Air, AirHold, AirSlide
 from .color import color_from_value
 from .ground import Damage, Extap, Flick, Tap, _GroundNote
 from .joint import _JointHostBase
 from .long import AirCrush, Hold, Slide
+from .raw import RawNote
 from .shared import Note, UnsupportedNoteTree
 from .types import LongAttr, NoteType
 
@@ -78,7 +78,9 @@ def _wrap_attached_air_note(note: RawNote) -> Air | AirSlide | AirHold:
         raise UnsupportedNoteTree("air may have only one long action")
     if not note.children:
         try:
-            return Air(note.dir, t=int(note.t), x=note.x, w=note.w, _info=note.info.copy(), _id=note._id)
+            return Air(
+                note.dir, t=int(note.t), x=note.x, w=note.w, _info=note.info.copy(), _id=note._id
+            )
         except ValueError as exc:
             raise UnsupportedNoteTree("unsupported air direction") from exc
     action = note.children[0]
