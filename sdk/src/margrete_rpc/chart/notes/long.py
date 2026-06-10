@@ -111,29 +111,52 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
 
 
 class Slide(_AirAttachable, _PlaceableLong, _JointHost):
+    """A ground slide: a long note threading through a sequence of joints.
+
+    Construct with the begin geometry (``t``/``p``, ``x``, ``w``), then add joints with
+    :meth:`add_step` / :meth:`add_ctrl` (in place) or :meth:`with_step` / :meth:`with_ctrl`
+    (returns a copy). A slide needs at least one joint and must end on a step or control
+    joint. An :class:`Air` note may be attached via :attr:`air`.
+    """
+
     _note_type = NoteType.SLIDE
 
     def with_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        """Return a copy with a step joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_step(t=t, p=p, x=x, w=w)
         return copy
 
     def with_ctrl(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_ctrl(t=t, p=p, x=x, w=w)
         return copy
 
     def converted[T: (AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` carrying this note's geometry and joints."""
         return cast(T, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        """Convert to a :class:`RawNote` tree (begin note with joint children)."""
         return self._to_raw_tree(skip_validation=skip_validation)
 
 
 class Hold(_AirAttachable, _PlaceableLong, _JointHost):
+    """A ground hold: a long note held from its begin to a single end joint.
+
+    Construct with the begin geometry, then set the end with :meth:`with_step` (or
+    :meth:`add_step`). An :class:`Air` note may be attached via :attr:`air`.
+    """
+
     _note_type = NoteType.HOLD
 
     def with_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        """Return a copy whose end joint is set (or moved) to the given timing/geometry.
+
+        Raises:
+            ValueError: If the end timing is not later than the hold's begin.
+        """
         tick = resolve_tp(t, p)
         copy = self.clone()
         if copy._joints:
@@ -150,13 +173,22 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
     def converted[T: (Slide, AirSlide, AirCrush, AirHold)](
         self, target: type[T], **overrides: Any
     ) -> T:
+        """Return a new note of type ``target`` carrying this note's geometry and joints."""
         return cast(T, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        """Convert to a :class:`RawNote` tree (begin note with joint children)."""
         return self._to_raw_tree(skip_validation=skip_validation)
 
 
 class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
+    """An air-crush note: an air-lane long note with height and a color.
+
+    Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and a gap
+    (:attr:`gap_t` / :attr:`gap_d`) controlling the spacing of generated segments between
+    joints. Add control joints with :meth:`with_ctrl` / :meth:`add_ctrl`.
+    """
+
     _note_type = NoteType.AIRCRUSH
     _joint_type = AirJoint
 
@@ -174,6 +206,18 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
+        """Create an air-crush begin note.
+
+        Args:
+            t: Absolute tick (mutually exclusive with ``p``).
+            p: A :data:`Position` (mutually exclusive with ``t``).
+            x: Left lane index.
+            w: Width in lane units.
+            h: Air height.
+            gap_t: Segment gap as a tick count (mutually exclusive with ``gap_d``).
+            gap_d: Segment gap as a ``(numerator, denominator)`` beat fraction.
+            color: Crush color (:class:`ColorValue` or raw int).
+        """
         super().__init__(t=t, p=p, x=x, w=w, _info=_info, _id=_id)
         self.h = h
         self.gap_t = resolve_gap(gap_t, gap_d)
@@ -181,6 +225,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
 
     @property
     def gap_t(self) -> int:
+        """Segment gap as an int tick count."""
         return int(self._info.option_value)
 
     @gap_t.setter
@@ -189,6 +234,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
 
     @property
     def gap_d(self) -> tuple[int, int]:
+        """Segment gap as a ``(numerator, denominator)`` beat fraction (view of :attr:`gap_t`)."""
         return t2d(int(self._info.option_value))
 
     @gap_d.setter
@@ -197,6 +243,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
 
     @property
     def color(self) -> ColorValue | int:
+        """The crush color (:class:`ColorValue`, or a raw int for non-standard values)."""
         return color_value_from_proto(int(self._info.variation_id))
 
     @color.setter
@@ -206,12 +253,15 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def with_ctrl(
         self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
     ) -> Self:
+        """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_ctrl(t=t, p=p, x=x, w=w, h=h)
         return copy
 
     def converted[T: (Slide, AirSlide)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` carrying this note's geometry and joints."""
         return cast(T, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        """Convert to a :class:`RawNote` tree (begin note with joint children)."""
         return self._to_raw_tree(skip_validation=skip_validation)

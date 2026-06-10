@@ -83,6 +83,13 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
 
 
 class Tap(_GroundNote):
+    """A basic tap note on the ground lane.
+
+    Ground notes are placed by timing and lane geometry: pass either an absolute tick
+    ``t`` or a :data:`Position` ``p`` (not both), a left lane index ``x``, and a width
+    ``w``. An :class:`Air` note may be attached above a ground note.
+    """
+
     def __init__(
         self,
         *,
@@ -93,13 +100,29 @@ class Tap(_GroundNote):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
+        """Create a tap.
+
+        Args:
+            t: Absolute tick (mutually exclusive with ``p``).
+            p: A :data:`Position` (mutually exclusive with ``t``).
+            x: Left lane index.
+            w: Width in lane units (at least 1).
+        """
         super().__init__(resolve_tp(t, p), x, w, NoteType.TAP, _copy_info(_info), _id)
 
     def converted[T: (Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` with this note's geometry.
+
+        Args:
+            target: The note class to convert to.
+            **overrides: Field values to override on the result (e.g. ``dir=...``).
+        """
         return cast(T, self._converted_to(target, **overrides))
 
 
 class Damage(_GroundNote):
+    """A damage (penalty) note. Same geometry as :class:`Tap`."""
+
     def __init__(
         self,
         *,
@@ -113,12 +136,20 @@ class Damage(_GroundNote):
         super().__init__(resolve_tp(t, p), x, w, NoteType.DAMAGE, _copy_info(_info), _id)
 
     def converted[T: (Tap, Extap, Flick)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` with this note's geometry."""
         return cast(T, self._converted_to(target, **overrides))
 
 
 class Extap(_GroundNote):
+    """An ex-tap note carrying a flick :attr:`dir` direction.
+
+    Same geometry as :class:`Tap`, plus a directional attribute. See :class:`Tap` for the
+    constructor's timing/lane arguments.
+    """
+
     @property
     def dir(self) -> ExtapDirection:
+        """The note's direction (:class:`ExtapDirection`)."""
         return _get_direction(ExtapDirection, self._info)
 
     @dir.setter
@@ -136,6 +167,8 @@ class Extap(_GroundNote):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
+        """Create an ex-tap. See :class:`Tap` for ``t``/``p``/``x``/``w``; ``dir`` sets the
+        flick direction (:class:`ExtapDirection`)."""
         super().__init__(resolve_tp(t, p), x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.dir = dir
 
@@ -148,12 +181,20 @@ class Extap(_GroundNote):
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
     def converted[T: (Tap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` with this note's geometry."""
         return cast(T, self._converted_to(target, **overrides))
 
 
 class Flick(_GroundNote):
+    """A flick note carrying a flick :attr:`dir` direction.
+
+    Same geometry as :class:`Tap`, plus a direction (default :attr:`FlickDirection.AUTO`).
+    See :class:`Tap` for the constructor's timing/lane arguments.
+    """
+
     @property
     def dir(self) -> FlickDirection:
+        """The note's flick direction (:class:`FlickDirection`)."""
         return _get_direction(FlickDirection, self._info)
 
     @dir.setter
@@ -171,6 +212,8 @@ class Flick(_GroundNote):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
+        """Create a flick. See :class:`Tap` for ``t``/``p``/``x``/``w``; ``dir`` sets the
+        flick direction (:class:`FlickDirection`, default ``AUTO``)."""
         super().__init__(resolve_tp(t, p), x, w, NoteType.FLICK, _copy_info(_info), _id)
         self.dir = dir
 
@@ -183,4 +226,5 @@ class Flick(_GroundNote):
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
     def converted[T: (Tap, Extap, Damage)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` with this note's geometry."""
         return cast(T, self._converted_to(target, **overrides))

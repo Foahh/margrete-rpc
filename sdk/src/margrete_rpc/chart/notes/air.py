@@ -24,8 +24,16 @@ if TYPE_CHECKING:
 
 
 class Air(_GeometryInfoMixin, _TransformMixin):
+    """An air note: an upward/diagonal flick attached above a ground note.
+
+    Its geometry (``t``/``p``, ``x``, ``w``) must match the ground note it is attached to
+    (see :attr:`_AirAttachable.air`). Carries a :attr:`dir` direction and an
+    :attr:`inverted` flag.
+    """
+
     @property
     def dir(self) -> AirDirection:
+        """The air direction (:class:`AirDirection`)."""
         return _get_direction(AirDirection, self._info)
 
     @dir.setter
@@ -43,6 +51,15 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
+        """Create an air note.
+
+        Args:
+            dir: Air direction (:class:`AirDirection`).
+            t: Absolute tick (mutually exclusive with ``p``).
+            p: A :data:`Position` (mutually exclusive with ``t``).
+            x: Left lane index (must match the host ground note).
+            w: Width in lane units (must match the host ground note).
+        """
         self._info = _copy_info(_info)
         self._id = _id
         self._info.type = NoteType.AIR
@@ -54,6 +71,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
 
     @property
     def inverted(self) -> bool:
+        """Whether the air note is inverted (downward)."""
         return self._info.ex_attr == ExAttr.INVERT
 
     @inverted.setter
@@ -169,6 +187,13 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
 
 
 class AirSlide(_AttachableAirLong):
+    """An air slide: a long air note threading through joints, each carrying height ``h``.
+
+    Construct with the begin geometry (including ``h``), then add joints with
+    :meth:`add_step` / :meth:`add_ctrl` or their copy-returning ``with_*`` forms. May be
+    attached above a ground note like a plain :class:`Air`.
+    """
+
     _note_type = NoteType.AIRSLIDE
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
@@ -177,10 +202,16 @@ class AirSlide(_AttachableAirLong):
         return LongAttr.END
 
     def converted[T: (Slide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` carrying this note's geometry and joints."""
         return cast(T, self._converted_to(target, **overrides))
 
 
 class AirHold(_AttachableAirLong):
+    """An air hold: a long air note held through joints, each carrying height ``h``.
+
+    Like :class:`AirSlide` in construction; see :meth:`add_step` / :meth:`add_ctrl`.
+    """
+
     _note_type = NoteType.AIRHOLD
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
@@ -190,10 +221,18 @@ class AirHold(_AttachableAirLong):
 
 
 class _AirAttachable:
+    """Mixin giving ground notes an optional attached air note.
+
+    Provides the :attr:`air` slot plus :meth:`add_air` (in place) and :meth:`with_air`
+    (returns a copy). The attached air's geometry must match the host note.
+    """
+
     _air: Air | AirSlide | AirHold | None
 
     @property
     def air(self) -> Air | AirSlide | AirHold | None:
+        """The attached air note (:class:`Air`, :class:`AirSlide`, or :class:`AirHold`), or
+        ``None``."""
         return self._air
 
     @air.setter
@@ -206,6 +245,7 @@ class _AirAttachable:
         self._air = value
 
     def with_air(self, air: Air | AirSlide | AirHold) -> Self:
+        """Return a copy of this note with ``air`` attached, leaving the original unchanged."""
         from .transform import _clone
 
         new: Self = _clone(cast(Any, self))
@@ -213,5 +253,6 @@ class _AirAttachable:
         return new
 
     def add_air(self, air: Air | AirSlide | AirHold) -> Self:
+        """Attach ``air`` to this note in place and return ``self``."""
         self.air = air
         return self

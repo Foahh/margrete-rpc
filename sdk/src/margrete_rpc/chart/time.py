@@ -10,9 +10,21 @@ from .constants import TICKS_PER_BEAT as TICKS_PER_BEAT
 from .events import BeatEvent
 
 type Position = tuple[int] | tuple[int, int] | tuple[int, int, int]
+"""A musical position as ``(bar,)``, ``(bar, beat)``, or ``(bar, beat, offset)``.
+
+All components are zero-based; ``offset`` is in ticks within the beat. A position is
+resolved to an absolute tick against the chart's beat events (see :func:`p2t`)."""
+
 type TickResolver = Callable[[Position], int]
+"""A function mapping a :data:`Position` to an absolute tick.
+
+Installed via :func:`push_tick_resolver` so positions resolve against a chart's beat
+events without threading them through every call."""
 
 type Division = int | tuple[int, int]
+"""A duration as either an int tick count or a ``(numerator, denominator)`` beat fraction.
+
+The fraction form is converted to ticks via :func:`d2t`; e.g. ``(1, 4)`` is a quarter note."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,10 +77,29 @@ def _measure_length(ts: _TimeSignature) -> int:
 
 
 class TimeCalculator:
+    """Converts between ticks and ``(bar, beat, offset)`` positions for a chart.
+
+    Built from the chart's :class:`BeatEvent` list, which partitions the timeline into
+    time-signature segments. Bars before the first event default to 4/4. Most callers use
+    the module-level :func:`t2p` / :func:`p2t` instead of constructing this directly.
+    """
+
     def __init__(self, beat_events: Iterable[BeatEvent]) -> None:
+        """Build a calculator from a chart's beat (time-signature) events."""
         self._segments = _build_time_signatures(beat_events)
 
     def t2p(self, tick: int) -> Position:
+        """Convert an absolute tick to a ``(bar, beat, offset)`` position.
+
+        Args:
+            tick: Non-negative absolute tick from the chart start.
+
+        Returns:
+            The ``(bar, beat, offset)`` position of ``tick``.
+
+        Raises:
+            ValueError: If ``tick`` is negative.
+        """
         tick = _require_int("tick", tick)
         if tick < 0:
             raise ValueError("tick must be non-negative")
@@ -98,6 +129,20 @@ class TimeCalculator:
         raise ValueError(f"tick {tick} is before all time signatures")
 
     def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
+        """Convert a ``(bar, beat, offset)`` position to an absolute tick.
+
+        Args:
+            bar: Zero-based bar index.
+            beat: Zero-based beat within the bar.
+            offset: Tick offset within the beat.
+
+        Returns:
+            The absolute tick from the chart start.
+
+        Raises:
+            ValueError: If any component is negative or out of range for the bar's time
+                signature.
+        """
         bar = _require_int("bar", bar)
         beat = _require_int("beat", beat)
         offset = _require_int("offset", offset)
@@ -137,12 +182,23 @@ _active_beat_events: contextvars.ContextVar[Iterable[BeatEvent] | None] = contex
 def push_beat_events(
     beat_events: Iterable[BeatEvent],
 ) -> contextvars.Token[Iterable[BeatEvent] | None]:
-    """Install ``beat_events`` as the active beat events; returns a reset token."""
+    """Install ``beat_events`` as the active beat events for position resolution.
+
+    While active, :func:`t2p` and :func:`p2t` use these events when none are passed
+    explicitly. :class:`EditTransaction` does this automatically for the duration of an
+    edit.
+
+    Args:
+        beat_events: The time-signature events to make active.
+
+    Returns:
+        A token to pass to :func:`pop_beat_events` to restore the previous events.
+    """
     return _active_beat_events.set(beat_events)
 
 
 def pop_beat_events(token: contextvars.Token[Iterable[BeatEvent] | None]) -> None:
-    """Restore the beat events that were active before the matching ``push_beat_events``."""
+    """Restore the beat events active before the matching :func:`push_beat_events`."""
     _active_beat_events.reset(token)
 
 
@@ -154,6 +210,16 @@ def _resolve_beat_events(beat_events: Iterable[BeatEvent] | None) -> Iterable[Be
 
 
 def t2p(tick: int, *, beat_events: Iterable[BeatEvent] | None = None) -> Position:
+    """Convert an absolute tick to a ``(bar, beat, offset)`` position.
+
+    Args:
+        tick: Non-negative absolute tick from the chart start.
+        beat_events: Time-signature events to resolve against; falls back to the active
+            events (see :func:`push_beat_events`), then to a default 4/4 signature.
+
+    Returns:
+        The ``(bar, beat, offset)`` position of ``tick``.
+    """
     return TimeCalculator(_resolve_beat_events(beat_events)).t2p(tick)
 
 
@@ -164,6 +230,18 @@ def p2t(
     *,
     beat_events: Iterable[BeatEvent] | None = None,
 ) -> int:
+    """Convert a ``(bar, beat, offset)`` position to an absolute tick.
+
+    Args:
+        bar: Zero-based bar index.
+        beat: Zero-based beat within the bar.
+        offset: Tick offset within the beat.
+        beat_events: Time-signature events to resolve against; falls back to the active
+            events (see :func:`push_beat_events`), then to a default 4/4 signature.
+
+    Returns:
+        The absolute tick from the chart start.
+    """
     return TimeCalculator(_resolve_beat_events(beat_events)).p2t(bar, beat, offset)
 
 
@@ -173,17 +251,36 @@ _active_tick_resolver: contextvars.ContextVar[TickResolver | None] = contextvars
 
 
 def push_tick_resolver(resolver: TickResolver) -> contextvars.Token[TickResolver | None]:
-    """Install ``resolver`` as the active position->tick resolver; returns a reset token."""
+    """Install ``resolver`` as the active position->tick resolver.
+
+    While active, :func:`resolve_tick` uses it to turn :data:`Position` tuples into ticks.
+    :class:`EditTransaction` installs a resolver bound to the chart's beat events.
+
+    Args:
+        resolver: The position-to-tick function to make active.
+
+    Returns:
+        A token to pass to :func:`pop_tick_resolver` to restore the previous resolver.
+    """
     return _active_tick_resolver.set(resolver)
 
 
 def pop_tick_resolver(token: contextvars.Token[TickResolver | None]) -> None:
-    """Restore the resolver that was active before the matching ``push_tick_resolver``."""
+    """Restore the resolver active before the matching :func:`push_tick_resolver`."""
     _active_tick_resolver.reset(token)
 
 
 def resolve_tick(value: int | Position) -> int:
-    """Coerce a tick argument to an int."""
+    """Coerce a tick-or-position argument to an absolute tick.
+
+    Args:
+        value: An int tick (returned unchanged) or a :data:`Position` tuple, resolved via
+            the active tick resolver (see :func:`push_tick_resolver`) or, if none is set,
+            a default 4/4 signature.
+
+    Returns:
+        The absolute tick.
+    """
     if isinstance(value, tuple):
         if not 1 <= len(value) <= 3:
             raise ValueError(
@@ -197,6 +294,21 @@ def resolve_tick(value: int | Position) -> int:
 
 
 def resolve_tp(t: int | None, p: Position | None) -> int:
+    """Resolve the mutually exclusive ``t`` / ``p`` timing arguments to a tick.
+
+    Note constructors accept either an int tick ``t`` or a :data:`Position` ``p``; exactly
+    one must be given.
+
+    Args:
+        t: Absolute tick, or ``None``.
+        p: A :data:`Position`, or ``None``.
+
+    Returns:
+        The absolute tick.
+
+    Raises:
+        ValueError: If both or neither argument is provided.
+    """
     if t is not None and p is not None:
         raise ValueError("provide either t or p, not both")
     if p is not None:
@@ -207,6 +319,22 @@ def resolve_tp(t: int | None, p: Position | None) -> int:
 
 
 def d2t(numerator: int, denominator: int) -> int:
+    """Convert a ``numerator/denominator`` beat fraction to a tick count.
+
+    For example ``d2t(1, 4)`` is the ticks in a quarter note and ``d2t(1, 1)`` equals
+    ``TICKS_PER_BEAT``.
+
+    Args:
+        numerator: Fraction numerator (number of divisions).
+        denominator: Fraction denominator (1..``TICKS_PER_BEAT``).
+
+    Returns:
+        The duration in ticks.
+
+    Raises:
+        ValueError: If the denominator is non-positive, exceeds ``TICKS_PER_BEAT``, or the
+            fraction does not land on a whole tick.
+    """
     if type(numerator) is not int or type(denominator) is not int:
         raise TypeError("numerator and denominator must be ints")
     if denominator <= 0:
@@ -220,7 +348,19 @@ def d2t(numerator: int, denominator: int) -> int:
 
 
 def t2d(ticks: int) -> tuple[int, int]:
-    """Convert a tick count to the reduced ``(numerator, denominator)`` beat fraction."""
+    """Convert a tick count to the reduced ``(numerator, denominator)`` beat fraction.
+
+    The inverse of :func:`d2t`; e.g. one beat's worth of ticks yields ``(1, 1)``.
+
+    Args:
+        ticks: Non-negative duration in ticks.
+
+    Returns:
+        The reduced ``(numerator, denominator)`` beat fraction.
+
+    Raises:
+        ValueError: If ``ticks`` is negative.
+    """
     if type(ticks) is not int:
         raise TypeError("ticks must be int")
     if ticks < 0:
@@ -230,10 +370,14 @@ def t2d(ticks: int) -> tuple[int, int]:
 
 
 def resolve_density(value: Division) -> int:
-    """Coerce a division argument to an int tick count.
+    """Coerce a :data:`Division` argument to an int tick count.
 
-    An int passes through unchanged. A ``(numerator, denominator)`` tuple is
-    converted via ``d2t``.
+    Args:
+        value: An int tick count (returned unchanged) or a ``(numerator, denominator)``
+            beat fraction, converted via :func:`d2t`.
+
+    Returns:
+        The duration in ticks.
     """
     if isinstance(value, tuple):
         if len(value) != 2:
@@ -243,11 +387,18 @@ def resolve_density(value: Division) -> int:
 
 
 def resolve_gap(gap_t: int | None, gap_d: tuple[int, int] | None) -> int:
-    """Resolve the gap_t / gap_d gap arguments to an int tick count.
+    """Resolve the mutually exclusive ``gap_t`` / ``gap_d`` gap arguments to a tick count.
 
-    ``gap_t`` is an integer tick count; ``gap_d`` is a ``(numerator, denominator)`` beat
-    division resolved through :func:`resolve_density`. The two are mutually exclusive;
-    when neither is given the gap defaults to ``DEFAULT_AIRCRUSH_GAP``.
+    Args:
+        gap_t: Gap as an int tick count, or ``None``.
+        gap_d: Gap as a ``(numerator, denominator)`` beat fraction (via
+            :func:`resolve_density`), or ``None``.
+
+    Returns:
+        The gap in ticks; ``DEFAULT_AIRCRUSH_GAP`` when neither argument is given.
+
+    Raises:
+        ValueError: If both arguments are provided.
     """
     if gap_t is not None and gap_d is not None:
         raise ValueError("provide either gap_t or gap_d, not both")

@@ -285,7 +285,22 @@ def merge[T: SlideLike](
     *,
     join: JointKindLike | Callable[[T, T], JointKindLike] = JointKind.STEP,
 ) -> T:
-    """Combine slides / air-slides / air-crushes into one."""
+    """Combine consecutive slides / air-slides / air-crushes into a single note.
+
+    The notes are chained end-to-begin in order; each boundary becomes a joint.
+
+    Args:
+        notes: The notes to merge, all of the same long type, in timeline order.
+        join: Kind of joint to insert at each boundary (:class:`JointKind`), or a callable
+            ``(prev, next) -> JointKindLike`` choosing it per boundary.
+
+    Returns:
+        A single merged note of the same type as the inputs.
+
+    Raises:
+        ValueError: If ``notes`` is empty.
+        TypeError: If the notes are not a mergeable long type.
+    """
     items = list(notes)
     if not items:
         raise ValueError("merge requires at least one note")
@@ -358,7 +373,20 @@ def _locate_split(
 
 
 def split[T: SlideLike](note: T, at: Joint | int | Position) -> tuple[T, T]:
-    """Divide a slide / air-slide / air-crush into two at a joint or tick."""
+    """Divide a slide / air-slide / air-crush into two notes at a joint or time.
+
+    Args:
+        note: The long note to split.
+        at: Where to split: one of the note's :class:`Joint` objects, an absolute tick, or
+            a :data:`Position`.
+
+    Returns:
+        A ``(left, right)`` pair of notes meeting at the split point.
+
+    Raises:
+        TypeError: If ``note`` is not a splittable long type.
+        ValueError: If the note has fewer than two joints.
+    """
     if not isinstance(note, _SPLITTABLE):
         raise TypeError(
             f"cannot split {type(note).__name__}; split supports Slide, AirSlide, AirCrush"

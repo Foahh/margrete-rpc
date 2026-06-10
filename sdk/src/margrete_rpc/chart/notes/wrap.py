@@ -11,6 +11,17 @@ from .types import LongAttr, NoteType
 
 
 def wrap_raw_note(note: RawNote) -> Note:
+    """Wrap a :class:`RawNote` tree into the matching typed :class:`Note`.
+
+    Args:
+        note: The raw note tree (a begin node, with joint/air children for long notes).
+
+    Returns:
+        The typed note (e.g. :class:`Tap`, :class:`Hold`, :class:`AirCrush`) for the tree.
+
+    Raises:
+        UnsupportedNoteTree: If the tree's shape is not recognised by any typed note.
+    """
     if note.type in (NoteType.TAP, NoteType.EXTAP, NoteType.FLICK, NoteType.DAMAGE):
         return _wrap_ground(note)
     if note.type is NoteType.HOLD:

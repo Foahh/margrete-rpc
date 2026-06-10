@@ -15,6 +15,20 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ServerStatus:
+    """Snapshot of a running Margrete RPC server, returned by :meth:`Margrete.status`.
+
+    Attributes:
+        server_name: Human-readable name reported by the plugin.
+        server_version: Plugin version string.
+        server_build_time: Build timestamp of the plugin.
+        instance_id: Identifier of this Margrete instance, used to target it during
+            discovery (see :func:`margrete_rpc.resolve_endpoint`).
+        uptime: Seconds the server has been running.
+        pid: Process id of the host Margrete process.
+        log_path: Absolute path to the plugin's log file.
+        config_path: Absolute path to the plugin's configuration file.
+    """
+
     server_name: str
     server_version: str
     server_build_time: str
@@ -26,6 +40,21 @@ class ServerStatus:
 
 
 class Margrete:
+    """Client for a running Margrete RPC server.
+
+    This is the entry point of the SDK. Construct one to connect to a Margrete
+    instance, then call :meth:`open_edit` to make scriptable changes to the current
+    chart inside a transaction.
+
+    Example:
+        >>> from margrete_rpc import Margrete
+        >>> from margrete_rpc.chart.notes import Tap
+        >>> m = Margrete()  # auto-detect the running instance
+        >>> with m.open_edit("add a tap") as tx:
+        ...     tx.chart.notes.append(Tap(p=(0, 0, 0), x=0, w=4))
+        >>> # changes are applied to Margrete when the `with` block exits cleanly
+    """
+
     def __init__(
         self,
         endpoint: str | None = None,
@@ -35,6 +64,25 @@ class Margrete:
         transport: RpcTransport | None = None,
         tracer: Tracer | None = None,
     ) -> None:
+        """Connect to a Margrete RPC server.
+
+        With no arguments the single running instance is auto-detected via discovery.
+
+        Args:
+            endpoint: Explicit ``host:port`` to connect to. Mutually exclusive with
+                ``instance_id`` and ``transport``.
+            instance_id: Connect to the discovered instance with this id (see
+                :class:`ServerStatus.instance_id`). Mutually exclusive with ``endpoint``.
+            timeout: Socket timeout in seconds for requests. Discovery uses at most
+                one second of this budget.
+            transport: Pre-built transport to use instead of opening a socket; intended
+                for testing. Cannot be combined with ``endpoint`` or ``instance_id``.
+            tracer: Optional tracer for observability spans; defaults to a no-op.
+
+        Raises:
+            ValueError: If conflicting connection arguments are supplied.
+            MargreteDiscoveryError: If auto-detection cannot resolve an instance.
+        """
         self._tracer = tracer if tracer is not None else NoopTracer()
         if transport is not None:
             if endpoint is not None or instance_id is not None:
@@ -48,10 +96,20 @@ class Margrete:
             self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
 
     def ping(self) -> None:
+        """Check connectivity by round-tripping an empty request to the server.
+
+        Raises:
+            MargreteError: If the server is unreachable or the request fails.
+        """
         with self._tracer.span("margrete.client.ping"):
             self._transport.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
 
     def status(self) -> ServerStatus:
+        """Query the server for its identity and runtime status.
+
+        Returns:
+            A :class:`ServerStatus` snapshot (version, instance id, uptime, paths).
+        """
         with self._tracer.span("margrete.client.status"):
             response = self._transport.request(
                 messages_pb2.Envelope(status_request=messages_pb2.StatusRequest())
@@ -69,6 +127,17 @@ class Margrete:
         )
 
     def undo(self) -> bool:
+        """Undo the last edit on the Margrete undo stack.
+
+        Returns:
+            ``True`` if an edit was undone, ``False`` if the stack was empty.
+
+        Note:
+            Undo applies to Margrete's own history, which includes edits made through
+            this SDK. Undoing a transaction that deleted notes can re-create them in a
+            duplicated state, so prefer designing transactions that add or modify rather
+            than relying on undo to reverse deletions.
+        """
         with self._tracer.span("margrete.client.undo"):
             response = self._transport.request(
                 messages_pb2.Envelope(undo_request=messages_pb2.UndoRequest())
@@ -76,6 +145,11 @@ class Margrete:
         return response.undo_response.success
 
     def redo(self) -> bool:
+        """Redo the edit most recently undone.
+
+        Returns:
+            ``True`` if an edit was redone, ``False`` if there was nothing to redo.
+        """
         with self._tracer.span("margrete.client.redo"):
             response = self._transport.request(
                 messages_pb2.Envelope(redo_request=messages_pb2.RedoRequest())
@@ -83,6 +157,11 @@ class Margrete:
         return response.redo_response.success
 
     def current_tick(self) -> int:
+        """Return the playhead position in the editor, in ticks from the chart start.
+
+        Returns:
+            The current tick (``TICKS_PER_BEAT`` ticks per beat).
+        """
         with self._tracer.span("margrete.client.current_tick"):
             response = self._transport.request(
                 messages_pb2.Envelope(current_tick_request=messages_pb2.CurrentTickRequest())
@@ -100,6 +179,35 @@ class Margrete:
         raw: bool = False,
         replace_all: bool = False,
     ) -> EditTransaction:
+        """Begin an edit transaction over the current chart.
+
+        Returns an :class:`~margrete_rpc.transaction.EditTransaction` to be used as a
+        context manager. Mutate ``tx.chart`` inside the ``with`` block; on clean exit the
+        changes are diffed and applied to Margrete as a single undoable edit, and on an
+        exception nothing is applied.
+
+        Args:
+            name: Label for the edit, shown in Margrete's undo history.
+            event_scan_extra_tick: Extra tick window to scan for timeline events beyond
+                the note range; ``None`` uses the server default.
+            event_scan_til: Explicit list of ticks at which to scan timeline-speed events.
+            event_scan_note_til_only: Restrict timeline-speed scanning to ticks that carry
+                notes.
+            scan: Capture a baseline snapshot so only changed notes are sent on apply.
+                Disable to skip diffing.
+            raw: Load the chart as a raw protobuf-tree model (:class:`RawNote`) instead of
+                typed note objects.
+            replace_all: Replace every note in the chart on apply instead of applying a
+                diff. Useful for full rewrites.
+
+        Returns:
+            An :class:`~margrete_rpc.transaction.EditTransaction` bound to the loaded chart.
+
+        Example:
+            >>> with m.open_edit("nudge notes") as tx:
+            ...     for note in tx.chart.notes:
+            ...         note.shift(x=2)
+        """
         from margrete_rpc.chart import Chart
         from margrete_rpc.transaction import EditTransaction
 

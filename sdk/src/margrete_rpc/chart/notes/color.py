@@ -7,6 +7,9 @@ from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 
 class Color(IntEnum):
+    """AirCrush color as the wire-level integer code. See :class:`ColorValue` for the
+    string-named form used when authoring."""
+
     DEFAULT = messages_pb2.COLOR_DEFAULT
     RED = messages_pb2.COLOR_RED
     ORANGE = messages_pb2.COLOR_ORANGE
@@ -26,6 +29,9 @@ class Color(IntEnum):
 
 
 class ColorValue(StrEnum):
+    """AirCrush color as a readable string name (e.g. ``"red"``); the authoring form of
+    :class:`Color`. Used as :attr:`AirCrush.color`."""
+
     DEFAULT = "default"
     RED = "red"
     ORANGE = "orange"
@@ -66,6 +72,7 @@ type ColorLike = (
         "none",
     ]
 )
+"""Any accepted color spec: a :class:`ColorValue`, a :class:`Color`, or a color-name string."""
 
 
 COLOR_VALUE_TO_PROTO = {
@@ -91,6 +98,7 @@ COLOR_VALUE_FROM_PROTO = {value: key for key, value in COLOR_VALUE_TO_PROTO.item
 
 
 def color_from_value(value: int) -> Color | int:
+    """Map a wire integer to a :class:`Color`, or pass it through if unrecognised."""
     try:
         return Color(value)
     except ValueError:
@@ -98,6 +106,7 @@ def color_from_value(value: int) -> Color | int:
 
 
 def color_value_from_proto(value: int) -> ColorValue | int:
+    """Map a wire integer to a named :class:`ColorValue`, or pass it through if unrecognised."""
     color = color_from_value(value)
     if isinstance(color, Color):
         return COLOR_VALUE_FROM_PROTO[color]
@@ -105,6 +114,7 @@ def color_value_from_proto(value: int) -> ColorValue | int:
 
 
 def color_to_value(value: ColorLike | int) -> int:
+    """Convert a :data:`ColorLike` (enum, string, or int) to its wire integer code."""
     if isinstance(value, Color):
         return int(value)
     if isinstance(value, ColorValue):

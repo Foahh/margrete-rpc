@@ -16,51 +16,116 @@ type AlignMode = Literal["round", "floor", "ceil"]
 
 
 class UnsupportedNoteTree(ValueError):
-    pass
+    """Raised when a :class:`RawNote` tree cannot be wrapped into a typed note."""
 
 
 @runtime_checkable
 class Note(Protocol):
+    """The common interface implemented by every typed note.
+
+    Notes expose geometry (timing ``t``/``p``, lane ``x``, width ``w``) and a set of
+    transforms. Each transform comes in two forms: the bare verb (e.g. :meth:`shift`)
+    mutates the note in place and returns ``self`` for chaining, while the past-tense form
+    (e.g. :meth:`shifted`) returns a transformed :meth:`clone` and leaves the original
+    untouched.
+    """
+
     @property
-    def t(self) -> int: ...
+    def t(self) -> int:
+        """Absolute tick of the note from the chart start."""
+        ...
+
     @t.setter
     def t(self, value: int) -> None: ...
     @property
-    def p(self) -> Position: ...
+    def p(self) -> Position:
+        """Timing as a ``(bar, beat, offset)`` :data:`Position`; the view of ``t``."""
+        ...
+
     @p.setter
     def p(self, value: Position) -> None: ...
     @property
-    def x(self) -> int: ...
+    def x(self) -> int:
+        """Left lane index of the note."""
+        ...
+
     @property
-    def w(self) -> int: ...
+    def w(self) -> int:
+        """Width of the note in lane units (at least 1)."""
+        ...
+
     @property
-    def til(self) -> int: ...
+    def til(self) -> int:
+        """Timeline id the note belongs to."""
+        ...
 
     def shift(
         self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
-    ) -> Self: ...
+    ) -> Self:
+        """Move/resize the note in place and return ``self``.
+
+        Each delta is either an int added to the field, or a callable mapping the current
+        value to a new one. ``p`` shifts timing by a position delta instead of ``t``.
+
+        Args:
+            t: Tick delta (mutually exclusive with ``p``).
+            p: Position delta applied to timing.
+            x: Lane delta.
+            w: Width delta.
+            h: Air-height delta (for notes with height).
+        """
+        ...
 
     def shifted(
         self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
-    ) -> Self: ...
+    ) -> Self:
+        """Return a :meth:`clone` shifted by the given deltas, leaving ``self`` unchanged."""
+        ...
 
-    def scale(self, factor: float, *, pivot: int | Position = 0) -> Self: ...
+    def scale(self, factor: float, *, pivot: int | Position = 0) -> Self:
+        """Scale the note's timing about ``pivot`` by ``factor``, in place; returns ``self``."""
+        ...
 
-    def scaled(self, factor: float, *, pivot: int | Position = 0) -> Self: ...
+    def scaled(self, factor: float, *, pivot: int | Position = 0) -> Self:
+        """Return a :meth:`clone` scaled about ``pivot``, leaving ``self`` unchanged."""
+        ...
 
-    def align(self, interval: int | Position, *, mode: AlignMode = "round") -> Self: ...
+    def align(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
+        """Snap the note's timing to a multiple of ``interval``, in place; returns ``self``.
 
-    def aligned(self, interval: int | Position, *, mode: AlignMode = "round") -> Self: ...
+        Args:
+            interval: Grid spacing in ticks, or a :data:`Position` resolved to ticks.
+            mode: How to snap: ``"round"`` (nearest), ``"floor"``, or ``"ceil"``.
+        """
+        ...
 
-    def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self: ...
+    def aligned(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
+        """Return a :meth:`clone` aligned to ``interval``, leaving ``self`` unchanged."""
+        ...
 
-    def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self: ...
+    def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
+        """Mirror the note horizontally within ``field`` lanes, in place; returns ``self``."""
+        ...
 
-    def clone(self) -> Self: ...
+    def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
+        """Return a :meth:`clone` flipped within ``field``, leaving ``self`` unchanged."""
+        ...
 
-    def validate(self) -> None: ...
+    def clone(self) -> Self:
+        """Return a deep copy of the note (without its server-assigned id)."""
+        ...
 
-    def to_raw(self, *, skip_validation: bool = False) -> RawNote: ...
+    def validate(self) -> None:
+        """Check the note's geometry, raising ``ValueError`` if it is invalid."""
+        ...
+
+    def to_raw(self, *, skip_validation: bool = False) -> RawNote:
+        """Convert the note to its :class:`RawNote` protobuf-tree form.
+
+        Args:
+            skip_validation: Skip the :meth:`validate` check before converting.
+        """
+        ...
 
 
 def _note_enum_line(value: object) -> str:

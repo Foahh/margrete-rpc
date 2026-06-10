@@ -14,6 +14,17 @@ from margrete_rpc.errors import MargreteDiscoveryError, MargreteError
 
 @dataclass(frozen=True)
 class MargreteInstance:
+    """A discovered Margrete RPC server, read from its discovery record.
+
+    Attributes:
+        instance_id: Identifier used to select this instance.
+        endpoint: The ``host:port`` to connect to.
+        pid: Host process id, if recorded.
+        plugin_version: Plugin version that wrote the record, if recorded.
+        log: Path to the instance's log file, if recorded.
+        record_path: Path to the discovery JSON file this instance was loaded from.
+    """
+
     instance_id: str
     endpoint: str
     pid: int | None = None
@@ -23,6 +34,11 @@ class MargreteInstance:
 
 
 def discovery_dir() -> Path:
+    """Return the directory where running plugins write their discovery records.
+
+    Uses ``%LOCALAPPDATA%\\MargreteRPC\\instances`` when available, else a temp-dir
+    fallback.
+    """
     base = os.environ.get("LOCALAPPDATA")
     if base:
         return Path(base) / "MargreteRPC" / "instances"
@@ -30,6 +46,15 @@ def discovery_dir() -> Path:
 
 
 def list_instances(*, validate: bool = True, timeout: float = 1.0) -> list[MargreteInstance]:
+    """List Margrete RPC instances advertised in the discovery directory.
+
+    Args:
+        validate: Ping each instance and drop any that do not respond.
+        timeout: Per-instance ping timeout in seconds when validating.
+
+    Returns:
+        The discovered instances (only reachable ones when ``validate`` is true).
+    """
     instances: list[MargreteInstance] = []
     directory = discovery_dir()
     if not directory.exists():
@@ -48,6 +73,20 @@ def list_instances(*, validate: bool = True, timeout: float = 1.0) -> list[Margr
 
 
 def resolve_endpoint(instance_id: str | None = None, *, timeout: float = 1.0) -> str:
+    """Resolve a connectable ``host:port`` endpoint via discovery.
+
+    Args:
+        instance_id: Select a specific instance by id; when ``None``, auto-detect the sole
+            running instance.
+        timeout: Per-instance ping timeout in seconds.
+
+    Returns:
+        The reachable instance's endpoint.
+
+    Raises:
+        MargreteDiscoveryError: If the named instance is missing or unreachable, or if zero
+            (or more than one) instances are found during auto-detection.
+    """
     if instance_id is not None:
         for instance in list_instances(validate=False):
             if instance.instance_id != instance_id:

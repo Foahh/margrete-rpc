@@ -25,6 +25,12 @@ from .types import (
 
 
 class Joint(_GeometryInfoMixin):
+    """A waypoint in a ground long note (:class:`Hold` / :class:`Slide`).
+
+    A joint has timing and lane geometry plus a :attr:`kind` (step, control, or curve
+    control) that determines how the long note's shape passes through it.
+    """
+
     def __init__(
         self,
         *,
@@ -35,6 +41,15 @@ class Joint(_GeometryInfoMixin):
         _id: int | None = None,
         kind: JointKindLike,
     ) -> None:
+        """Create a joint.
+
+        Args:
+            t: Absolute tick (mutually exclusive with ``p``).
+            p: A :data:`Position` (mutually exclusive with ``t``).
+            x: Left lane index.
+            w: Width in lane units.
+            kind: Joint kind (:class:`JointKind` or its string form).
+        """
         self._info = _copy_info(None)
         self._id = _id
         self._kind = JointKind.STEP
@@ -47,6 +62,7 @@ class Joint(_GeometryInfoMixin):
 
     @property
     def kind(self) -> JointKind:
+        """The joint's kind (:class:`JointKind`)."""
         return self._kind
 
     @kind.setter
@@ -55,6 +71,8 @@ class Joint(_GeometryInfoMixin):
 
 
 class AirJoint(Joint, _HeightMixin):
+    """A :class:`Joint` for air long notes, additionally carrying height ``h``."""
+
     def __init__(
         self,
         *,
@@ -66,6 +84,7 @@ class AirJoint(Joint, _HeightMixin):
         _id: int | None = None,
         kind: JointKindLike,
     ) -> None:
+        """Create an air joint. As :class:`Joint`, plus ``h`` for the joint's air height."""
         super().__init__(t=t, p=p, x=x, w=w, _id=_id, kind=kind)
         self.h = h
 
@@ -77,10 +96,12 @@ class _JointHostBase:
 
     @property
     def joints(self) -> list[Joint]:
+        """The long note's joints, in order from first to last."""
         return self._joints
 
     @property
     def duration(self) -> int:
+        """Ticks from the begin to the last joint (0 if there are no joints)."""
         if not self._joints:
             return 0
         return int(self._joints[-1].t) - int(self._begin_info_for_defaults().t)
@@ -186,10 +207,14 @@ class _JointHost(_JointHostBase):
         )
 
     def add_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        """Append a step joint in place and return ``self``. Timing must be strictly
+        increasing along the note."""
         self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.STEP, x, w))
         return self
 
     def add_ctrl(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+        """Append a control joint in place and return ``self``. Timing must be strictly
+        increasing along the note."""
         self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CONTROL, x, w))
         return self
 
@@ -215,12 +240,14 @@ class _AirJointHost(_JointHostBase):
     def add_step(
         self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
     ) -> Self:
+        """Append a step joint (with air height ``h``) in place and return ``self``."""
         self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.STEP, x, w, h))
         return self
 
     def add_ctrl(
         self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
     ) -> Self:
+        """Append a control joint (with air height ``h``) in place and return ``self``."""
         self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CONTROL, x, w, h))
         return self
 

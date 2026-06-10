@@ -29,6 +29,8 @@ from .direction import (
 
 
 class NoteType(IntEnum):
+    """The kind of a note, matching the wire protocol's note-type codes."""
+
     UNKNOWN = messages_pb2.NOTE_TYPE_UNKNOWN
     TAP = messages_pb2.NOTE_TYPE_TAP
     EXTAP = messages_pb2.NOTE_TYPE_EXTAP
@@ -44,6 +46,12 @@ class NoteType(IntEnum):
 
 
 class LongAttr(IntEnum):
+    """Role of a node within a long note's raw tree (begin, step, control, end, ...).
+
+    Set on each :class:`RawNote` in a long structure; typed notes manage it for you. See
+    :class:`JointKind` for the authoring-level joint roles.
+    """
+
     NONE = messages_pb2.LONG_ATTR_NONE
     BEGIN = messages_pb2.LONG_ATTR_BEGIN
     STEP = messages_pb2.LONG_ATTR_STEP
@@ -54,12 +62,19 @@ class LongAttr(IntEnum):
 
 
 class JointKind(StrEnum):
+    """Authoring-level role of a :class:`Joint` in a long note.
+
+    ``STEP`` is a passed-through waypoint, ``CONTROL`` shapes a straight segment, and
+    ``CURVE_CONTROL`` shapes a curved one. Maps to :class:`LongAttr` on the raw tree.
+    """
+
     STEP = "step"
     CONTROL = "control"
     CURVE_CONTROL = "curve_control"
 
 
 type JointKindLike = JointKind | Literal["step", "control", "curve_control"]
+"""A :class:`JointKind` or its equivalent string name."""
 
 
 JOINT_KIND_TO_LONG_ATTR = {
@@ -72,14 +87,18 @@ JOINT_KIND_FROM_LONG_ATTR = {value: key for key, value in JOINT_KIND_TO_LONG_ATT
 
 
 def joint_kind_to_long_attr(value: JointKindLike) -> LongAttr:
+    """Map a :class:`JointKind` (or its string form) to the matching :class:`LongAttr`."""
     return JOINT_KIND_TO_LONG_ATTR[JointKind(value)]
 
 
 def joint_kind_from_long_attr(value: LongAttr) -> JointKind:
+    """Map a :class:`LongAttr` back to its :class:`JointKind` (step/control/curve control)."""
     return JOINT_KIND_FROM_LONG_ATTR[LongAttr(value)]
 
 
 class ExAttr(IntEnum):
+    """Extra per-note attribute flags (e.g. inverted air, judgement options)."""
+
     NONE = messages_pb2.EX_ATTR_NONE
     INVERT = messages_pb2.EX_ATTR_INVERT
     HAS_NOTE = messages_pb2.EX_ATTR_HAS_NOTE
@@ -91,6 +110,14 @@ def _enum_line(value: IntEnum | StrEnum) -> str:
 
 
 class NoteInfo:
+    """The full field set of a single note node, shared by typed notes and :class:`RawNote`.
+
+    This is the low-level bag of attributes (type, geometry, direction, color, timing) that
+    backs every note. Typed notes expose the relevant fields as their own properties;
+    construct :class:`NoteInfo` directly only for raw/manual work. Timing accepts a tick
+    ``t`` or a :data:`Position` ``p``; ``option_value`` accepts a :data:`Division`.
+    """
+
     def __init__(
         self,
         type: NoteType = NoteType.UNKNOWN,
@@ -160,6 +187,7 @@ class NoteInfo:
         self._option_value = resolve_density(value)
 
     def copy(self, **changes: Any) -> NoteInfo:
+        """Return a copy with any given fields overridden by keyword."""
         return NoteInfo(
             type=changes.get("type", self.type),
             long_attr=changes.get("long_attr", self.long_attr),

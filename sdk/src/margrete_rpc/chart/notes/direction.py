@@ -7,6 +7,12 @@ from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 
 class Direction(IntEnum):
+    """The full set of note directions as wire-level integer codes.
+
+    Each note type uses a relevant subset, exposed through the readable string enums
+    :class:`AirDirection`, :class:`ExtapDirection`, and :class:`FlickDirection`.
+    """
+
     NONE = messages_pb2.DIRECTION_NONE
     AUTO = messages_pb2.DIRECTION_AUTO
     UP = messages_pb2.DIRECTION_UP
@@ -25,6 +31,8 @@ class Direction(IntEnum):
 
 
 class AirDirection(StrEnum):
+    """Direction of an :class:`Air` note (and air long notes), as a readable string."""
+
     UP = "up"
     DOWN = "down"
     UP_LEFT = "up_left"
@@ -34,6 +42,8 @@ class AirDirection(StrEnum):
 
 
 class ExtapDirection(StrEnum):
+    """Direction of an :class:`Extap` note, as a readable string."""
+
     UP = "up"
     DOWN = "down"
     CENTER = "center"
@@ -46,6 +56,8 @@ class ExtapDirection(StrEnum):
 
 
 class FlickDirection(StrEnum):
+    """Direction of a :class:`Flick` note; ``AUTO`` lets the editor choose."""
+
     AUTO = "auto"
     LEFT = "left"
     RIGHT = "right"
@@ -78,6 +90,8 @@ type ExtapDirectionLike = (
 )
 type FlickDirectionLike = FlickDirection | Literal["auto", "left", "right"]
 type DirectionValue = AirDirection | ExtapDirection | FlickDirection | Direction | int
+"""Any accepted direction spec: one of the typed direction enums, :class:`Direction`, or a
+raw int code."""
 
 
 AIR_DIRECTION_TO_PROTO = {
@@ -124,6 +138,10 @@ def _direction_enum_from_value(value: int) -> Direction | int:
 
 
 def direction_from_proto(note_type: SupportsInt, value: int) -> DirectionValue:
+    """Map a wire direction code to the typed direction enum for ``note_type``.
+
+    Falls back to :class:`Direction` (or the raw int) when the value has no named form.
+    """
     note_type_value = _note_type_value(note_type)
     if note_type_value in (
         messages_pb2.NOTE_TYPE_AIR,
@@ -139,6 +157,7 @@ def direction_from_proto(note_type: SupportsInt, value: int) -> DirectionValue:
 
 
 def direction_to_proto(note_type: SupportsInt, value: DirectionValue | str) -> int:
+    """Convert a direction spec (enum, string, or int) to its wire code for ``note_type``."""
     if isinstance(value, AirDirection):
         return int(AIR_DIRECTION_TO_PROTO[value])
     if isinstance(value, ExtapDirection):

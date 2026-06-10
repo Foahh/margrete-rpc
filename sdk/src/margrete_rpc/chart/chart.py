@@ -14,16 +14,36 @@ from margrete_rpc.chart.notes import Note, RawNote, UnsupportedNoteTree
 from margrete_rpc.chart.notes.wrap import wrap_raw_note
 
 type ChartNote = Note | RawNote
+"""A note in a chart: either a typed :class:`Note` or a raw :class:`RawNote` tree.
+
+Typed notes are produced by default; a :class:`RawNote` appears when the edit was opened
+with ``raw=True`` or when a note's structure is not recognised by the typed wrappers.
+"""
 
 
 @dataclass
 class ChartEvents:
+    """Timeline events of a chart, grouped by kind.
+
+    Attributes:
+        bpm: Tempo changes (:class:`BpmEvent`).
+        beat: Time-signature changes (:class:`BeatEvent`); these drive position<->tick
+            conversion.
+        til: Timeline-speed events (:class:`TimelineSpeedEvent`).
+        note_speed: Note-speed events (:class:`NoteSpeedEvent`).
+    """
+
     bpm: list[BpmEvent] = field(default_factory=list)
     beat: list[BeatEvent] = field(default_factory=list)
     til: list[TimelineSpeedEvent] = field(default_factory=list)
     note_speed: list[NoteSpeedEvent] = field(default_factory=list)
 
     def normalized(self) -> ChartEvents:
+        """Return a copy keeping only the last event for each duplicate key.
+
+        Collapses events that share the same position (tick/bar) so each timeline slot
+        holds a single event.
+        """
         return ChartEvents(
             bpm=_last_by_key(self.bpm, lambda event: event.t),
             beat=_last_by_key(self.beat, lambda event: event.bar),
@@ -37,6 +57,16 @@ class ChartEvents:
 
 @dataclass
 class Chart:
+    """The notes and timeline events of the chart being edited.
+
+    Obtained via :attr:`EditTransaction.chart`. Append, remove, or mutate items in
+    :attr:`notes` to describe an edit; :attr:`events` holds the read-mostly timeline.
+
+    Attributes:
+        notes: The chart's notes (typed :class:`Note` objects, or :class:`RawNote`).
+        events: The chart's :class:`ChartEvents`.
+    """
+
     notes: list[ChartNote] = field(default_factory=list)
     events: ChartEvents = field(default_factory=ChartEvents)
 
@@ -47,6 +77,13 @@ class Chart:
         *,
         raw: bool = False,
     ) -> Chart:
+        """Build a :class:`Chart` from a begin-edit RPC response.
+
+        Args:
+            response: The protobuf payload returned when an edit is opened.
+            raw: Keep every note as a :class:`RawNote` instead of wrapping into typed
+                notes. Notes whose structure is unsupported stay raw regardless.
+        """
         notes: list[ChartNote] = []
         for proto in response.notes:
             raw_note = RawNote.from_proto(proto)
@@ -63,6 +100,7 @@ class Chart:
         )
 
     def normalized_events(self) -> Chart:
+        """Return a copy with the same notes but :meth:`ChartEvents.normalized` events."""
         return Chart(notes=self.notes, events=self.events.normalized())
 
 

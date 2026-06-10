@@ -7,6 +7,13 @@ from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 @dataclass
 class BpmEvent:
+    """A tempo change.
+
+    Attributes:
+        t: Tick at which the tempo takes effect.
+        bpm: Beats per minute from this tick onward.
+    """
+
     t: int
     bpm: float
 
@@ -20,6 +27,17 @@ class BpmEvent:
 
 @dataclass
 class BeatEvent:
+    """A time-signature change, anchored at a bar.
+
+    The active set of beat events defines how ``(bar, beat, offset)`` positions map to
+    absolute ticks (see :func:`margrete_rpc.chart.p2t`).
+
+    Attributes:
+        bar: Zero-based bar index from which this signature applies.
+        beats_per_bar: Numerator of the time signature (beats per measure).
+        beat_unit: Denominator of the time signature (note value of one beat, e.g. 4).
+    """
+
     bar: int
     beats_per_bar: int
     beat_unit: int
@@ -38,6 +56,14 @@ class BeatEvent:
 
 @dataclass
 class TimelineSpeedEvent:
+    """A scroll-speed change on a specific timeline.
+
+    Attributes:
+        til: Timeline id the speed applies to.
+        t: Tick at which the speed takes effect.
+        speed: Scroll-speed multiplier from this tick onward.
+    """
+
     til: int
     t: int
     speed: float
@@ -56,6 +82,13 @@ class TimelineSpeedEvent:
 
 @dataclass
 class NoteSpeedEvent:
+    """A note-speed change.
+
+    Attributes:
+        t: Tick at which the speed takes effect.
+        speed: Note-speed multiplier from this tick onward.
+    """
+
     t: int
     speed: float
 

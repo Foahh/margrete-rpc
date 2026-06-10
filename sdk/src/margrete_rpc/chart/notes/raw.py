@@ -27,12 +27,26 @@ from .types import (
 
 @dataclass
 class RawNote:
+    """A note as a raw protobuf tree: a :class:`NoteInfo` plus child notes.
+
+    This is the low-level model used when an edit is opened with ``raw=True`` and the
+    target of :meth:`Note.to_raw`. Long notes are represented as a begin node with joint
+    children. The convenience properties (``type``, ``t``, ``x``, ``w``, ...) read and
+    write the underlying :attr:`info`. Prefer the typed notes for authoring; use
+    :class:`R` to build raw trees by hand.
+
+    Attributes:
+        info: The note's fields (:class:`NoteInfo`).
+        children: Child raw notes (e.g. a long note's joints, or an attached air).
+    """
+
     info: NoteInfo = field(default_factory=NoteInfo)
     children: list[RawNote] = field(default_factory=list)
     _id: int | None = field(default=None)
 
     @property
     def type(self) -> NoteType:
+        """The note type (:class:`NoteType`); view of ``info.type``."""
         return self.info.type
 
     @type.setter
@@ -133,11 +147,13 @@ class RawNote:
     __repr__ = __str__
 
     def child(self, *children: RawNote) -> RawNote:
+        """Set this note's children to ``children`` and return ``self`` (for chaining)."""
         self.children = list(children)
         return self
 
     @classmethod
     def from_proto(cls, proto: messages_pb2.Note) -> RawNote:
+        """Build a :class:`RawNote` (and its subtree) from a protobuf ``Note``."""
         return cls(
             _id=proto.id if proto.HasField("id") else None,
             info=NoteInfo(
@@ -157,6 +173,7 @@ class RawNote:
         )
 
     def to_proto(self) -> messages_pb2.Note:
+        """Serialize this note (and its subtree) to a protobuf ``Note``."""
         proto = messages_pb2.Note(
             type=cast("messages_pb2.NoteType", int(self.type)),
             long_attr=cast("messages_pb2.LongAttr", int(self.long_attr)),
@@ -186,6 +203,15 @@ def _format_raw(note: RawNote, *, indent: int = 0) -> str:
 
 
 class R:
+    """Factory namespace for building :class:`RawNote` trees node-by-node.
+
+    Each static method returns a single :class:`RawNote` for one node of a chart structure,
+    named ``<note>[_<segment>]`` (e.g. :meth:`tap`, :meth:`slide_begin`, :meth:`slide_step`,
+    :meth:`air_crush_end`). Assemble long notes by attaching segment nodes as children via
+    :meth:`RawNote.child`. Intended for raw editing and tests; typed notes are easier for
+    normal authoring.
+    """
+
     @staticmethod
     def _raw(
         note_type: NoteType,
