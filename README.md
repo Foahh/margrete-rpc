@@ -15,23 +15,39 @@ specific transforms, but it can also feel brittle when you want to:
 ## Core repository content
 
 - **[`plugin/`](plugin/)**: the Margrete plugin that hosts the RPC server  
-  See [`plugin/README.md`](plugin/README.md) for server behavior and default configuration.
-- **[`sdk/`](sdk/)**: Python client for the supported RPC calls  
-  See [`sdk/README.md`](sdk/README.md) for installation and usage.
 
-## How it works (high level)
+- **[`sdk/`](sdk/)**: Python client controlling the Margrete plugin 
 
-- You start the server from inside Margrete by running the plugin command.
-- Your script communicates with a discovered local plugin server, or with an explicit `<host>:<port>` endpoint.
+## Usage
 
-## Quick start
+TODO
 
-1. **Install/enable the plugin** in Margrete.
-2. In Margrete, run the plugin command once to **start** the server (run again to stop).
-3. Use an SDK to call the RPC surface you need:
-   - **Python**: follow [`sdk/README.md`](sdk/README.md).
+<!-- Invoke the plugin command once in Margrete to start the server. Invoke it again to stop the server.
 
-## Links
+Default server config `margrete-rpc.ini`:
 
-- **Plugin README**: [`plugin/README.md`](plugin/README.md)
-- **Python SDK README**: [`sdk/README.md`](sdk/README.md)
+```ini
+[server]
+host = 127.0.0.1
+port = auto
+```
+
+By default, the plugin binds to `127.0.0.1`. Set `host` to another IPv4 address only when you intentionally want to accept connections on that interface. For example, `0.0.0.0` accepts connections on all IPv4 interfaces and may expose the RPC server to other machines on your network.
+
+`port = auto` asks Windows for a free local port, so multiple Margrete processes can run the plugin at the same time. Set `port` to a fixed numeric value only when you need a stable endpoint.
+
+Logs are written per instance under:
+
+```text
+%LOCALAPPDATA%\MargreteRPC\logs\margrete-rpc-{instance_id}.log
+```
+
+## Limitation
+
+The Margrete plugin SDK currently **does not support iterating through events by index**.
+
+Events like `scroll speed change` are scanned from tick `0` to `last_note_tick`.
+
+This method is very inefficient, but I have to do it until the SDK supports event iteration.
+
+Event scan limits are set by the request (see `event_scan_extra_tick` / `event_scan_til` in the SDK). -->
