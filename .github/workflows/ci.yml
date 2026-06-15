@@ -9,9 +9,6 @@ jobs:
   sdk:
     name: SDK (Python)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sdk
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
