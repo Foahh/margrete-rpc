@@ -20,9 +20,7 @@ specific transforms, but it can also feel brittle when you want to:
 
 ## Usage
 
-TODO
-
-<!-- Invoke the plugin command once in Margrete to start the server. Invoke it again to stop the server.
+Invoke the plugin command once in Margrete to start the server. Invoke it again to stop the server.
 
 Default server config `margrete-rpc.ini`:
 
@@ -50,4 +48,4 @@ Events like `scroll speed change` are scanned from tick `0` to `last_note_tick`.
 
 This method is very inefficient, but I have to do it until the SDK supports event iteration.
 
-Event scan limits are set by the request (see `event_scan_extra_tick` / `event_scan_til` in the SDK). -->
+Event scan limits are set by the request (see `event_scan_extra_tick` / `event_scan_til` in the SDK).
