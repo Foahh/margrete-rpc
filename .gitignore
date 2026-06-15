@@ -4,3 +4,6 @@ __pycache__/
 publish/
 .claude/skills
 .codex/skills
+.agents/skills
+skills-lock.json
+plans/
