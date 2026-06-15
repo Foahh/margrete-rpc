@@ -3,6 +3,9 @@
 
 # generated content
 .source
+/margrete_rpc.json
+/content/docs/reference
+/content/docs/(api)/margrete_rpc
 
 # test & build
 /coverage

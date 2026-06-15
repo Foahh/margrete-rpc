@@ -1,0 +1,41 @@
+---
+title: Limitations
+description: Known constraints in the Margrete RPC plugin and SDK, and how to work around them.
+icon: TriangleAlert
+---
+
+## Event iteration
+
+The Margrete plugin SDK currently **does not support iterating through timeline events by index**.
+
+Events such as scroll-speed changes (`TimelineSpeedEvent`) are scanned from tick `0` to the last note tick by stepping through the timeline sequentially. This is inefficient compared to a direct index lookup.
+
+### Workarounds
+
+Control how far the scan runs with the `event_scan_extra_tick` and `event_scan_note_til_only` parameters of `open_edit`:
+
+```python
+with m.open_edit(
+    "edit",
+    # scan this many ticks past the last note
+    event_scan_extra_tick=1920 * 8,
+    # only scan ticks that carry notes (faster for sparse charts)
+    event_scan_note_til_only=True,
+) as tx:
+    ...
+```
+
+You can also supply an explicit list of ticks to scan with `event_scan_til`:
+
+```python
+with m.open_edit("edit", event_scan_til=[0, 3840, 7680]) as tx:
+    ...
+```
+
+This limitation will be lifted once the underlying SDK supports event iteration. See the [upstream issue](https://github.com/inonote/umiguri-issue-repo/issues/6) for progress.
+
+## Undo and note deletion
+
+Undoing a transaction that **deleted** notes can re-create them in a duplicated state. This is a known behaviour in how the plugin bridges the Margrete undo stack.
+
+Additions and modifications are safe to undo. If you need to undo deletions reliably, design your transactions to avoid them — keep notes and set them invisible or out of range instead.

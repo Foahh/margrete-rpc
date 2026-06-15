@@ -1,0 +1,199 @@
+---
+title: Note Types
+description: Ground notes, long notes with joints, air notes, and transforms.
+---
+
+All note classes live in `margrete_rpc.chart.notes`. Every typed note accepts `t` as either an absolute tick `int` or a `(bar, beat, offset)` position tuple (resolved automatically inside a transaction).
+
+## Ground notes
+
+Ground notes have no children and share the same geometry: timing `t`, left lane `x`, and width `w`.
+
+### Tap
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+note = Tap(t=(0, 0, 0), x=4, w=4)
+```
+
+### Extap
+
+```python
+from margrete_rpc.chart.notes import Extap, ExtapDirection
+
+note = Extap(t=(0, 0, 0), x=4, w=4, dir=ExtapDirection.UP)
+```
+
+`dir` accepts an `ExtapDirection` enum value or string: `"up"`, `"down"`, `"left"`, `"right"`.
+
+### Flick
+
+```python
+from margrete_rpc.chart.notes import Flick, FlickDirection
+
+note = Flick(t=(0, 0, 0), x=4, w=4, dir=FlickDirection.AUTO)
+```
+
+`FlickDirection` values: `AUTO`, `LEFT`, `RIGHT`.
+
+### Damage
+
+```python
+from margrete_rpc.chart.notes import Damage
+
+note = Damage(t=(0, 0, 0), x=4, w=4)
+```
+
+### Converting between ground note types
+
+```python
+flick = tap.converted(Flick, dir=FlickDirection.LEFT)
+extap = flick.converted(Extap, dir=ExtapDirection.UP)
+```
+
+`converted()` copies the note's geometry and accepts keyword overrides for type-specific fields.
+
+## Long notes
+
+Long notes have a begin position and one or more joints. Build them with the fluent `with_step` / `with_ctrl` methods, which return a new copy each time.
+
+### Hold
+
+A hold has a single end joint set with `with_step`.
+
+```python
+from margrete_rpc.chart.notes import Hold
+
+note = (
+    Hold(t=(0, 0, 0), x=4, w=4)
+    .with_step(t=(1, 0, 0), x=4, w=4)
+)
+```
+
+### Slide
+
+A slide threads through step and control joints. It must end on a step joint.
+
+```python
+from margrete_rpc.chart.notes import Slide
+
+note = (
+    Slide(t=(0, 0, 0), x=0, w=4)
+    .with_ctrl(t=(0, 2, 0), x=8, w=4)   # smooth curve control
+    .with_step(t=(1, 0, 0), x=4, w=4)   # visible step / endpoint
+)
+```
+
+### AirCrush
+
+An air-crush note lives in the air lane. It carries a height `h`, a segment `gap` (tick spacing, or a beat fraction), and a `color`.
+
+```python
+from margrete_rpc.chart.notes import AirCrush, ColorValue
+
+note = (
+    AirCrush(t=(0, 0, 0), x=4, w=4, h=4, gap=(1, 8), color=ColorValue.DEFAULT)
+    .with_ctrl(t=(1, 0, 0), x=6, w=4, h=6)
+)
+```
+
+`gap=(1, 8)` is a beat fraction: one eighth note. You can also pass a raw tick count.
+
+`ColorValue` values: `DEFAULT`, `RED`, `YELLOW`, `BLUE`, `GREEN`, `PURPLE`, `CYAN`, `BLACK`.
+
+## Air notes
+
+Air notes are attached to a **ground or long note** via the `.air` property of the parent. They share the parent's `t`/`x`/`w` at the attachment point.
+
+### Air
+
+A single air note above a ground note:
+
+```python
+from margrete_rpc.chart.notes import Tap, Air, AirDirection
+
+tap = Tap(t=(0, 0, 0), x=4, w=4)
+tap.air = Air(t=(0, 0, 0), x=4, w=4, dir=AirDirection.UP)
+```
+
+`AirDirection` values: `UP`, `LEFT`, `RIGHT`.
+
+### AirHold and AirSlide
+
+`AirHold` and `AirSlide` attach to the end joint of a long note:
+
+```python
+from margrete_rpc.chart.notes import Hold, AirHold
+
+hold = (
+    Hold(t=(0, 0, 0), x=4, w=4)
+    .with_step(t=(1, 0, 0), x=4, w=4)
+)
+hold.air = AirHold(t=(1, 0, 0), x=4, w=4, dir=AirDirection.UP)
+```
+
+`AirSlide` works the same way but accepts additional joints for a curved air path.
+
+## Transforms
+
+Every note implements an identical transform interface. Each verb has two forms: the bare verb mutates in place and returns `self`; the past-tense form returns a cloned note and leaves the original unchanged.
+
+| In-place | Cloning | Effect |
+|---|---|---|
+| `note.shift(t=, x=, w=, h=)` | `note.shifted(...)` | Add deltas to fields. Accepts callables `lambda v: ...` or position tuples for `t`. |
+| `note.scale(factor, pivot=)` | `note.scaled(...)` | Scale timing about a pivot tick. |
+| `note.align(interval, mode=)` | `note.aligned(...)` | Snap timing to a grid. `interval` is ticks or a `(n, d)` beat fraction; `mode` is `"round"`, `"floor"`, or `"ceil"`. |
+| `note.flip(field=)` | `note.flipped(...)` | Mirror `x` within `field` lanes (default 16). |
+| `note.clamp_w(left=, right=)` | `note.clamped_w(...)` | Clamp lane extent to `[left, right)`. |
+| `note.clone()` | — | Deep copy without the server id. |
+
+```python
+# move all notes right by 2 lanes, in place
+for note in tx.chart.notes:
+    note.shift(x=2)
+
+# produce shifted copies without touching originals
+mirrored = [note.shifted(x=-4) for note in tx.chart.notes]
+
+# snap every note to the nearest eighth note
+eighth = (1, 8)
+for note in tx.chart.notes:
+    note.align(eighth)
+
+# mirror all notes horizontally
+for note in tx.chart.notes:
+    note.flip()
+
+# scale timing to half speed around tick 0
+for note in tx.chart.notes:
+    note.scale(2.0, pivot=0)
+```
+
+Transforms propagate to all child joints and attached air notes automatically.
+
+## RawNote
+
+`RawNote` is a low-level protobuf-tree node. It appears when:
+- `open_edit(raw=True)` is passed (all notes stay raw)
+- A note's structure is not recognised by the typed wrappers
+
+```python
+from margrete_rpc.chart.notes import R, RawNote
+from margrete_rpc.chart.notes.types import NoteType, LongAttr, NoteInfo
+
+# build a raw tap manually
+raw = R(NoteType.TAP, t=0, x=4, w=4)
+```
+
+The `R` shorthand creates a `RawNote` from a `NoteType`. Use `RawNote.from_proto` / `to_proto` for direct protobuf access.
+
+## Validation
+
+Call `note.validate()` to check geometry, or let `to_raw()` check before serialising:
+
+```python
+note.validate()          # raises ValueError if invalid
+raw = note.to_raw()      # validates then returns RawNote tree
+raw = note.to_raw(skip_validation=True)  # skip check
+```

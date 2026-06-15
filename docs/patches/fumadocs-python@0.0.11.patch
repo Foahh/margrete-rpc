@@ -1,0 +1,14 @@
+--- a/package.json
++++ b/package.json
+@@ -23,3 +23,10 @@
+   "exports": {
+-    "./preset.css": "./styles/preset.css",
++    "./preset.css": {
++      "style": "./styles/preset.css",
++      "default": "./styles/preset.css"
++    },
++    "./styles/preset.css": {
++      "style": "./styles/preset.css",
++      "default": "./styles/preset.css"
++    },
+     ".": {

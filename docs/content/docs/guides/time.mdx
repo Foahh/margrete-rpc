@@ -1,0 +1,121 @@
+---
+title: Time & Position
+description: Ticks, bar/beat positions, beat fractions, and how they resolve inside a transaction.
+---
+
+Margrete RPC uses two coordinate systems for timing and two for durations.
+
+## Ticks
+
+The raw timeline unit. `TICKS_PER_BEAT = 1920` ticks per quarter note (beat).
+
+```python
+from margrete_rpc.chart.time import TICKS_PER_BEAT
+
+one_beat = TICKS_PER_BEAT           # 1920
+one_bar_4_4 = TICKS_PER_BEAT * 4   # 7680
+```
+
+Most note constructors and transforms accept an `int` tick directly:
+
+```python
+Tap(t=1920, x=0, w=4)   # beat 1 in 4/4 at 120 BPM
+```
+
+## Position — bar / beat / offset
+
+`Position(bar, beat, offset)` is the musical view of a tick. All fields are zero-based; `offset` is ticks within the beat.
+
+```python
+from margrete_rpc.chart.time import Position, t2p, p2t
+
+# tick → position
+pos = t2p(7680)             # Position(bar=1, beat=0, offset=0) in 4/4
+print(pos.bar, pos.beat, pos.offset)
+
+# position → tick
+tick = p2t(1, 0, 0)         # 7680
+```
+
+### PositionLike
+
+When calling `t=` on note constructors (or `pivot=` on `scale`, `interval=` on `align`), you can pass a **tuple** instead of an int:
+
+| Tuple | Meaning |
+|---|---|
+| `(bar,)` | bar, beat=0, offset=0 |
+| `(bar, beat)` | bar, beat, offset=0 |
+| `(bar, beat, offset)` | fully specified |
+
+```python
+Tap(t=(2,), x=0, w=4)          # bar 2
+Tap(t=(2, 1), x=0, w=4)        # bar 2, beat 1
+Tap(t=(2, 1, 480), x=0, w=4)   # bar 2, beat 1, offset 480
+```
+
+### Implicit resolution inside a transaction
+
+Inside a `with m.open_edit()` block, the chart's beat events are active as a context variable. Position tuples resolve against the **actual time signature** of the chart automatically — no need to pass beat events explicitly.
+
+```python
+with m.open_edit("place") as tx:
+    # resolves against the chart's real time signatures
+    tx.chart.notes.append(Tap(t=(4, 0, 0), x=0, w=4))
+```
+
+Outside a transaction, call `p2t` with explicit `beat_events=`:
+
+```python
+from margrete_rpc.chart.time import p2t
+
+tick = p2t(4, 0, 0, beat_events=tx.chart.events.beat)
+```
+
+Or just pass raw ticks.
+
+## Interval — beat fractions
+
+`Interval(numerator, denominator)` is a reduced beat fraction. Convert with `d2t` and `t2d`.
+
+```python
+from margrete_rpc.chart.time import Interval, d2t, t2d
+
+quarter_note = d2t(1, 4)    # 480 ticks (TICKS_PER_BEAT / 4 — wait, actually 1920/4 = 480)
+eighth_note  = d2t(1, 8)    # 240 ticks
+dotted_half  = d2t(3, 4)    # 1440 ticks
+
+interval = t2d(480)         # Interval(numerator=1, denominator=4)
+```
+
+`d2t` raises `ValueError` if the fraction does not land on a whole tick (e.g. if `denominator > TICKS_PER_BEAT`).
+
+### IntervalLike
+
+Functions that accept durations also accept `(numerator, denominator)` tuples:
+
+```python
+# snap to the nearest eighth note
+note.align((1, 8))
+
+# AirCrush segment gap as a dotted quarter
+AirCrush(t=0, x=0, w=4, h=4, gap=(3, 4), ...)
+```
+
+## Time signatures
+
+The chart's time signatures come from `tx.chart.events.beat` (a `list[BeatEvent]`). Each event anchors a new signature at a zero-based `bar`:
+
+```python
+for event in tx.chart.events.beat:
+    print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+```
+
+You can build a `TimeCalculator` from any list of beat events for manual conversion:
+
+```python
+from margrete_rpc.chart.time import TimeCalculator
+
+calc = TimeCalculator(tx.chart.events.beat)
+pos  = calc.t2p(3840)
+tick = calc.p2t(1, 2, 0)
+```
