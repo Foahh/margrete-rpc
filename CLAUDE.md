@@ -2,174 +2,112 @@
 
 This file provides guidance to agents when working with code in this repository.
 
-## Overview
+## What this is
 
-**Margrete RPC** is a plugin + SDK system that exposes scriptable chart editing for Margrete (UMIGURI) via a TCP/protobuf RPC server.
+Margrete RPC is a Margrete plugin + Python SDK for scripting chart edits programmatically. It has two parts:
 
-- **Plugin** (`plugin/`): C++20 DLL that runs as a Margrete plugin, hosts a TCP server, translates RPC calls to Margrete SDK operations
-- **SDK** (`src/margrete_rpc/`): Python 3.13+ client library for chart scripting; provides high-level chart objects, transaction management, and time/position conversions
-- **Proto** (`proto/`): protobuf message definitions (`margrete.rpc.v1`) used for wire protocol between plugin and SDK
+- **`plugin/`** — C++ Margrete plugin that runs a TCP/protobuf RPC **server** inside Margrete
+- **`src/margrete_rpc/`** — Python **client** SDK that connects to the plugin and applies chart edits
+- **`proto/`** — protobuf definitions shared by both
+- **`docs/`** — Fumadocs documentation site; auto-generates API reference from the Python SDK
 
-## Building & Testing
+## Python SDK commands
 
-### Plugin (C++)
+All SDK commands use `uv` as the project tool (the `.venv` does not have pip/pytest directly):
 
-The plugin uses **CMake** with vcpkg for dependency management.
-
-**Build commands:**
-```powershell
-# Release build (default)
-.\build.ps1
-
-# Debug build with tests
-.\build.ps1 -Configuration Debug -Test
-
-# Publish to publish/ folder (copy DLL + INI for manual Margrete install)
-.\build.ps1 -Publish
-
-# Initialize submodules (MargretePluginSDK)
-.\build.ps1 -InitSubmodules
-```
-
-**Plugin tests** use **Catch2**. Run via:
-```powershell
-.\build.ps1 -Configuration Debug -Test
-# Or manually from build dir:
-ctest -C Debug --output-on-failure
-```
-
-### SDK (Python)
-
-The Python SDK uses **uv** for dependency management, **pytest** for testing and **ruff** for linting/formatting.
-
-**Setup:**
 ```bash
-uv sync
+uv run --extra dev pytest                          # run all tests
+uv run --extra dev pytest tests/test_chart_time.py # run a single test file
+uv run --extra dev pytest tests/test_foo.py::test_bar  # run a single test
+uv run --extra dev pyright                         # type checking
+uv run --extra dev ruff check src/                 # lint
+uv run --extra dev ruff format src/                # format
 ```
 
-**Run tests:**
+The `proto/` generated files (`src/margrete_rpc/_proto/`) are excluded from ruff and pyright — don't edit them.
+
+## Plugin (C++) commands
+
+Prerequisites: MSVC, vcpkg with `VCPKG_ROOT` set, Visual Studio 2026 generator.
+
 ```bash
-pytest                          # All tests
-pytest tests/test_chart_objects.py  # Single file
-pytest -k test_name             # Single test by name
-pytest -v --tb=short           # Verbose with short tracebacks
+cd plugin
+
+# First time: configure (from plugin/ directory)
+cmake --preset windows-x64
+
+# Build the DLL (no vcvars needed, VS generator handles it)
+cmake --build build --config Release
+
+# Build + run C++ tests without touching the deployed DLL
+cmake --build build --config Release --target plugin_tests
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-**Type check:**
-```bash
-uv run pyright
+Output DLL: `plugin/build/Release/margrete-rpc.dll`.
+
+### Deploying the plugin
+
+The user's Margrete install is `%MARGRETE_DIR%`, plugins directory `%MARGRETE_DIR%\plugins\`. While Margrete is running, the deployed DLL is locked — rebuilding produces a fresh `build/Release/margrete-rpc.dll` but the deployed copy goes stale. To test a new build: stop Margrete, copy the new DLL + INI into `plugins\`, and relaunch.
+
+Plugin logs: `%LOCALAPPDATA%\MargreteRPC\logs\margrete-rpc-<instance>.log`
+Discovery files: `%LOCALAPPDATA%\MargreteRPC\instances\`
+
+## Python SDK architecture
+
+### Entry point: `Margrete` and `EditTransaction`
+
+`src/margrete_rpc/client.py` — `Margrete` is the sole entry point. It auto-discovers the running plugin via `discovery.py` (reads JSON files from `%LOCALAPPDATA%\MargreteRPC\instances\`). The key method is `open_edit()`, which returns an `EditTransaction` context manager. On clean exit the transaction diffs the chart and sends one atomic `ApplyEditRequest` to Margrete. On exception, nothing is applied.
+
+```python
+m = Margrete()                    # auto-detect running instance
+with m.open_edit("label") as tx:
+    tx.chart.notes.append(Tap(t=(0, 0, 0), x=0, w=4))
+# changes sent here
 ```
 
-**Format/lint:**
-```bash
-# Check formatting and lint issues
-.\format.ps1 -Check
+### Chart model: `chart/chart.py`
 
-# Fix issues
-.\format.ps1
+`Chart` holds `notes: list[ChartNote]` and `events: ChartEvents`. Notes are either typed (`Note` subclasses) or `RawNote` trees (when the wire format isn't recognized, or when `raw=True` is passed to `open_edit`). `ChartEvents` holds BPM, beat (time-signature), TIL (timeline-speed), and note-speed events.
 
-# Python only (skip C++)
-.\format.ps1 -SkipCpp
+### Note types: `chart/notes/`
 
-# C++ only (skip Python)
-.\format.ps1 -SkipPython
-```
+Typed note classes (all importable from `margrete_rpc.chart.notes`):
+- **Ground**: `Tap`, `Extap`, `Flick`, `Damage`
+- **Long ground**: `Hold`, `Slide` — built with `add_step()`/`add_ctrl()` or `with_step()`/`with_ctrl()` (returns copy)
+- **Air**: `Air`, `AirHold`, `AirSlide`
+- **Air long**: `AirCrush` — carries `h`, `color`, `gap`
+- **Raw**: `RawNote` / `R` — direct protobuf tree; used for unsupported structures
 
-**Python test configuration** is in `pyproject.toml`:
-- Test paths: `tests/`
-- Python path: `src/` (allows `from margrete_rpc import ...`)
-- Ruff excludes: `margrete_rpc/_proto/` (generated protobuf)
+Long notes (Hold, Slide, AirCrush, AirSlide, AirHold) share a joint builder pattern. An `Air` note can be attached to any `_AirAttachable` long note (Hold, Slide) via the `.air` property.
 
-## Architecture
+### Timing: `chart/time.py`
 
-### Wire Protocol
+All timing is in **ticks** (`TICKS_PER_BEAT = 1920` ticks/quarter-note). Two conversions:
+- `t2p(tick)` → `Position(bar, beat, offset)` (zero-based, offset within beat)
+- `p2t(bar, beat, offset)` → int tick
 
-A single `.proto` file (`proto/margrete/rpc/v1/messages.proto`) defines all messages. Every request and response is wrapped in an `Envelope` with a `oneof` field selecting the payload. The plugin uses length-prefixed framing (`FrameProtocol.cpp`) over TCP. On the Python side, `_socket.py` (`SocketRpcClient`) and `_transport.py` implement the same framing.
+Inside an `EditTransaction` context, a `TickResolver` is installed via a `contextvars.ContextVar`, so note constructors accept bare `(bar, beat, offset)` tuples for `t` without threading `beat_events` everywhere. Outside a transaction, 4/4 is assumed.
 
-### Plugin Component Map
+`IntervalLike = (numerator, denominator)` beat fractions are accepted anywhere a tick count is expected (e.g. `gap=(1, 16)` for a 1/16th note).
 
-```
-Plugin (IMargretePluginCommand)
-  └─ ServerController       lifecycle: starts/stops the TCP server thread
-       ├─ SocketServer       accepts TCP connections
-       ├─ FrameProtocol      length-prefixed protobuf framing per connection
-       ├─ RequestRouter      dispatches Envelope → handler by oneof field
-       │    ├─ MargreteSession    thin wrapper around IMargretePluginContext
-       │    ├─ ChartMapper        serializes Margrete chart ↔ proto notes/events
-       │    ├─ TransactionApplier applies ApplyEditRequest on Margrete's undo stack
-       │    └─ RootNoteDeduper   deduplicates root-level notes after apply
-       ├─ DiscoveryRegistry  writes JSON instance record to %LOCALAPPDATA%\MargreteRPC\instances\
-       ├─ Config             loads margrete-rpc.ini settings
-       └─ Logger             logs to file
-```
+### Diff system: `chart/diff.py`
 
-### Python SDK Data Flow
+When `scan=True` (the default), `open_edit` captures a baseline snapshot on entry. On exit, `build_apply_edit_request` compares the final chart against the snapshot and sends only changed notes/events (upserts + deletes). If nothing changed, `None` is returned and no request is sent. With `replace_all=True` the entire chart is replaced.
 
-```
-Margrete (client.py)
-  └─ open_edit(name) → EditTransaction (transaction.py)
-       │  __enter__: BeginEditRequest → Chart (chart.py)
-       │             pushes beat_events + tick_resolver into contextvars
-       │             captures EditSnapshot (diff.py) if scan=True
-       └─ __exit__ (clean): build_apply_edit_request (diff.py) → ApplyEditRequest
-```
+Note identity across a scan uses the note's server-assigned `_id`. Notes created inside the transaction have no id; the server assigns one when they are applied.
 
-**Chart model** (`chart/chart.py`):
-- `Chart.notes`: `list[ChartNote]` — either typed `Note` objects or `RawNote` trees
-- `Chart.events`: `ChartEvents` — BPM, beat (time-signature), TIL, note-speed events
+### Transport: `_socket.py` / `_transport.py`
 
-**Note hierarchy** (`chart/notes/`):
-- `Note` is a `Protocol` (structural) defined in `shared.py`
-- Ground notes (`ground.py`): `Tap`, `Extap`, `Flick`, `Damage`
-- Long notes (`long.py`): `Hold`, `Slide`, `AirCrush` — each a BEGIN node with `Joint`/`AirJoint` children
-- Air notes (`air.py`): `Air`, `AirHold`, `AirSlide` — attached to a parent ground/long note
-- `RawNote` (`raw.py`): low-level protobuf-tree node; used with `raw=True` or for unrecognised trees
-- All typed notes compose `_GeometryInfoMixin`, `_TransformMixin`, and optional `_HeightMixin` from `shared.py`, backed by `NoteInfo` (`types.py`)
-- `wrap_raw_note` (`wrap.py`) converts `RawNote` → typed note on `BeginEditResponse` deserialization
+The wire protocol wraps protobuf `Envelope` messages in a length-prefixed frame (4-byte big-endian length header). `SocketRpcClient` handles framing over a TCP socket. The `RpcTransport` ABC allows injecting a fake transport in tests (see `test_client_transaction.py`).
 
-**Transforms** — every `Note` has both in-place (`shift`, `scale`, `align`, `flip`, `clamp_w`) and cloning (`shifted`, `scaled`, etc.) variants that return `self` for chaining.
+## Key invariants
 
-### Implicit Tick Resolution
-
-Inside a `with m.open_edit() as tx:` block, `EditTransaction.__enter__` pushes the chart's `BeatEvent` list and a tick resolver into `contextvars.ContextVar`s (`time.py`). This means note constructors accept `t=(bar, beat, offset)` tuples and resolve to absolute ticks automatically — no need to thread beat events through every call. The context is restored on `__exit__`.
-
-### Diff / Apply Modes
-
-`open_edit()` supports three apply strategies (controlled by `scan` and `replace_all`):
-- **scan=True** (default): snapshots notes+events on enter; on exit sends only the deltas (added/modified/deleted by server `_id`)
-- **scan=False**: sends all notes in the final chart as upserts (no existing ids allowed)
-- **replace_all=True**: strips all ids, sends every note as an upsert with `replace_all_notes=True`
-
-### Discovery
-
-The plugin writes a JSON file to `%LOCALAPPDATA%\MargreteRPC\instances\<id>.json` on startup (`DiscoveryRegistry.cpp`). `discovery.py` reads these files, pings each endpoint, and resolves a single instance. `Margrete()` with no arguments auto-discovers; pass `endpoint=` or `instance_id=` to target a specific server.
-
-### Time / Position Model
-
-`TICKS_PER_BEAT = 1920` (quarter-note resolution). Two coordinate systems:
-- `Position(bar, beat, offset)` — musical position; convert with `t2p`/`p2t`
-- `Interval(numerator, denominator)` — beat fraction (e.g. `(1, 4)` = quarter note); convert with `d2t`/`t2d`
+- `TICKS_PER_BEAT = 1920` — all tick arithmetic must be exact integers; `d2t` raises if the fraction doesn't land on a whole tick.
+- `undo()` has a known bug: undoing a transaction that **deleted** notes re-creates them in a duplicated state. Prefer designs that add/modify rather than relying on undo to reverse deletions.
+- The generated protobuf files in `src/margrete_rpc/_proto/` are committed and must not be regenerated manually — they come from `proto/margrete/rpc/v1/messages.proto` but the Python generation step is not wired into the SDK build.
 
 ## Development Notes
 
 - Follow conventional commit style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`.
 - The project is not yet published, so cleaner implementation and future maintainability are prioritized over backward compatibility.
-
-## Common Commands
-
-```powershell
-# Format all sources
-.\format.ps1
-
-# Format with check (CI-like)
-.\format.ps1 -Check
-
-# Build plugin Release + run SDK tests
-.\build.ps1 && pytest
-
-# Full CI flow: build plugin, run plugin tests, format check, SDK tests
-.\build.ps1 -Configuration Release -Test && .\format.ps1 -Check && pytest
-
-# Debug build with full test cycle
-.\build.ps1 -Configuration Debug -Test -SkipVcVars
-```

@@ -19,3 +19,5 @@ specific transforms, but it can also feel brittle when you want to:
 - **[`src/margrete_rpc`](src/margrete_rpc)**: Python **client** controlling the Margrete plugin
 
 - **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the SDK
+
+- **[`docs/`](docs/)**: Fumadocs documentation site; auto-generates API reference from the Python SDK
