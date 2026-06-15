@@ -20,7 +20,7 @@ requires = ["hatchling>=1.30.1"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/margrete_rpc"]
+packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -35,8 +35,8 @@ exclude = ["**/margrete_rpc/_proto/**"]
 select = ["E", "F", "I", "UP"]
 
 [tool.pyright]
-include = ["src/margrete_rpc"]
-exclude = ["**/node_modules", "**/__pycache__", "**/.*", "src/margrete_rpc/_proto"]
+include = ["src"]
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", "src/margrete_rpc/_proto", ".venv"]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
 
