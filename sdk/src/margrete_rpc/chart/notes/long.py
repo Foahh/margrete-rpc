@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Self, cast
 
-from ..constants import DEFAULT_H
-from ..time import Position, resolve_density, resolve_gap, resolve_tp, t2d
+from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
+from ..time import Division, Position, resolve_density, resolve_tick, t2d
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -32,8 +32,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -48,7 +47,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
         self._info.long_attr = LongAttr.BEGIN
         if _info is None:
             self._info.h = DEFAULT_H
-        self.t = resolve_tp(t, p)
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
 
@@ -121,16 +120,16 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
 
     _note_type = NoteType.SLIDE
 
-    def with_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+    def with_step(self, *, t: int | Position, x: int, w: int) -> Self:
         """Return a copy with a step joint appended at the given timing and geometry."""
         copy = self.clone()
-        copy.add_step(t=t, p=p, x=x, w=w)
+        copy.add_step(t=t, x=x, w=w)
         return copy
 
-    def with_ctrl(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+    def with_ctrl(self, *, t: int | Position, x: int, w: int) -> Self:
         """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
-        copy.add_ctrl(t=t, p=p, x=x, w=w)
+        copy.add_ctrl(t=t, x=x, w=w)
         return copy
 
     def converted[T: (AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
@@ -151,13 +150,13 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
 
     _note_type = NoteType.HOLD
 
-    def with_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+    def with_step(self, *, t: int | Position, x: int, w: int) -> Self:
         """Return a copy whose end joint is set (or moved) to the given timing/geometry.
 
         Raises:
             ValueError: If the end timing is not later than the hold's begin.
         """
-        tick = resolve_tp(t, p)
+        tick = resolve_tick(t)
         copy = self.clone()
         if copy._joints:
             if int(tick) <= int(copy._info.t):
@@ -195,13 +194,11 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         h: int,
-        gap_t: int | None = None,
-        gap_d: tuple[int, int] | None = None,
+        gap: Division = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -209,18 +206,16 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         """Create an air-crush begin note.
 
         Args:
-            t: Absolute tick (mutually exclusive with ``p``).
-            p: A :data:`Position` (mutually exclusive with ``t``).
+            t: Absolute tick or :data:`Position` tuple.
             x: Left lane index.
             w: Width in lane units.
             h: Air height.
-            gap_t: Segment gap as a tick count (mutually exclusive with ``gap_d``).
-            gap_d: Segment gap as a ``(numerator, denominator)`` beat fraction.
+            gap: Segment gap as a tick count or ``(numerator, denominator)`` beat fraction.
             color: Crush color (:class:`ColorValue` or raw int).
         """
-        super().__init__(t=t, p=p, x=x, w=w, _info=_info, _id=_id)
+        super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
         self.h = h
-        self.gap_t = resolve_gap(gap_t, gap_d)
+        self.gap_t = resolve_density(gap)
         self.color = color
 
     @property
@@ -250,12 +245,10 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def color(self, value: ColorLike | int) -> None:
         self._info.variation_id = color_to_value(value)
 
-    def with_ctrl(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
-    ) -> Self:
+    def with_ctrl(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
         """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
-        copy.add_ctrl(t=t, p=p, x=x, w=w, h=h)
+        copy.add_ctrl(t=t, x=x, w=w, h=h)
         return copy
 
     def converted[T: (Slide, AirSlide)](self, target: type[T], **overrides: Any) -> T:

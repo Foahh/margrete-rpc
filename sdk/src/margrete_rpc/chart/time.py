@@ -5,7 +5,6 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 
-from .constants import DEFAULT_AIRCRUSH_GAP
 from .constants import TICKS_PER_BEAT as TICKS_PER_BEAT
 from .events import BeatEvent
 
@@ -293,31 +292,6 @@ def resolve_tick(value: int | Position) -> int:
     return value
 
 
-def resolve_tp(t: int | None, p: Position | None) -> int:
-    """Resolve the mutually exclusive ``t`` / ``p`` timing arguments to a tick.
-
-    Note constructors accept either an int tick ``t`` or a :data:`Position` ``p``; exactly
-    one must be given.
-
-    Args:
-        t: Absolute tick, or ``None``.
-        p: A :data:`Position`, or ``None``.
-
-    Returns:
-        The absolute tick.
-
-    Raises:
-        ValueError: If both or neither argument is provided.
-    """
-    if t is not None and p is not None:
-        raise ValueError("provide either t or p, not both")
-    if p is not None:
-        return resolve_tick(p)
-    if t is not None:
-        return t
-    raise ValueError("either t or p must be provided")
-
-
 def d2t(numerator: int, denominator: int) -> int:
     """Convert a ``numerator/denominator`` beat fraction to a tick count.
 
@@ -386,29 +360,6 @@ def resolve_density(value: Division) -> int:
     return value
 
 
-def resolve_gap(gap_t: int | None, gap_d: tuple[int, int] | None) -> int:
-    """Resolve the mutually exclusive ``gap_t`` / ``gap_d`` gap arguments to a tick count.
-
-    Args:
-        gap_t: Gap as an int tick count, or ``None``.
-        gap_d: Gap as a ``(numerator, denominator)`` beat fraction (via
-            :func:`resolve_density`), or ``None``.
-
-    Returns:
-        The gap in ticks; ``DEFAULT_AIRCRUSH_GAP`` when neither argument is given.
-
-    Raises:
-        ValueError: If both arguments are provided.
-    """
-    if gap_t is not None and gap_d is not None:
-        raise ValueError("provide either gap_t or gap_d, not both")
-    if gap_d is not None:
-        return resolve_density(gap_d)
-    if gap_t is not None:
-        return gap_t
-    return DEFAULT_AIRCRUSH_GAP
-
-
 __all__ = [
     "TICKS_PER_BEAT",
     "Division",
@@ -420,11 +371,9 @@ __all__ = [
     "push_beat_events",
     "pop_beat_events",
     "resolve_tick",
-    "resolve_tp",
     "push_tick_resolver",
     "pop_tick_resolver",
     "d2t",
     "t2d",
     "resolve_density",
-    "resolve_gap",
 ]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from ..time import Position, resolve_tp
+from ..time import Position, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
 from .raw import RawNote
@@ -85,16 +85,15 @@ class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
 class Tap(_GroundNote):
     """A basic tap note on the ground lane.
 
-    Ground notes are placed by timing and lane geometry: pass either an absolute tick
-    ``t`` or a :data:`Position` ``p`` (not both), a left lane index ``x``, and a width
-    ``w``. An :class:`Air` note may be attached above a ground note.
+    Ground notes are placed by timing and lane geometry: pass an absolute tick or
+    :data:`Position` tuple as ``t``, a left lane index ``x``, and a width ``w``.
+    An :class:`Air` note may be attached above a ground note.
     """
 
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -103,12 +102,11 @@ class Tap(_GroundNote):
         """Create a tap.
 
         Args:
-            t: Absolute tick (mutually exclusive with ``p``).
-            p: A :data:`Position` (mutually exclusive with ``t``).
+            t: Absolute tick or :data:`Position` tuple.
             x: Left lane index.
             w: Width in lane units (at least 1).
         """
-        super().__init__(resolve_tp(t, p), x, w, NoteType.TAP, _copy_info(_info), _id)
+        super().__init__(resolve_tick(t), x, w, NoteType.TAP, _copy_info(_info), _id)
 
     def converted[T: (Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
         """Return a new note of type ``target`` with this note's geometry.
@@ -126,14 +124,13 @@ class Damage(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        super().__init__(resolve_tp(t, p), x, w, NoteType.DAMAGE, _copy_info(_info), _id)
+        super().__init__(resolve_tick(t), x, w, NoteType.DAMAGE, _copy_info(_info), _id)
 
     def converted[T: (Tap, Extap, Flick)](self, target: type[T], **overrides: Any) -> T:
         """Return a new note of type ``target`` with this note's geometry."""
@@ -159,17 +156,16 @@ class Extap(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         dir: ExtapDirectionLike | int = ExtapDirection.UP,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        """Create an ex-tap. See :class:`Tap` for ``t``/``p``/``x``/``w``; ``dir`` sets the
+        """Create an ex-tap. See :class:`Tap` for ``t``/``x``/``w``; ``dir`` sets the
         flick direction (:class:`ExtapDirection`)."""
-        super().__init__(resolve_tp(t, p), x, w, NoteType.EXTAP, _copy_info(_info), _id)
+        super().__init__(resolve_tick(t), x, w, NoteType.EXTAP, _copy_info(_info), _id)
         self.dir = dir
 
     def _base_raw(self) -> RawNote:
@@ -204,17 +200,16 @@ class Flick(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         dir: FlickDirectionLike | int = FlickDirection.AUTO,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
-        """Create a flick. See :class:`Tap` for ``t``/``p``/``x``/``w``; ``dir`` sets the
+        """Create a flick. See :class:`Tap` for ``t``/``x``/``w``; ``dir`` sets the
         flick direction (:class:`FlickDirection`, default ``AUTO``)."""
-        super().__init__(resolve_tp(t, p), x, w, NoteType.FLICK, _copy_info(_info), _id)
+        super().__init__(resolve_tick(t), x, w, NoteType.FLICK, _copy_info(_info), _id)
         self.dir = dir
 
     def _base_raw(self) -> RawNote:

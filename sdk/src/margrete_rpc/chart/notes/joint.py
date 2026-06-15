@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import ClassVar, Self
 
 from ..constants import DEFAULT_H
-from ..time import Position, resolve_tp
+from ..time import Position, resolve_tick
 from .raw import RawNote
 from .shared import (
     _check_tick,
@@ -34,8 +34,7 @@ class Joint(_GeometryInfoMixin):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         _id: int | None = None,
@@ -44,8 +43,7 @@ class Joint(_GeometryInfoMixin):
         """Create a joint.
 
         Args:
-            t: Absolute tick (mutually exclusive with ``p``).
-            p: A :data:`Position` (mutually exclusive with ``t``).
+            t: Absolute tick or :data:`Position` tuple.
             x: Left lane index.
             w: Width in lane units.
             kind: Joint kind (:class:`JointKind` or its string form).
@@ -53,7 +51,7 @@ class Joint(_GeometryInfoMixin):
         self._info = _copy_info(None)
         self._id = _id
         self._kind = JointKind.STEP
-        self.t = resolve_tp(t, p)
+        self.t = resolve_tick(t)
         self._info.x = x
         self._info.w = w
         self._info.h = DEFAULT_H
@@ -76,8 +74,7 @@ class AirJoint(Joint, _HeightMixin):
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         h: int,
@@ -85,7 +82,7 @@ class AirJoint(Joint, _HeightMixin):
         kind: JointKindLike,
     ) -> None:
         """Create an air joint. As :class:`Joint`, plus ``h`` for the joint's air height."""
-        super().__init__(t=t, p=p, x=x, w=w, _id=_id, kind=kind)
+        super().__init__(t=t, x=x, w=w, _id=_id, kind=kind)
         self.h = h
 
 
@@ -206,22 +203,20 @@ class _JointHost(_JointHostBase):
             kind=kind,
         )
 
-    def add_step(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+    def add_step(self, *, t: int | Position, x: int, w: int) -> Self:
         """Append a step joint in place and return ``self``. Timing must be strictly
         increasing along the note."""
-        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.STEP, x, w))
+        self._add_joint(self._make_joint(resolve_tick(t), JointKind.STEP, x, w))
         return self
 
-    def add_ctrl(self, *, t: int | None = None, p: Position | None = None, x: int, w: int) -> Self:
+    def add_ctrl(self, *, t: int | Position, x: int, w: int) -> Self:
         """Append a control joint in place and return ``self``. Timing must be strictly
         increasing along the note."""
-        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CONTROL, x, w))
+        self._add_joint(self._make_joint(resolve_tick(t), JointKind.CONTROL, x, w))
         return self
 
-    def _add_curve_control(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int
-    ) -> None:
-        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CURVE_CONTROL, x, w))
+    def _add_curve_control(self, *, t: int | Position, x: int, w: int) -> None:
+        self._add_joint(self._make_joint(resolve_tick(t), JointKind.CURVE_CONTROL, x, w))
 
 
 class _AirJointHost(_JointHostBase):
@@ -237,24 +232,18 @@ class _AirJointHost(_JointHostBase):
     ) -> AirJoint:
         return AirJoint(t=t, x=x, w=w, h=h, kind=kind)
 
-    def add_step(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
-    ) -> Self:
+    def add_step(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
         """Append a step joint (with air height ``h``) in place and return ``self``."""
-        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.STEP, x, w, h))
+        self._add_joint(self._make_joint(resolve_tick(t), JointKind.STEP, x, w, h))
         return self
 
-    def add_ctrl(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
-    ) -> Self:
+    def add_ctrl(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
         """Append a control joint (with air height ``h``) in place and return ``self``."""
-        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CONTROL, x, w, h))
+        self._add_joint(self._make_joint(resolve_tick(t), JointKind.CONTROL, x, w, h))
         return self
 
-    def _add_curve_control(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
-    ) -> None:
-        self._add_joint(self._make_joint(resolve_tp(t, p), JointKind.CURVE_CONTROL, x, w, h))
+    def _add_curve_control(self, *, t: int | Position, x: int, w: int, h: int) -> None:
+        self._add_joint(self._make_joint(resolve_tick(t), JointKind.CURVE_CONTROL, x, w, h))
 
 
 __all__ = ["AirJoint", "Joint", "_AirJointHost", "_JointHost", "_JointHostBase"]

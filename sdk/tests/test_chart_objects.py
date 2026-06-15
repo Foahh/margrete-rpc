@@ -57,13 +57,13 @@ def test_note_type_factories_set_kind_and_geometry():
     assert R.air_hold_begin(t=1, x=2, w=1, h=80).type is NoteType.AIRHOLD
     assert R.air_hold_begin(t=1, x=2, w=1, h=80).long_attr is LongAttr.BEGIN
     assert R.air_hold_end(t=1, x=2, w=1, h=80).long_attr is LongAttr.END
-    crush0 = R.air_crush_begin(t=1, x=2, w=1, h=80, gap_t=0)
+    crush0 = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0)
     assert crush0.type is NoteType.AIRCRUSH
     assert crush0.long_attr is LongAttr.BEGIN
     assert crush0.option_value == 0
-    head = R.air_crush_begin(t=1, x=2, w=1, h=80, gap_t=0x7FFFFFFF)
+    head = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0x7FFFFFFF)
     assert head.option_value == 0x7FFFFFFF
-    assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap_t=120).option_value == 120
+    assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap=120).option_value == 120
 
 
 def test_air_crush_color_values_match_variation_ids():
@@ -83,7 +83,7 @@ def test_air_crush_color_values_match_variation_ids():
     assert Color.COBALT_BLUE == messages_pb2.COLOR_COBALT_BLUE
     assert Color.PURPLE == messages_pb2.COLOR_PURPLE
     assert Color.NONE == messages_pb2.COLOR_NONE
-    none = R.air_crush_begin(t=1, x=2, w=1, h=80, gap_t=0, color=Color.NONE)
+    none = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0, color=Color.NONE)
     assert none.variation_id is Color.NONE
     assert none.to_proto().variation_id == 35
 
@@ -204,7 +204,7 @@ def test_child_builds_long_note_chains():
     assert air_hold_begin.child(air_hold_end) is air_hold_begin
     assert air_hold_begin.children == [air_hold_end]
 
-    air_crush_begin = R.air_crush_begin(t=110, x=4, w=8, h=80, gap_t=5)
+    air_crush_begin = R.air_crush_begin(t=110, x=4, w=8, h=80, gap=5)
     air_crush_control = R.air_crush_control(t=120, x=8, w=8, h=120)
     air_crush_end = R.air_crush_end(t=130, x=12, w=8, h=80)
     assert air_crush_begin.child(air_crush_control, air_crush_end) is air_crush_begin
@@ -254,7 +254,7 @@ def test_air_hold_segment_factories_match_long_attr():
 
 
 def test_air_crush_segment_factories_match_long_attr():
-    begin = R.air_crush_begin(t=11, x=4, w=1, h=80, gap_t=5)
+    begin = R.air_crush_begin(t=11, x=4, w=1, h=80, gap=5)
     assert begin.long_attr is LongAttr.BEGIN
     assert begin.option_value == 5
     assert R.air_crush_control(t=11, x=4, w=1, h=80).long_attr is LongAttr.CONTROL
@@ -382,7 +382,7 @@ def test_note_and_raw_tick_are_plain_int():
 
 
 def test_high_level_notes_accept_short_geometry_aliases():
-    tap = Tap(p=(1, 0), x=4, w=2)
+    tap = Tap(t=(1, 0), x=4, w=2)
     assert tap.t == TICKS_PER_BEAT
     assert tap.t == TICKS_PER_BEAT
     assert tap.w == 2
@@ -408,7 +408,7 @@ def test_air_notes_accept_short_height_aliases():
     assert air_slide.joints[0].h == 120
     assert air_slide.joints[0].h == 120
 
-    crush = AirCrush(t=0, x=4, w=2, h=80, gap_t=5).with_ctrl(t=480, x=6, w=3, h=120)
+    crush = AirCrush(t=0, x=4, w=2, h=80, gap=5).with_ctrl(t=480, x=6, w=3, h=120)
     assert crush.t == 0
     assert crush.w == 2
     assert crush.h == 80
@@ -440,7 +440,7 @@ def test_raw_note_api_accepts_short_geometry_aliases():
 
 def test_tick_subtracts_between_int_ticks():
     crush = (
-        AirCrush(t=100, x=4, w=2, h=80, gap_t=5)
+        AirCrush(t=100, x=4, w=2, h=80, gap=5)
         .with_ctrl(t=105, x=6, w=2, h=120)
         .with_ctrl(t=110, x=8, w=2, h=80)
     )
@@ -516,7 +516,7 @@ def test_l_factory_methods_build_low_level_notes():
     assert R.air(t=1, x=2, w=1, dir=AirDirection.UP).dir is Direction.UP
     assert R.air_slide_end_noact(t=2, x=4, w=1, h=80).long_attr is LongAttr.END_NOACT
     assert R.air_hold_end_noact(t=2, x=4, w=1, h=80).long_attr is LongAttr.END_NOACT
-    assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap_t=0x7FFFFFFF).option_value == 0x7FFFFFFF
+    assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0x7FFFFFFF).option_value == 0x7FFFFFFF
 
 
 def test_raw_round_trips_to_protobuf_with_children_and_id():
@@ -656,10 +656,10 @@ def test_height_is_absent_from_floor_notes_and_bare_air():
     assert not hasattr(Air(AirDirection.UP, t=0, x=0, w=1), "height")
     assert not hasattr(AirSlide(t=0, x=0, w=1, h=80), "height")
     assert not hasattr(AirHold(t=0, x=0, w=1, h=80), "height")
-    assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap_t=0), "height")
+    assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "height")
     assert hasattr(AirSlide(t=0, x=0, w=1, h=80), "h")
     assert hasattr(AirHold(t=0, x=0, w=1, h=80), "h")
-    assert hasattr(AirCrush(t=0, x=4, w=2, h=80, gap_t=0), "h")
+    assert hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "h")
 
 
 def test_air_objects_are_placeable_notes():
@@ -669,7 +669,7 @@ def test_air_objects_are_placeable_notes():
     assert isinstance(AirHold(t=0, x=0, w=1, h=80), Note)
     assert hasattr(AirSlide(t=0, x=0, w=1, h=80), "to_raw")
     assert hasattr(AirHold(t=0, x=0, w=1, h=80), "to_raw")
-    assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap_t=0), "air")
+    assert not hasattr(AirCrush(t=0, x=4, w=2, h=80, gap=0), "air")
 
 
 def test_all_high_level_notes_expose_validate():
@@ -680,7 +680,7 @@ def test_all_high_level_notes_expose_validate():
         Flick(t=0, x=4, w=2),
         Slide(t=0, x=4, w=2).with_step(t=960, x=4, w=2),
         Hold(t=0, x=4, w=2).with_step(t=960, x=4, w=2),
-        AirCrush(t=0, x=4, w=2, h=80, gap_t=5).with_ctrl(t=960, x=4, w=2, h=80),
+        AirCrush(t=0, x=4, w=2, h=80, gap=5).with_ctrl(t=960, x=4, w=2, h=80),
     ]
 
     for note in notes:
@@ -879,7 +879,7 @@ def test_long_note_requires_at_least_one_serializable_joint():
         Slide(t=960, x=0, w=4).to_raw()
 
     with pytest.raises(ValueError, match="requires at least one joint"):
-        AirCrush(t=0, x=4, w=2, h=80, gap_t=5).to_raw()
+        AirCrush(t=0, x=4, w=2, h=80, gap=5).to_raw()
 
 
 def test_long_note_validate_catches_invalid_begin_geometry():
@@ -1107,7 +1107,7 @@ def test_air_long_joints_use_explicit_geometry():
 
 def test_air_crush_joints_use_explicit_geometry():
     crush = (
-        AirCrush(t=0, x=4, w=2, h=80, gap_t=0)
+        AirCrush(t=0, x=4, w=2, h=80, gap=0)
         .with_ctrl(t=480, x=4, w=2, h=80)
         .with_ctrl(t=960, x=6, w=3, h=100)
     )
@@ -1197,7 +1197,7 @@ def test_air_slide_and_air_hold_do_not_expose_color_on_note_builder():
 
 
 def test_air_crush_allows_controls_and_promotes_last_to_end():
-    crush = AirCrush(t=0, x=4, w=2, h=80, gap_t=5)
+    crush = AirCrush(t=0, x=4, w=2, h=80, gap=5)
 
     RawNote = crush.with_ctrl(t=480, x=6, w=2, h=120).with_ctrl(t=960, x=8, w=2, h=80).to_raw()
 
@@ -1211,7 +1211,7 @@ def test_air_crush_gap_and_color_redirect_to_raw_storage_fields():
         x=4,
         w=2,
         h=80,
-        gap_t=0,
+        gap=0,
         color=Color.RED,
     )
     crush.gap_t = 120
@@ -1228,7 +1228,7 @@ def test_air_crush_gap_and_color_redirect_to_raw_storage_fields():
 
 
 def test_air_crush_gap_is_plain_int():
-    crush = AirCrush(t=0, x=4, w=2, h=80, gap_t=0)
+    crush = AirCrush(t=0, x=4, w=2, h=80, gap=0)
     crush.gap_t = d2t(1, 8)
     assert crush.gap_t == 240
     assert type(crush.gap_t) is int

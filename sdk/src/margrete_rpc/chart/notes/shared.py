@@ -59,26 +59,22 @@ class Note(Protocol):
         """Timeline id the note belongs to."""
         ...
 
-    def shift(
-        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
-    ) -> Self:
+    def shift(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
         """Move/resize the note in place and return ``self``.
 
         Each delta is either an int added to the field, or a callable mapping the current
-        value to a new one. ``p`` shifts timing by a position delta instead of ``t``.
+        value to a new one. Pass a :data:`Position` tuple for ``t`` to shift timing by a
+        musical position delta.
 
         Args:
-            t: Tick delta (mutually exclusive with ``p``).
-            p: Position delta applied to timing.
+            t: Tick delta, callable, or :data:`Position` tuple for a position-based shift.
             x: Lane delta.
             w: Width delta.
             h: Air-height delta (for notes with height).
         """
         ...
 
-    def shifted(
-        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
-    ) -> Self:
+    def shifted(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
         """Return a :meth:`clone` shifted by the given deltas, leaving ``self`` unchanged."""
         ...
 
@@ -259,17 +255,13 @@ class _TransformMixin:
     _info: NoteInfo
     _id: int | None
 
-    def shift(
-        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
-    ) -> Self:
+    def shift(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
         from .shift import _resolve_shift_delta, _shift_note
 
-        return cast(Self, _shift_note(self, t=_resolve_shift_delta(t, p), x=x, w=w, h=h))
+        return cast(Self, _shift_note(self, t=_resolve_shift_delta(t), x=x, w=w, h=h))
 
-    def shifted(
-        self, *, t: Delta = 0, p: Position | None = None, x: Delta = 0, w: Delta = 0, h: Delta = 0
-    ) -> Self:
-        return self.clone().shift(t=t, p=p, x=x, w=w, h=h)
+    def shifted(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+        return self.clone().shift(t=t, x=x, w=w, h=h)
 
     def scale(self, factor: float, *, pivot: int | Position = 0) -> Self:
         from .transform import _scale

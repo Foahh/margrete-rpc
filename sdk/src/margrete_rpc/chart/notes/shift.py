@@ -5,16 +5,10 @@ from .shared import Delta
 from .types import NoteInfo
 
 
-def _resolve_shift_delta(t: Delta, p: Position | None) -> Delta:
-    """Pick the tick delta for a shift: ``t`` (int/callable) or a position ``p``.
-
-    The two are mutually exclusive; ``p`` is interpreted as a tick offset via ``resolve_tick``.
-    """
-    if p is None:
-        return t
-    if callable(t) or t != 0:
-        raise ValueError("provide either t or p to shift, not both")
-    return resolve_tick(p)
+def _resolve_shift_delta(t: Delta | Position) -> Delta:
+    if isinstance(t, tuple):
+        return resolve_tick(t)
+    return t
 
 
 def _combine(value: int, delta: Delta) -> int:

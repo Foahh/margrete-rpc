@@ -51,7 +51,7 @@ class Margrete:
         >>> from margrete_rpc.chart.notes import Tap
         >>> m = Margrete()  # auto-detect the running instance
         >>> with m.open_edit("add a tap") as tx:
-        ...     tx.chart.notes.append(Tap(p=(0, 0, 0), x=0, w=4))
+        ...     tx.chart.notes.append(Tap(t=(0, 0, 0), x=0, w=4))
         >>> # changes are applied to Margrete when the `with` block exits cleanly
     """
 

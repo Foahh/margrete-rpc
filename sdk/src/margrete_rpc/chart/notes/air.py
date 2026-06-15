@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self, cast
 
-from ..time import Position, resolve_tp
+from ..time import Position, resolve_tick
 from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _AirJointHost
 from .raw import RawNote
@@ -44,8 +44,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         self,
         dir: AirDirectionLike | int,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -55,8 +54,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
 
         Args:
             dir: Air direction (:class:`AirDirection`).
-            t: Absolute tick (mutually exclusive with ``p``).
-            p: A :data:`Position` (mutually exclusive with ``t``).
+            t: Absolute tick or :data:`Position` tuple (must match the host ground note).
             x: Left lane index (must match the host ground note).
             w: Width in lane units (must match the host ground note).
         """
@@ -64,7 +62,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         self._id = _id
         self._info.type = NoteType.AIR
         self._info.long_attr = LongAttr.NONE
-        self.t = resolve_tp(t, p)
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
         self.dir = dir
@@ -111,8 +109,7 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
     def __init__(
         self,
         *,
-        t: int | None = None,
-        p: Position | None = None,
+        t: int | Position,
         x: int,
         w: int,
         h: int,
@@ -124,7 +121,7 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         self._joints: list[Joint] = []
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
-        self.t = resolve_tp(t, p)
+        self.t = resolve_tick(t)
         self.x = x
         self.w = w
         self.h = h
@@ -160,18 +157,14 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         air.children.append(action)
         return air
 
-    def with_step(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
-    ) -> Self:
+    def with_step(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
         copy = self.clone()
-        copy.add_step(t=t, p=p, x=x, w=w, h=h)
+        copy.add_step(t=t, x=x, w=w, h=h)
         return copy
 
-    def with_ctrl(
-        self, *, t: int | None = None, p: Position | None = None, x: int, w: int, h: int
-    ) -> Self:
+    def with_ctrl(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
         copy = self.clone()
-        copy.add_ctrl(t=t, p=p, x=x, w=w, h=h)
+        copy.add_ctrl(t=t, x=x, w=w, h=h)
         return copy
 
     def __str__(self) -> str:
