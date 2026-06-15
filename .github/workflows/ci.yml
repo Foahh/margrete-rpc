@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sdk:
+    name: SDK (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Sync dependencies
+        run: uv sync --extra dev
+      - name: Lint (ruff)
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Typecheck (pyright)
+        run: uv run pyright
+      - name: Tests (pytest)
+        run: uv run pytest
+
+  plugin:
+    name: Plugin (C++)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build and test plugin
+        shell: pwsh
+        run: ./build.ps1 -Configuration Debug -Test -SkipVcVars
+        env:
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
