@@ -285,8 +285,7 @@ def _sample_segment(
     ease_x: Easing,
     ease_h: Easing,
 ) -> tuple[Waypoint, ...]:
-    """Quantize an eased segment to integer waypoints driven by the smaller-delta axis.
-    """
+    """Quantize an eased segment to integer waypoints driven by the smaller-delta axis."""
     if t1 <= t0:
         raise ValueError("segment end tick must be later than its start")
     span = t1 - t0

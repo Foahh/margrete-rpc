@@ -14,8 +14,8 @@ specific transforms, but it can also feel brittle when you want to:
 
 ## Core repository content
 
-- **[`plugin/`](plugin/)**: the Margrete plugin that hosts the RPC server
+- **[`plugin/`](plugin/)**: C++ Margrete plugin that hosts the TCP/protobuf RPC **server**
 
-- **[`src/margrete_rpc`](src/margrete_rpc)**: Python client controlling the Margrete plugin
+- **[`src/margrete_rpc`](src/margrete_rpc)**: Python **client** controlling the Margrete plugin
 
 - **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the SDK
