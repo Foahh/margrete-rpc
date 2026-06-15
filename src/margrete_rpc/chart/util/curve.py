@@ -16,7 +16,7 @@ type SlideLike = Slide | Hold | AirSlide | AirHold | AirCrush
 
 @dataclass(frozen=True, slots=True)
 class Waypoint:
-    """One control point on a :class:`Curve`: tick, lane, height, and per-axis easing of the incoming leg.
+    """One control point on a :class:`Curve`: tick, lane, height, and per-axis leg easing.
 
     ``ease_x`` and ``ease_h`` are ignored on the first waypoint (no incoming leg).
     ``h`` is ignored when materializing a ground :class:`Slide`.
@@ -247,43 +247,32 @@ class Curve:
         return self.then(other)
 
 
-def _axis_ticks(t0: int, t1: int, v0: int, v1: int, ease: Easing) -> list[int]:
-    """Ticks at which an axis going ``v0 -> v1`` (eased) crosses each integer value."""
-    if v0 == v1:
-        return []
-    span = t1 - t0
-    dv = v1 - v0
-    step = 1 if dv > 0 else -1
-    ticks: list[int] = []
-    for v in range(v0, v1 + step, step):
-        pv = (v - v0) / dv
-        progress = min(1.0, max(0.0, ease.inverse(pv)))
-        ticks.append(t0 + round(progress * span))
-    return ticks
+_LINEAR_TOL = 1e-9
+"""Real-space deviation under which a leg is treated as exactly linear (float-noise slack)."""
 
 
-def _driver_ticks(
-    t0: int,
-    x0: int,
-    h0: int,
-    t1: int,
-    x1: int,
-    h1: int,
-    ease_x: Easing,
-    ease_h: Easing,
-) -> list[int]:
-    """Candidate ticks from the axis with the smaller integer delta (the "driver").
+def _collinear(a: Waypoint, b: Waypoint, c: Waypoint) -> bool:
+    """Whether ``b`` lies exactly on segment ``a -> c`` on both the x and h axes (integers).
 
-    Sampling the smaller-delta axis keeps the larger-delta axis smooth under Margrete's linear
-    interpolation between joints, avoiding a blocky staircase in the main view.
+    Uses integer cross-products so the test is exact: dropping such a ``b`` leaves Margrete's
+    linear reconstruction unchanged (a lossless simplification).
     """
-    dx = abs(x1 - x0)
-    dh = abs(h1 - h0)
-    if dx == 0 and dh == 0:
-        return []
-    if dh == 0 or (dx != 0 and dx <= dh):
-        return _axis_ticks(t0, t1, x0, x1, ease_x)
-    return _axis_ticks(t0, t1, h0, h1, ease_h)
+    dt_ab, dt_ac = b.t - a.t, c.t - a.t
+    return (b.x - a.x) * dt_ac == (c.x - a.x) * dt_ab and (b.h - a.h) * dt_ac == (c.h - a.h) * dt_ab
+
+
+def _is_linear(reals: list[tuple[int, float, float]]) -> bool:
+    """Whether every real sample lies on the chord between the endpoints (both axes)."""
+    ta, xa, ha = reals[0]
+    tc, xc, hc = reals[-1]
+    dt = tc - ta
+    for t, x, h in reals[1:-1]:
+        f = (t - ta) / dt
+        if abs(x - (xa + f * (xc - xa))) > _LINEAR_TOL:
+            return False
+        if abs(h - (ha + f * (hc - ha))) > _LINEAR_TOL:
+            return False
+    return True
 
 
 def _sample_segment(
@@ -297,25 +286,39 @@ def _sample_segment(
     ease_h: Easing,
 ) -> tuple[Waypoint, ...]:
     """Quantize an eased segment to integer waypoints driven by the smaller-delta axis.
-
-    Consecutive waypoints with identical ``(x, h)`` are dropped; endpoints are always kept.
     """
     if t1 <= t0:
         raise ValueError("segment end tick must be later than its start")
     span = t1 - t0
-    candidates = {t0, t1}
-    candidates.update(_driver_ticks(t0, x0, h0, t1, x1, h1, ease_x, ease_h))
-    ordered = sorted(t for t in candidates if t0 <= t <= t1)
+    reals = [
+        (
+            t,
+            x0 + ease_x.solve((t - t0) / span) * (x1 - x0),
+            h0 + ease_h.solve((t - t0) / span) * (h1 - h0),
+        )
+        for t in range(t0, t1 + 1)
+    ]
+    if _is_linear(reals):
+        return (Waypoint(t0, x0, h0), Waypoint(t1, x1, h1))
 
-    out: list[Waypoint] = []
-    for index, t in enumerate(ordered):
-        pt = (t - t0) / span
-        x = round(x0 + ease_x.solve(pt) * (x1 - x0))
-        h = round(h0 + ease_h.solve(pt) * (h1 - h0))
-        is_end = index == len(ordered) - 1
-        if out and not is_end and out[-1].x == x and out[-1].h == h:
-            continue
-        out.append(Waypoint(t, x, h))
+    dx, dh = abs(x1 - x0), abs(h1 - h0)
+    drive_x = dh == 0 or (dx != 0 and dx <= dh)
+
+    pts = [Waypoint(t0, x0, h0)]
+    last = x0 if drive_x else h0
+    for t, rx, rh in reals[1:-1]:
+        v = rx if drive_x else rh
+        if v >= last + 1 or v <= last - 1:  # driver has reached the next integer level
+            nx, nh = round(rx), round(rh)
+            pts.append(Waypoint(t, nx, nh))
+            last = nx if drive_x else nh
+    pts.append(Waypoint(t1, x1, h1))
+
+    out = [pts[0]]
+    for cur, nxt in zip(pts[1:-1], pts[2:]):
+        if not _collinear(out[-1], cur, nxt):
+            out.append(cur)
+    out.append(pts[-1])
     return tuple(out)
 
 

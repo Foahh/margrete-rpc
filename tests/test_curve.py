@@ -87,6 +87,40 @@ def test_height_drives_when_it_has_smaller_delta() -> None:
     assert all(b > a for a, b in zip(hs, hs[1:]))
 
 
+def test_eased_driver_has_no_flat_start_run() -> None:
+    # A flat-starting easing must not emit two joints at the same lane (the j1 == j2 == 0 then
+    # j3 == 1 artifact): the driver advances by one lane every joint, never repeating a value.
+    pts = Curve(t=0, x=0).to(t=960, x=12, ease_x="in_quad").points()
+    xs = [wp.x for wp in pts]
+    assert all(b != a for a, b in zip(xs, xs[1:]))  # no flat lane segments anywhere
+
+
+def test_non_monotonic_easing_overshoots() -> None:
+    # A back-out easing overshoots above 1 before settling; forward sampling captures the
+    # turning point as interior joints past the target lane -- impossible under value inversion.
+    c1 = 1.70158
+    out_back = lambda t: 1 + (c1 + 1) * (t - 1) ** 3 + c1 * (t - 1) ** 2  # noqa: E731
+    pts = Curve(t=0, x=0).to(t=960, x=10, ease_x=out_back).points()
+    assert (pts[0].t, pts[0].x) == (0, 0)
+    assert (pts[-1].t, pts[-1].x) == (960, 10)
+    assert any(wp.x > 10 for wp in pts)  # overshoot beyond the endpoint is materialized
+
+
+def test_linear_collapses_to_endpoints() -> None:
+    # A straight (linear) leg is exactly collinear everywhere, so it reduces to just its ends.
+    pts = Curve(t=0, x=0, h=20).to(t=960, x=12, h=80).points()
+    assert len(pts) == 2
+    assert (pts[0].t, pts[0].x, pts[0].h) == (0, 0, 20)
+    assert (pts[-1].t, pts[-1].x, pts[-1].h) == (960, 12, 80)
+
+
+def test_sampling_error_within_half_lane() -> None:
+    t0, t1, x0, x1 = 0, 960, 0, 15
+    pts = Curve(t=t0, x=x0).to(t=t1, x=x1, ease_x="in_out_sine").points()
+    for wp in pts:
+        assert abs(wp.x - _ideal_x(t0, t1, x0, x1, "in_out_sine", wp.t)) <= 0.5
+
+
 def test_closeness_to_ideal_curve() -> None:
     t0, t1, x0, x1 = 0, 960, 0, 15
     pts = Curve(t=t0, x=x0).to(t=t1, x=x1, ease_x="in_out_sine").points()
