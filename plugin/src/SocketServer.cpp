@@ -9,6 +9,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
+#include "Config.h"
 #include "FrameProtocol.h"
 
 SocketServer::SocketServer(std::string host, std::uint16_t port, RequestRouter &router, Logger &logger,
@@ -127,6 +128,12 @@ void SocketServer::run()
     actualPort_.store(ntohs(boundAddr.sin_port));
 
     logger_.info("server started on " + host_ + ":" + std::to_string(actualPort_.load()));
+    if (!IsLoopbackAddress(host_))
+    {
+        logger_.info("WARNING: server bound to non-loopback host " + host_ +
+                     "; other machines on this network can connect. "
+                     "Set host=127.0.0.1 in margrete-rpc.ini to restrict access to this machine.");
+    }
     if (onStarted_)
     {
         onStarted_(actualPort_.load());
@@ -235,6 +242,19 @@ void SocketServer::handleClient(uintptr_t socketHandle)
         }
     };
 
+    auto sendAll = [client](const char *buffer, int size) {
+        int sent = 0;
+        while (sent < size)
+        {
+            const int n = send(client, buffer + sent, size - sent, 0);
+            if (n == SOCKET_ERROR || n <= 0)
+            {
+                throw std::runtime_error("failed to send response frame");
+            }
+            sent += n;
+        }
+    };
+
     try
     {
         std::array<char, 4> header{};
@@ -256,7 +276,7 @@ void SocketServer::handleClient(uintptr_t socketHandle)
         const auto request = FrameProtocol::Decode(frame);
         const auto response = router_.route(request);
         const auto outFrame = FrameProtocol::Encode(response);
-        send(client, reinterpret_cast<const char *>(outFrame.data()), static_cast<int>(outFrame.size()), 0);
+        sendAll(reinterpret_cast<const char *>(outFrame.data()), static_cast<int>(outFrame.size()));
     }
     catch (const std::exception &ex)
     {

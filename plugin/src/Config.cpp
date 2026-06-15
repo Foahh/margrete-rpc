@@ -121,3 +121,8 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
     }
     return config;
 }
+
+bool IsLoopbackAddress(std::string_view host)
+{
+    return host.starts_with("127.");
+}

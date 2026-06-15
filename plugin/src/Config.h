@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 struct ServerConfig
 {
@@ -14,3 +15,5 @@ struct ServerConfig
 };
 
 ServerConfig LoadServerConfig(const std::filesystem::path &iniPath);
+
+bool IsLoopbackAddress(std::string_view host);
