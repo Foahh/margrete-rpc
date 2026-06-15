@@ -11,7 +11,7 @@ from margrete_rpc.chart.notes import (
     wrap_raw_note,
 )
 from margrete_rpc.chart.time import Interval, d2t
-from margrete_rpc.chart.util import Curve, Waypoint, crease, envelope
+from margrete_rpc.chart.util import Curve, Waypoint, crease, envelope, rain
 from margrete_rpc.chart.util.easing import EASINGS
 
 
@@ -340,3 +340,41 @@ def test_materialized_notes_survive_raw_round_trip() -> None:
     air = path.to_air_slide(w=2)
     air.validate()
     RawNote.from_proto(air.to_raw().to_proto())
+
+
+def test_rain_drops_step_and_stay_in_bounds() -> None:
+    drops = rain(t0=0, t1=960, step=240, x_range=(2, 8), h_range=(40, 120), w=2, seed=0)
+    assert [d.t for d in drops] == [0, 240, 480, 720]  # one drop per step within [t0, t1)
+    for drop in drops:
+        assert 2 <= drop.x <= 8
+        assert 40 <= drop.h <= 120
+        assert len(drop.joints) == 1  # a flat begin -> single step trace
+        step = drop.joints[-1]
+        assert step.x == drop.x
+        assert step.h == drop.h  # type: ignore[attr-defined]  # the drop is level
+        drop.validate()
+
+
+def test_rain_default_length_fills_step_and_truncates_at_end() -> None:
+    drops = rain(t0=0, t1=500, step=200, x_range=(0, 4), seed=1)
+    assert [d.t for d in drops] == [0, 200, 400]
+    assert drops[0].joints[-1].t == 200  # default length == step
+    assert drops[-1].joints[-1].t == 500  # final drop truncated at t1, never past it
+
+
+def test_rain_constant_default_height() -> None:
+    drops = rain(t0=0, t1=480, step=240, x_range=(0, 4), seed=2)
+    assert all(d.h == DEFAULT_H for d in drops)
+
+
+def test_rain_is_seed_reproducible() -> None:
+    a = rain(t0=0, t1=1920, step=120, x_range=(0, 10), h_range=(0, 200), seed=7)
+    b = rain(t0=0, t1=1920, step=120, x_range=(0, 10), h_range=(0, 200), seed=7)
+    assert [(d.t, d.x, d.h) for d in a] == [(d.t, d.x, d.h) for d in b]
+
+
+def test_rain_rejects_bad_range_and_step() -> None:
+    with pytest.raises(ValueError):
+        rain(t0=960, t1=0, step=240, x_range=(0, 4))
+    with pytest.raises(ValueError):
+        rain(t0=0, t1=960, step=0, x_range=(0, 4))

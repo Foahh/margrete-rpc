@@ -63,9 +63,15 @@ class Curve:
 
     @classmethod
     def from_note(cls, note: SlideLike) -> Curve:
-        """Load a slide-like long note's path as editable control waypoints with linear legs.
+        """Load a long note's path as editable control waypoints with linear legs.
 
-        Width is dropped; height defaults to :data:`DEFAULT_H` where not present.
+        Args:
+            note: A :class:`Slide`, :class:`Hold`, :class:`AirSlide`, :class:`AirHold`,
+                or :class:`AirCrush`.
+
+        Returns:
+            A new :class:`Curve` spanning the note's begin point through its joints.
+            Width is dropped; height defaults to :data:`DEFAULT_H` where not present.
         """
         points = [Waypoint(int(note.t), note.x, getattr(note, "h", DEFAULT_H))]
         for joint in note.joints:
@@ -89,7 +95,15 @@ class Curve:
     ) -> Curve:
         """Add one eased leg to ``(t, x, h)`` and return the extended curve.
 
-        ``h`` defaults to the current end height (constant-height leg).
+        Args:
+            t: Target tick or position tuple.
+            x: Target lane.
+            h: Target height; defaults to the current end height (constant-height leg).
+            ease_x: Lane easing for this leg.
+            ease_h: Height easing for this leg.
+
+        Returns:
+            A new :class:`Curve` with this leg appended.
 
         Raises:
             ValueError: If ``t`` is not later than the last waypoint's tick.
@@ -103,7 +117,11 @@ class Curve:
         return Curve._of((*self.waypoints, waypoint))
 
     def points(self) -> tuple[Waypoint, ...]:
-        """Quantize the path into integer waypoints (useful to preview before materializing).
+        """Quantize the path into integer waypoints.
+
+        Returns:
+            All sampled waypoints in order; useful to preview the realized joints before
+            calling a ``to_*`` materializer.
 
         Raises:
             ValueError: If the curve has no legs yet (only an anchor).
@@ -122,7 +140,15 @@ class Curve:
         return first, mid, last
 
     def to_slide(self, *, w: int, til: int = 0) -> Slide:
-        """Materialize as a ground :class:`Slide` of constant width ``w`` (height ignored)."""
+        """Materialize as a ground :class:`Slide` (height ignored).
+
+        Args:
+            w: Constant lane width for every joint.
+            til: Timeline index assigned to the note.
+
+        Returns:
+            A :class:`Slide` whose joints follow the quantized path.
+        """
         first, mid, last = self._path()
         slide = Slide(t=first.t, x=first.x, w=w)
         slide.til = til
@@ -132,7 +158,15 @@ class Curve:
         return slide
 
     def to_air_slide(self, *, w: int, til: int = 0) -> AirSlide:
-        """Materialize as an :class:`AirSlide` of constant width ``w``."""
+        """Materialize as an :class:`AirSlide`.
+
+        Args:
+            w: Constant lane width for every joint.
+            til: Timeline index assigned to the note.
+
+        Returns:
+            An :class:`AirSlide` whose joints follow the quantized path.
+        """
         first, mid, last = self._path()
         air = AirSlide(t=first.t, x=first.x, w=w, h=first.h)
         air.til = til
@@ -149,7 +183,17 @@ class Curve:
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int = 0,
     ) -> AirCrush:
-        """Materialize as an :class:`AirCrush` of constant width ``w``."""
+        """Materialize as an :class:`AirCrush`.
+
+        Args:
+            w: Constant lane width for every joint.
+            gap: Segment gap between crush particles.
+            color: Crush particle color.
+            til: Timeline index assigned to the note.
+
+        Returns:
+            An :class:`AirCrush` whose joints follow the quantized path.
+        """
         first, mid, last = self._path()
         crush = AirCrush(t=first.t, x=first.x, w=w, h=first.h, gap=gap, color=color)
         crush.til = til
@@ -158,7 +202,14 @@ class Curve:
         return crush
 
     def at(self, tick: int) -> Waypoint:
-        """Evaluate the eased path at ``tick``, clamped to the curve's endpoints."""
+        """Evaluate the eased path at ``tick``.
+
+        Args:
+            tick: The tick to evaluate; clamped to ``[first.t, last.t]``.
+
+        Returns:
+            A :class:`Waypoint` with interpolated ``(x, h)`` at ``tick``.
+        """
         wps = self.waypoints
         if tick <= wps[0].t:
             return Waypoint(wps[0].t, wps[0].x, wps[0].h)
@@ -173,7 +224,14 @@ class Curve:
         return Waypoint(wps[-1].t, wps[-1].x, wps[-1].h)
 
     def then(self, other: Curve) -> Curve:
-        """Concatenate ``other`` after this curve; a shared seam tick is de-duplicated.
+        """Concatenate ``other`` after this curve.
+
+        Args:
+            other: The curve to append; may share the seam tick with this curve's end.
+
+        Returns:
+            A new :class:`Curve` with ``other``'s waypoints appended; a shared seam tick
+            is de-duplicated.
 
         Raises:
             ValueError: If ``other`` starts before this curve ends.

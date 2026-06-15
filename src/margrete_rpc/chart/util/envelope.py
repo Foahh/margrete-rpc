@@ -6,8 +6,14 @@ from .curve import Curve, Waypoint
 def envelope(inner: Curve, outer: Curve, *, count: int = 2) -> Curve:
     """Weave a curve that oscillates between ``inner`` and ``outer`` over ``count`` legs.
 
-    Both curves must share the same time span. An even ``count`` lands back on ``inner``
-    (``count=2`` is one full cycle); an odd ``count`` ends on ``outer``.
+    Args:
+        inner: The boundary the weave starts on.
+        outer: The opposite boundary; must share ``inner``'s time span.
+        count: Number of legs (at least 1). An even count ends back on ``inner``
+            (``count=2`` is one full cycle); an odd count ends on ``outer``.
+
+    Returns:
+        A new :class:`Curve` with ``count`` linear legs oscillating between the two boundaries.
 
     Raises:
         ValueError: If ``count < 1`` or the curves have different time spans.

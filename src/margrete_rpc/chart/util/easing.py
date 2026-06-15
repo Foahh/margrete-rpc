@@ -51,7 +51,11 @@ class Easing:
     _inverse: Callable[[float], float] | None = None
 
     def inverse(self, y: float) -> float:
-        """Map an eased value ``y in [0,1]`` back to its progress ``t in [0,1]``."""
+        """Return the progress ``t`` such that ``solve(t) ≈ y``.
+
+        Args:
+            y: Eased value in ``[0, 1]``.
+        """
         if self._inverse is not None:
             return self._inverse(y)
         lo, hi = 0.0, 1.0
@@ -203,6 +207,13 @@ Includes ``linear`` and the ``in_`` / ``out_`` / ``in_out_`` variants of ``sine`
 
 def resolve_easing(value: EaseLike) -> Easing:
     """Resolve an :data:`EaseLike` to an :class:`Easing`.
+
+    Args:
+        value: A name (see :data:`EaseName`), an :class:`Easing` (returned as-is),
+            or a ``[0,1]->[0,1]`` callable.
+
+    Returns:
+        The resolved :class:`Easing`.
 
     Raises:
         ValueError: If ``value`` is an unrecognised easing name.
