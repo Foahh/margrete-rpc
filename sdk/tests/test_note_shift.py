@@ -87,7 +87,7 @@ def test_note_air_crush_shifts_begin_controls_and_end():
     assert crush.joints[0].h == 93
     assert crush.joints[1].t == 107
     assert crush.joints[1].h == 73
-    assert crush.gap_t == 5
+    assert crush.gap == 5
     assert crush.color is ColorValue.RED
 
 

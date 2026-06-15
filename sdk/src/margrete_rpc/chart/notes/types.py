@@ -6,7 +6,7 @@ from typing import Any, Literal
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from ..constants import DEFAULT_H
-from ..time import Division, Position, resolve_density, resolve_tick, t2p
+from ..time import IntervalLike, Position, PositionLike, resolve_density, resolve_tick, t2p
 from .color import (
     Color,
     ColorLike,
@@ -115,7 +115,7 @@ class NoteInfo:
     This is the low-level bag of attributes (type, geometry, direction, color, timing) that
     backs every note. Typed notes expose the relevant fields as their own properties;
     construct :class:`NoteInfo` directly only for raw/manual work. Timing accepts a tick
-    ``t`` or a :data:`Position` ``p``; ``option_value`` accepts a :data:`Division`.
+    ``t`` or a :data:`Position` ``p``; ``option_value`` accepts an :data:`IntervalLike`.
     """
 
     def __init__(
@@ -130,9 +130,9 @@ class NoteInfo:
         h: int = DEFAULT_H,
         t: int = 0,
         til: int = 0,
-        option_value: Division = 0,
+        option_value: int | IntervalLike = 0,
         *,
-        p: Position | None = None,
+        p: PositionLike | None = None,
     ) -> None:
         self.type = type
         self.long_attr = long_attr
@@ -167,23 +167,20 @@ class NoteInfo:
         return self._t
 
     @t.setter
-    def t(self, value: int) -> None:
-        self._t = value
+    def t(self, value: int | PositionLike) -> None:
+        self._t = resolve_tick(value)
 
     @property
     def p(self) -> Position:
+        """Timing as a ``(bar, beat, offset)`` :class:`Position`; the read-only view of ``t``."""
         return t2p(self._t)
-
-    @p.setter
-    def p(self, value: Position) -> None:
-        self._t = resolve_tick(value)
 
     @property
     def option_value(self) -> int:
         return self._option_value
 
     @option_value.setter
-    def option_value(self, value: Division) -> None:
+    def option_value(self, value: int | IntervalLike) -> None:
         self._option_value = resolve_density(value)
 
     def copy(self, **changes: Any) -> NoteInfo:

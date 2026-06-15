@@ -4,26 +4,55 @@ import contextvars
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
+from typing import NamedTuple
 
 from .constants import TICKS_PER_BEAT as TICKS_PER_BEAT
 from .events import BeatEvent
 
-type Position = tuple[int] | tuple[int, int] | tuple[int, int, int]
-"""A musical position as ``(bar,)``, ``(bar, beat)``, or ``(bar, beat, offset)``.
 
-All components are zero-based; ``offset`` is in ticks within the beat. A position is
-resolved to an absolute tick against the chart's beat events (see :func:`p2t`)."""
+class Position(NamedTuple):
+    """A musical position as ``(bar, beat, offset)``.
 
-type TickResolver = Callable[[Position], int]
-"""A function mapping a :data:`Position` to an absolute tick.
+    All components are zero-based; ``offset`` is in ticks within the beat. This is the
+    resolved view of a tick (see :func:`t2p`); to convert back to an absolute tick use
+    :func:`p2t` or pass it where a :data:`PositionLike` is accepted."""
+
+    bar: int
+    beat: int
+    offset: int
+
+
+type PositionLike = Position | tuple[int] | tuple[int, int] | tuple[int, int, int]
+"""An input position as ``(bar,)``, ``(bar, beat)``, or ``(bar, beat, offset)``.
+
+The accepted, loose form for arguments; missing components default to zero. Resolved to an
+absolute tick against the chart's beat events (see :func:`p2t`). Functions return the
+canonical 3-field :class:`Position`."""
+
+type TickResolver = Callable[[PositionLike], int]
+"""A function mapping a :data:`PositionLike` to an absolute tick.
 
 Installed via :func:`push_tick_resolver` so positions resolve against a chart's beat
 events without threading them through every call."""
 
-type Division = int | tuple[int, int]
-"""A duration as either an int tick count or a ``(numerator, denominator)`` beat fraction.
 
-The fraction form is converted to ticks via :func:`d2t`; e.g. ``(1, 4)`` is a quarter note."""
+class Interval(NamedTuple):
+    """A duration as a reduced ``(numerator, denominator)`` beat fraction.
+
+    The named view of a tick count (see :func:`t2d`); e.g. ``Interval(1, 4)`` is a quarter
+    note. To convert back to ticks use :func:`d2t` or pass it where an :data:`IntervalLike`
+    is accepted."""
+
+    numerator: int
+    denominator: int
+
+
+type IntervalLike = Interval | tuple[int, int]
+"""An input duration as a ``(numerator, denominator)`` beat fraction.
+
+The accepted, loose form for fractional durations; converted to ticks via :func:`d2t`,
+e.g. ``(1, 4)`` is a quarter note. Pair with ``int`` (``int | IntervalLike``) to also
+accept a raw tick count. Functions return the canonical :class:`Interval`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +141,7 @@ class TimeCalculator:
         beat_tick = TICKS_PER_BEAT // ts.beat_unit
         beat = remainder // beat_tick
         offset = remainder % beat_tick
-        return (ts.bar + bars_since, beat, offset)
+        return Position(ts.bar + bars_since, beat, offset)
 
     def _find_segment_index(self, tick: int) -> int:
         segments = self._segments
@@ -269,11 +298,11 @@ def pop_tick_resolver(token: contextvars.Token[TickResolver | None]) -> None:
     _active_tick_resolver.reset(token)
 
 
-def resolve_tick(value: int | Position) -> int:
+def resolve_tick(value: int | PositionLike) -> int:
     """Coerce a tick-or-position argument to an absolute tick.
 
     Args:
-        value: An int tick (returned unchanged) or a :data:`Position` tuple, resolved via
+        value: An int tick (returned unchanged) or a :data:`PositionLike` tuple, resolved via
             the active tick resolver (see :func:`push_tick_resolver`) or, if none is set,
             a default 4/4 signature.
 
@@ -321,7 +350,7 @@ def d2t(numerator: int, denominator: int) -> int:
     return frac.numerator
 
 
-def t2d(ticks: int) -> tuple[int, int]:
+def t2d(ticks: int) -> Interval:
     """Convert a tick count to the reduced ``(numerator, denominator)`` beat fraction.
 
     The inverse of :func:`d2t`; e.g. one beat's worth of ticks yields ``(1, 1)``.
@@ -340,30 +369,32 @@ def t2d(ticks: int) -> tuple[int, int]:
     if ticks < 0:
         raise ValueError("ticks must be non-negative")
     frac = Fraction(ticks, TICKS_PER_BEAT)
-    return (frac.numerator, frac.denominator)
+    return Interval(frac.numerator, frac.denominator)
 
 
-def resolve_density(value: Division) -> int:
-    """Coerce a :data:`Division` argument to an int tick count.
+def resolve_density(value: int | IntervalLike) -> int:
+    """Coerce a tick-count-or-fraction argument to an int tick count.
 
     Args:
-        value: An int tick count (returned unchanged) or a ``(numerator, denominator)``
-            beat fraction, converted via :func:`d2t`.
+        value: An int tick count (returned unchanged) or an :data:`IntervalLike`
+            ``(numerator, denominator)`` beat fraction, converted via :func:`d2t`.
 
     Returns:
         The duration in ticks.
     """
     if isinstance(value, tuple):
         if len(value) != 2:
-            raise ValueError("division must be a (numerator, denominator) tuple")
+            raise ValueError("interval must be a (numerator, denominator) tuple")
         return d2t(value[0], value[1])
     return value
 
 
 __all__ = [
     "TICKS_PER_BEAT",
-    "Division",
+    "Interval",
+    "IntervalLike",
     "Position",
+    "PositionLike",
     "TickResolver",
     "TimeCalculator",
     "t2p",

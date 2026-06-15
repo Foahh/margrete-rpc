@@ -5,7 +5,7 @@ from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..time import Division, Position, resolve_density, resolve_tick
+from ..time import IntervalLike, Position, PositionLike, resolve_density, resolve_tick
 from .color import Color, ColorLike, ColorValue
 from .direction import (
     AirDirection,
@@ -98,7 +98,7 @@ class RawNote:
         return self.info.option_value
 
     @option_value.setter
-    def option_value(self, value: Division) -> None:
+    def option_value(self, value: int | IntervalLike) -> None:
         self.info.option_value = value
 
     @property
@@ -106,16 +106,12 @@ class RawNote:
         return self.info.t
 
     @t.setter
-    def t(self, value: int) -> None:
+    def t(self, value: int | PositionLike) -> None:
         self.info.t = value
 
     @property
     def p(self) -> Position:
         return self.info.p
-
-    @p.setter
-    def p(self, value: Position) -> None:
-        self.info.p = value
 
     @property
     def w(self) -> int:
@@ -216,7 +212,7 @@ class R:
     def _raw(
         note_type: NoteType,
         long_attr: LongAttr,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         *,
@@ -246,13 +242,13 @@ class R:
     # --------------------------------------------------------------------- ground
 
     @staticmethod
-    def tap(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def tap(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.TAP, LongAttr.NONE, t, x, w, til=til)
 
     @staticmethod
     def extap(
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         dir: ExtapDirectionLike | int = ExtapDirection.UP,
@@ -263,7 +259,7 @@ class R:
     @staticmethod
     def flick(
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         dir: FlickDirectionLike | int = FlickDirection.AUTO,
@@ -272,39 +268,39 @@ class R:
         return R._raw(NoteType.FLICK, LongAttr.NONE, t, x, w, dir=dir, til=til)
 
     @staticmethod
-    def damage(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def damage(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.DAMAGE, LongAttr.NONE, t, x, w, til=til)
 
     # ----------------------------------------------------------------- ground long
 
     @staticmethod
-    def hold_begin(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def hold_begin(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.HOLD, LongAttr.BEGIN, t, x, w, til=til)
 
     @staticmethod
-    def hold_end(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def hold_end(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.HOLD, LongAttr.END, t, x, w, til=til)
 
     @staticmethod
-    def slide_begin(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def slide_begin(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, til=til)
 
     @staticmethod
-    def slide_step(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def slide_step(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.SLIDE, LongAttr.STEP, t, x, w, til=til)
 
     @staticmethod
-    def slide_control(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def slide_control(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.SLIDE, LongAttr.CONTROL, t, x, w, til=til)
 
     @staticmethod
     def slide_curve_control(
-        *, t: int | Position, x: int, w: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.SLIDE, LongAttr.CURVE_CONTROL, t, x, w, til=til)
 
     @staticmethod
-    def slide_end(*, t: int | Position, x: int, w: int, til: int | None = None) -> RawNote:
+    def slide_end(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
         return R._raw(NoteType.SLIDE, LongAttr.END, t, x, w, til=til)
 
     # ------------------------------------------------------------------------- air
@@ -312,7 +308,7 @@ class R:
     @staticmethod
     def air(
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         dir: AirDirectionLike | int = AirDirection.UP,
@@ -325,37 +321,37 @@ class R:
 
     @staticmethod
     def air_slide_begin(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRSLIDE, LongAttr.BEGIN, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_slide_step(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRSLIDE, LongAttr.STEP, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_slide_control(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRSLIDE, LongAttr.CONTROL, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_slide_curve_control(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRSLIDE, LongAttr.CURVE_CONTROL, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_slide_end(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRSLIDE, LongAttr.END, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_slide_end_noact(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRSLIDE, LongAttr.END_NOACT, t, x, w, h=h, til=til)
 
@@ -363,25 +359,25 @@ class R:
 
     @staticmethod
     def air_hold_begin(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRHOLD, LongAttr.BEGIN, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_hold_step(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRHOLD, LongAttr.STEP, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_hold_end(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRHOLD, LongAttr.END, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_hold_end_noact(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRHOLD, LongAttr.END_NOACT, t, x, w, h=h, til=til)
 
@@ -390,11 +386,11 @@ class R:
     @staticmethod
     def air_crush_begin(
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         h: int,
-        gap: Division = 0,
+        gap: int | IntervalLike = 0,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int | None = None,
     ) -> RawNote:
@@ -412,13 +408,13 @@ class R:
 
     @staticmethod
     def air_crush_control(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRCRUSH, LongAttr.CONTROL, t, x, w, h=h, til=til)
 
     @staticmethod
     def air_crush_end(
-        *, t: int | Position, x: int, w: int, h: int, til: int | None = None
+        *, t: int | PositionLike, x: int, w: int, h: int, til: int | None = None
     ) -> RawNote:
         return R._raw(NoteType.AIRCRUSH, LongAttr.END, t, x, w, h=h, til=til)
 

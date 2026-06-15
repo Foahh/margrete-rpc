@@ -16,7 +16,7 @@ from margrete_rpc.chart.diff import (
 )
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
-    Position,
+    PositionLike,
     TickResolver,
     p2t,
     pop_beat_events,
@@ -61,7 +61,7 @@ class EditTransaction:
     _resolver_token: contextvars.Token[TickResolver | None] | None = None
     _beat_events_token: contextvars.Token[Iterable[BeatEvent] | None] | None = None
 
-    def _resolve_position(self, pos: Position) -> int:
+    def _resolve_position(self, pos: PositionLike) -> int:
         return p2t(*pos, beat_events=self.chart.events.beat)
 
     def __enter__(self) -> EditTransaction:

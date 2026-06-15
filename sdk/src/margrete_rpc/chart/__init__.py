@@ -7,9 +7,13 @@ from margrete_rpc.chart.events import (
 )
 from margrete_rpc.chart.time import (
     TICKS_PER_BEAT,
+    Interval,
+    IntervalLike,
     Position,
+    PositionLike,
     d2t,
     p2t,
+    t2d,
     t2p,
 )
 
@@ -19,11 +23,15 @@ __all__ = [
     "Chart",
     "ChartEvents",
     "ChartNote",
+    "Interval",
+    "IntervalLike",
     "NoteSpeedEvent",
     "Position",
+    "PositionLike",
     "p2t",
     "TICKS_PER_BEAT",
     "TimelineSpeedEvent",
     "d2t",
+    "t2d",
     "t2p",
 ]

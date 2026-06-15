@@ -232,7 +232,7 @@ def test_converted_slide_to_aircrush():
     crush = slide.converted(AirCrush, h=80, gap=4)
     assert isinstance(crush, AirCrush)
     assert crush.h == 80
-    assert crush.gap_t == 4
+    assert crush.gap == 4
     assert int(crush.joints[-1].t) == 100
 
 
@@ -377,7 +377,7 @@ def test_split_then_merge_round_trips_air_crush():
         .with_ctrl(t=200, x=6, w=2, h=120)
     )
     first, second = split(crush, 100)
-    assert first.gap_t == 5
+    assert first.gap == 5
     assert first.color is ColorValue.RED
 
     merged = merge([first, second])

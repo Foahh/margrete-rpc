@@ -5,7 +5,7 @@ from enum import IntEnum, StrEnum
 from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
 
 from ..constants import STANDARD_FIELD_WIDTH
-from ..time import Position
+from ..time import Position, PositionLike
 from .direction import direction_from_proto
 from .raw import RawNote
 from .types import NoteInfo
@@ -36,14 +36,13 @@ class Note(Protocol):
         ...
 
     @t.setter
-    def t(self, value: int) -> None: ...
+    def t(self, value: int | PositionLike) -> None: ...
+
     @property
     def p(self) -> Position:
-        """Timing as a ``(bar, beat, offset)`` :data:`Position`; the view of ``t``."""
+        """Timing as a ``(bar, beat, offset)`` :class:`Position`; the read-only view of ``t``."""
         ...
 
-    @p.setter
-    def p(self, value: Position) -> None: ...
     @property
     def x(self) -> int:
         """Left lane index of the note."""
@@ -59,7 +58,9 @@ class Note(Protocol):
         """Timeline id the note belongs to."""
         ...
 
-    def shift(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+    def shift(
+        self, *, t: Delta | PositionLike = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self:
         """Move/resize the note in place and return ``self``.
 
         Each delta is either an int added to the field, or a callable mapping the current
@@ -74,19 +75,21 @@ class Note(Protocol):
         """
         ...
 
-    def shifted(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+    def shifted(
+        self, *, t: Delta | PositionLike = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self:
         """Return a :meth:`clone` shifted by the given deltas, leaving ``self`` unchanged."""
         ...
 
-    def scale(self, factor: float, *, pivot: int | Position = 0) -> Self:
+    def scale(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
         """Scale the note's timing about ``pivot`` by ``factor``, in place; returns ``self``."""
         ...
 
-    def scaled(self, factor: float, *, pivot: int | Position = 0) -> Self:
+    def scaled(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
         """Return a :meth:`clone` scaled about ``pivot``, leaving ``self`` unchanged."""
         ...
 
-    def align(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
+    def align(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
         """Snap the note's timing to a multiple of ``interval``, in place; returns ``self``.
 
         Args:
@@ -95,7 +98,7 @@ class Note(Protocol):
         """
         ...
 
-    def aligned(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
+    def aligned(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
         """Return a :meth:`clone` aligned to ``interval``, leaving ``self`` unchanged."""
         ...
 
@@ -200,18 +203,13 @@ class _GeometryInfoMixin:
         return self._info.t
 
     @t.setter
-    def t(self, value: int) -> None:
+    def t(self, value: int | PositionLike) -> None:
         self._info.t = value
         _check_tick(self._info.t)
 
     @property
     def p(self) -> Position:
         return self._info.p
-
-    @p.setter
-    def p(self, value: Position) -> None:
-        self._info.p = value
-        _check_tick(self._info.t)
 
     @property
     def x(self) -> int:
@@ -255,28 +253,32 @@ class _TransformMixin:
     _info: NoteInfo
     _id: int | None
 
-    def shift(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+    def shift(
+        self, *, t: Delta | PositionLike = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self:
         from .shift import _resolve_shift_delta, _shift_note
 
         return cast(Self, _shift_note(self, t=_resolve_shift_delta(t), x=x, w=w, h=h))
 
-    def shifted(self, *, t: Delta | Position = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0) -> Self:
+    def shifted(
+        self, *, t: Delta | PositionLike = 0, x: Delta = 0, w: Delta = 0, h: Delta = 0
+    ) -> Self:
         return self.clone().shift(t=t, x=x, w=w, h=h)
 
-    def scale(self, factor: float, *, pivot: int | Position = 0) -> Self:
+    def scale(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
         from .transform import _scale
 
         return cast(Self, _scale(cast(Any, self), factor, pivot))
 
-    def scaled(self, factor: float, *, pivot: int | Position = 0) -> Self:
+    def scaled(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
         return self.clone().scale(factor, pivot=pivot)
 
-    def align(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
+    def align(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
         from .transform import _align
 
         return cast(Self, _align(cast(Any, self), interval, mode))
 
-    def aligned(self, interval: int | Position, *, mode: AlignMode = "round") -> Self:
+    def aligned(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
         return self.clone().align(interval, mode=mode)
 
     def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:

@@ -191,12 +191,15 @@ def test_noteinfo_option_value_accepts_division_tuple():
     assert info.option_value == TICKS_PER_BEAT // 4
 
 
-def test_aircrush_gap_d_accepts_division_tuple():
+def test_aircrush_gap_accepts_division_tuple():
     from margrete_rpc.chart.notes import AirCrush
+    from margrete_rpc.chart.time import Interval
 
     note = AirCrush(t=0, x=0, w=4, h=80, gap=(1, 384))
-    assert note.gap_t == 5
-    assert note.gap_d == (1, 384)
+    assert note.gap == 5
+    assert note.interval == Interval(1, 384)
+    assert note.interval.numerator == 1
+    assert note.interval.denominator == 384
 
-    note.gap_d = (1, 4)
-    assert note.gap_t == TICKS_PER_BEAT // 4
+    note.gap = (1, 4)
+    assert note.gap == TICKS_PER_BEAT // 4

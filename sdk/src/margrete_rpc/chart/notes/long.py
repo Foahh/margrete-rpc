@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Self, cast
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
-from ..time import Division, Position, resolve_density, resolve_tick, t2d
+from ..time import Interval, IntervalLike, PositionLike, resolve_density, resolve_tick, t2d
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -32,7 +32,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -95,7 +95,7 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             parts.append(f"id={self._id}")
         if isinstance(self, AirCrush):
             parts.append(f"h={self.h}")
-            parts.append(f"gap_t={self.gap_t}")
+            parts.append(f"gap={self.gap}")
             parts.append(f"color={_note_enum_line(self.color)}")
         head = ", ".join(parts)
         lines = [f"{cls}({head}"]
@@ -120,13 +120,13 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
 
     _note_type = NoteType.SLIDE
 
-    def with_step(self, *, t: int | Position, x: int, w: int) -> Self:
+    def with_step(self, *, t: int | PositionLike, x: int, w: int) -> Self:
         """Return a copy with a step joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_step(t=t, x=x, w=w)
         return copy
 
-    def with_ctrl(self, *, t: int | Position, x: int, w: int) -> Self:
+    def with_ctrl(self, *, t: int | PositionLike, x: int, w: int) -> Self:
         """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_ctrl(t=t, x=x, w=w)
@@ -150,7 +150,7 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
 
     _note_type = NoteType.HOLD
 
-    def with_step(self, *, t: int | Position, x: int, w: int) -> Self:
+    def with_step(self, *, t: int | PositionLike, x: int, w: int) -> Self:
         """Return a copy whose end joint is set (or moved) to the given timing/geometry.
 
         Raises:
@@ -184,8 +184,8 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     """An air-crush note: an air-lane long note with height and a color.
 
     Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and a gap
-    (:attr:`gap_t` / :attr:`gap_d`) controlling the spacing of generated segments between
-    joints. Add control joints with :meth:`with_ctrl` / :meth:`add_ctrl`.
+    (:attr:`gap`, with the :attr:`interval` beat-fraction view) controlling the spacing of
+    generated segments between joints. Add control joints with :meth:`with_ctrl` / :meth:`add_ctrl`.
     """
 
     _note_type = NoteType.AIRCRUSH
@@ -194,11 +194,11 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         h: int,
-        gap: Division = DEFAULT_AIRCRUSH_GAP,
+        gap: int | IntervalLike = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -215,26 +215,25 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         """
         super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
         self.h = h
-        self.gap_t = resolve_density(gap)
+        self.gap = gap
         self.color = color
 
     @property
-    def gap_t(self) -> int:
-        """Segment gap as an int tick count."""
+    def gap(self) -> int:
+        """Segment gap as an int tick count.
+
+        Set with an int tick count or an :data:`IntervalLike` ``(numerator, denominator)``
+        beat fraction. Read the fraction form via the :attr:`interval` view."""
         return int(self._info.option_value)
 
-    @gap_t.setter
-    def gap_t(self, value: int) -> None:
-        self._info.option_value = value
+    @gap.setter
+    def gap(self, value: int | IntervalLike) -> None:
+        self._info.option_value = resolve_density(value)
 
     @property
-    def gap_d(self) -> tuple[int, int]:
-        """Segment gap as a ``(numerator, denominator)`` beat fraction (view of :attr:`gap_t`)."""
+    def interval(self) -> Interval:
+        """Read-only ``(numerator, denominator)`` beat-fraction view of ``gap``."""
         return t2d(int(self._info.option_value))
-
-    @gap_d.setter
-    def gap_d(self, value: tuple[int, int]) -> None:
-        self._info.option_value = resolve_density(value)
 
     @property
     def color(self) -> ColorValue | int:
@@ -245,7 +244,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def color(self, value: ColorLike | int) -> None:
         self._info.variation_id = color_to_value(value)
 
-    def with_ctrl(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
+    def with_ctrl(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
         """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_ctrl(t=t, x=x, w=w, h=h)

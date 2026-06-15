@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Sequence
 from typing import Any, NamedTuple, cast
 
 from ..constants import DEFAULT_H
-from ..time import Position, resolve_tick
+from ..time import PositionLike, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import ColorValue
 from .direction import Direction
@@ -138,7 +138,7 @@ def _snapper(step: int, mode: AlignMode) -> Callable[[int], int]:
     return snap
 
 
-def _align(note: Note, interval: int | Position, mode: AlignMode) -> Note:
+def _align(note: Note, interval: int | PositionLike, mode: AlignMode) -> Note:
     step = resolve_tick(interval)
     if step <= 0:
         raise ValueError("align interval must be positive")
@@ -148,7 +148,7 @@ def _align(note: Note, interval: int | Position, mode: AlignMode) -> Note:
 # ------------------------------------------------------------------------------- scale
 
 
-def _scale(note: Note, factor: float, pivot: int | Position) -> Note:
+def _scale(note: Note, factor: float, pivot: int | PositionLike) -> Note:
     origin = int(resolve_tick(pivot))
     return note.shift(t=lambda v: round(origin + (v - origin) * factor))
 
@@ -263,7 +263,7 @@ def _build_air_long(
     if issubclass(target, AirCrush):
         gap = overrides.get("gap")
         if gap is None and isinstance(note, AirCrush):
-            gap = note.gap_t
+            gap = note.gap
         color = overrides.get(
             "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
         )
@@ -370,7 +370,7 @@ def _interpolate(a: _Point, b: _Point, ts: int) -> _Point:
 
 
 def _locate_split(
-    note: SlideLike, begin: _Point, joints: list[_Point], at: Joint | int | Position
+    note: SlideLike, begin: _Point, joints: list[_Point], at: Joint | int | PositionLike
 ) -> tuple[_Point, list[_Point], list[_Point]]:
     if isinstance(at, Joint):
         try:
@@ -395,7 +395,7 @@ def _locate_split(
     raise ValueError("could not locate split segment")
 
 
-def split[T: SlideLike](note: T, at: Joint | int | Position) -> tuple[T, T]:
+def split[T: SlideLike](note: T, at: Joint | int | PositionLike) -> tuple[T, T]:
     """Divide a slide / air-slide / air-crush into two notes at a joint or time.
 
     Args:
@@ -447,7 +447,7 @@ def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
         new: SlideLike = Slide(t=point.t, x=point.x, w=point.w)
     elif isinstance(note, AirCrush):
         h = point.h if point.h is not None else int(note._info.h)
-        new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap_t, color=note.color)
+        new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color)
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
         new = AirSlide(t=point.t, x=point.x, w=point.w, h=h)

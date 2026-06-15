@@ -388,7 +388,7 @@ def test_high_level_notes_accept_short_geometry_aliases():
     assert tap.w == 2
     assert tap.w == 2
 
-    tap.p = (0, 1, 0)
+    tap.t = (0, 1, 0)
     tap.w = 3
     assert tap.t == d2t(1, 4)
     assert tap.w == 3
@@ -1214,12 +1214,12 @@ def test_air_crush_gap_and_color_redirect_to_raw_storage_fields():
         gap=0,
         color=Color.RED,
     )
-    crush.gap_t = 120
+    crush.gap = 120
     crush.color = Color.NONE
     crush.til = 2
     RawNote = crush.with_ctrl(t=960, x=8, w=2, h=100).to_raw()
 
-    assert crush.gap_t == 120
+    assert crush.gap == 120
     assert crush.color is ColorValue.NONE
     assert RawNote.option_value == 120
     assert RawNote.variation_id == Color.NONE
@@ -1229,11 +1229,11 @@ def test_air_crush_gap_and_color_redirect_to_raw_storage_fields():
 
 def test_air_crush_gap_is_plain_int():
     crush = AirCrush(t=0, x=4, w=2, h=80, gap=0)
-    crush.gap_t = d2t(1, 8)
-    assert crush.gap_t == 240
-    assert type(crush.gap_t) is int
-    crush.gap_t = crush.gap_t + d2t(1, 8)
-    assert crush.gap_t == 480
+    crush.gap = d2t(1, 8)
+    assert crush.gap == 240
+    assert type(crush.gap) is int
+    crush.gap = crush.gap + d2t(1, 8)
+    assert crush.gap == 480
 
 
 def test_wrap_raw_note_supports_air_hold_with_steps_attached_to_air():

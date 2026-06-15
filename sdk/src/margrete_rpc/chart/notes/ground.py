@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from ..time import Position, resolve_tick
+from ..time import PositionLike, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .direction import ExtapDirection, ExtapDirectionLike, FlickDirection, FlickDirectionLike
 from .raw import RawNote
@@ -93,7 +93,7 @@ class Tap(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -124,7 +124,7 @@ class Damage(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -156,7 +156,7 @@ class Extap(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         dir: ExtapDirectionLike | int = ExtapDirection.UP,
@@ -200,7 +200,7 @@ class Flick(_GroundNote):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         dir: FlickDirectionLike | int = FlickDirection.AUTO,

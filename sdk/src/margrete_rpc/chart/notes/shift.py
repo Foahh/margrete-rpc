@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from ..time import Position, resolve_tick
+from ..time import PositionLike, resolve_tick
 from .shared import Delta
 from .types import NoteInfo
 
 
-def _resolve_shift_delta(t: Delta | Position) -> Delta:
+def _resolve_shift_delta(t: Delta | PositionLike) -> Delta:
     if isinstance(t, tuple):
         return resolve_tick(t)
     return t

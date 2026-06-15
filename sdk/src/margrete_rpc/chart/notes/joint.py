@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import ClassVar, Self
 
 from ..constants import DEFAULT_H
-from ..time import Position, resolve_tick
+from ..time import PositionLike, resolve_tick
 from .raw import RawNote
 from .shared import (
     _check_tick,
@@ -34,7 +34,7 @@ class Joint(_GeometryInfoMixin):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         _id: int | None = None,
@@ -74,7 +74,7 @@ class AirJoint(Joint, _HeightMixin):
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         h: int,
@@ -203,19 +203,19 @@ class _JointHost(_JointHostBase):
             kind=kind,
         )
 
-    def add_step(self, *, t: int | Position, x: int, w: int) -> Self:
+    def add_step(self, *, t: int | PositionLike, x: int, w: int) -> Self:
         """Append a step joint in place and return ``self``. Timing must be strictly
         increasing along the note."""
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.STEP, x, w))
         return self
 
-    def add_ctrl(self, *, t: int | Position, x: int, w: int) -> Self:
+    def add_ctrl(self, *, t: int | PositionLike, x: int, w: int) -> Self:
         """Append a control joint in place and return ``self``. Timing must be strictly
         increasing along the note."""
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.CONTROL, x, w))
         return self
 
-    def _add_curve_control(self, *, t: int | Position, x: int, w: int) -> None:
+    def _add_curve_control(self, *, t: int | PositionLike, x: int, w: int) -> None:
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.CURVE_CONTROL, x, w))
 
 
@@ -232,17 +232,17 @@ class _AirJointHost(_JointHostBase):
     ) -> AirJoint:
         return AirJoint(t=t, x=x, w=w, h=h, kind=kind)
 
-    def add_step(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
+    def add_step(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
         """Append a step joint (with air height ``h``) in place and return ``self``."""
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.STEP, x, w, h))
         return self
 
-    def add_ctrl(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
+    def add_ctrl(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
         """Append a control joint (with air height ``h``) in place and return ``self``."""
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.CONTROL, x, w, h))
         return self
 
-    def _add_curve_control(self, *, t: int | Position, x: int, w: int, h: int) -> None:
+    def _add_curve_control(self, *, t: int | PositionLike, x: int, w: int, h: int) -> None:
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.CURVE_CONTROL, x, w, h))
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self, cast
 
-from ..time import Position, resolve_tick
+from ..time import PositionLike, resolve_tick
 from .direction import AirDirection, AirDirectionLike
 from .joint import AirJoint, Joint, _AirJointHost
 from .raw import RawNote
@@ -44,7 +44,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         self,
         dir: AirDirectionLike | int,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         _info: NoteInfo | None = None,
@@ -109,7 +109,7 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
     def __init__(
         self,
         *,
-        t: int | Position,
+        t: int | PositionLike,
         x: int,
         w: int,
         h: int,
@@ -157,12 +157,12 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         air.children.append(action)
         return air
 
-    def with_step(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
+    def with_step(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
         copy = self.clone()
         copy.add_step(t=t, x=x, w=w, h=h)
         return copy
 
-    def with_ctrl(self, *, t: int | Position, x: int, w: int, h: int) -> Self:
+    def with_ctrl(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
         copy = self.clone()
         copy.add_ctrl(t=t, x=x, w=w, h=h)
         return copy
