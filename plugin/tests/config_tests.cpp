@@ -77,3 +77,11 @@ TEST_CASE("config rejects invalid host")
 
     REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server host must be an IPv4 address"));
 }
+
+TEST_CASE("loopback detection")
+{
+    REQUIRE(IsLoopbackAddress("127.0.0.1"));
+    REQUIRE(IsLoopbackAddress("127.5.6.7"));
+    REQUIRE_FALSE(IsLoopbackAddress("0.0.0.0"));
+    REQUIRE_FALSE(IsLoopbackAddress("192.168.1.10"));
+}

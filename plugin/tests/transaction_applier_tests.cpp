@@ -283,6 +283,46 @@ TEST_CASE("apply edit updates existing note and creates new note")
     REQUIRE(context.chart.appendedNotes == 1);
 }
 
+TEST_CASE("apply edit rejects replace_all with note ids")
+{
+    FakeContext context;
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    request.set_replace_all_notes(true);
+    auto *note = request.add_notes_upsert();
+    note->set_id(1);
+    note->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+    REQUIRE(context.undo.commitCount == 0);
+    REQUIRE(context.undo.discardCount == 1);
+}
+
+TEST_CASE("apply edit rejects upsert of unknown note id")
+{
+    FakeContext context; // chart starts empty
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *note = request.add_notes_upsert();
+    note->set_id(99);
+    note->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+    REQUIRE(context.undo.discardCount == 1);
+}
+
+TEST_CASE("apply edit rejects in-place child upsert without child id")
+{
+    FakeContext context;
+    context.chart.addExistingNote(1); // an existing root with id=1
+    MargreteSession session(context);
+    margrete::rpc::v1::ApplyEditRequest request;
+    auto *note = request.add_notes_upsert();
+    note->set_id(1);
+    note->set_type(margrete::rpc::v1::NOTE_TYPE_HOLD);
+    note->add_children()->set_type(margrete::rpc::v1::NOTE_TYPE_HOLD); // child has no id
+    REQUIRE_THROWS(TransactionApplier::ApplyEdit(session, request));
+    REQUIRE(context.undo.discardCount == 1);
+}
+
 TEST_CASE("apply edit deletes existing note by id")
 {
     FakeContext context;
