@@ -16,14 +16,10 @@ type SlideLike = Slide | Hold | AirSlide | AirHold | AirCrush
 
 @dataclass(frozen=True, slots=True)
 class Waypoint:
-    """One control point on a :class:`Curve`: a tick, lane, height and the easing of the leg
-    arriving at it.
+    """One control point on a :class:`Curve`: tick, lane, height, and per-axis easing of the incoming leg.
 
-    ``ease_x`` and ``ease_h`` describe how the lane and height axes interpolate across the leg
-    that *ends* at this waypoint; they are unused on a curve's first (anchor) waypoint, which
-    has no incoming leg, and default to ``linear``. ``h`` is ignored when materializing a
-    ground :class:`Slide`. Width is never stored here; it is applied uniformly at
-    materialization so a path has constant width.
+    ``ease_x`` and ``ease_h`` are ignored on the first waypoint (no incoming leg).
+    ``h`` is ignored when materializing a ground :class:`Slide`.
     """
 
     t: int
@@ -34,27 +30,16 @@ class Waypoint:
 
 
 class Curve:
-    """A fluent, width-agnostic slide path built from eased legs between :class:`Waypoint`s.
+    """A width-agnostic slide path built by chaining eased legs between :class:`Waypoint`s.
 
-    Start with an anchor ``Curve(t=..., x=..., h=...)`` -- a single point -- and chain
-    :meth:`to` to add eased legs; each call returns a new ``Curve`` carrying one more control
-    waypoint. The path stays sparse (just the leg endpoints and their easing) and editable;
-    nothing is quantized until you call :meth:`points` or one of the materializers
-    (:meth:`to_slide`, :meth:`to_air_slide`, :meth:`to_air_crush`, each applying a single
-    constant ``w``). An existing long note can be loaded back into control waypoints with
-    :meth:`from_note`.
-
-    Quantization (deferred to materialization) eases both axes independently within each leg
-    and places joints at the integer crossings of whichever axis moves less (the smaller
-    delta), so that axis advances one unit per joint while the larger, higher-resolution axis
-    stays smooth under Margrete's linear interpolation. Width is not part of the path (it is
-    applied at materialization).
+    Start with ``Curve(t=..., x=..., h=...)`` then chain :meth:`to` to add legs. Materialize
+    to a note with :meth:`to_slide`, :meth:`to_air_slide`, or :meth:`to_air_crush` (each
+    applies a constant width ``w``). Load an existing note's path with :meth:`from_note`.
 
     Args:
-        t: Start tick or :data:`Position` tuple.
+        t: Start tick or position tuple.
         x: Start lane.
-        h: Start height; defaults to :data:`DEFAULT_H`. A leg whose ``.to(h=...)`` is omitted
-            holds the current height, so a ground slide can leave height untouched throughout.
+        h: Start height; defaults to :data:`DEFAULT_H`.
     """
 
     __slots__ = ("waypoints",)
@@ -78,17 +63,9 @@ class Curve:
 
     @classmethod
     def from_note(cls, note: SlideLike) -> Curve:
-        """Load a slide-like long note's path into editable control waypoints.
+        """Load a slide-like long note's path as editable control waypoints with linear legs.
 
-        Reads the begin geometry and every joint of ``note`` (a :class:`Slide`, :class:`Hold`,
-        :class:`AirSlide`, :class:`AirHold` or :class:`AirCrush`) as control waypoints joined
-        by linear legs -- the note already stores its explicit path, so no easing is inferred.
-        Width is dropped (a ``Curve`` carries none); height is taken from each point where
-        present and defaults to :data:`DEFAULT_H` otherwise.
-
-        Raises:
-            ValueError: If the note's ticks are not strictly increasing (never true for a
-                valid long note).
+        Width is dropped; height defaults to :data:`DEFAULT_H` where not present.
         """
         points = [Waypoint(int(note.t), note.x, getattr(note, "h", DEFAULT_H))]
         for joint in note.joints:
@@ -110,11 +87,9 @@ class Curve:
         ease_x: EaseLike = "linear",
         ease_h: EaseLike = "linear",
     ) -> Curve:
-        """Extend the curve with one eased leg from its last waypoint to ``(t, x, h)``.
+        """Add one eased leg to ``(t, x, h)`` and return the extended curve.
 
-        Records a single control waypoint carrying the per-axis easing of this leg; no
-        sampling happens here (see :meth:`points`). ``h`` defaults to the current end height
-        (a constant-height leg).
+        ``h`` defaults to the current end height (constant-height leg).
 
         Raises:
             ValueError: If ``t`` is not later than the last waypoint's tick.
@@ -128,16 +103,10 @@ class Curve:
         return Curve._of((*self.waypoints, waypoint))
 
     def points(self) -> tuple[Waypoint, ...]:
-        """Quantize the whole path: sample every eased leg into integer waypoints.
-
-        This is what the ``to_*`` materializers consume; call it directly to preview the
-        realized joints. Each leg between consecutive control waypoints is sampled by the
-        smaller-delta-axis quantizer (see the class docs) using that leg's easing, and shared
-        seam waypoints are de-duplicated. The returned waypoints are plain points (their
-        ``ease_*`` fields are left at the ``linear`` default and carry no meaning).
+        """Quantize the path into integer waypoints (useful to preview before materializing).
 
         Raises:
-            ValueError: If the curve still has only its anchor (no ``.to(...)`` leg yet).
+            ValueError: If the curve has no legs yet (only an anchor).
         """
         if len(self.waypoints) < 2:
             raise ValueError("add at least one .to(...) leg before materializing a Curve")
@@ -153,10 +122,7 @@ class Curve:
         return first, mid, last
 
     def to_slide(self, *, w: int, til: int = 0) -> Slide:
-        """Materialize as a ground :class:`Slide` of constant width ``w`` (``h`` ignored).
-
-        Interior waypoints become control joints; the final waypoint becomes a step joint.
-        """
+        """Materialize as a ground :class:`Slide` of constant width ``w`` (height ignored)."""
         first, mid, last = self._path()
         slide = Slide(t=first.t, x=first.x, w=w)
         slide.til = til
@@ -166,10 +132,7 @@ class Curve:
         return slide
 
     def to_air_slide(self, *, w: int, til: int = 0) -> AirSlide:
-        """Materialize as an :class:`AirSlide` of constant width ``w``, carrying each ``h``.
-
-        Interior waypoints become control joints; the final waypoint becomes a step joint.
-        """
+        """Materialize as an :class:`AirSlide` of constant width ``w``."""
         first, mid, last = self._path()
         air = AirSlide(t=first.t, x=first.x, w=w, h=first.h)
         air.til = til
@@ -186,11 +149,7 @@ class Curve:
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int = 0,
     ) -> AirCrush:
-        """Materialize as an :class:`AirCrush` of constant width ``w``, carrying each ``h``.
-
-        Every waypoint becomes a control joint (air-crush notes take only controls). ``gap``
-        and ``color`` are forwarded straight to the :class:`AirCrush` constructor.
-        """
+        """Materialize as an :class:`AirCrush` of constant width ``w``."""
         first, mid, last = self._path()
         crush = AirCrush(t=first.t, x=first.x, w=w, h=first.h, gap=gap, color=color)
         crush.til = til
@@ -199,11 +158,7 @@ class Curve:
         return crush
 
     def at(self, tick: int) -> Waypoint:
-        """Evaluate the eased path at ``tick`` (clamped to the ends) as an integer waypoint.
-
-        Finds the leg containing ``tick`` and applies that leg's per-axis easing. The result
-        is a plain point (``ease_*`` left at the ``linear`` default).
-        """
+        """Evaluate the eased path at ``tick``, clamped to the curve's endpoints."""
         wps = self.waypoints
         if tick <= wps[0].t:
             return Waypoint(wps[0].t, wps[0].x, wps[0].h)
@@ -259,15 +214,10 @@ def _driver_ticks(
     ease_x: Easing,
     ease_h: Easing,
 ) -> list[int]:
-    """Candidate ticks taken from the axis with the smaller integer delta.
+    """Candidate ticks from the axis with the smaller integer delta (the "driver").
 
-    Margrete draws straight lines between consecutive joints, so the axis driving the joint
-    placement should be the one with *fewer* integer steps. Height usually has a much higher
-    resolution than the lane, so sampling its many crossings would pin a joint at every
-    height step and leave the lane repeating the same value across them (a blocky staircase
-    in the main view). Sampling the smaller-delta axis instead advances that axis one unit
-    per joint -- a clean diagonal -- while the larger, higher-resolution axis stays smooth
-    under linear interpolation. A zero-delta axis (no movement) is never chosen.
+    Sampling the smaller-delta axis keeps the larger-delta axis smooth under Margrete's linear
+    interpolation between joints, avoiding a blocky staircase in the main view.
     """
     dx = abs(x1 - x0)
     dh = abs(h1 - h0)
@@ -288,12 +238,9 @@ def _sample_segment(
     ease_x: Easing,
     ease_h: Easing,
 ) -> tuple[Waypoint, ...]:
-    """Quantize an eased segment to integer waypoints, driven by the smaller-delta axis.
+    """Quantize an eased segment to integer waypoints driven by the smaller-delta axis.
 
-    Candidate ticks are the integer crossings of the axis with the smaller delta (see
-    :func:`_driver_ticks`), merged with the endpoints and sorted. One waypoint is emitted per
-    tick using the forward easing on *both* axes; consecutive waypoints with identical
-    ``(x, h)`` are dropped (endpoints always kept).
+    Consecutive waypoints with identical ``(x, h)`` are dropped; endpoints are always kept.
     """
     if t1 <= t0:
         raise ValueError("segment end tick must be later than its start")

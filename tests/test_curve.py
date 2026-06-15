@@ -11,7 +11,7 @@ from margrete_rpc.chart.notes import (
     wrap_raw_note,
 )
 from margrete_rpc.chart.time import Interval, d2t
-from margrete_rpc.chart.util import Curve, Waypoint, envelope
+from margrete_rpc.chart.util import Curve, Waypoint, crease, envelope
 from margrete_rpc.chart.util.easing import EASINGS
 
 
@@ -288,6 +288,45 @@ def test_envelope_rejects_bad_count() -> None:
     outer = Curve(t=0, x=10).to(t=960, x=10)
     with pytest.raises(ValueError):
         envelope(inner, outer, count=0)
+
+
+def test_crease_anchors_both_ends() -> None:
+    base = Curve(t=0, x=6).to(t=960, x=6)
+    woven = crease(base, count=4, x_range=3)
+    ticks = [wp.t for wp in woven]
+    assert ticks == sorted(set(ticks))  # strictly increasing integer ticks
+    assert woven.waypoints[0].x == 6  # first turning point on the base
+    assert woven.waypoints[-1].x == 6  # last turning point on the base
+    interior = [wp.x for wp in woven.waypoints[1:-1]]
+    assert 9 in interior  # reaches +x_range
+    assert 3 in interior  # reaches -x_range
+
+
+def test_crease_height_in_phase() -> None:
+    base = Curve(t=0, x=6, h=80).to(t=960, x=6, h=80)
+    woven = crease(base, count=4, x_range=3, h_range=20)
+    for wp in woven.waypoints[1:-1]:
+        # height offset shares the lane offset's sign
+        assert (wp.x - 6 > 0) == (wp.h - 80 > 0)
+    assert woven.waypoints[0].h == 80  # endpoints keep the base height
+    assert woven.waypoints[-1].h == 80
+
+
+def test_crease_default_h_range_leaves_height() -> None:
+    base = Curve(t=0, x=6, h=80).to(t=960, x=6, h=80)
+    woven = crease(base, count=4, x_range=3)
+    assert all(wp.h == 80 for wp in woven.waypoints)
+
+
+def test_crease_rejects_bad_count() -> None:
+    base = Curve(t=0, x=6).to(t=960, x=6)
+    with pytest.raises(ValueError):
+        crease(base, count=1, x_range=3)
+
+
+def test_crease_materializes() -> None:
+    base = Curve(t=0, x=6).to(t=960, x=6)
+    crease(base, count=4, x_range=3).to_slide(w=2).validate()
 
 
 def test_materialized_notes_survive_raw_round_trip() -> None:

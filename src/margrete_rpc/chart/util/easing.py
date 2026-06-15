@@ -8,8 +8,7 @@ from typing import Literal
 type EaseLike = str | Easing | Callable[[float], float]
 """An input easing: a registry name, an :class:`Easing`, or a bare ``[0,1]->[0,1]`` callable.
 
-A bare callable is wrapped with a numeric (bisection) inverse, so any monotonic
-non-decreasing function works. Resolve via :func:`resolve_easing`."""
+Resolve via :func:`resolve_easing`."""
 
 EaseName = Literal[
     "linear",
@@ -42,13 +41,9 @@ _BISECT_ITERS = 48
 
 @dataclass(frozen=True, slots=True)
 class Easing:
-    """A monotonic non-decreasing easing curve ``solve: [0,1] -> [0,1]`` with an inverse.
+    """A ``[0,1] -> [0,1]`` easing curve with a forward ``solve`` and an :meth:`inverse`.
 
-    ``solve`` maps eased progress; :meth:`inverse` maps a value back to progress. If no
-    analytic inverse is supplied, :meth:`inverse` falls back to bisection (so any monotonic
-    callable works). All built-in easings (see :data:`EASINGS`) satisfy ``solve(0) == 0``,
-    ``solve(1) == 1`` and are monotonic; custom easings must be too, as the inverse and the
-    curve quantization both assume it.
+    Custom easings must be monotonic non-decreasing with ``solve(0) == 0`` and ``solve(1) == 1``.
     """
 
     name: str
@@ -200,27 +195,18 @@ def _build_registry() -> dict[str, Easing]:
 
 
 EASINGS: dict[str, Easing] = _build_registry()
-"""Registry of built-in easings keyed by name (see :data:`EaseName`).
+"""Built-in easings keyed by name (see :data:`EaseName`).
 
-Only monotonic families are shipped: ``linear``, ``sine``, ``quad``, ``cubic``, ``quart``,
-``quint``, ``expo`` and ``circ``, each as ``in_`` / ``out_`` / ``in_out_`` (``linear`` is a
-single entry). Non-monotonic easings (back / elastic / bounce) are intentionally excluded:
-they would break the inverse-based quantization."""
+Includes ``linear`` and the ``in_`` / ``out_`` / ``in_out_`` variants of ``sine``, ``quad``,
+``cubic``, ``quart``, ``quint``, ``expo``, and ``circ``."""
 
 
 def resolve_easing(value: EaseLike) -> Easing:
-    """Coerce an :data:`EaseLike` to an :class:`Easing`.
-
-    Args:
-        value: A registry name (see :data:`EaseName`), an :class:`Easing` (returned as-is),
-            or a bare ``[0,1]->[0,1]`` callable (wrapped with a numeric inverse).
-
-    Returns:
-        The resolved :class:`Easing`.
+    """Resolve an :data:`EaseLike` to an :class:`Easing`.
 
     Raises:
-        ValueError: If ``value`` is a string that is not a registered easing name.
-        TypeError: If ``value`` is neither a name, an :class:`Easing`, nor callable.
+        ValueError: If ``value`` is an unrecognised easing name.
+        TypeError: If ``value`` is not a name, :class:`Easing`, or callable.
     """
     if isinstance(value, Easing):
         return value

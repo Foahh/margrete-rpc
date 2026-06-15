@@ -4,28 +4,13 @@ from .curve import Curve, Waypoint
 
 
 def envelope(inner: Curve, outer: Curve, *, count: int = 2) -> Curve:
-    """Weave a curve that oscillates between two boundary curves over ``count`` legs.
+    """Weave a curve that oscillates between ``inner`` and ``outer`` over ``count`` legs.
 
-    ``inner`` and ``outer`` must span the same ``[T0, T1]``. The weave starts on ``inner`` and
-    places ``count + 1`` evenly spaced turning points at ``s = j / count`` for ``j = 0 .. count``,
-    sampling ``inner`` at even ``j`` and ``outer`` at odd ``j`` (via :meth:`Curve.at`). Each
-    turn is one straight, linear leg; the quantization to the grid happens later, when the
-    woven curve is materialized.
-
-    ``count`` is the number of legs (half-cycles), so the weave can stop at any turning point
-    rather than only after whole cycles: an even ``count`` lands back on ``inner`` (``count``
-    of 2 is one full cycle), while an odd ``count`` ends out on ``outer``.
-
-    Args:
-        inner: The boundary the weave starts on.
-        outer: The opposite boundary, sharing ``inner``'s time span.
-        count: Number of legs in the weave (at least 1). Defaults to 2 (one full cycle).
-
-    Returns:
-        The woven curve, as control waypoints joined by linear legs.
+    Both curves must share the same time span. An even ``count`` lands back on ``inner``
+    (``count=2`` is one full cycle); an odd ``count`` ends on ``outer``.
 
     Raises:
-        ValueError: If ``count < 1`` or the two curves do not share the same time span.
+        ValueError: If ``count < 1`` or the curves have different time spans.
     """
     if count < 1:
         raise ValueError("count must be at least 1")
