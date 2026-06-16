@@ -206,6 +206,21 @@ def test_to_slide_joint_kinds_and_width() -> None:
     slide.validate()
 
 
+def test_to_slide_preserves_height_in_raw_fields() -> None:
+    path = Curve(t=0, x=0, h=20).to(t=960, x=6, h=90, ease_h="in_out_sine")
+    slide = path.to_slide(w=2)
+
+    assert slide._info.h == 20
+    assert slide.joints[-1]._info.h == 90
+    raw = slide.to_raw()
+    assert raw.h == 20
+    assert raw.children[-1].h == 90
+
+    round_trip = Curve.from_note(slide)
+    assert round_trip.waypoints[0].h == 20
+    assert round_trip.waypoints[-1].h == 90
+
+
 def test_to_air_slide_carries_height() -> None:
     path = Curve(t=0, x=0, h=20).to(t=960, x=6, h=90, ease_h="in_out_sine")
     air = path.to_air_slide(w=2)

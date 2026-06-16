@@ -19,7 +19,6 @@ class Waypoint:
     """One control point on a :class:`Curve`: tick, lane, height, and per-axis leg easing.
 
     ``ease_x`` and ``ease_h`` are ignored on the first waypoint (no incoming leg).
-    ``h`` is ignored when materializing a ground :class:`Slide`.
     """
 
     t: int
@@ -73,9 +72,9 @@ class Curve:
             A new :class:`Curve` spanning the note's begin point through its joints.
             Width is dropped; height defaults to :data:`DEFAULT_H` where not present.
         """
-        points = [Waypoint(int(note.t), note.x, getattr(note, "h", DEFAULT_H))]
+        points = [Waypoint(int(note.t), note.x, _stored_height(note))]
         for joint in note.joints:
-            points.append(Waypoint(int(joint.t), joint.x, getattr(joint, "h", DEFAULT_H)))
+            points.append(Waypoint(int(joint.t), joint.x, _stored_height(joint)))
         return cls._of(tuple(points))
 
     def __len__(self) -> int:
@@ -140,21 +139,25 @@ class Curve:
         return first, mid, last
 
     def to_slide(self, *, w: int, til: int = 0) -> Slide:
-        """Materialize as a ground :class:`Slide` (height ignored).
+        """Materialize as a ground :class:`Slide`.
 
         Args:
             w: Constant lane width for every joint.
             til: Timeline index assigned to the note.
 
         Returns:
-            A :class:`Slide` whose joints follow the quantized path.
+            A :class:`Slide` whose joints follow the quantized path. Height is preserved
+            in the underlying raw note fields.
         """
         first, mid, last = self._path()
         slide = Slide(t=first.t, x=first.x, w=w)
+        slide._info.h = first.h
         slide.til = til
         for wp in mid:
             slide.add_ctrl(t=wp.t, x=wp.x, w=w)
+            slide.joints[-1]._info.h = wp.h
         slide.add_step(t=last.t, x=last.x, w=w)
+        slide.joints[-1]._info.h = last.h
         return slide
 
     def to_air_slide(self, *, w: int, til: int = 0) -> AirSlide:
@@ -319,6 +322,11 @@ def _sample_segment(
             out.append(cur)
     out.append(pts[-1])
     return tuple(out)
+
+
+def _stored_height(obj: object) -> int:
+    """Read the raw stored height, including from ground notes without public ``h``."""
+    return int(getattr(getattr(obj, "_info", None), "h", DEFAULT_H))
 
 
 __all__ = ["Curve", "SlideLike", "Waypoint"]
