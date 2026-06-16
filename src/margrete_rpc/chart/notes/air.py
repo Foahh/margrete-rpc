@@ -158,11 +158,13 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         return air
 
     def with_step(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
+        """Return a copy with a step joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_step(t=t, x=x, w=w, h=h)
         return copy
 
     def with_ctrl(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
+        """Return a copy with a control joint appended at the given timing and geometry."""
         copy = self.clone()
         copy.add_ctrl(t=t, x=x, w=w, h=h)
         return copy

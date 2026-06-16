@@ -81,7 +81,15 @@ class AirJoint(Joint, _HeightMixin):
         _id: int | None = None,
         kind: JointKindLike,
     ) -> None:
-        """Create an air joint. As :class:`Joint`, plus ``h`` for the joint's air height."""
+        """Create an air joint.
+
+        Args:
+            t: Absolute tick or :data:`Position` tuple.
+            x: Left lane index.
+            w: Width in lane units.
+            h: Air height of this joint.
+            kind: Joint kind (:class:`JointKind` or its string form).
+        """
         super().__init__(t=t, x=x, w=w, _id=_id, kind=kind)
         self.h = h
 
@@ -204,14 +212,20 @@ class _JointHost(_JointHostBase):
         )
 
     def add_step(self, *, t: int | PositionLike, x: int, w: int) -> Self:
-        """Append a step joint in place and return ``self``. Timing must be strictly
-        increasing along the note."""
+        """Append a step joint in place and return ``self``.
+
+        Raises:
+            ValueError: If ``t`` is not strictly later than the previous joint.
+        """
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.STEP, x, w))
         return self
 
     def add_ctrl(self, *, t: int | PositionLike, x: int, w: int) -> Self:
-        """Append a control joint in place and return ``self``. Timing must be strictly
-        increasing along the note."""
+        """Append a control joint in place and return ``self``.
+
+        Raises:
+            ValueError: If ``t`` is not strictly later than the previous joint.
+        """
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.CONTROL, x, w))
         return self
 
@@ -233,12 +247,20 @@ class _AirJointHost(_JointHostBase):
         return AirJoint(t=t, x=x, w=w, h=h, kind=kind)
 
     def add_step(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
-        """Append a step joint (with air height ``h``) in place and return ``self``."""
+        """Append a step joint in place and return ``self``.
+
+        Raises:
+            ValueError: If ``t`` is not strictly later than the previous joint.
+        """
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.STEP, x, w, h))
         return self
 
     def add_ctrl(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
-        """Append a control joint (with air height ``h``) in place and return ``self``."""
+        """Append a control joint in place and return ``self``.
+
+        Raises:
+            ValueError: If ``t`` is not strictly later than the previous joint.
+        """
         self._add_joint(self._make_joint(resolve_tick(t), JointKind.CONTROL, x, w, h))
         return self
 
