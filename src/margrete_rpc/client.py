@@ -42,7 +42,7 @@ class ServerStatus:
 class Margrete:
     """Client for a running Margrete RPC server.
 
-    This is the entry point of the SDK. Construct one to connect to a Margrete
+    This is the entry point of the Python client. Construct one to connect to a Margrete
     instance, then call :meth:`open_edit` to make scriptable changes to the current
     chart inside a transaction.
     """
@@ -126,7 +126,7 @@ class Margrete:
 
         Note:
             Undo applies to Margrete's own history, which includes edits made through
-            this SDK. Undoing a transaction that deleted notes can re-create them in a
+            this Python client. Undoing a transaction that deleted notes can re-create them in a
             duplicated state, so prefer designing transactions that add or modify rather
             than relying on undo to reverse deletions.
         """

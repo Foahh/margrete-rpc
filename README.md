@@ -1,6 +1,6 @@
 # Margrete RPC
 
-**Margrete RPC** is a [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete) plugin + client Python SDK that let you script **charting**.
+**Margrete RPC** is a [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete) plugin plus a Python client package that lets you script **charting**.
 
 ## Motivation
 
@@ -18,6 +18,6 @@ specific transforms, but it can also feel brittle when you want to:
 
 - **[`src/margrete_rpc`](src/margrete_rpc)**: Python **client** controlling the Margrete plugin
 
-- **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the SDK
+- **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the Python client
 
-- **[`docs/`](docs/)**: Fumadocs documentation site; auto-generates API reference from the Python SDK
+- **[`docs/`](docs/)**: Fumadocs documentation site; auto-generates API reference from the Python package

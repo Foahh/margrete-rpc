@@ -13,7 +13,7 @@ TraceAttrs = Mapping[str, Any]
 class Tracer(Protocol):
     """Observability hook for the client; pass one to :class:`Margrete`.
 
-    Implementations wrap each RPC in a span. The SDK ships :class:`NoopTracer` (default)
+    Implementations wrap each RPC in a span. Margrete RPC ships :class:`NoopTracer` (default)
     and :class:`CallbackTracer`.
     """
 

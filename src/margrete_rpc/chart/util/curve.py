@@ -37,7 +37,7 @@ class Curve:
     applies a constant width ``w``). Load an existing note's path with :meth:`from_note`.
 
     Args:
-        t: Start tick or position tuple.
+        t: Start tick or tuple.
         x: Start lane.
         h: Start height; defaults to :data:`DEFAULT_H`.
     """
@@ -96,7 +96,7 @@ class Curve:
         """Add one eased leg to ``(t, x, h)`` and return the extended curve.
 
         Args:
-            t: Target tick or position tuple.
+            t: Target tick or tuple.
             x: Target lane.
             h: Target height; defaults to the current end height (constant-height leg).
             ease_x: Lane easing for this leg.

@@ -1,6 +1,6 @@
 import { createI18nMiddleware } from "fumadocs-core/i18n/middleware";
 import { isMarkdownPreferred, rewritePath } from "fumadocs-core/negotiation";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextProxy, NextResponse } from "next/server";
 
 import { i18n } from "@/lib/i18n";
 import { docsContentRoute, docsRoute } from "@/lib/shared";
@@ -24,7 +24,7 @@ function stripLangPrefix(pathname: string): string {
   return pathname;
 }
 
-export default function proxy(request: NextRequest): NextResponse {
+const proxy: NextProxy = (request, event) => {
   const stripped = stripLangPrefix(request.nextUrl.pathname);
 
   const result = rewriteSuffix(stripped);
@@ -39,8 +39,10 @@ export default function proxy(request: NextRequest): NextResponse {
     }
   }
 
-  return i18nMiddleware(request);
-}
+  return i18nMiddleware(request, event);
+};
+
+export default proxy;
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],

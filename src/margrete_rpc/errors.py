@@ -4,7 +4,7 @@ from __future__ import annotations
 class MargreteError(Exception):
     """Base class for all errors raised by ``margrete_rpc``.
 
-    Catch this to handle any SDK failure regardless of cause.
+    Catch this to handle any client-side failure regardless of cause.
     """
 
 

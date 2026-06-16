@@ -1,7 +1,7 @@
 [project]
 name = "margrete-rpc"
 version = "0.1.0"
-description = "Python SDK for the Margrete RPC plugin"
+description = "Python client package for the Margrete RPC plugin"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -39,4 +39,3 @@ include = ["src"]
 exclude = ["**/node_modules", "**/__pycache__", "**/.*", "src/margrete_rpc/_proto", ".venv"]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
-
