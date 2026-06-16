@@ -41,11 +41,11 @@ tick = p2t(1, 0, 0)         # 7680
 
 When calling `t=` on note constructors (or `pivot=` on `scale`, `interval=` on `align`), you can pass a **tuple** instead of an int:
 
-| Tuple | Meaning |
-|---|---|
-| `(bar,)` | bar, beat=0, offset=0 |
-| `(bar, beat)` | bar, beat, offset=0 |
-| `(bar, beat, offset)` | fully specified |
+| Tuple                 | Meaning               |
+| --------------------- | --------------------- |
+| `(bar,)`              | bar, beat=0, offset=0 |
+| `(bar, beat)`         | bar, beat, offset=0   |
+| `(bar, beat, offset)` | fully specified       |
 
 ```python
 Tap(t=(2,), x=0, w=4)          # bar 2

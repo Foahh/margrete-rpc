@@ -139,14 +139,14 @@ hold.air = AirHold(t=(1, 0, 0), x=4, w=4, dir=AirDirection.UP)
 
 Every note implements an identical transform interface. Each verb has two forms: the bare verb mutates in place and returns `self`; the past-tense form returns a cloned note and leaves the original unchanged.
 
-| In-place | Cloning | Effect |
-|---|---|---|
-| `note.shift(t=, x=, w=, h=)` | `note.shifted(...)` | Add deltas to fields. Accepts callables `lambda v: ...` or position tuples for `t`. |
-| `note.scale(factor, pivot=)` | `note.scaled(...)` | Scale timing about a pivot tick. |
-| `note.align(interval, mode=)` | `note.aligned(...)` | Snap timing to a grid. `interval` is ticks or a `(n, d)` beat fraction; `mode` is `"round"`, `"floor"`, or `"ceil"`. |
-| `note.flip(field=)` | `note.flipped(...)` | Mirror `x` within `field` lanes (default 16). |
-| `note.clamp_w(left=, right=)` | `note.clamped_w(...)` | Clamp lane extent to `[left, right)`. |
-| `note.clone()` | — | Deep copy without the server id. |
+| In-place                      | Cloning               | Effect                                                                                                               |
+| ----------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `note.shift(t=, x=, w=, h=)`  | `note.shifted(...)`   | Add deltas to fields. Accepts callables `lambda v: ...` or position tuples for `t`.                                  |
+| `note.scale(factor, pivot=)`  | `note.scaled(...)`    | Scale timing about a pivot tick.                                                                                     |
+| `note.align(interval, mode=)` | `note.aligned(...)`   | Snap timing to a grid. `interval` is ticks or a `(n, d)` beat fraction; `mode` is `"round"`, `"floor"`, or `"ceil"`. |
+| `note.flip(field=)`           | `note.flipped(...)`   | Mirror `x` within `field` lanes (default 16).                                                                        |
+| `note.clamp_w(left=, right=)` | `note.clamped_w(...)` | Clamp lane extent to `[left, right)`.                                                                                |
+| `note.clone()`                | —                     | Deep copy without the server id.                                                                                     |
 
 ```python
 # move all notes right by 2 lanes, in place
@@ -175,6 +175,7 @@ Transforms propagate to all child joints and attached air notes automatically.
 ## RawNote
 
 `RawNote` is a low-level protobuf-tree node. It appears when:
+
 - `open_edit(raw=True)` is passed (all notes stay raw)
 - A note's structure is not recognised by the typed wrappers
 

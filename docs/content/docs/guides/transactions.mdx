@@ -59,11 +59,11 @@ with m.open_edit("rewrite notes") as tx:
 
 `open_edit` supports three apply strategies:
 
-| Mode | Parameter | Behaviour |
-|---|---|---|
-| **Diff** (default) | `scan=True` | Snapshots on enter; sends only added/changed/deleted notes on exit. |
-| **No diff** | `scan=False` | Sends all notes in the final chart as upserts. No server ids allowed. |
-| **Replace all** | `replace_all=True` | Strips all ids, sends every note as a fresh upsert, replaces the whole chart. |
+| Mode               | Parameter          | Behaviour                                                                     |
+| ------------------ | ------------------ | ----------------------------------------------------------------------------- |
+| **Diff** (default) | `scan=True`        | Snapshots on enter; sends only added/changed/deleted notes on exit.           |
+| **No diff**        | `scan=False`       | Sends all notes in the final chart as upserts. No server ids allowed.         |
+| **Replace all**    | `replace_all=True` | Strips all ids, sends every note as a fresh upsert, replaces the whole chart. |
 
 ```python
 # diff mode (default) — only changes are sent
@@ -119,7 +119,9 @@ m.redo()  # True if something was redone
 ```
 
 <Callout type="warn">
-  Undoing a transaction that **deleted** notes can re-create them in a duplicated state — this is a plugin limitation. Prefer edits that add or modify rather than relying on undo to reverse deletions.
+  Undoing a transaction that **deleted** notes can re-create them in a duplicated state — this is a
+  plugin limitation. Prefer edits that add or modify rather than relying on undo to reverse
+  deletions.
 </Callout>
 
 ## Current playhead tick

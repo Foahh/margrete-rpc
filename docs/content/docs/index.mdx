@@ -4,7 +4,7 @@ description: Install Margrete RPC and write your first chart script.
 icon: Rocket
 ---
 
-import { PencilIcon, MusicIcon, ClockIcon, TriangleAlertIcon } from 'lucide-react';
+import { PencilIcon, MusicIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
 
 **Margrete RPC** is a plugin + SDK system that lets you script chart editing for [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro) from Python.
 
@@ -13,9 +13,21 @@ The Python SDK lets you read and rewrite charts programmatically — place notes
 ## Requirements
 
 - Python 3.13 or later
-- The Margrete RPC plugin installed and running inside UMIGURI/Margrete
+- Margrete 1.8.0 or later
 
 ## Installation
+
+### 1. Install the plugin
+
+Download the latest release from the [GitHub Releases page](https://github.com/Foahh/margrete-rpc/releases) and place both `margrete-rpc.dll` and `margrete-rpc.ini` in your Margrete plugins directory (`%MARGRETE_DIR%\plugins\`).
+
+![Plugin Location](assets/plugins-folder-location.png)
+
+Restart Margrete after copying. Then open **Extensions** → **Manage Extensions** and enable **Margrete RPC**.
+
+![Enable the plugin in Margrete settings](assets/enable-the-plugin.png)
+
+### 2. Install the Python SDK
 
 ```bash
 pip install margrete-rpc
@@ -92,8 +104,28 @@ If the `with` block raises any exception the edit is **not** applied. Margrete o
 ## Learn more
 
 <Cards>
-  <Card icon={<PencilIcon />} title="Edit Transactions" href="/docs/guides/transactions" description="Atomic chart edits with open_edit." />
-  <Card icon={<MusicIcon />} title="Note Types" href="/docs/guides/notes" description="Tap, Hold, Slide, AirCrush, and more." />
-  <Card icon={<ClockIcon />} title="Time & Position" href="/docs/guides/time" description="Ticks, bar/beat positions, and beat fractions." />
-  <Card icon={<TriangleAlertIcon />} title="Limitations" href="/docs/limitations" description="Known constraints and workarounds." />
+  <Card
+    icon={<PencilIcon />}
+    title="Edit Transactions"
+    href="/docs/guides/transactions"
+    description="Atomic chart edits with open_edit."
+  />
+  <Card
+    icon={<MusicIcon />}
+    title="Note Types"
+    href="/docs/guides/notes"
+    description="Tap, Hold, Slide, AirCrush, and more."
+  />
+  <Card
+    icon={<ClockIcon />}
+    title="Time & Position"
+    href="/docs/guides/time"
+    description="Ticks, bar/beat positions, and beat fractions."
+  />
+  <Card
+    icon={<TriangleAlertIcon />}
+    title="Limitations"
+    href="/docs/limitations"
+    description="Known constraints and workarounds."
+  />
 </Cards>

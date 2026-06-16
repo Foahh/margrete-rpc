@@ -1,22 +1,22 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col items-center justify-center flex-1 text-center px-4">
-      <h1 className="text-4xl font-bold mb-4">Margrete RPC</h1>
-      <p className="text-fd-muted-foreground text-lg max-w-xl mb-8">
+    <main className="flex flex-1 flex-col items-center justify-center px-4 text-center">
+      <h1 className="mb-4 text-4xl font-bold">Margrete RPC</h1>
+      <p className="text-fd-muted-foreground mb-8 max-w-xl text-lg">
         Script UMIGURI/Margrete charts with Python.
       </p>
-      <div className="flex gap-4 flex-wrap justify-center">
+      <div className="flex flex-wrap justify-center gap-4">
         <Link
           href="/docs"
-          className="bg-fd-primary text-fd-primary-foreground px-6 py-2 rounded-md font-medium hover:opacity-90 transition-opacity"
+          className="bg-fd-primary text-fd-primary-foreground rounded-md px-6 py-2 font-medium transition-opacity hover:opacity-90"
         >
           Get Started
         </Link>
         <a
           href="https://github.com/Foahh/margrete-rpc"
-          className="border border-fd-border px-6 py-2 rounded-md font-medium hover:bg-fd-muted transition-colors"
+          className="border-fd-border hover:bg-fd-muted rounded-md border px-6 py-2 font-medium transition-colors"
         >
           GitHub
         </a>
