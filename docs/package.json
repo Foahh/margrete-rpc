@@ -1,5 +1,5 @@
 {
-  "name": "docs",
+  "name": "margrete-rpc-docs",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -10,8 +10,8 @@
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx",
     "lint": "oxlint",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check ."
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -36,9 +36,11 @@
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "oxfmt": "^0.55.0",
     "oxlint": "^1.70.0",
     "postcss": "^8.5.15",
+    "prettier": "^3.8.4",
+    "prettier-plugin-packagejson": "^3.0.2",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "react-medium-image-zoom": "^5.4.7",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3"

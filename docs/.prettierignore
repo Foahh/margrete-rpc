@@ -1,0 +1,6 @@
+.next/
+.source/
+node_modules/
+next-env.d.ts
+bun.lock
+content/docs/reference/

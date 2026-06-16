@@ -29,4 +29,4 @@ next-env.d.ts
 !lib/
 /margrete_rpc.json
 /content/docs/reference
-/content/docs/(api)/margrete_rpc
+.idea/

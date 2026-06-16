@@ -14,12 +14,6 @@ export default function HomePage() {
         >
           Get Started
         </Link>
-        <a
-          href="https://github.com/Foahh/margrete-rpc"
-          className="border-fd-border hover:bg-fd-muted rounded-md border px-6 py-2 font-medium transition-colors"
-        >
-          GitHub
-        </a>
       </div>
     </main>
   );
