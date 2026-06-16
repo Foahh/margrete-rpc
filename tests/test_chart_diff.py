@@ -11,18 +11,22 @@ def _id_note(note_id, *, x=1, w=2, tick=0):
     return RawNote.from_proto(proto)
 
 
-def test_scan_noop_returns_none():
+def test_snapshot_noop_returns_none():
     chart = Chart(notes=[_id_note(1)])
     snap = capture_edit_snapshot(chart)
     final = Chart(notes=[_id_note(1)])
-    req = build_apply_edit_request(final, scan=True, replace_all_notes=False, snapshot=snap)
+    req = build_apply_edit_request(
+        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+    )
     assert req is None
 
 
-def test_scan_modified_note_upserts_with_id():
+def test_snapshot_modified_note_upserts_with_id():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1, x=1)]))
     final = Chart(notes=[_id_note(1, x=5)])
-    req = build_apply_edit_request(final, scan=True, replace_all_notes=False, snapshot=snap)
+    req = build_apply_edit_request(
+        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+    )
     assert req is not None
     assert len(req.notes_upsert) == 1
     assert req.notes_upsert[0].id == 1
@@ -30,19 +34,23 @@ def test_scan_modified_note_upserts_with_id():
     assert list(req.note_ids_delete) == []
 
 
-def test_scan_deleted_note_emits_delete():
+def test_snapshot_deleted_note_emits_delete():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1), _id_note(2, x=3)]))
     final = Chart(notes=[_id_note(1)])
-    req = build_apply_edit_request(final, scan=True, replace_all_notes=False, snapshot=snap)
+    req = build_apply_edit_request(
+        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+    )
     assert req is not None
     assert list(req.note_ids_delete) == [2]
     assert len(req.notes_upsert) == 0
 
 
-def test_scan_added_note_upserts_without_id():
+def test_snapshot_added_note_upserts_without_id():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1)]))
     final = Chart(notes=[_id_note(1), R.tap(t=0, x=7, w=2)])
-    req = build_apply_edit_request(final, scan=True, replace_all_notes=False, snapshot=snap)
+    req = build_apply_edit_request(
+        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+    )
     assert req is not None
     assert len(req.notes_upsert) == 1
     assert req.notes_upsert[0].HasField("id") is False
@@ -52,20 +60,24 @@ def test_scan_added_note_upserts_without_id():
 
 def test_replace_all_strips_ids():
     chart = Chart(notes=[_id_note(1)])
-    req = build_apply_edit_request(chart, scan=False, replace_all_notes=True, snapshot=None)
+    req = build_apply_edit_request(
+        chart, snapshot_enabled=False, replace_all_notes=True, snapshot=None
+    )
     assert req is not None
     assert req.replace_all_notes is True
     assert len(req.notes_upsert) == 1
     assert req.notes_upsert[0].HasField("id") is False
 
 
-def test_scan_false_with_existing_id_raises():
+def test_snapshot_false_with_existing_id_raises():
     chart = Chart(notes=[_id_note(1)])
     with pytest.raises(ValueError):
-        build_apply_edit_request(chart, scan=False, replace_all_notes=False, snapshot=None)
+        build_apply_edit_request(
+            chart, snapshot_enabled=False, replace_all_notes=False, snapshot=None
+        )
 
 
-def test_scan_child_structure_change_deletes_and_recreates():
+def test_snapshot_child_structure_change_deletes_and_recreates():
     orig_root = messages_pb2.Note(
         id=1,
         type=messages_pb2.NOTE_TYPE_HOLD,
@@ -99,7 +111,9 @@ def test_scan_child_structure_change_deletes_and_recreates():
     )
     snap = capture_edit_snapshot(Chart(notes=[RawNote.from_proto(orig_root)]))
     final = Chart(notes=[RawNote.from_proto(final_root)])
-    req = build_apply_edit_request(final, scan=True, replace_all_notes=False, snapshot=snap)
+    req = build_apply_edit_request(
+        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+    )
     assert req is not None
     assert list(req.note_ids_delete) == [1]
     assert len(req.notes_upsert) == 1

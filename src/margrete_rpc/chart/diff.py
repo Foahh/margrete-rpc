@@ -28,7 +28,7 @@ def capture_edit_snapshot(chart: Chart) -> EditSnapshot:
 def build_apply_edit_request(
     chart: Chart,
     *,
-    scan: bool,
+    snapshot_enabled: bool,
     replace_all_notes: bool,
     snapshot: EditSnapshot | None,
 ) -> messages_pb2.ApplyEditRequest | None:
@@ -42,7 +42,7 @@ def build_apply_edit_request(
         _append_all_event_upserts(request, normalized_events)
         return request
 
-    if scan:
+    if snapshot_enabled:
         snapshot = snapshot or EditSnapshot()
         final_notes = _final_notes_without_ids(chart)
         final_events_sig = _event_signature_from_events(normalized_events)
@@ -59,7 +59,7 @@ def build_apply_edit_request(
 
     final_notes = _final_notes(chart)
     if _has_existing_note_id(final_notes):
-        raise ValueError("scan=false transactions cannot send existing note ids")
+        raise ValueError("snapshot=false transactions cannot send existing note ids")
 
     request.replace_all_notes = False
     request.notes_upsert.extend(note.to_proto() for note in final_notes)

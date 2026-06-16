@@ -89,7 +89,7 @@ void CollectTimelineIdsFromNote(const margrete::rpc::v1::Note &note, std::unorde
 }
 
 std::vector<std::int32_t> FilterEventScanTilByNotes(const std::vector<margrete::rpc::v1::Note> &notes,
-                                                    const std::vector<std::int32_t> &eventScanTil)
+                                                    const std::vector<std::int32_t> &eventScanTilIds)
 {
     std::unordered_set<std::int32_t> used;
     for (const auto &n : notes)
@@ -97,8 +97,8 @@ std::vector<std::int32_t> FilterEventScanTilByNotes(const std::vector<margrete::
         CollectTimelineIdsFromNote(n, used);
     }
     std::vector<std::int32_t> filtered;
-    filtered.reserve(eventScanTil.size());
-    for (const std::int32_t til : eventScanTil)
+    filtered.reserve(eventScanTilIds.size());
+    for (const std::int32_t til : eventScanTilIds)
     {
         if (used.count(til) != 0)
         {
@@ -127,11 +127,11 @@ std::vector<margrete::rpc::v1::Note> ChartMapper::SnapshotNotes(IMargretePluginC
     return notes;
 }
 
-void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventScanExtraTicks,
-                                  const std::vector<std::int32_t> &eventScanTil, bool noteTilOnly,
+void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventScanLookaheadTicks,
+                                  const std::vector<std::int32_t> &eventScanTilIds, bool noteTilOnly,
                                   margrete::rpc::v1::BeginEditResponse &response)
 {
-    response.set_scan(true);
+    response.set_snapshot(true);
 
     const auto notes = SnapshotNotes(chart);
 
@@ -142,15 +142,15 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
         *response.add_notes() = note;
     }
 
-    std::vector<std::int32_t> scanTil = eventScanTil;
+    std::vector<std::int32_t> scanTilIds = eventScanTilIds;
     if (noteTilOnly)
     {
-        scanTil = FilterEventScanTilByNotes(notes, eventScanTil);
+        scanTilIds = FilterEventScanTilByNotes(notes, eventScanTilIds);
     }
 
-    const MpInteger scanUntil = lastNoteTick + eventScanExtraTicks;
-    response.set_event_scan_extra_tick(eventScanExtraTicks);
-    response.mutable_event_scan_til()->Assign(scanTil.begin(), scanTil.end());
+    const MpInteger scanUntil = lastNoteTick + eventScanLookaheadTicks;
+    response.set_event_scan_lookahead_ticks(eventScanLookaheadTicks);
+    response.mutable_event_scan_til_ids()->Assign(scanTilIds.begin(), scanTilIds.end());
 
     for (MpInteger tick = 0; tick <= scanUntil; ++tick)
     {
@@ -176,7 +176,7 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
             AddBeatEvent(*event, response);
         }
 
-        for (const std::int32_t timelineId : scanTil)
+        for (const std::int32_t timelineId : scanTilIds)
         {
             found = nullptr;
             if (chart.findEventTimelineSpeed(tick, timelineId, &found) == MP_TRUE && found)

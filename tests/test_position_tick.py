@@ -112,7 +112,7 @@ def _begin_with_beat(beats_per_bar, beat_unit):
     return messages_pb2.Envelope(
         begin_edit_response=messages_pb2.BeginEditResponse(
             current_tick=0,
-            scan=True,
+            snapshot=True,
             beat_change_events=[
                 messages_pb2.BeatChangeEvent(
                     bar=0, beats_per_bar=beats_per_bar, beat_unit=beat_unit

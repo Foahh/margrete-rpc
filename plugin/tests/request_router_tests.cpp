@@ -100,24 +100,24 @@ TEST_CASE("router begins edit transaction with note snapshot")
     margrete::rpc::v1::Envelope request;
     request.set_request_id(20);
     auto *begin = request.mutable_begin_edit_request();
-    begin->set_scan(true);
+    begin->set_snapshot(true);
 
     const auto response = router.route(request);
 
     REQUIRE(response.request_id() == 20);
     REQUIRE(response.has_begin_edit_response());
     REQUIRE(response.begin_edit_response().current_tick() == 777);
-    REQUIRE(response.begin_edit_response().scan() == true);
+    REQUIRE(response.begin_edit_response().snapshot() == true);
     REQUIRE(response.begin_edit_response().notes_size() == 1);
     REQUIRE(response.begin_edit_response().notes(0).id() == 10);
-    REQUIRE(response.begin_edit_response().event_scan_extra_tick() == 19200);
-    REQUIRE(response.begin_edit_response().event_scan_til_size() == 1);
-    REQUIRE(response.begin_edit_response().event_scan_til(0) == 0);
+    REQUIRE(response.begin_edit_response().event_scan_lookahead_ticks() == 19200);
+    REQUIRE(response.begin_edit_response().event_scan_til_ids_size() == 1);
+    REQUIRE(response.begin_edit_response().event_scan_til_ids(0) == 0);
     REQUIRE(response.begin_edit_response().bpm_events_size() == 1);
     REQUIRE(response.begin_edit_response().bpm_events(0).tick() == 200);
 }
 
-TEST_CASE("router begins edit transaction without scan")
+TEST_CASE("router begins edit transaction without snapshot")
 {
     FakeContext context;
     context.currentTick = 777;
@@ -128,21 +128,21 @@ TEST_CASE("router begins edit transaction without scan")
     margrete::rpc::v1::Envelope request;
     request.set_request_id(23);
     auto *begin = request.mutable_begin_edit_request();
-    begin->set_scan(false);
+    begin->set_snapshot(false);
 
     const auto response = router.route(request);
 
     REQUIRE(response.request_id() == 23);
     REQUIRE(response.has_begin_edit_response());
     REQUIRE(response.begin_edit_response().current_tick() == 777);
-    REQUIRE(response.begin_edit_response().scan() == false);
+    REQUIRE(response.begin_edit_response().snapshot() == false);
     REQUIRE(response.begin_edit_response().notes_size() == 0);
     REQUIRE(response.begin_edit_response().bpm_events_size() == 0);
     REQUIRE(response.begin_edit_response().beat_change_events_size() == 0);
     REQUIRE(response.begin_edit_response().timeline_speed_events_size() == 0);
     REQUIRE(response.begin_edit_response().note_speed_events_size() == 0);
-    REQUIRE(response.begin_edit_response().event_scan_extra_tick() == 19200);
-    REQUIRE(response.begin_edit_response().event_scan_til_size() == 16);
+    REQUIRE(response.begin_edit_response().event_scan_lookahead_ticks() == 19200);
+    REQUIRE(response.begin_edit_response().event_scan_til_ids_size() == 16);
 }
 
 TEST_CASE("router applies edit request")

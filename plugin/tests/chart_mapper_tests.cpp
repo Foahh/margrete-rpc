@@ -52,10 +52,10 @@ TEST_CASE("chart mapper scans events through configured tick range")
     margrete::rpc::v1::BeginEditResponse response;
     ChartMapper::SnapshotForEdit(context.chart, 200, {2}, false, response);
 
-    REQUIRE(response.scan() == true);
-    REQUIRE(response.event_scan_extra_tick() == 200);
-    REQUIRE(response.event_scan_til_size() == 1);
-    REQUIRE(response.event_scan_til(0) == 2);
+    REQUIRE(response.snapshot() == true);
+    REQUIRE(response.event_scan_lookahead_ticks() == 200);
+    REQUIRE(response.event_scan_til_ids_size() == 1);
+    REQUIRE(response.event_scan_til_ids(0) == 2);
     REQUIRE(response.bpm_events_size() == 1);
     REQUIRE(response.bpm_events(0).tick() == 120);
     REQUIRE(response.bpm_events(0).bpm() == 180.0);
@@ -83,15 +83,15 @@ TEST_CASE("chart mapper note_til_only skips timelines without notes")
 
     margrete::rpc::v1::BeginEditResponse withFlag;
     ChartMapper::SnapshotForEdit(context.chart, 200, {0, 2}, true, withFlag);
-    REQUIRE(withFlag.event_scan_til_size() == 1);
-    REQUIRE(withFlag.event_scan_til(0) == 2);
+    REQUIRE(withFlag.event_scan_til_ids_size() == 1);
+    REQUIRE(withFlag.event_scan_til_ids(0) == 2);
     REQUIRE(withFlag.timeline_speed_events_size() == 1);
     REQUIRE(withFlag.timeline_speed_events(0).timeline_id() == 2);
     REQUIRE(withFlag.timeline_speed_events(0).tick() == 360);
 
     margrete::rpc::v1::BeginEditResponse withoutFlag;
     ChartMapper::SnapshotForEdit(context.chart, 200, {0, 2}, false, withoutFlag);
-    REQUIRE(withoutFlag.event_scan_til_size() == 2);
+    REQUIRE(withoutFlag.event_scan_til_ids_size() == 2);
     REQUIRE(withoutFlag.timeline_speed_events_size() == 2);
     REQUIRE(root->refCountValue() == 1);
     REQUIRE(unusedTimelineSpeed->refCountValue() == 1);

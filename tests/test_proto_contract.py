@@ -62,28 +62,28 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
     assert not OLD_ENVELOPE_BODY_FIELDS.intersection(fields_by_name)
 
 
-def test_begin_edit_request_and_response_have_scan_field():
-    request = messages_pb2.BeginEditRequest(scan=False)
-    response = messages_pb2.BeginEditResponse(current_tick=480, scan=False)
+def test_begin_edit_request_and_response_have_snapshot_field():
+    request = messages_pb2.BeginEditRequest(snapshot=False)
+    response = messages_pb2.BeginEditResponse(current_tick=480, snapshot=False)
 
-    assert request.scan is False
-    assert response.scan is False
+    assert request.snapshot is False
+    assert response.snapshot is False
 
 
-def test_begin_edit_scan_fields_use_expected_numbers():
+def test_begin_edit_snapshot_fields_use_expected_numbers():
     assert (
-        messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_extra_tick"].number
+        messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_lookahead_ticks"].number
         == 1
     )
-    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_til"].number == 2
-    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["scan"].number == 3
-    assert messages_pb2.BeginEditResponse.DESCRIPTOR.fields_by_name["scan"].number == 9
+    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_til_ids"].number == 2
+    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["snapshot"].number == 3
+    assert messages_pb2.BeginEditResponse.DESCRIPTOR.fields_by_name["snapshot"].number == 9
 
 
-def test_begin_edit_event_scan_til_is_scan_til_list():
-    field = messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_til"]
+def test_begin_edit_event_scan_til_ids_is_wrapper_message():
+    field = messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_til_ids"]
     assert field.number == 2
-    assert field.message_type.name == "ScanTilList"
+    assert field.message_type.name == "EventScanTilIds"
     assert field.has_presence is True
 
 

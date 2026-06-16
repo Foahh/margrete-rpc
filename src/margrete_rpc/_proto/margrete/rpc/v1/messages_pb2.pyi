@@ -277,43 +277,43 @@ class NoteSpeedEvent(_message.Message):
     speed: float
     def __init__(self, tick: _Optional[int] = ..., speed: _Optional[float] = ...) -> None: ...
 
-class ScanTilList(_message.Message):
-    __slots__ = ("tids",)
-    TIDS_FIELD_NUMBER: _ClassVar[int]
-    tids: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, tids: _Optional[_Iterable[int]] = ...) -> None: ...
+class EventScanTilIds(_message.Message):
+    __slots__ = ("ids",)
+    IDS_FIELD_NUMBER: _ClassVar[int]
+    ids: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, ids: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class BeginEditRequest(_message.Message):
-    __slots__ = ("event_scan_extra_tick", "event_scan_til", "scan")
-    EVENT_SCAN_EXTRA_TICK_FIELD_NUMBER: _ClassVar[int]
-    EVENT_SCAN_TIL_FIELD_NUMBER: _ClassVar[int]
-    SCAN_FIELD_NUMBER: _ClassVar[int]
-    event_scan_extra_tick: int
-    event_scan_til: ScanTilList
-    scan: bool
-    def __init__(self, event_scan_extra_tick: _Optional[int] = ..., event_scan_til: _Optional[_Union[ScanTilList, _Mapping]] = ..., scan: _Optional[bool] = ...) -> None: ...
+    __slots__ = ("event_scan_lookahead_ticks", "event_scan_til_ids", "snapshot")
+    EVENT_SCAN_LOOKAHEAD_TICKS_FIELD_NUMBER: _ClassVar[int]
+    EVENT_SCAN_TIL_IDS_FIELD_NUMBER: _ClassVar[int]
+    SNAPSHOT_FIELD_NUMBER: _ClassVar[int]
+    event_scan_lookahead_ticks: int
+    event_scan_til_ids: EventScanTilIds
+    snapshot: bool
+    def __init__(self, event_scan_lookahead_ticks: _Optional[int] = ..., event_scan_til_ids: _Optional[_Union[EventScanTilIds, _Mapping]] = ..., snapshot: _Optional[bool] = ...) -> None: ...
 
 class BeginEditResponse(_message.Message):
-    __slots__ = ("current_tick", "notes", "bpm_events", "beat_change_events", "timeline_speed_events", "note_speed_events", "event_scan_extra_tick", "event_scan_til", "scan")
+    __slots__ = ("current_tick", "notes", "bpm_events", "beat_change_events", "timeline_speed_events", "note_speed_events", "event_scan_lookahead_ticks", "event_scan_til_ids", "snapshot")
     CURRENT_TICK_FIELD_NUMBER: _ClassVar[int]
     NOTES_FIELD_NUMBER: _ClassVar[int]
     BPM_EVENTS_FIELD_NUMBER: _ClassVar[int]
     BEAT_CHANGE_EVENTS_FIELD_NUMBER: _ClassVar[int]
     TIMELINE_SPEED_EVENTS_FIELD_NUMBER: _ClassVar[int]
     NOTE_SPEED_EVENTS_FIELD_NUMBER: _ClassVar[int]
-    EVENT_SCAN_EXTRA_TICK_FIELD_NUMBER: _ClassVar[int]
-    EVENT_SCAN_TIL_FIELD_NUMBER: _ClassVar[int]
-    SCAN_FIELD_NUMBER: _ClassVar[int]
+    EVENT_SCAN_LOOKAHEAD_TICKS_FIELD_NUMBER: _ClassVar[int]
+    EVENT_SCAN_TIL_IDS_FIELD_NUMBER: _ClassVar[int]
+    SNAPSHOT_FIELD_NUMBER: _ClassVar[int]
     current_tick: int
     notes: _containers.RepeatedCompositeFieldContainer[Note]
     bpm_events: _containers.RepeatedCompositeFieldContainer[BpmEvent]
     beat_change_events: _containers.RepeatedCompositeFieldContainer[BeatChangeEvent]
     timeline_speed_events: _containers.RepeatedCompositeFieldContainer[TimelineSpeedEvent]
     note_speed_events: _containers.RepeatedCompositeFieldContainer[NoteSpeedEvent]
-    event_scan_extra_tick: int
-    event_scan_til: _containers.RepeatedScalarFieldContainer[int]
-    scan: bool
-    def __init__(self, current_tick: _Optional[int] = ..., notes: _Optional[_Iterable[_Union[Note, _Mapping]]] = ..., bpm_events: _Optional[_Iterable[_Union[BpmEvent, _Mapping]]] = ..., beat_change_events: _Optional[_Iterable[_Union[BeatChangeEvent, _Mapping]]] = ..., timeline_speed_events: _Optional[_Iterable[_Union[TimelineSpeedEvent, _Mapping]]] = ..., note_speed_events: _Optional[_Iterable[_Union[NoteSpeedEvent, _Mapping]]] = ..., event_scan_extra_tick: _Optional[int] = ..., event_scan_til: _Optional[_Iterable[int]] = ..., scan: _Optional[bool] = ...) -> None: ...
+    event_scan_lookahead_ticks: int
+    event_scan_til_ids: _containers.RepeatedScalarFieldContainer[int]
+    snapshot: bool
+    def __init__(self, current_tick: _Optional[int] = ..., notes: _Optional[_Iterable[_Union[Note, _Mapping]]] = ..., bpm_events: _Optional[_Iterable[_Union[BpmEvent, _Mapping]]] = ..., beat_change_events: _Optional[_Iterable[_Union[BeatChangeEvent, _Mapping]]] = ..., timeline_speed_events: _Optional[_Iterable[_Union[TimelineSpeedEvent, _Mapping]]] = ..., note_speed_events: _Optional[_Iterable[_Union[NoteSpeedEvent, _Mapping]]] = ..., event_scan_lookahead_ticks: _Optional[int] = ..., event_scan_til_ids: _Optional[_Iterable[int]] = ..., snapshot: _Optional[bool] = ...) -> None: ...
 
 class TimelineSpeedKey(_message.Message):
     __slots__ = ("tick", "timeline_id")

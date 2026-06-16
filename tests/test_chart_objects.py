@@ -1474,8 +1474,8 @@ def test_chart_from_begin_edit_response_preserves_ordered_typed_and_raw_notes():
                 ],
             ),
         ],
-        event_scan_extra_tick=19200,
-        event_scan_til=[0, 2],
+        event_scan_lookahead_ticks=19200,
+        event_scan_til_ids=[0, 2],
         bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
     )
 

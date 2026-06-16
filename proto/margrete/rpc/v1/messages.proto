@@ -157,14 +157,14 @@ message NoteSpeedEvent {
   double speed = 2;
 }
 
-message ScanTilList {
-  repeated int32 tids = 1;
+message EventScanTilIds {
+  repeated int32 ids = 1;
 }
 
 message BeginEditRequest {
-  int32 event_scan_extra_tick = 1;
-  optional ScanTilList event_scan_til = 2;
-  bool scan = 3;
+  int32 event_scan_lookahead_ticks = 1;
+  optional EventScanTilIds event_scan_til_ids = 2;
+  bool snapshot = 3;
 }
 
 message BeginEditResponse {
@@ -174,9 +174,9 @@ message BeginEditResponse {
   repeated BeatChangeEvent beat_change_events = 4;
   repeated TimelineSpeedEvent timeline_speed_events = 5;
   repeated NoteSpeedEvent note_speed_events = 6;
-  int32 event_scan_extra_tick = 7;
-  repeated int32 event_scan_til = 8;
-  bool scan = 9;
+  int32 event_scan_lookahead_ticks = 7;
+  repeated int32 event_scan_til_ids = 8;
+  bool snapshot = 9;
 }
 
 message TimelineSpeedKey {

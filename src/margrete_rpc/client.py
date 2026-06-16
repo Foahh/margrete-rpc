@@ -163,10 +163,10 @@ class Margrete:
     def open_edit(
         self,
         *,
-        event_scan_extra_tick: int | None = None,
-        event_scan_til: list[int] | None = None,
-        scan: bool = True,
-        raw: bool = False,
+        event_scan_lookahead_ticks: int | None = None,
+        event_scan_til_ids: list[int] | None = None,
+        snapshot: bool = True,
+        raw_notes: bool = False,
         replace_all: bool = False,
     ) -> EditTransaction:
         """Begin an edit transaction over the current chart.
@@ -177,15 +177,15 @@ class Margrete:
         exception nothing is applied.
 
         Args:
-            event_scan_extra_tick: Extra tick window to scan for timeline events beyond
+            event_scan_lookahead_ticks: Extra tick window to scan for timeline events beyond
                 the note range; ``None`` uses the server default.
-            event_scan_til: Timeline IDs to scan for speed events. ``None`` (default)
+            event_scan_til_ids: Timeline IDs to scan for speed events. ``None`` (default)
                 restricts scanning to timelines that carry notes. Pass an explicit list
                 (including ``[]`` for all default timelines) to override.
-            scan: Capture a baseline snapshot so only changed notes are sent on apply.
+            snapshot: Capture a baseline snapshot so only changed notes are sent on apply.
                 Disable to skip diffing.
-            raw: Load the chart as a raw protobuf-tree model (:class:`RawNote`) instead of
-                typed note objects.
+            raw_notes: Load every note as a raw protobuf-tree model (:class:`RawNote`)
+                instead of typed note objects.
             replace_all: Replace every note in the chart on apply instead of applying a
                 diff. Useful for full rewrites.
 
@@ -195,21 +195,23 @@ class Margrete:
         from margrete_rpc.chart import Chart
         from margrete_rpc.transaction import EditTransaction
 
-        tx_type = "edit_raw" if raw else "edit"
+        tx_type = "edit_raw_notes" if raw_notes else "edit"
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type}):
-            req = messages_pb2.BeginEditRequest(scan=scan)
-            if event_scan_extra_tick is not None:
-                req.event_scan_extra_tick = event_scan_extra_tick
-            if event_scan_til is not None:
-                req.event_scan_til.CopyFrom(messages_pb2.ScanTilList(tids=event_scan_til))
+            req = messages_pb2.BeginEditRequest(snapshot=snapshot)
+            if event_scan_lookahead_ticks is not None:
+                req.event_scan_lookahead_ticks = event_scan_lookahead_ticks
+            if event_scan_til_ids is not None:
+                req.event_scan_til_ids.CopyFrom(
+                    messages_pb2.EventScanTilIds(ids=event_scan_til_ids)
+                )
             response = self._transport.request(messages_pb2.Envelope(begin_edit_request=req))
         begin = response.begin_edit_response
-        chart = Chart.from_begin_edit_response(begin, raw=raw)
+        chart = Chart.from_begin_edit_response(begin, raw_notes=raw_notes)
         return EditTransaction(
             transport=self._transport,
             current_tick=begin.current_tick,
             chart=chart,
-            scan=begin.scan,
+            snapshot_enabled=begin.snapshot,
             tracer=self._tracer,
             tx_type=tx_type,
             replace_all_notes=replace_all,

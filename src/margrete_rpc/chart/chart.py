@@ -17,7 +17,7 @@ type ChartNote = Note | RawNote
 """A note in a chart: either a typed :class:`Note` or a raw :class:`RawNote` tree.
 
 Typed notes are produced by default; a :class:`RawNote` appears when the edit was opened
-with ``raw=True`` or when a note's structure is not recognised by the typed wrappers.
+with ``raw_notes=True`` or when a note's structure is not recognised by the typed wrappers.
 """
 
 
@@ -75,19 +75,19 @@ class Chart:
         cls,
         response: messages_pb2.BeginEditResponse,
         *,
-        raw: bool = False,
+        raw_notes: bool = False,
     ) -> Chart:
         """Build a :class:`Chart` from a begin-edit RPC response.
 
         Args:
             response: The protobuf payload returned when an edit is opened.
-            raw: Keep every note as a :class:`RawNote` instead of wrapping into typed
+            raw_notes: Keep every note as a :class:`RawNote` instead of wrapping into typed
                 notes. Notes whose structure is unsupported stay raw regardless.
         """
         notes: list[ChartNote] = []
         for proto in response.notes:
             raw_note = RawNote.from_proto(proto)
-            if raw:
+            if raw_notes:
                 notes.append(raw_note)
                 continue
             try:

@@ -29,7 +29,7 @@ from .types import (
 class RawNote:
     """A note as a raw protobuf tree: a :class:`NoteInfo` plus child notes.
 
-    This is the low-level model used when an edit is opened with ``raw=True`` and the
+    This is the low-level model used when an edit is opened with ``raw_notes=True`` and the
     target of :meth:`Note.to_raw`. Long notes are represented as a begin node with joint
     children. The convenience properties (``type``, ``t``, ``x``, ``w``, ...) read and
     write the underlying :attr:`info`. Prefer the typed notes for authoring; use

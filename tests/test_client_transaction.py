@@ -16,15 +16,15 @@ class FakeTransport:
         return self.responses.pop(0)
 
 
-def test_open_edit_sends_scan_true_and_commits_apply_edit():
+def test_open_edit_sends_snapshot_true_and_commits_apply_edit():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    scan=True,
-                    event_scan_extra_tick=19200,
-                    event_scan_til=[0, 2],
+                    snapshot=True,
+                    event_scan_lookahead_ticks=19200,
+                    event_scan_til_ids=[0, 2],
                     notes=[
                         messages_pb2.Note(
                             id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=1, width=2
@@ -42,7 +42,7 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
 
     begin_request = transport.requests[0].begin_edit_request
     apply_request = transport.requests[1].apply_edit_request
-    assert begin_request.scan is True
+    assert begin_request.snapshot is True
     assert apply_request.replace_all_notes is False
     assert len(apply_request.notes_upsert) == 1
     assert apply_request.notes_upsert[0].id == 1
@@ -92,11 +92,11 @@ def test_current_tick_sends_request_and_returns_tick():
     assert transport.requests[0].HasField("current_tick_request")
 
 
-def test_open_edit_absent_event_scan_til_means_note_til_mode():
+def test_open_edit_absent_event_scan_til_ids_means_note_til_mode():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, scan=True)
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, snapshot=True)
             ),
             messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
         ]
@@ -104,52 +104,52 @@ def test_open_edit_absent_event_scan_til_means_note_til_mode():
     mg = Margrete(transport=transport)
     with mg.open_edit():
         pass
-    assert not transport.requests[0].begin_edit_request.HasField("event_scan_til")
+    assert not transport.requests[0].begin_edit_request.HasField("event_scan_til_ids")
 
 
-def test_open_edit_explicit_event_scan_til_sets_wrapper():
+def test_open_edit_explicit_event_scan_til_ids_sets_wrapper():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, scan=True)
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, snapshot=True)
             ),
             messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
         ]
     )
     mg = Margrete(transport=transport)
-    with mg.open_edit(event_scan_til=[1, 2]):
+    with mg.open_edit(event_scan_til_ids=[1, 2]):
         pass
     req = transport.requests[0].begin_edit_request
-    assert req.HasField("event_scan_til")
-    assert list(req.event_scan_til.tids) == [1, 2]
+    assert req.HasField("event_scan_til_ids")
+    assert list(req.event_scan_til_ids.ids) == [1, 2]
 
 
-def test_open_edit_empty_event_scan_til_sets_wrapper():
+def test_open_edit_empty_event_scan_til_ids_sets_wrapper():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, scan=True)
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, snapshot=True)
             ),
             messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
         ]
     )
     mg = Margrete(transport=transport)
-    with mg.open_edit(event_scan_til=[]):
+    with mg.open_edit(event_scan_til_ids=[]):
         pass
     req = transport.requests[0].begin_edit_request
-    assert req.HasField("event_scan_til")
-    assert list(req.event_scan_til.tids) == []
+    assert req.HasField("event_scan_til_ids")
+    assert list(req.event_scan_til_ids.ids) == []
 
 
-def test_open_edit_scan_false_replaces_open_append_flow():
+def test_open_edit_snapshot_false_replaces_open_append_flow():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=480,
-                    scan=False,
-                    event_scan_extra_tick=19200,
-                    event_scan_til=[0, 2],
+                    snapshot=False,
+                    event_scan_lookahead_ticks=19200,
+                    event_scan_til_ids=[0, 2],
                 )
             ),
             messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
@@ -157,7 +157,7 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit(scan=False) as tx:
+    with mg.open_edit(snapshot=False) as tx:
         assert tx.current_tick == 480
         assert tx.chart.notes == []
         tx.chart.notes.append(Tap(t=480, x=2, w=1))
@@ -165,15 +165,15 @@ def test_open_edit_scan_false_replaces_open_append_flow():
 
     begin_request = transport.requests[0].begin_edit_request
     apply_request = transport.requests[1].apply_edit_request
-    assert begin_request.scan is False
+    assert begin_request.snapshot is False
     assert apply_request.replace_all_notes is False
     assert [note.tick for note in apply_request.notes_upsert] == [480, 720]
 
 
-def test_open_edit_has_no_separate_raw_method():
+def test_open_edit_has_no_separate_raw_notes_method():
     mg = Margrete(transport=FakeTransport([]))
 
-    assert not hasattr(mg, "open_edit_raw")
+    assert not hasattr(mg, "open_edit_raw_notes")
 
 
 def test_open_append_is_removed():
@@ -182,18 +182,18 @@ def test_open_append_is_removed():
     assert not hasattr(mg, "open_append")
 
 
-def test_scan_false_rejects_existing_note_ids_before_commit_request():
+def test_snapshot_false_rejects_existing_note_ids_before_commit_request():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=480, scan=False)
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=480, snapshot=False)
             )
         ]
     )
     mg = Margrete(transport=transport)
 
-    with pytest.raises(ValueError, match="scan=false transactions cannot send existing note ids"):
-        with mg.open_edit(scan=False) as tx:
+    with pytest.raises(ValueError, match="snapshot=false transactions cannot send existing note ids"):
+        with mg.open_edit(snapshot=False) as tx:
             note = R.tap(t=480, x=2, w=1)
             note._id = 99
             tx.chart.notes.append(note)
@@ -201,13 +201,13 @@ def test_scan_false_rejects_existing_note_ids_before_commit_request():
     assert len(transport.requests) == 1
 
 
-def test_noop_scanned_edit_skips_apply_request():
+def test_noop_snapshot_edit_skips_apply_request():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    scan=True,
+                    snapshot=True,
                     notes=[
                         messages_pb2.Note(
                             id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=0, width=1
@@ -225,13 +225,13 @@ def test_noop_scanned_edit_skips_apply_request():
     assert len(transport.requests) == 1
 
 
-def test_scanned_bpm_value_edit_with_same_tick_sends_apply_request():
+def test_snapshot_bpm_value_edit_with_same_tick_sends_apply_request():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    scan=True,
+                    snapshot=True,
                     bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
                 )
             ),
@@ -247,13 +247,13 @@ def test_scanned_bpm_value_edit_with_same_tick_sends_apply_request():
     assert apply_request.bpm_upsert[0].bpm == 180.0
 
 
-def test_scanned_timeline_speed_value_edit_with_same_key_sends_apply_request():
+def test_snapshot_timeline_speed_value_edit_with_same_key_sends_apply_request():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    scan=True,
+                    snapshot=True,
                     timeline_speed_events=[
                         messages_pb2.TimelineSpeedEvent(tick=0, timeline_id=2, speed=1.0)
                     ],
@@ -271,14 +271,14 @@ def test_scanned_timeline_speed_value_edit_with_same_key_sends_apply_request():
     assert apply_request.til_upsert[0].speed == 1.5
 
 
-def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
+def test_snapshot_note_edit_uses_id_upsert_when_children_unchanged():
 
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    scan=True,
+                    snapshot=True,
                     notes=[
                         messages_pb2.Note(
                             id=1,
@@ -304,7 +304,7 @@ def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit(raw=True) as tx:
+    with mg.open_edit(raw_notes=True) as tx:
         assert isinstance(tx.chart, Chart)
         tx.chart.notes[0].x = 3
 
@@ -319,7 +319,7 @@ def _hold_with_end_response() -> messages_pb2.Envelope:
     return messages_pb2.Envelope(
         begin_edit_response=messages_pb2.BeginEditResponse(
             current_tick=960,
-            scan=True,
+            snapshot=True,
             notes=[
                 messages_pb2.Note(
                     id=1,
@@ -342,7 +342,7 @@ def _hold_with_end_response() -> messages_pb2.Envelope:
     )
 
 
-def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
+def test_snapshot_note_edit_modifies_child_in_place_when_ids_preserved():
     transport = FakeTransport(
         [
             _hold_with_end_response(),
@@ -351,7 +351,7 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit(raw=True) as tx:
+    with mg.open_edit(raw_notes=True) as tx:
         tx.chart.notes[0].children[0].t = 500
 
     apply_request = transport.requests[1].apply_edit_request
@@ -363,7 +363,7 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     assert apply_request.notes_upsert[0].children[0].tick == 500
 
 
-def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
+def test_snapshot_note_edit_rebuilds_tree_when_id_structure_changes():
     transport = FakeTransport(
         [
             _hold_with_end_response(),
@@ -372,7 +372,7 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit(raw=True) as tx:
+    with mg.open_edit(raw_notes=True) as tx:
         tx.chart.notes[0].children.insert(0, R.hold_end(t=240, x=1, w=2))
 
     apply_request = transport.requests[1].apply_edit_request
@@ -383,13 +383,13 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     assert len(apply_request.notes_upsert[0].children) == 2
 
 
-def test_scanned_unchanged_events_send_no_deletes():
+def test_snapshot_unchanged_events_send_no_deletes():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
                 begin_edit_response=messages_pb2.BeginEditResponse(
                     current_tick=960,
-                    scan=True,
+                    snapshot=True,
                     notes=[
                         messages_pb2.Note(
                             id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=0, width=1

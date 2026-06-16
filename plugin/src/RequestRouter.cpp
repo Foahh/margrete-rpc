@@ -13,9 +13,9 @@
 
 namespace
 {
-constexpr MpInteger kDefaultEventScanExtraTicks = 19200;
+constexpr MpInteger kDefaultEventScanLookaheadTicks = 19200;
 
-std::vector<std::int32_t> DefaultEventScanTil()
+std::vector<std::int32_t> DefaultEventScanTilIds()
 {
     std::vector<std::int32_t> tils;
     tils.reserve(16);
@@ -132,46 +132,46 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             auto *begin = response.mutable_begin_edit_response();
             begin->set_current_tick(session.currentTick());
 
-            MpInteger scanExtraTick = req.event_scan_extra_tick();
-            if (scanExtraTick <= 0)
+            MpInteger scanLookaheadTicks = req.event_scan_lookahead_ticks();
+            if (scanLookaheadTicks <= 0)
             {
-                scanExtraTick = kDefaultEventScanExtraTicks;
+                scanLookaheadTicks = kDefaultEventScanLookaheadTicks;
             }
 
-            std::vector<std::int32_t> scanTil;
+            std::vector<std::int32_t> scanTilIds;
             bool noteTilOnly = false;
-            if (req.has_event_scan_til())
+            if (req.has_event_scan_til_ids())
             {
-                const auto &tilList = req.event_scan_til();
-                if (tilList.tids_size() > 0)
+                const auto &tilIds = req.event_scan_til_ids();
+                if (tilIds.ids_size() > 0)
                 {
-                    scanTil.reserve(static_cast<std::size_t>(tilList.tids_size()));
-                    for (const auto til : tilList.tids())
+                    scanTilIds.reserve(static_cast<std::size_t>(tilIds.ids_size()));
+                    for (const auto til : tilIds.ids())
                     {
-                        scanTil.push_back(til);
+                        scanTilIds.push_back(til);
                     }
                 }
                 else
                 {
-                    scanTil = DefaultEventScanTil();
+                    scanTilIds = DefaultEventScanTilIds();
                 }
             }
             else
             {
-                scanTil = DefaultEventScanTil();
+                scanTilIds = DefaultEventScanTilIds();
                 noteTilOnly = true;
             }
 
-            const bool scan = req.scan();
-            begin->set_scan(scan);
-            if (scan)
+            const bool snapshot = req.snapshot();
+            begin->set_snapshot(snapshot);
+            if (snapshot)
             {
-                ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, noteTilOnly, *begin);
+                ChartMapper::SnapshotForEdit(session.chart(), scanLookaheadTicks, scanTilIds, noteTilOnly, *begin);
             }
             else
             {
-                begin->set_event_scan_extra_tick(scanExtraTick);
-                begin->mutable_event_scan_til()->Assign(scanTil.begin(), scanTil.end());
+                begin->set_event_scan_lookahead_ticks(scanLookaheadTicks);
+                begin->mutable_event_scan_til_ids()->Assign(scanTilIds.begin(), scanTilIds.end());
             }
             logInfo("begin_edit ok id=" + std::to_string(request.request_id()) + " current_tick=" +
                     std::to_string(begin->current_tick()) + " notes=" + std::to_string(begin->notes_size()) +
@@ -179,8 +179,10 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " beat_change_events=" + std::to_string(begin->beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(begin->timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(begin->note_speed_events_size()) +
-                    " scan_extra_tick=" + std::to_string(begin->event_scan_extra_tick()) + " scan_til_count=" +
-                    std::to_string(begin->event_scan_til_size()) + " scan=" + std::to_string(begin->scan()) +
+                    " event_scan_lookahead_ticks=" +
+                    std::to_string(begin->event_scan_lookahead_ticks()) + " event_scan_til_ids_count=" +
+                    std::to_string(begin->event_scan_til_ids_size()) + " snapshot=" +
+                    std::to_string(begin->snapshot()) +
                     " note_til_only=" + std::to_string(noteTilOnly));
             return response;
         }
