@@ -27,6 +27,10 @@ function stripLangPrefix(pathname: string): string {
 const proxy: NextProxy = (request, event) => {
   const stripped = stripLangPrefix(request.nextUrl.pathname);
 
+  if (stripped !== request.nextUrl.pathname && stripped.startsWith(`${docsContentRoute}/`)) {
+    return NextResponse.rewrite(new URL(stripped, request.nextUrl));
+  }
+
   const result = rewriteSuffix(stripped);
   if (result) {
     return NextResponse.rewrite(new URL(result, request.nextUrl));

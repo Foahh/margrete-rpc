@@ -30,3 +30,4 @@ next-env.d.ts
 /margrete_rpc.json
 /content/docs/reference
 .idea/
+.vercel

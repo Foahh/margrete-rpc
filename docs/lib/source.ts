@@ -3,7 +3,7 @@ import { loader } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
 
 import { i18n } from "./i18n";
-import { docsContentRoute, docsImageRoute, docsRoute } from "./shared";
+import { docsImageRoute, docsRoute } from "./shared";
 
 export const source = loader({
   baseUrl: docsRoute,
@@ -26,7 +26,7 @@ export function getPageMarkdownUrl(page: (typeof source)["$inferPage"]) {
 
   return {
     segments,
-    url: `${docsContentRoute}/${segments.join("/")}`,
+    url: `${page.url}.md`,
   };
 }
 
