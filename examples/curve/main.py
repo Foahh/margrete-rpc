@@ -20,7 +20,7 @@ Usage:
 import argparse
 
 from margrete_rpc import Margrete
-from margrete_rpc.chart import TICK_RESOLUTION, ChartNote, d2t
+from margrete_rpc.chart import TICK_RESOLUTION, ChartNote, div_to_tick
 from margrete_rpc.chart.notes import ColorValue, Tap
 from margrete_rpc.chart.util import EASINGS, Curve, envelope
 
@@ -28,7 +28,7 @@ from margrete_rpc.chart.util import EASINGS, Curve, envelope
 
 BEAT = TICK_RESOLUTION  # one whole note in ticks (1920)
 SPAN = BEAT  # each generated note lasts one beat
-GAP = d2t(1, 8)  # 1/8-beat gap between consecutive notes
+GAP = div_to_tick(1, 8)  # 1/8-beat gap between consecutive notes
 SEGMENT_GAP = (1, 8)  # air-crush internal segment gap (1/8 beat)
 
 WIDTH = 2  # constant width applied to every generated note

@@ -30,7 +30,7 @@ class BeatEvent:
     """A time-signature change, anchored at a bar.
 
     The active set of beat events defines how ``(bar, beat, offset)`` positions map to
-    absolute ticks (see :func:`margrete_rpc.chart.p2t`).
+    absolute ticks (see :func:`margrete_rpc.chart.pos_to_tick`).
 
     Attributes:
         bar: Zero-based bar index from which this signature applies.

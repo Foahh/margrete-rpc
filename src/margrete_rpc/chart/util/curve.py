@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..notes import AirCrush, AirHold, AirSlide, ColorLike, ColorValue, Hold, Slide
-from ..time import IntervalLike, PositionLike, resolve_tick
+from ..time import DivisionLike, PositionLike, resolve_tick
 from .easing import EaseLike, Easing, resolve_easing
 
 _LINEAR = resolve_easing("linear")
@@ -179,7 +179,7 @@ class Curve:
         self,
         *,
         w: int,
-        gap: int | IntervalLike = DEFAULT_AIRCRUSH_GAP,
+        gap: int | DivisionLike = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int = 0,
     ) -> AirCrush:

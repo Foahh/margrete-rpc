@@ -14,8 +14,8 @@ class Position(NamedTuple):
     """A musical position as ``(bar, beat, offset)``.
 
     All components are zero-based; ``offset`` is in ticks within the beat. This is the
-    resolved view of a tick (see :func:`t2p`); to convert back to an absolute tick use
-    :func:`p2t` or pass it where a :data:`PositionLike` is accepted."""
+    resolved view of a tick (see :func:`tick_to_pos`); to convert back to an absolute tick use
+    :func:`pos_to_tick` or pass it where a :data:`PositionLike` is accepted."""
 
     bar: int
     beat: int
@@ -26,7 +26,7 @@ type PositionLike = Position | tuple[int] | tuple[int, int] | tuple[int, int, in
 """An input position as ``(bar,)``, ``(bar, beat)``, or ``(bar, beat, offset)``.
 
 The accepted, loose form for arguments; missing components default to zero. Resolved to an
-absolute tick against the chart's beat events (see :func:`p2t`). Functions return the
+absolute tick against the chart's beat events (see :func:`pos_to_tick`). Functions return the
 canonical 3-field :class:`Position`."""
 
 type TickResolver = Callable[[PositionLike], int]
@@ -36,23 +36,23 @@ Installed via :func:`push_tick_resolver` so positions resolve against a chart's 
 events without threading them through every call."""
 
 
-class Interval(NamedTuple):
+class Division(NamedTuple):
     """A duration as a reduced ``(numerator, denominator)`` beat fraction.
 
-    The named view of a tick count (see :func:`t2d`); e.g. ``Interval(1, 4)`` is a quarter
-    note. To convert back to ticks use :func:`d2t` or pass it where an :data:`IntervalLike`
-    is accepted."""
+    The named view of a tick count (see :func:`tick_to_div`); e.g. ``Division(1, 4)`` is a
+    quarter note. To convert back to ticks use :func:`div_to_tick` or pass it where a
+    :data:`DivisionLike` is accepted."""
 
     numerator: int
     denominator: int
 
 
-type IntervalLike = Interval | tuple[int, int]
+type DivisionLike = Division | tuple[int, int]
 """An input duration as a ``(numerator, denominator)`` beat fraction.
 
-The accepted, loose form for fractional durations; converted to ticks via :func:`d2t`,
-e.g. ``(1, 4)`` is a quarter note. Pair with ``int`` (``int | IntervalLike``) to also
-accept a raw tick count. Functions return the canonical :class:`Interval`."""
+The accepted, loose form for fractional durations; converted to ticks via :func:`div_to_tick`,
+e.g. ``(1, 4)`` is a quarter note. Pair with ``int`` (``int | DivisionLike``) to also
+accept a raw tick count. Functions return the canonical :class:`Division`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,14 +109,15 @@ class TimeCalculator:
 
     Built from the chart's :class:`BeatEvent` list, which partitions the timeline into
     time-signature segments. Bars before the first event default to 4/4. Most callers use
-    the module-level :func:`t2p` / :func:`p2t` instead of constructing this directly.
-    """
+    the module-level :func:`tick_to_pos` / :func:`pos_to_tick` instead of constructing this
+    directly.
+"""
 
     def __init__(self, beat_events: Iterable[BeatEvent]) -> None:
         """Build a calculator from a chart's beat (time-signature) events."""
         self._segments = _build_time_signatures(beat_events)
 
-    def t2p(self, tick: int) -> Position:
+    def tick_to_pos(self, tick: int) -> Position:
         """Convert an absolute tick to a ``(bar, beat, offset)`` position.
 
         Args:
@@ -156,7 +157,7 @@ class TimeCalculator:
                 high = mid - 1
         raise ValueError(f"tick {tick} is before all time signatures")
 
-    def p2t(self, bar: int, beat: int = 0, offset: int = 0) -> int:
+    def pos_to_tick(self, bar: int, beat: int = 0, offset: int = 0) -> int:
         """Convert a ``(bar, beat, offset)`` position to an absolute tick.
 
         Args:
@@ -212,7 +213,7 @@ def push_beat_events(
 ) -> contextvars.Token[Iterable[BeatEvent] | None]:
     """Install ``beat_events`` as the active beat events for position resolution.
 
-    While active, :func:`t2p` and :func:`p2t` use these events when none are passed
+    While active, :func:`tick_to_pos` and :func:`pos_to_tick` use these events when none are passed
     explicitly. :class:`EditTransaction` does this automatically for the duration of an
     edit.
 
@@ -237,7 +238,7 @@ def _resolve_beat_events(beat_events: Iterable[BeatEvent] | None) -> Iterable[Be
     return ctx if ctx is not None else ()
 
 
-def t2p(tick: int, *, beat_events: Iterable[BeatEvent] | None = None) -> Position:
+def tick_to_pos(tick: int, *, beat_events: Iterable[BeatEvent] | None = None) -> Position:
     """Convert an absolute tick to a ``(bar, beat, offset)`` position.
 
     Args:
@@ -248,10 +249,10 @@ def t2p(tick: int, *, beat_events: Iterable[BeatEvent] | None = None) -> Positio
     Returns:
         The ``(bar, beat, offset)`` position of ``tick``.
     """
-    return TimeCalculator(_resolve_beat_events(beat_events)).t2p(tick)
+    return TimeCalculator(_resolve_beat_events(beat_events)).tick_to_pos(tick)
 
 
-def p2t(
+def pos_to_tick(
     bar: int,
     beat: int = 0,
     offset: int = 0,
@@ -270,7 +271,7 @@ def p2t(
     Returns:
         The absolute tick from the chart start.
     """
-    return TimeCalculator(_resolve_beat_events(beat_events)).p2t(bar, beat, offset)
+    return TimeCalculator(_resolve_beat_events(beat_events)).pos_to_tick(bar, beat, offset)
 
 
 _active_tick_resolver: contextvars.ContextVar[TickResolver | None] = contextvars.ContextVar(
@@ -317,15 +318,15 @@ def resolve_tick(value: int | PositionLike) -> int:
         resolver = _active_tick_resolver.get()
         if resolver is not None:
             return resolver(value)
-        return p2t(*value, beat_events=())
+        return pos_to_tick(*value, beat_events=())
     return value
 
 
-def d2t(numerator: int, denominator: int) -> int:
+def div_to_tick(numerator: int, denominator: int) -> int:
     """Convert a ``numerator/denominator`` beat fraction to a tick count.
 
-    For example ``d2t(1, 4)`` is the ticks in a quarter note and ``d2t(1, 1)`` equals
-    ``TICK_RESOLUTION``.
+    For example ``div_to_tick(1, 4)`` is the ticks in a quarter note and
+    ``div_to_tick(1, 1)`` equals ``TICK_RESOLUTION``.
 
     Args:
         numerator: Fraction numerator (number of divisions).
@@ -350,10 +351,10 @@ def d2t(numerator: int, denominator: int) -> int:
     return frac.numerator
 
 
-def t2d(ticks: int) -> Interval:
+def tick_to_div(ticks: int) -> Division:
     """Convert a tick count to the reduced ``(numerator, denominator)`` beat fraction.
 
-    The inverse of :func:`d2t`; e.g. one beat's worth of ticks yields ``(1, 1)``.
+    The inverse of :func:`div_to_tick`; e.g. one beat's worth of ticks yields ``(1, 1)``.
 
     Args:
         ticks: Non-negative duration in ticks.
@@ -369,15 +370,15 @@ def t2d(ticks: int) -> Interval:
     if ticks < 0:
         raise ValueError("ticks must be non-negative")
     frac = Fraction(ticks, TICK_RESOLUTION)
-    return Interval(frac.numerator, frac.denominator)
+    return Division(frac.numerator, frac.denominator)
 
 
-def resolve_interval(value: int | IntervalLike) -> int:
+def resolve_division(value: int | DivisionLike) -> int:
     """Coerce a tick-count-or-fraction argument to an int tick count.
 
     Args:
-        value: An int tick count (returned unchanged) or an :data:`IntervalLike`
-            ``(numerator, denominator)`` beat fraction, converted via :func:`d2t`.
+        value: An int tick count (returned unchanged) or a :data:`DivisionLike`
+            ``(numerator, denominator)`` beat fraction, converted via :func:`div_to_tick`.
 
     Returns:
         The duration in ticks.
@@ -385,26 +386,26 @@ def resolve_interval(value: int | IntervalLike) -> int:
     if isinstance(value, tuple):
         if len(value) != 2:
             raise ValueError("interval must be a (numerator, denominator) tuple")
-        return d2t(value[0], value[1])
+        return div_to_tick(value[0], value[1])
     return value
 
 
 __all__ = [
     "TICK_RESOLUTION",
-    "Interval",
-    "IntervalLike",
+    "Division",
+    "DivisionLike",
     "Position",
     "PositionLike",
     "TickResolver",
     "TimeCalculator",
-    "t2p",
-    "p2t",
+    "tick_to_pos",
+    "pos_to_tick",
     "push_beat_events",
     "pop_beat_events",
     "resolve_tick",
     "push_tick_resolver",
     "pop_tick_resolver",
-    "d2t",
-    "t2d",
-    "resolve_interval",
+    "div_to_tick",
+    "tick_to_div",
+    "resolve_division",
 ]

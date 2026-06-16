@@ -6,7 +6,7 @@ from typing import Any, Literal
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from ..constants import DEFAULT_H
-from ..time import IntervalLike, Position, PositionLike, resolve_interval, resolve_tick, t2p
+from ..time import DivisionLike, Position, PositionLike, resolve_division, resolve_tick, tick_to_pos
 from .color import (
     Color,
     ColorLike,
@@ -115,7 +115,7 @@ class NoteInfo:
     This is the low-level bag of attributes (type, geometry, direction, color, timing) that
     backs every note. Typed notes expose the relevant fields as their own properties;
     construct :class:`NoteInfo` directly only for raw/manual work. Timing accepts a tick
-    ``t`` or a :data:`Position` ``p``; ``option_value`` accepts an :data:`IntervalLike`.
+    ``t`` or a :data:`Position` ``p``; ``option_value`` accepts an :data:`DivisionLike`.
     """
 
     def __init__(
@@ -130,7 +130,7 @@ class NoteInfo:
         h: int = DEFAULT_H,
         t: int = 0,
         til: int = 0,
-        option_value: int | IntervalLike = 0,
+        option_value: int | DivisionLike = 0,
         *,
         p: PositionLike | None = None,
     ) -> None:
@@ -144,7 +144,7 @@ class NoteInfo:
         self._direction = Direction(direction_to_proto(type, direction))
         self._variation_id = Color(color_to_value(variation_id))
         self._t = resolve_tick(p) if p is not None else t
-        self._option_value = resolve_interval(option_value)
+        self._option_value = resolve_division(option_value)
 
     @property
     def direction(self) -> Direction:
@@ -173,15 +173,15 @@ class NoteInfo:
     @property
     def p(self) -> Position:
         """Timing as a ``(bar, beat, offset)`` :class:`Position`; the read-only view of ``t``."""
-        return t2p(self._t)
+        return tick_to_pos(self._t)
 
     @property
     def option_value(self) -> int:
         return self._option_value
 
     @option_value.setter
-    def option_value(self, value: int | IntervalLike) -> None:
-        self._option_value = resolve_interval(value)
+    def option_value(self, value: int | DivisionLike) -> None:
+        self._option_value = resolve_division(value)
 
     def copy(self, **changes: Any) -> NoteInfo:
         """Return a copy with any given fields overridden by keyword."""

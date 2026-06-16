@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Sequence
 from typing import Any, NamedTuple, cast
 
 from ..constants import DEFAULT_H
-from ..time import IntervalLike, PositionLike, resolve_interval, resolve_tick
+from ..time import DivisionLike, PositionLike, resolve_division, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import ColorValue
 from .direction import Direction
@@ -138,8 +138,8 @@ def _snapper(step: int, mode: AlignMode) -> Callable[[int], int]:
     return snap
 
 
-def _align(note: Note, interval: int | IntervalLike, mode: AlignMode) -> Note:
-    step = resolve_interval(interval)
+def _align(note: Note, interval: int | DivisionLike, mode: AlignMode) -> Note:
+    step = resolve_division(interval)
     if step <= 0:
         raise ValueError("align interval must be positive")
     return note.shift(t=_snapper(step, mode))

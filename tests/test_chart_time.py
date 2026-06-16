@@ -5,107 +5,107 @@ import pytest
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     TICK_RESOLUTION,
-    d2t,
-    p2t,
+    div_to_tick,
+    pos_to_tick,
     pop_beat_events,
     push_beat_events,
-    resolve_interval,
-    t2d,
-    t2p,
+    resolve_division,
+    tick_to_div,
+    tick_to_pos,
 )
 
 
-def test_t2p_origin_4_4():
-    assert t2p(0, beat_events=[]) == (0, 0, 0)
+def test_tick_to_pos_origin_4_4():
+    assert tick_to_pos(0, beat_events=[]) == (0, 0, 0)
 
 
-def test_t2p_second_beat_4_4():
+def test_tick_to_pos_second_beat_4_4():
     # beat_tick = 1920 // 4 = 480
-    assert t2p(480, beat_events=[]) == (0, 1, 0)
+    assert tick_to_pos(480, beat_events=[]) == (0, 1, 0)
 
 
-def test_t2p_second_bar_4_4():
-    assert t2p(TICK_RESOLUTION, beat_events=[]) == (1, 0, 0)
+def test_tick_to_pos_second_bar_4_4():
+    assert tick_to_pos(TICK_RESOLUTION, beat_events=[]) == (1, 0, 0)
 
 
-def test_t2p_with_explicit_4_4_at_bar_zero():
+def test_tick_to_pos_with_explicit_4_4_at_bar_zero():
     events = [BeatEvent(bar=0, beats_per_bar=4, beat_unit=4)]
-    assert t2p(960, beat_events=events) == (0, 2, 0)
+    assert tick_to_pos(960, beat_events=events) == (0, 2, 0)
 
 
-def test_t2p_rejects_negative_tick():
+def test_tick_to_pos_rejects_negative_tick():
     with pytest.raises(ValueError, match="tick"):
-        t2p(-1, beat_events=[])
+        tick_to_pos(-1, beat_events=[])
 
 
-def test_p2t_bar_beat_offset_4_4():
-    assert p2t(1, 0, 0, beat_events=[]) == TICK_RESOLUTION
+def test_pos_to_tick_bar_beat_offset_4_4():
+    assert pos_to_tick(1, 0, 0, beat_events=[]) == TICK_RESOLUTION
 
 
-def test_p2t_defaults_beat_and_offset():
-    assert p2t(1, beat_events=[]) == TICK_RESOLUTION
+def test_pos_to_tick_defaults_beat_and_offset():
+    assert pos_to_tick(1, beat_events=[]) == TICK_RESOLUTION
 
 
 def test_round_trip_ticks_4_4():
     for tick in (0, 1, 479, 480, 960, 1919, 1920, 5000):
-        assert p2t(*t2p(tick, beat_events=[]), beat_events=[]) == tick
+        assert pos_to_tick(*tick_to_pos(tick, beat_events=[]), beat_events=[]) == tick
 
 
 def test_round_trip_positions_4_4():
     for pos in ((0, 0, 0), (0, 3, 479), (2, 1, 100)):
-        assert t2p(p2t(*pos, beat_events=[]), beat_events=[]) == pos
+        assert tick_to_pos(pos_to_tick(*pos, beat_events=[]), beat_events=[]) == pos
 
 
-def test_t2p_time_signature_change_at_bar_4():
+def test_tick_to_pos_time_signature_change_at_bar_4():
     events = [BeatEvent(bar=4, beats_per_bar=3, beat_unit=4)]
-    assert t2p(7680, beat_events=events) == (4, 0, 0)
-    assert t2p(7680 + 480, beat_events=events) == (4, 1, 0)
-    assert p2t(4, 1, 0, beat_events=events) == 7680 + 480
+    assert tick_to_pos(7680, beat_events=events) == (4, 0, 0)
+    assert tick_to_pos(7680 + 480, beat_events=events) == (4, 1, 0)
+    assert pos_to_tick(4, 1, 0, beat_events=events) == 7680 + 480
 
 
-def test_p2t_rejects_beat_out_of_range():
+def test_pos_to_tick_rejects_beat_out_of_range():
     with pytest.raises(ValueError, match="beat"):
-        p2t(0, 4, 0, beat_events=[])
+        pos_to_tick(0, 4, 0, beat_events=[])
 
 
-def test_p2t_rejects_offset_out_of_range():
+def test_pos_to_tick_rejects_offset_out_of_range():
     with pytest.raises(ValueError, match="offset"):
-        p2t(0, 0, 480, beat_events=[])
+        pos_to_tick(0, 0, 480, beat_events=[])
 
 
-def test_t2p_p2t_use_context_beat_events():
+def test_tick_to_pos_pos_to_tick_use_context_beat_events():
     events = [BeatEvent(bar=0, beats_per_bar=3, beat_unit=4)]
     token = push_beat_events(events)
     try:
         # 3/4: bar length = 3 * 480 = 1440
-        assert t2p(1440) == (1, 0, 0)
-        assert p2t(1) == 1440
+        assert tick_to_pos(1440) == (1, 0, 0)
+        assert pos_to_tick(1) == 1440
     finally:
         pop_beat_events(token)
     # After popping, falls back to 4/4 default
-    assert t2p(1920) == (1, 0, 0)
+    assert tick_to_pos(1920) == (1, 0, 0)
 
 
 def test_explicit_beat_events_override_context():
     events_3_4 = [BeatEvent(bar=0, beats_per_bar=3, beat_unit=4)]
     token = push_beat_events(events_3_4)
     try:
-        assert t2p(1920, beat_events=[]) == (1, 0, 0)  # explicit [] => 4/4
+        assert tick_to_pos(1920, beat_events=[]) == (1, 0, 0)  # explicit [] => 4/4
     finally:
         pop_beat_events(token)
 
 
-def test_t2p_rejects_duplicate_beat_bar():
+def test_tick_to_pos_rejects_duplicate_beat_bar():
     events = [
         BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
         BeatEvent(bar=4, beats_per_bar=3, beat_unit=4),
         BeatEvent(bar=4, beats_per_bar=6, beat_unit=8),
     ]
     with pytest.raises(ValueError, match="duplicate BeatEvent bar 4"):
-        t2p(0, beat_events=events)
+        tick_to_pos(0, beat_events=events)
 
 
-def test_t2p_context_rejects_duplicate_beat_bar():
+def test_tick_to_pos_context_rejects_duplicate_beat_bar():
     events = [
         BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
         BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
@@ -113,72 +113,72 @@ def test_t2p_context_rejects_duplicate_beat_bar():
     token = push_beat_events(events)
     try:
         with pytest.raises(ValueError, match="duplicate BeatEvent bar 0"):
-            t2p(0)
+            tick_to_pos(0)
     finally:
         pop_beat_events(token)
 
 
-# --- d2t / t2d / resolve_interval ---
+# --- div_to_tick / tick_to_div / resolve_division ---
 
 
-def test_d2t_1_over_384():
+def test_div_to_tick_1_over_384():
     # (1/384) * 1920 = 5
-    assert d2t(1, 384) == 5
+    assert div_to_tick(1, 384) == 5
 
 
-def test_d2t_1_over_4():
-    assert d2t(1, 4) == TICK_RESOLUTION // 4
+def test_div_to_tick_1_over_4():
+    assert div_to_tick(1, 4) == TICK_RESOLUTION // 4
 
 
-def test_d2t_whole_beat():
-    assert d2t(1, 1) == TICK_RESOLUTION
+def test_div_to_tick_whole_beat():
+    assert div_to_tick(1, 1) == TICK_RESOLUTION
 
 
-def test_d2t_rejects_non_integer_division():
+def test_div_to_tick_rejects_non_integer_division():
     with pytest.raises(ValueError, match="whole tick"):
-        d2t(1, 7)
+        div_to_tick(1, 7)
 
 
-def test_d2t_rejects_zero_denominator():
+def test_div_to_tick_rejects_zero_denominator():
     with pytest.raises(ValueError, match="positive"):
-        d2t(1, 0)
+        div_to_tick(1, 0)
 
 
-def test_t2d_round_trip():
+def test_tick_to_div_round_trip():
     for ticks in (0, 1, 5, 480, 960, 1920, 3840):
-        n, d = t2d(ticks)
-        assert d2t(n, d) == ticks
+        n, d = tick_to_div(ticks)
+        assert div_to_tick(n, d) == ticks
 
 
-def test_t2d_reduces_fraction():
-    assert t2d(5) == (1, 384)
-    assert t2d(480) == (1, 4)
-    assert t2d(1920) == (1, 1)
+def test_tick_to_div_reduces_fraction():
+    assert tick_to_div(5) == (1, 384)
+    assert tick_to_div(480) == (1, 4)
+    assert tick_to_div(1920) == (1, 1)
 
 
-def test_t2d_rejects_non_int():
+def test_tick_to_div_rejects_non_int():
     with pytest.raises(TypeError):
-        t2d(1.5)  # type: ignore[arg-type]
+        tick_to_div(1.5)  # type: ignore[arg-type]
 
 
-def test_t2d_rejects_negative():
+def test_tick_to_div_rejects_negative():
     with pytest.raises(ValueError, match="non-negative"):
-        t2d(-1)
+        tick_to_div(-1)
 
 
-def test_resolve_interval_passes_int_through():
-    assert resolve_interval(5) == 5
-    assert resolve_interval(0) == 0
+def test_resolve_division_passes_int_through():
+    assert resolve_division(5) == 5
+    assert resolve_division(0) == 0
 
 
-def test_resolve_interval_tuple():
-    assert resolve_interval((1, 384)) == 5
-    assert resolve_interval((1, 4)) == TICK_RESOLUTION // 4
+def test_resolve_division_tuple():
+    assert resolve_division((1, 384)) == 5
+    assert resolve_division((1, 4)) == TICK_RESOLUTION // 4
 
 
-def test_resolve_interval_rejects_wrong_tuple_length():
+def test_resolve_division_rejects_wrong_tuple_length():
     with pytest.raises(ValueError, match="numerator, denominator"):
-        resolve_interval((1, 2, 3))  # type: ignore[arg-type]
+        resolve_division((1, 2, 3))  # type: ignore[arg-type]
 
 
 def test_noteinfo_option_value_accepts_division_tuple():
@@ -193,11 +193,11 @@ def test_noteinfo_option_value_accepts_division_tuple():
 
 def test_aircrush_gap_accepts_division_tuple():
     from margrete_rpc.chart.notes import AirCrush
-    from margrete_rpc.chart.time import Interval
+    from margrete_rpc.chart.time import Division
 
     note = AirCrush(t=0, x=0, w=4, h=80, gap=(1, 384))
     assert note.gap == 5
-    assert note.interval == Interval(1, 384)
+    assert note.interval == Division(1, 384)
     assert note.interval.numerator == 1
     assert note.interval.denominator == 384
 

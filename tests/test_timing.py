@@ -1,7 +1,7 @@
 import pytest
 
 from margrete_rpc.chart.events import TimelineSpeedEvent
-from margrete_rpc.chart.time import p2t
+from margrete_rpc.chart.time import pos_to_tick
 from margrete_rpc.chart.util import timing_easing, timing_easing_by_disp, timing_glitch
 
 
@@ -82,5 +82,5 @@ def test_invalid_count_and_range_raise(func) -> None:
 def test_accepts_position_like() -> None:
     # Outside a transaction, positions resolve with a default 4/4 signature.
     events = timing_easing(t0=(0, 0, 0), t1=(2, 0, 0), start_speed=1.0, end_speed=2.0, count=4)
-    assert events[0].t == p2t(0, 0, 0, beat_events=())
-    assert events[-1].t == p2t(2, 0, 0, beat_events=())
+    assert events[0].t == pos_to_tick(0, 0, 0, beat_events=())
+    assert events[-1].t == pos_to_tick(2, 0, 0, beat_events=())

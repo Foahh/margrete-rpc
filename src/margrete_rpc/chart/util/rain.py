@@ -4,19 +4,19 @@ import random
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..notes import AirCrush, ColorLike, ColorValue
-from ..time import IntervalLike, PositionLike, resolve_interval, resolve_tick
+from ..time import DivisionLike, PositionLike, resolve_division, resolve_tick
 
 
 def rain(
     *,
     t0: int | PositionLike,
     t1: int | PositionLike,
-    step: int | IntervalLike,
+    step: int | DivisionLike,
     x_range: tuple[int, int],
     h_range: tuple[int, int] = (DEFAULT_H, DEFAULT_H),
-    length: int | IntervalLike | None = None,
+    length: int | DivisionLike | None = None,
     w: int = 1,
-    gap: int | IntervalLike = DEFAULT_AIRCRUSH_GAP,
+    gap: int | DivisionLike = DEFAULT_AIRCRUSH_GAP,
     color: ColorLike | int = ColorValue.DEFAULT,
     til: int = 0,
     seed: int | None = None,
@@ -50,10 +50,10 @@ def rain(
     end = resolve_tick(t1)
     if end <= start:
         raise ValueError("t1 must be later than t0")
-    step_ticks = resolve_interval(step)
+    step_ticks = resolve_division(step)
     if step_ticks <= 0:
         raise ValueError("step must be a positive duration")
-    length_ticks = step_ticks if length is None else resolve_interval(length)
+    length_ticks = step_ticks if length is None else resolve_division(length)
     if length_ticks <= 0:
         raise ValueError("length must be a positive duration")
 

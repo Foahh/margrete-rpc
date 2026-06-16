@@ -10,7 +10,7 @@ from margrete_rpc.chart.notes import (
     Slide,
     wrap_raw_note,
 )
-from margrete_rpc.chart.time import Interval, d2t
+from margrete_rpc.chart.time import Division, div_to_tick
 from margrete_rpc.chart.util import Curve, Waypoint, crease, envelope, rain
 from margrete_rpc.chart.util.easing import EASINGS
 
@@ -222,8 +222,8 @@ def test_to_air_crush_all_control_with_gap_and_color() -> None:
     crush = path.to_air_crush(w=2, gap=(1, 16), color="red")
     assert isinstance(crush, AirCrush)
     assert all(j.kind is JointKind.CONTROL for j in crush.joints)
-    assert crush.gap == d2t(1, 16)
-    assert crush.interval == Interval(1, 16)
+    assert crush.gap == div_to_tick(1, 16)
+    assert crush.interval == Division(1, 16)
     assert crush.color == ColorValue.RED
     assert all(j.w == 2 for j in crush.joints)
     crush.validate()

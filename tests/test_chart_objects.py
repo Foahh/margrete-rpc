@@ -39,7 +39,7 @@ from margrete_rpc.chart.notes import (
     UnsupportedNoteTree,
     wrap_raw_note,
 )
-from margrete_rpc.chart.time import TICK_RESOLUTION, d2t
+from margrete_rpc.chart.time import TICK_RESOLUTION, div_to_tick
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -142,7 +142,7 @@ def test_new_note_api_is_exported_from_namespaced_packages():
         Tap,
         UnsupportedNoteTree,
     )
-    from margrete_rpc.chart.time import TICK_RESOLUTION, d2t
+    from margrete_rpc.chart.time import TICK_RESOLUTION, div_to_tick
 
     assert R.tap(t=0, x=4, w=2).type is NoteType.TAP
     assert RawNote().info == NoteInfo()
@@ -155,7 +155,7 @@ def test_new_note_api_is_exported_from_namespaced_packages():
     assert AirHold is not None
     assert issubclass(UnsupportedNoteTree, ValueError)
     assert TICK_RESOLUTION == 1920
-    assert d2t(1, 4) == 480
+    assert div_to_tick(1, 4) == 480
     assert NoopTracer() is not None
 
 
@@ -334,11 +334,11 @@ def test_event_dataclasses_accept_required_fields_as_positional_arguments():
 def test_raw_tick_uses_int_and_d2t_for_fractions():
     note = R.tap(t=0, x=4, w=1)
     assert note.t == 0
-    note.t = note.t + d2t(1, 8)
+    note.t = note.t + div_to_tick(1, 8)
     assert note.t == 240
-    note.t = note.t + d2t(1, 8)
+    note.t = note.t + div_to_tick(1, 8)
     assert note.t == 480
-    note.t = note.t - d2t(1, 4)
+    note.t = note.t - div_to_tick(1, 4)
     assert note.t == 0
 
 
@@ -354,30 +354,30 @@ def test_raw_tick_augmented_assignment_matches_direct_tick_math():
 
 def test_d2t_rejects_non_whole_tick():
     with pytest.raises(ValueError, match="whole tick"):
-        d2t(1, 7)
+        div_to_tick(1, 7)
 
 
 def test_d2t_rejects_denominator_above_ticks_per_beat():
     with pytest.raises(ValueError, match="denominator must not exceed"):
-        d2t(1, TICK_RESOLUTION + 1)
+        div_to_tick(1, TICK_RESOLUTION + 1)
 
 
 def test_d2t_rejects_non_int_types():
     with pytest.raises(TypeError):
-        d2t(1, 2.0)  # type: ignore[arg-type]
+        div_to_tick(1, 2.0)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
-        d2t("bad", 4)  # type: ignore[arg-type]
+        div_to_tick("bad", 4)  # type: ignore[arg-type]
 
 
 def test_note_and_raw_tick_are_plain_int():
     note = R.tap(t=0, x=4, w=1)
     assert type(note.t) is int
-    note.t = note.t + d2t(1, 8)
+    note.t = note.t + div_to_tick(1, 8)
     assert note.info.t == 240
 
     tap = Tap(t=0, x=4, w=2)
     assert type(tap.t) is int
-    tap.t = d2t(1, 4)
+    tap.t = div_to_tick(1, 4)
     assert tap.t == 480
 
 
@@ -390,7 +390,7 @@ def test_high_level_notes_accept_short_geometry_aliases():
 
     tap.t = (0, 1, 0)
     tap.w = 3
-    assert tap.t == d2t(1, 4)
+    assert tap.t == div_to_tick(1, 4)
     assert tap.w == 3
 
     slide = Slide(t=0, x=4, w=2).with_step(t=480, x=6, w=3)
@@ -1229,10 +1229,10 @@ def test_air_crush_gap_and_color_redirect_to_raw_storage_fields():
 
 def test_air_crush_gap_is_plain_int():
     crush = AirCrush(t=0, x=4, w=2, h=80, gap=0)
-    crush.gap = d2t(1, 8)
+    crush.gap = div_to_tick(1, 8)
     assert crush.gap == 240
     assert type(crush.gap) is int
-    crush.gap = crush.gap + d2t(1, 8)
+    crush.gap = crush.gap + div_to_tick(1, 8)
     assert crush.gap == 480
 
 

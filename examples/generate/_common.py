@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 
 from margrete_rpc import Margrete
-from margrete_rpc.chart import TICK_RESOLUTION, ChartNote, d2t
+from margrete_rpc.chart import TICK_RESOLUTION, ChartNote, div_to_tick
 from margrete_rpc.chart.events import TimelineSpeedEvent
 from margrete_rpc.chart.notes import ColorValue
 from margrete_rpc.chart.util import EASINGS
@@ -15,7 +15,7 @@ from margrete_rpc.chart.util import EASINGS
 BEAT = TICK_RESOLUTION  # 1920 ticks — one whole note
 HALF = BEAT // 2
 DOUBLE = 2 * BEAT
-GAP = d2t(1, 8)  # 1/8-beat gap between consecutive notes
+GAP = div_to_tick(1, 8)  # 1/8-beat gap between consecutive notes
 SPAN = BEAT  # default note duration: one beat
 
 # ------------------------------------------------------------------------------- layout constants

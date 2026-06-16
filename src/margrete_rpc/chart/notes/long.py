@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Self, cast
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
-from ..time import Interval, IntervalLike, PositionLike, resolve_interval, resolve_tick, t2d
+from ..time import Division, DivisionLike, PositionLike, resolve_division, resolve_tick, tick_to_div
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -198,7 +198,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         x: int,
         w: int,
         h: int,
-        gap: int | IntervalLike = DEFAULT_AIRCRUSH_GAP,
+        gap: int | DivisionLike = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         _info: NoteInfo | None = None,
         _id: int | None = None,
@@ -222,18 +222,18 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     def gap(self) -> int:
         """Segment gap as an int tick count.
 
-        Set with an int tick count or an :data:`IntervalLike` ``(numerator, denominator)``
+        Set with an int tick count or an :data:`DivisionLike` ``(numerator, denominator)``
         beat fraction. Read the fraction form via the :attr:`interval` view."""
         return int(self._info.option_value)
 
     @gap.setter
-    def gap(self, value: int | IntervalLike) -> None:
-        self._info.option_value = resolve_interval(value)
+    def gap(self, value: int | DivisionLike) -> None:
+        self._info.option_value = resolve_division(value)
 
     @property
-    def interval(self) -> Interval:
+    def interval(self) -> Division:
         """Read-only ``(numerator, denominator)`` beat-fraction view of ``gap``."""
-        return t2d(int(self._info.option_value))
+        return tick_to_div(int(self._info.option_value))
 
     @property
     def color(self) -> ColorValue | int:

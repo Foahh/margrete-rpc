@@ -18,7 +18,7 @@ from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     PositionLike,
     TickResolver,
-    p2t,
+    pos_to_tick,
     pop_beat_events,
     pop_tick_resolver,
     push_beat_events,
@@ -60,7 +60,7 @@ class EditTransaction:
     _beat_events_token: contextvars.Token[Iterable[BeatEvent] | None] | None = None
 
     def _resolve_position(self, pos: PositionLike) -> int:
-        return p2t(*pos, beat_events=self.chart.events.beat)
+        return pos_to_tick(*pos, beat_events=self.chart.events.beat)
 
     def __enter__(self) -> EditTransaction:
         self._span_active = self.tracer.span(

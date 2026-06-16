@@ -5,7 +5,7 @@ from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..time import IntervalLike, Position, PositionLike, resolve_interval, resolve_tick
+from ..time import DivisionLike, Position, PositionLike, resolve_division, resolve_tick
 from .color import Color, ColorLike, ColorValue
 from .direction import (
     AirDirection,
@@ -98,7 +98,7 @@ class RawNote:
         return self.info.option_value
 
     @option_value.setter
-    def option_value(self, value: int | IntervalLike) -> None:
+    def option_value(self, value: int | DivisionLike) -> None:
         self.info.option_value = value
 
     @property
@@ -390,7 +390,7 @@ class R:
         x: int,
         w: int,
         h: int,
-        gap: int | IntervalLike = 0,
+        gap: int | DivisionLike = 0,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int | None = None,
     ) -> RawNote:
@@ -401,7 +401,7 @@ class R:
             x,
             w,
             h=h,
-            gap=resolve_interval(gap),
+            gap=resolve_division(gap),
             color=color,
             til=til,
         )
