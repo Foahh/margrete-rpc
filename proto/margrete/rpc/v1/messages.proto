@@ -158,7 +158,6 @@ message NoteSpeedEvent {
 }
 
 message BeginEditRequest {
-  string name = 1;
   int32 event_scan_extra_tick = 2;
   repeated int32 event_scan_til = 3;
   bool scan = 4;
@@ -184,8 +183,6 @@ message TimelineSpeedKey {
 }
 
 message ApplyEditRequest {
-  string name = 1;
-
   bool replace_all_notes = 2;
   repeated Note notes_upsert = 3;
   repeated int32 note_ids_delete = 4;

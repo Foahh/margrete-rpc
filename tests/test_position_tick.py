@@ -131,7 +131,7 @@ def test_open_edit_resolves_positions_against_chart_time_signature():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("pos") as tx:
+    with mg.open_edit() as tx:
         # 3/4 => bar length is 3 * 480 = 1440 ticks
         tap = Tap(t=(1, 0), x=0, w=4)
         assert tap.t == 3 * BEAT

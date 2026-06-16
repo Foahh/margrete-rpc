@@ -75,7 +75,7 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
 
 
 def test_begin_edit_request_and_response_have_scan_field():
-    request = messages_pb2.BeginEditRequest(name="edit", scan=False)
+    request = messages_pb2.BeginEditRequest(scan=False)
     response = messages_pb2.BeginEditResponse(current_tick=480, scan=False)
 
     assert request.scan is False

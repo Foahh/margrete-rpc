@@ -162,7 +162,6 @@ class Margrete:
 
     def open_edit(
         self,
-        name: str,
         *,
         event_scan_extra_tick: int | None = None,
         event_scan_til: list[int] | None = None,
@@ -179,7 +178,6 @@ class Margrete:
         exception nothing is applied.
 
         Args:
-            name: Label for the edit, shown in Margrete's undo history.
             event_scan_extra_tick: Extra tick window to scan for timeline events beyond
                 the note range; ``None`` uses the server default.
             event_scan_til: Explicit list of ticks at which to scan timeline-speed events.
@@ -199,9 +197,9 @@ class Margrete:
         from margrete_rpc.transaction import EditTransaction
 
         tx_type = "edit_raw" if raw else "edit"
-        with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type, "tx.name": name}):
+        with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type}):
             req = messages_pb2.BeginEditRequest(
-                name=name, scan=scan, event_scan_note_til_only=event_scan_note_til_only
+                scan=scan, event_scan_note_til_only=event_scan_note_til_only
             )
             if event_scan_extra_tick is not None:
                 req.event_scan_extra_tick = event_scan_extra_tick
@@ -211,7 +209,6 @@ class Margrete:
         begin = response.begin_edit_response
         chart = Chart.from_begin_edit_response(begin, raw=raw)
         return EditTransaction(
-            name=name,
             transport=self._transport,
             current_tick=begin.current_tick,
             chart=chart,

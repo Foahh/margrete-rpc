@@ -26,7 +26,6 @@ def capture_edit_snapshot(chart: Chart) -> EditSnapshot:
 
 
 def build_apply_edit_request(
-    name: str,
     chart: Chart,
     *,
     scan: bool,
@@ -34,7 +33,7 @@ def build_apply_edit_request(
     snapshot: EditSnapshot | None,
 ) -> messages_pb2.ApplyEditRequest | None:
     normalized_events = chart.events.normalized()
-    request = messages_pb2.ApplyEditRequest(name=name)
+    request = messages_pb2.ApplyEditRequest()
 
     if replace_all_notes:
         final_notes = _final_notes_without_ids(chart)

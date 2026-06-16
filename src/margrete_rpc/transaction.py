@@ -39,7 +39,6 @@ class EditTransaction:
     the block raises, nothing is applied.
 
     Attributes:
-        name: Label for the edit, shown in Margrete's undo history.
         current_tick: The editor playhead tick captured when the transaction opened.
         chart: The loaded :class:`~margrete_rpc.chart.Chart`; mutate its ``notes`` and
             ``events`` to describe the edit.
@@ -47,7 +46,6 @@ class EditTransaction:
         replace_all_notes: Replace all notes on apply instead of sending a diff.
     """
 
-    name: str
     transport: RpcTransport
     current_tick: int
     chart: Chart
@@ -67,7 +65,7 @@ class EditTransaction:
     def __enter__(self) -> EditTransaction:
         self._span_active = self.tracer.span(
             "margrete.tx",
-            attrs={"tx.type": self.tx_type, "tx.name": self.name},
+            attrs={"tx.type": self.tx_type},
         )
         self._span_active.__enter__()
         self._beat_events_token = push_beat_events(self.chart.events.beat)
@@ -86,7 +84,6 @@ class EditTransaction:
         try:
             if exc_type is None:
                 request = build_apply_edit_request(
-                    self.name,
                     self.chart,
                     scan=self.scan,
                     replace_all_notes=self.replace_all_notes,
@@ -95,7 +92,7 @@ class EditTransaction:
                 if request is not None:
                     with self.tracer.span(
                         "margrete.tx.apply",
-                        attrs={"tx.type": self.tx_type, "tx.name": self.name},
+                        attrs={"tx.type": self.tx_type},
                     ):
                         self.transport.request(messages_pb2.Envelope(apply_edit_request=request))
             return False

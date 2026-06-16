@@ -37,13 +37,12 @@ def test_open_edit_sends_scan_true_and_commits_apply_edit():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("move") as tx:
+    with mg.open_edit() as tx:
         tx.chart.notes[0].x = 5
 
     begin_request = transport.requests[0].begin_edit_request
     apply_request = transport.requests[1].apply_edit_request
     assert begin_request.scan is True
-    assert apply_request.name == "move"
     assert apply_request.replace_all_notes is False
     assert len(apply_request.notes_upsert) == 1
     assert apply_request.notes_upsert[0].id == 1
@@ -105,7 +104,7 @@ def test_open_edit_sends_event_scan_note_til_only():
         ]
     )
     mg = Margrete(transport=transport)
-    with mg.open_edit("til-opt", event_scan_note_til_only=True):
+    with mg.open_edit(event_scan_note_til_only=True):
         pass
     assert transport.requests[0].begin_edit_request.event_scan_note_til_only is True
 
@@ -126,7 +125,7 @@ def test_open_edit_scan_false_replaces_open_append_flow():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("append", scan=False) as tx:
+    with mg.open_edit(scan=False) as tx:
         assert tx.current_tick == 480
         assert tx.chart.notes == []
         tx.chart.notes.append(Tap(t=480, x=2, w=1))
@@ -162,7 +161,7 @@ def test_scan_false_rejects_existing_note_ids_before_commit_request():
     mg = Margrete(transport=transport)
 
     with pytest.raises(ValueError, match="scan=false transactions cannot send existing note ids"):
-        with mg.open_edit("bad", scan=False) as tx:
+        with mg.open_edit(scan=False) as tx:
             note = R.tap(t=480, x=2, w=1)
             note._id = 99
             tx.chart.notes.append(note)
@@ -188,7 +187,7 @@ def test_noop_scanned_edit_skips_apply_request():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("noop"):
+    with mg.open_edit():
         pass
 
     assert len(transport.requests) == 1
@@ -209,7 +208,7 @@ def test_scanned_bpm_value_edit_with_same_tick_sends_apply_request():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("bpm") as tx:
+    with mg.open_edit() as tx:
         tx.chart.events.bpm[0].bpm = 180.0
 
     apply_request = transport.requests[1].apply_edit_request
@@ -233,7 +232,7 @@ def test_scanned_timeline_speed_value_edit_with_same_key_sends_apply_request():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("til") as tx:
+    with mg.open_edit() as tx:
         tx.chart.events.til[0].speed = 1.5
 
     apply_request = transport.requests[1].apply_edit_request
@@ -273,7 +272,7 @@ def test_scanned_note_edit_uses_id_upsert_when_children_unchanged():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("ids", raw=True) as tx:
+    with mg.open_edit(raw=True) as tx:
         assert isinstance(tx.chart, Chart)
         tx.chart.notes[0].x = 3
 
@@ -320,7 +319,7 @@ def test_scanned_note_edit_modifies_child_in_place_when_ids_preserved():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("child", raw=True) as tx:
+    with mg.open_edit(raw=True) as tx:
         tx.chart.notes[0].children[0].t = 500
 
     apply_request = transport.requests[1].apply_edit_request
@@ -341,7 +340,7 @@ def test_scanned_note_edit_rebuilds_tree_when_id_structure_changes():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("child", raw=True) as tx:
+    with mg.open_edit(raw=True) as tx:
         tx.chart.notes[0].children.insert(0, R.hold_end(t=240, x=1, w=2))
 
     apply_request = transport.requests[1].apply_edit_request
@@ -372,7 +371,7 @@ def test_scanned_unchanged_events_send_no_deletes():
     )
     mg = Margrete(transport=transport)
 
-    with mg.open_edit("note-only") as tx:
+    with mg.open_edit() as tx:
         tx.chart.notes[0].x = 5
 
     apply_request = transport.requests[1].apply_edit_request
