@@ -17,25 +17,24 @@ Use `open_edit` parameters to control the scan:
 
 ```python
 with m.open_edit(
-    "edit",
     # ticks to scan past the last note (default: 19200)
-    event_scan_extra_tick=1920 * 4,
-    # only scan timeline IDs that have notes — faster for charts with many scroll-speed events
-    event_scan_note_til_only=True,
+    event_scan_lookahead_ticks=1920 * 4,
 ) as tx:
     ...
 ```
 
-Or provide an explicit list of timeline IDs to scan with `event_scan_til`:
+Or provide an explicit list of timeline IDs to scan:
 
 ```python
-with m.open_edit(event_scan_til=[0, 3840, 7680]) as tx:
+with m.open_edit(event_scan_til_ids=[0, 3840, 7680]) as tx:
     ...
 ```
 
+Pass `event_scan_til_ids=[]` to scan all default timelines (0-15) without note-based filtering:
+
 ## Undo and note deletion
 
-When an SDK edit **deletes** notes, pressing Undo in Margrete may restore those notes in a duplicated state instead of cleanly reversing the deletion.
+When a Python-scripted edit **deletes** notes, pressing Undo in Margrete may restore those notes in a duplicated state instead of cleanly reversing the deletion.
 
 Additions and modifications undo safely — only deletions are affected.
 

@@ -55,7 +55,7 @@ Tap(t=(2, 1, 480), x=0, w=4)   # bar 2, beat 1, offset 480
 
 ### Implicit resolution inside a transaction
 
-Inside a `with m.open_edit()` block, the chart's beat events are active as a context variable. Position tuples resolve against the **actual time signature** of the chart automatically — no need to pass beat events explicitly.
+Inside a `with m.open_edit()` block, the chart's beat events are active as a context variable. Tuples resolve against the **actual time signature** of the chart automatically — no need to pass beat events explicitly.
 
 ```python
 with m.open_edit() as tx:
