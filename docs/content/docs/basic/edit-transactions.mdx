@@ -18,8 +18,8 @@ with m.open_edit() as tx:
     tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
 ```
 
-On a clean exit, the Python client sends the edit to Margrete. If the block raises an exception,
-nothing is applied.
+The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
+exception, no changes are applied.
 
 ## Mental model
 

@@ -3,8 +3,8 @@
   "pages": [
     "---Introduction---",
     "index",
-    "getting-started",
-    "guides",
+    "basic",
+    "advanced",
     "limitations",
     "---Reference---",
     "reference"

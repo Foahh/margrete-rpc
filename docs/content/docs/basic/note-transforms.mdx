@@ -15,6 +15,9 @@ with m.open_edit() as tx:
         note.shift(x=2)
 ```
 
+The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
+exception, no changes are applied.
+
 ## Mutated or cloned
 
 Most transform methods come in two forms:

@@ -1,0 +1,174 @@
+---
+title: Events
+description: Work with tempo, time-signature, and speed changes.
+---
+
+Events are chart-wide changes such as BPM, time signatures, scroll speed, and note
+speed. On the Python side they are simple objects in `tx.chart.events`, so most
+event edits are just list edits inside an `open_edit()` block.
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.events import BpmEvent
+
+m = Margrete()
+
+with m.open_edit() as tx:
+    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
+```
+
+The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
+exception, no changes are applied.
+
+## Mental model
+
+`tx.chart.events` has four lists:
+
+| List                         | What it controls                         |
+| ---------------------------- | ---------------------------------------- |
+| `tx.chart.events.bpm`        | Song tempo changes.                      |
+| `tx.chart.events.beat`       | Time-signature changes.                  |
+| `tx.chart.events.til`        | Scroll speed for a specific timeline.    |
+| `tx.chart.events.note_speed` | Note speed, independent of scroll speed. |
+
+Each list contains normal dataclass objects. You can append new events, change fields
+on existing events, or replace the list with a filtered list.
+
+```python
+with m.open_edit() as tx:
+    # Read
+    for event in tx.chart.events.bpm:
+        print(event.t, event.bpm)
+
+    # Mutate
+    tx.chart.events.bpm[0].bpm = 185.0
+
+    # Filter
+    tx.chart.events.note_speed = [
+        event for event in tx.chart.events.note_speed if event.t < 7680
+    ]
+```
+
+## Change the chart BPM
+
+Use `BpmEvent(t, bpm)` to set the tempo from a tick onward.
+
+```python
+from margrete_rpc.chart.events import BpmEvent
+
+with m.open_edit() as tx:
+    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
+    tx.chart.events.bpm.append(BpmEvent(t=7680, bpm=200.0))
+```
+
+If you want to update an existing BPM event, find it and change `bpm`:
+
+```python
+with m.open_edit() as tx:
+    for event in tx.chart.events.bpm:
+        if event.t == 0:
+            event.bpm = 185.0
+            break
+```
+
+`t` is a raw tick. For common tick values and position helpers, see
+[Time & Position](/docs/basic/time-position).
+
+## Add a time-signature change
+
+Use `BeatEvent(bar, beats_per_bar, beat_unit)` for time signatures. Unlike most
+events, it is placed by bar number instead of tick.
+
+```python
+from margrete_rpc.chart.events import BeatEvent
+
+with m.open_edit() as tx:
+    tx.chart.events.beat.append(BeatEvent(0, 4, 4))   # 4/4 from bar 0
+    tx.chart.events.beat.append(BeatEvent(16, 3, 4))  # 3/4 from bar 16
+```
+
+After you add beat events, tuple positions in the same transaction use them
+automatically (see [Time & Position](/docs/basic/time-position#positions) for detail):
+
+```python
+from margrete_rpc.chart.events import BeatEvent
+from margrete_rpc.chart.notes import Tap
+
+with m.open_edit(snapshot=False) as tx:
+    tx.chart.events.beat.append(BeatEvent(0, 3, 4))
+
+    # This means bar 4 in 3/4, not "4 * 1920 ticks".
+    tx.chart.notes.append(Tap(t=(4, 0), x=4, w=4))
+```
+
+## Make a scroll-speed bump
+
+Use `TimelineSpeedEvent(til, t, speed)` to change scroll speed on one timeline.
+For normal ground notes, timeline `0` is the common one.
+
+```python
+from margrete_rpc.chart.events import TimelineSpeedEvent
+
+with m.open_edit() as tx:
+    # Speed up at tick 3840, then return to normal one tick later.
+    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=3840, speed=1.5))
+    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=3841, speed=1.0))
+```
+
+For a longer section, place the reset at the end of the section:
+
+```python
+with m.open_edit() as tx:
+    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=3840, speed=0.5))
+    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=7680, speed=1.0))
+```
+
+<Callout type="warn">
+  Scroll-speed events are scanned when an edit opens. If an event is far beyond the last note, use
+  `open_edit(event_scan_lookahead_ticks=...)`. See [Limitations](/docs/limitations#event-scanning).
+</Callout>
+
+## Change note speed
+
+Use `NoteSpeedEvent(t, speed)` when you want note speed changes separate from
+timeline scroll speed.
+
+```python
+from margrete_rpc.chart.events import NoteSpeedEvent
+
+with m.open_edit() as tx:
+    tx.chart.events.note_speed.append(NoteSpeedEvent(t=0, speed=1.0))
+    tx.chart.events.note_speed.append(NoteSpeedEvent(t=3840, speed=1.25))
+```
+
+Like BPM and scroll speed, the value applies from `t` onward until another event
+changes it.
+
+## Clean up events
+
+Because event lists are normal Python lists, cleanup is usually a filter.
+
+```python
+with m.open_edit() as tx:
+    # Remove BPM changes after tick 7680.
+    tx.chart.events.bpm = [
+        event for event in tx.chart.events.bpm if event.t <= 7680
+    ]
+
+    # Remove all scroll-speed events on timeline 0.
+    tx.chart.events.til = [
+        event for event in tx.chart.events.til if event.til != 0
+    ]
+```
+
+If two events target the same place, the later item in the list wins when the edit is
+sent:
+
+```python
+with m.open_edit() as tx:
+    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
+    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=185.0))  # this one wins
+```
+
+For BPM and note speed, "same place" means the same tick. For time signatures, it
+means the same bar. For timeline speed, it means the same tick and timeline id.
