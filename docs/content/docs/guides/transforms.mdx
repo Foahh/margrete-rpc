@@ -3,7 +3,7 @@ title: Transform Notes
 description: Convert, move, align, mirror, scale, clone, split, and merge notes.
 ---
 
-Transforms are methods on typed note objects. Use them when you want to convert or adjust existing notes instead of rebuilding them by hand.
+Transforms are methods on `Note` objects. Use them when you want to adjust existing notes instead of rebuilding them by hand.
 
 ```python
 from margrete_rpc import Margrete
@@ -15,23 +15,21 @@ with m.open_edit() as tx:
         note.shift(x=2)
 ```
 
-Transforms work on the whole note. If a note has long-note joints or attached air notes, the transform updates those child points too.
-
-## In-place or cloned
+## Mutated or cloned
 
 Most transform methods come in two forms:
 
-| In-place         | Cloning          | Meaning                                             |
-| ---------------- | ---------------- | --------------------------------------------------- |
-| `shift(...)`     | `shifted(...)`   | Change this note, or return a changed copy.         |
-| `scale(...)`     | `scaled(...)`    | Change this note, or return a changed copy.         |
-| `align(...)`     | `aligned(...)`   | Change this note, or return a changed copy.         |
-| `flip(...)`      | `flipped(...)`   | Change this note, or return a changed copy.         |
-| `clamp_w(...)`   | `clamped_w(...)` | Change this note, or return a changed copy.         |
-| `converted(...)` | n/a              | Return a compatible note type with copied geometry. |
-| `clone()`        | n/a              | Return a deep copy without server ids.              |
+| Mutating       | Cloning          | Meaning                                             |
+| -------------- | ---------------- | --------------------------------------------------- |
+| `shift(...)`   | `shifted(...)`   | Change this note, or return a changed copy.         |
+| `scale(...)`   | `scaled(...)`    | Change this note, or return a changed copy.         |
+| `align(...)`   | `aligned(...)`   | Change this note, or return a changed copy.         |
+| `flip(...)`    | `flipped(...)`   | Change this note, or return a changed copy.         |
+| `clamp(...)`   | `clamped_w(...)` | Change this note, or return a changed copy.         |
+| n/a            | `converted(...)` | Return a compatible note type with copied geometry. |
+| n/a            | `clone()`        | Return a deep copy.                                 |
 
-Use the in-place form when editing `tx.chart.notes` directly:
+Use the mutated form when editing `tx.chart.notes` directly:
 
 ```python
 with m.open_edit() as tx:
@@ -47,11 +45,162 @@ with m.open_edit() as tx:
     tx.chart.notes.extend(copies)
 ```
 
+## Shift notes
+
+`shift()` adds deltas to note fields.
+
+```python
+note.shift(t=1920)  # move later by one beat
+note.shift(x=2)     # move right by 2 lanes
+note.shift(w=1)     # make 1 lane wider
+note.shift(h=20)    # raise air height by 20
+```
+
+For `t`, you can also pass a `Position` tuple. This is resolved the same way as [constructor positions](/docs/guides/notes#positioning).
+
+```python
+note.shift(t=(1, 0))  # shift by one bar in the active time-signature context
+```
+
+Each delta can also be a callable that receives the current value:
+
+```python
+note.shift(x=lambda x: 15 - x)
+note.shift(w=lambda w: max(1, w - 1))
+```
+
+## Align notes to a grid
+
+`align()` snaps timing to a grid interval.
+
+```python
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.align((1, 384))
+```
+
+`mode` controls how snapping works:
+
+| Mode      | Behavior                                            |
+| --------- | --------------------------------------------------- |
+| `"round"` | Snap to the nearest grid line. This is the default. |
+| `"floor"` | Snap backward to the previous grid line.            |
+| `"ceil"`  | Snap forward to the next grid line.                 |
+
+```python
+note.align((1, 384), mode="floor")
+```
+
+## Flip notes
+
+`flip()` mirrors notes horizontally across the field. The default field width is 16 lanes.
+
+```python
+note.flip()
+```
+
+For a note at `x=2, w=4`, flipping in a 16-lane field moves it to `x=10, w=4`.
+
+Use `field=` for a different lane width:
+
+```python
+note.flip(field=8)
+```
+
+Directional notes are mirrored too. For example, `"left"` flicks become `"right"` flicks.
+
+## Clamp lane
+
+`clamp()` keeps note geometry inside a lane range, default to `[0, 16)`.
+
+
+```python
+note.clamp() # default left=0, right=16
+```
+
+The right edge is exclusive, so `right=16` means the note must end before lane 16. Also, width is never clamped below `1`.
+
+This is useful after shifting or flipping generated notes:
+
+```python
+for note in tx.chart.notes:
+    note.shift(x=-2).clamp(left=0, right=16)
+```
+
+## Scale timing
+
+`scale()` changes timing around a pivot tick which defaults to `0`.
+
+```python
+note.scale(2.0, pivot=0)
+```
+
+With `factor=2.0`, every point moves twice as far from the pivot. With `factor=0.5`, every point moves halfway toward the pivot.
+
+```python
+for note in tx.chart.notes:
+    note.scale(0.5)
+```
+
+`pivot` can be a tick or a `Position` tuple:
+
+```python
+note.scale(1.5, pivot=(4, 0))
+```
+
+## Clone notes
+
+`clone()` makes a deep copy. Use it when duplicating notes.
+
+```python
+with m.open_edit() as tx:
+    copies = []
+
+    for note in tx.chart.notes:
+        copies.append(note.clone().shift(t=1920))
+
+    tx.chart.notes.extend(copies)
+```
+
+## Split slides
+
+`split()` divides a slide-like note into two notes. It supports `Slide`, `AirSlide`, and `AirCrush`.
+
+```python
+from margrete_rpc.chart.notes import Slide, split
+
+slide = (
+    Slide(t=(0, 0), x=0, w=4)
+    .with_ctrl(t=(0, 2), x=6, w=4) # joints[0]
+    .with_step(t=(1, 0), x=8, w=4) # joints[1]
+)
+
+left, right = split(slide, (0, 2))
+left, right = split(slide, slide.joints[0])
+```
+
+The split point can be a `Position` tuple, a raw tick, or one of the note's joints. The split must be inside the note, not at the final joint.
+
+## Merge slides
+
+`merge()` combines consecutive slide-like notes of the same type. It supports `Slide`, `AirSlide`, and `AirCrush`.
+
+```python
+from margrete_rpc.chart.notes import Slide, merge
+
+first = Slide(t=(0, 0), x=0, w=4).with_step(t=(1, 0), x=4, w=4)
+second = Slide(t=(1, 0), x=4, w=4).with_step(t=(2, 0), x=8, w=4)
+
+combined = merge([first, second])
+```
+
+The notes must not overlap, and all notes passed to `merge()` must be the same type.
+
 ## Convert notes
 
 Use `converted()` when you want to rebuild a note as another compatible note type without manually copying its timing and geometry.
 
-`converted()` always returns a new note. It does not change the original note, and the new note does not keep the original server id. Pass keyword overrides for fields the target type needs, such as `dir`, `h`, `gap`, or `color`.
+`converted()` always returns a new note. It does not change the original note. Pass keyword overrides for fields the target type needs, such as `dir`, `h`, `gap`, or `color`.
 
 | Source note | Convertible targets                        |
 | ----------- | ------------------------------------------ |
@@ -102,8 +251,6 @@ air_slide = hold.converted(AirSlide, h=80)
 crush = slide.converted(AirCrush, h=80, gap=(1, 8), color="green")
 ```
 
-Use `h` when converting a ground long note to an air-long type, because the original note has no air height. Use `gap` and `color` when converting to `AirCrush`.
-
 ### Air-long conversions
 
 `AirSlide` and `AirCrush` can convert back to compatible long-note types.
@@ -129,190 +276,4 @@ from margrete_rpc.chart.notes import AirHold, Hold
 
 hold = Hold(t=(0, 0), x=4, w=4).with_step(t=(1, 0), x=4, w=4)
 air_hold = hold.converted(AirHold, h=80)
-```
-
-Not every pair of note types is convertible. For example, ground notes do not convert directly to long notes, and attached `Air` notes do not convert by themselves. Build the target note manually when there is no `converted()` path.
-
-## Shift notes
-
-`shift()` adds deltas to note fields.
-
-```python
-note.shift(t=1920)  # move later by one beat
-note.shift(x=2)     # move right by 2 lanes
-note.shift(w=1)     # make 1 lane wider
-note.shift(h=20)    # raise air height by 20
-```
-
-For `t`, you can also pass a tuple. This is resolved the same way as constructor positions.
-
-```python
-note.shift(t=(1, 0))  # shift by one bar in the active time-signature context
-```
-
-Each delta can also be a callable that receives the current value:
-
-```python
-note.shift(x=lambda x: 15 - x)
-note.shift(w=lambda w: max(1, w - 1))
-```
-
-## Align notes to a grid
-
-`align()` snaps timing to a grid interval.
-
-```python
-from margrete_rpc.chart.time import d2t
-
-eighth = d2t(1, 8)
-
-with m.open_edit() as tx:
-    for note in tx.chart.notes:
-        note.align(eighth)
-```
-
-`mode` controls how snapping works:
-
-| Mode      | Behavior                                            |
-| --------- | --------------------------------------------------- |
-| `"round"` | Snap to the nearest grid line. This is the default. |
-| `"floor"` | Snap backward to the previous grid line.            |
-| `"ceil"`  | Snap forward to the next grid line.                 |
-
-```python
-note.align(d2t(1, 16), mode="floor")
-```
-
-## Flip notes
-
-`flip()` mirrors notes horizontally across the field. The default field width is 16 lanes.
-
-```python
-note.flip()
-```
-
-For a note at `x=2, w=4`, flipping in a 16-lane field moves it to `x=10, w=4`.
-
-Use `field=` for a different lane width:
-
-```python
-note.flip(field=8)
-```
-
-Directional notes are mirrored too. For example, left flicks become right flicks.
-
-## Clamp width
-
-`clamp_w()` keeps note geometry inside a lane range.
-
-```python
-note.clamp_w(left=0, right=16)
-```
-
-The right edge is exclusive, so `right=16` means the note must end before lane 16. Width is never clamped below `1`.
-
-This is useful after shifting or flipping generated notes:
-
-```python
-for note in tx.chart.notes:
-    note.shift(x=-2).clamp_w(left=0, right=16)
-```
-
-## Scale timing
-
-`scale()` changes timing around a pivot tick.
-
-```python
-note.scale(2.0, pivot=0)
-```
-
-With `factor=2.0`, every point moves twice as far from the pivot. With `factor=0.5`, every point moves halfway toward the pivot.
-
-```python
-for note in tx.chart.notes:
-    note.scale(0.5, pivot=0)
-```
-
-`pivot` can be a tick or a tuple:
-
-```python
-note.scale(1.5, pivot=(4, 0))
-```
-
-## Clone notes
-
-`clone()` makes a deep copy and removes server ids. Use it when duplicating notes.
-
-```python
-with m.open_edit() as tx:
-    copies = []
-
-    for note in tx.chart.notes:
-        copies.append(note.clone().shift(t=1920))
-
-    tx.chart.notes.extend(copies)
-```
-
-## Split slides
-
-`split()` divides a slide-like note into two notes. It supports `Slide`, `AirSlide`, and `AirCrush`.
-
-```python
-from margrete_rpc.chart.notes import Slide, split
-
-slide = (
-    Slide(t=(0, 0), x=0, w=4)
-    .with_ctrl(t=(0, 2), x=6, w=4)
-    .with_step(t=(1, 0), x=8, w=4)
-)
-
-left, right = split(slide, (0, 2))
-```
-
-The split point can be a tuple, a raw tick, or one of the note's joints. The split must be inside the note, not at the final joint.
-
-## Merge slides
-
-`merge()` combines consecutive slide-like notes of the same type. It supports `Slide`, `AirSlide`, and `AirCrush`.
-
-```python
-from margrete_rpc.chart.notes import Slide, merge
-
-first = Slide(t=(0, 0), x=0, w=4).with_step(t=(1, 0), x=4, w=4)
-second = Slide(t=(1, 0), x=4, w=4).with_step(t=(2, 0), x=8, w=4)
-
-combined = merge([first, second])
-```
-
-The notes must not overlap, and all notes passed to `merge()` must be the same type.
-
-## Common recipes
-
-Mirror a selected lane range:
-
-```python
-with m.open_edit() as tx:
-    for note in tx.chart.notes:
-        if 0 <= note.x < 8:
-            note.flip()
-```
-
-Duplicate a phrase one bar later:
-
-```python
-with m.open_edit() as tx:
-    copies = [note.shifted(t=(1, 0)) for note in tx.chart.notes]
-    tx.chart.notes.extend(copies)
-```
-
-Quantize everything to a sixteenth-note grid:
-
-```python
-from margrete_rpc.chart.time import d2t
-
-sixteenth = d2t(1, 16)
-
-with m.open_edit() as tx:
-    for note in tx.chart.notes:
-        note.align(sixteenth)
 ```

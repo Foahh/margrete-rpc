@@ -24,16 +24,16 @@ with m.open_edit() as tx:
 
 A note is defined by its timing and lane geometry:
 
-| Field | Meaning                                                                                   |
-| ----- | ----------------------------------------------------------------------------------------- |
-| `t`   | Timing. Pass a raw tick `int`, or a musical tuple such as `(bar, beat, offset)`. |
-| `x`   | Left lane index. Margrete's standard ground field is 16 lanes wide, from `0` to `15`.     |
-| `w`   | Width in lanes. A note with `x=4, w=4` covers lanes `4`, `5`, `6`, and `7`.               |
-| `h`   | Air height. Only air-long notes and air-crush notes use this.                             |
+| Field | Meaning                                                                               |
+| ----- | ------------------------------------------------------------------------------------- |
+| `t`   | Timing. Pass a raw tick `int`, or a `Position` tuple such as `(bar, beat, offset)`.      |
+| `x`   | Left lane index. Margrete's standard ground field is 16 lanes wide, from `0` to `15`. |
+| `w`   | Width in lanes. A note with `x=4, w=4` covers lanes `4`, `5`, `6`, and `7`.           |
+| `h`   | Air height. Only air-long notes and air-crush notes use this.                         |
 
 ## Positioning
 
-Every typed note accepts `t` as either a raw tick or a tuple:
+Every `Note` accepts `t` as either a raw tick or a `Position` tuple:
 
 | Form                  | Meaning               |
 | --------------------- | --------------------- |
@@ -43,7 +43,7 @@ Every typed note accepts `t` as either a raw tick or a tuple:
 
 Position values are zero-based. `(2, 0, 0)` means bar 2, beat 0, offset 0 in the Python API, which is the third bar if you are counting bars from 1 by hand.
 
-Inside `with m.open_edit()` blocks, tuples resolve with the chart's actual time signatures. Outside an edit transaction, they use the default 4/4 context unless you call the time helpers with explicit beat events. See the [Time & Position](/docs/guides/time) guide for the full timing model.
+Inside `with m.open_edit()` blocks, `Position` tuples resolve with the chart's actual time signatures. Outside an edit transaction, they use the default 4/4 context unless you call the time helpers with explicit beat events. See the [Time & Position](/docs/guides/time) guide for the full timing model.
 
 <div className="flex items-center justify-start gap-2">
     ```python
@@ -181,7 +181,7 @@ The final joint will automatically become a step joint before being sent to Marg
 | Field   | Meaning                                                 |
 | ------- | ------------------------------------------------------- |
 | `h`     | Air height at the begin or joint.                       |
-| `gap`   | Segment spacing, as raw ticks or a beat fraction tuple. |
+| `gap`   | Segment spacing, as raw ticks or a `Interval` tuple. |
 | `color` | Crush color, as `ColorValue` or a string.               |
 
 ```python
@@ -215,7 +215,6 @@ air = Air(AirDirection.UP, t=(0, 0), x=4, w=4)
 tap.air = air # or
 tap.add_air(air)
 ```
-
 
 Use `with_air()` when you want to keep the original note unchanged:
 
@@ -281,14 +280,14 @@ from margrete_rpc.chart.notes import R, RawNote, Tap
 # Build a raw tap manually.
 raw = R.tap(t=0, x=4, w=4)
 
-# Convert typed notes to raw before low-level inspection.
+# Convert `Note` to `RawNote` before low-level inspection.
 typed = Tap(t=(0, 0), x=4, w=4)
 raw = typed.to_raw()
 ```
 
 ## Validation
 
-Call `note.validate()` when you want to catch invalidations early. 
+Call `note.validate()` when you want to catch invalidations early.
 `to_raw()` also validates by default.
 
 ```python
@@ -298,6 +297,7 @@ raw = note.to_raw(skip_validation=True)  # skip validation when you already know
 ```
 
 Common validation failures include:
+
 - zero or negative width,
 - long-note joints that are not in increasing time order,
 - missing joints on long notes,
