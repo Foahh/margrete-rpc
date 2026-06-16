@@ -21,6 +21,8 @@ from .types import LongAttr, NoteInfo, NoteType
 
 
 class _GroundNote(_AirAttachable, _GeometryInfoMixin, _TransformMixin):
+    __slots__ = ("_type", "_info", "_id", "_air")
+
     def __init__(
         self,
         t: int,
@@ -90,6 +92,8 @@ class Tap(_GroundNote):
     An :class:`Air` note may be attached above a ground note.
     """
 
+    __slots__ = ()
+
     def __init__(
         self,
         *,
@@ -121,6 +125,8 @@ class Tap(_GroundNote):
 class Damage(_GroundNote):
     """A damage (penalty) note. Same geometry as :class:`Tap`."""
 
+    __slots__ = ()
+
     def __init__(
         self,
         *,
@@ -143,6 +149,8 @@ class Extap(_GroundNote):
     Same geometry as :class:`Tap`, plus a directional attribute. See :class:`Tap` for the
     constructor's timing/lane arguments.
     """
+
+    __slots__ = ()
 
     @property
     def dir(self) -> ExtapDirection:
@@ -187,6 +195,8 @@ class Flick(_GroundNote):
     Same geometry as :class:`Tap`, plus a direction (default :attr:`FlickDirection.AUTO`).
     See :class:`Tap` for the constructor's timing/lane arguments.
     """
+
+    __slots__ = ()
 
     @property
     def dir(self) -> FlickDirection:

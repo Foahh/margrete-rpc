@@ -196,6 +196,8 @@ def _set_direction[E: StrEnum](
 
 
 class _GeometryInfoMixin:
+    __slots__ = ()
+
     _info: NoteInfo
 
     @property
@@ -238,6 +240,8 @@ class _GeometryInfoMixin:
 
 
 class _HeightMixin:
+    __slots__ = ()
+
     _info: NoteInfo
 
     @property
@@ -250,6 +254,8 @@ class _HeightMixin:
 
 
 class _TransformMixin:
+    __slots__ = ()
+
     _info: NoteInfo
     _id: int | None
 

@@ -22,6 +22,8 @@ def _event_tick_to_pos(tick: int) -> Position:
 
 
 class _TickedEvent:
+    __slots__ = ("_t",)
+
     _t: int
 
     @property
@@ -46,6 +48,8 @@ class BpmEvent(_TickedEvent):
         bpm: Beats per minute from this tick onward.
     """
 
+    __slots__ = ("bpm",)
+
     bpm: float
 
     def __init__(self, t: int | PositionLike, bpm: float) -> None:
@@ -68,7 +72,7 @@ class BpmEvent(_TickedEvent):
         return messages_pb2.BpmEvent(tick=self.t, bpm=self.bpm)
 
 
-@dataclass
+@dataclass(slots=True)
 class BeatEvent:
     """A time-signature change, anchored at a bar.
 
@@ -107,6 +111,8 @@ class TimelineSpeedEvent(_TickedEvent):
         speed: Scroll-speed multiplier from this tick onward.
     """
 
+    __slots__ = ("til", "speed")
+
     til: int
     speed: float
 
@@ -143,6 +149,8 @@ class NoteSpeedEvent(_TickedEvent):
         p: Timing as a ``(bar, beat, offset)`` :class:`Position`; read-only view of ``t``.
         speed: Note-speed multiplier from this tick onward.
     """
+
+    __slots__ = ("speed",)
 
     speed: float
 

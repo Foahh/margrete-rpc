@@ -118,6 +118,20 @@ class NoteInfo:
     ``t`` or a :data:`Position` ``p``; ``option_value`` accepts an :data:`DivisionLike`.
     """
 
+    __slots__ = (
+        "type",
+        "long_attr",
+        "ex_attr",
+        "x",
+        "w",
+        "h",
+        "til",
+        "_direction",
+        "_variation_id",
+        "_t",
+        "_option_value",
+    )
+
     def __init__(
         self,
         type: NoteType = NoteType.UNKNOWN,

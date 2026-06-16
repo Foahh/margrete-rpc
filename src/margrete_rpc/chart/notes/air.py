@@ -31,6 +31,8 @@ class Air(_GeometryInfoMixin, _TransformMixin):
     :attr:`inverted` flag.
     """
 
+    __slots__ = ("_info", "_id")
+
     @property
     def dir(self) -> AirDirection:
         """The air direction (:class:`AirDirection`)."""
@@ -103,6 +105,8 @@ class Air(_GeometryInfoMixin, _TransformMixin):
 
 
 class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _AirJointHost):
+    __slots__ = ("_info", "_id", "_joints")
+
     _note_type: NoteType
     _joint_type = AirJoint
 
@@ -189,6 +193,8 @@ class AirSlide(_AttachableAirLong):
     attached above a ground note like a plain :class:`Air`.
     """
 
+    __slots__ = ()
+
     _note_type = NoteType.AIRSLIDE
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
@@ -207,6 +213,8 @@ class AirHold(_AttachableAirLong):
     Like :class:`AirSlide` in construction; see :meth:`add_step` / :meth:`add_ctrl`.
     """
 
+    __slots__ = ()
+
     _note_type = NoteType.AIRHOLD
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
@@ -221,6 +229,8 @@ class _AirAttachable:
     Provides the :attr:`air` slot plus :meth:`add_air` (in place) and :meth:`with_air`
     (returns a copy). The attached air's geometry must match the host note.
     """
+
+    __slots__ = ()
 
     _air: Air | AirSlide | AirHold | None
 

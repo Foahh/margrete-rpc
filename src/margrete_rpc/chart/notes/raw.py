@@ -25,7 +25,7 @@ from .types import (
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class RawNote:
     """A note as a raw protobuf tree: a :class:`NoteInfo` plus child notes.
 

@@ -31,6 +31,8 @@ class Joint(_GeometryInfoMixin):
     control) that determines how the long note's shape passes through it.
     """
 
+    __slots__ = ("_info", "_id", "_kind")
+
     def __init__(
         self,
         *,
@@ -71,6 +73,8 @@ class Joint(_GeometryInfoMixin):
 class AirJoint(Joint, _HeightMixin):
     """A :class:`Joint` for air long notes, additionally carrying height ``h``."""
 
+    __slots__ = ()
+
     def __init__(
         self,
         *,
@@ -95,6 +99,8 @@ class AirJoint(Joint, _HeightMixin):
 
 
 class _JointHostBase:
+    __slots__ = ()
+
     _joints: list[Joint]
     _joint_type: ClassVar[type[Joint]] = Joint
     _info: NoteInfo
@@ -197,6 +203,8 @@ class _JointHostBase:
 
 
 class _JointHost(_JointHostBase):
+    __slots__ = ()
+
     def _make_joint(
         self,
         t: int,
@@ -234,6 +242,8 @@ class _JointHost(_JointHostBase):
 
 
 class _AirJointHost(_JointHostBase):
+    __slots__ = ()
+
     _joint_type: ClassVar[type[Joint]] = AirJoint
 
     def _make_joint(

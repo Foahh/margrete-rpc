@@ -27,6 +27,8 @@ from .types import LongAttr, NoteInfo, NoteType
 
 
 class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
+    __slots__ = ("_info", "_id", "_joints", "_air")
+
     _note_type: NoteType
 
     def __init__(
@@ -118,6 +120,8 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
     joint. An :class:`Air` note may be attached via :attr:`air`.
     """
 
+    __slots__ = ()
+
     _note_type = NoteType.SLIDE
 
     def with_step(self, *, t: int | PositionLike, x: int, w: int) -> Self:
@@ -147,6 +151,8 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
     Construct with the begin geometry, then set the end with :meth:`with_step` (or
     :meth:`add_step`). An :class:`Air` note may be attached via :attr:`air`.
     """
+
+    __slots__ = ()
 
     _note_type = NoteType.HOLD
 
@@ -187,6 +193,8 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     (:attr:`gap`, with the :attr:`interval` beat-fraction view) controlling the spacing of
     generated segments between joints. Add control joints with :meth:`with_ctrl` / :meth:`add_ctrl`.
     """
+
+    __slots__ = ()
 
     _note_type = NoteType.AIRCRUSH
     _joint_type = AirJoint
