@@ -9,7 +9,7 @@ from margrete_rpc.chart.time import (
     p2t,
     pop_beat_events,
     push_beat_events,
-    resolve_density,
+    resolve_interval,
     t2d,
     t2p,
 )
@@ -118,7 +118,7 @@ def test_t2p_context_rejects_duplicate_beat_bar():
         pop_beat_events(token)
 
 
-# --- d2t / t2d / resolve_density ---
+# --- d2t / t2d / resolve_interval ---
 
 
 def test_d2t_1_over_384():
@@ -166,19 +166,19 @@ def test_t2d_rejects_negative():
         t2d(-1)
 
 
-def test_resolve_density_passes_int_through():
-    assert resolve_density(5) == 5
-    assert resolve_density(0) == 0
+def test_resolve_interval_passes_int_through():
+    assert resolve_interval(5) == 5
+    assert resolve_interval(0) == 0
 
 
-def test_resolve_density_tuple():
-    assert resolve_density((1, 384)) == 5
-    assert resolve_density((1, 4)) == TICKS_PER_BEAT // 4
+def test_resolve_interval_tuple():
+    assert resolve_interval((1, 384)) == 5
+    assert resolve_interval((1, 4)) == TICKS_PER_BEAT // 4
 
 
-def test_resolve_density_rejects_wrong_tuple_length():
+def test_resolve_interval_rejects_wrong_tuple_length():
     with pytest.raises(ValueError, match="numerator, denominator"):
-        resolve_density((1, 2, 3))  # type: ignore[arg-type]
+        resolve_interval((1, 2, 3))  # type: ignore[arg-type]
 
 
 def test_noteinfo_option_value_accepts_division_tuple():

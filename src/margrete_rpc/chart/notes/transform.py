@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Sequence
 from typing import Any, NamedTuple, cast
 
 from ..constants import DEFAULT_H
-from ..time import PositionLike, resolve_tick
+from ..time import IntervalLike, PositionLike, resolve_interval, resolve_tick
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import ColorValue
 from .direction import Direction
@@ -97,10 +97,10 @@ def _flip(note: Note, field: int) -> Note:
     return note
 
 
-# ---------------------------------------------------------------------------- clamp_w
+# ------------------------------------------------------------------------------- clamp
 
 
-def _apply_clamp_w(x: int, w: int, left: int, right: int) -> tuple[int, int]:
+def _apply_clamp(x: int, w: int, left: int, right: int) -> tuple[int, int]:
     if x < left:
         w = max(1, w - (left - x))
         x = left
@@ -111,11 +111,11 @@ def _apply_clamp_w(x: int, w: int, left: int, right: int) -> tuple[int, int]:
     return x, w
 
 
-def _clamp_w(note: Note, left: int, right: int) -> Note:
+def _clamp(note: Note, left: int, right: int) -> Note:
     if left >= right:
         raise ValueError("left must be less than right")
     for info in _iter_infos(note):
-        info.x, info.w = _apply_clamp_w(info.x, info.w, left, right)
+        info.x, info.w = _apply_clamp(info.x, info.w, left, right)
     return note
 
 
@@ -138,8 +138,8 @@ def _snapper(step: int, mode: AlignMode) -> Callable[[int], int]:
     return snap
 
 
-def _align(note: Note, interval: int | PositionLike, mode: AlignMode) -> Note:
-    step = resolve_tick(interval)
+def _align(note: Note, interval: int | IntervalLike, mode: AlignMode) -> Note:
+    step = resolve_interval(interval)
     if step <= 0:
         raise ValueError("align interval must be positive")
     return note.shift(t=_snapper(step, mode))

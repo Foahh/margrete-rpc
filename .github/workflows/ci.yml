@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  sdk:
-    name: SDK (Python)
+  client:
+    name: Client (Python)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

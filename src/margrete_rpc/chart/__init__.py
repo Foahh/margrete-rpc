@@ -13,6 +13,7 @@ from margrete_rpc.chart.time import (
     PositionLike,
     d2t,
     p2t,
+    resolve_interval,
     t2d,
     t2p,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "Position",
     "PositionLike",
     "p2t",
+    "resolve_interval",
     "TICKS_PER_BEAT",
     "TimelineSpeedEvent",
     "d2t",

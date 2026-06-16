@@ -159,7 +159,7 @@ def test_new_note_api_is_exported_from_namespaced_packages():
     assert NoopTracer() is not None
 
 
-def test_margrete_native_and_sdk_note_names_are_namespaced():
+def test_margrete_native_and_client_note_names_are_namespaced():
     from margrete_rpc.chart.notes import Note, R, RawNote
 
     assert R.tap(t=0, x=4, w=2).type is NoteType.TAP

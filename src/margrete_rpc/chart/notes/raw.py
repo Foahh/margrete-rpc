@@ -5,7 +5,7 @@ from typing import cast
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
-from ..time import IntervalLike, Position, PositionLike, resolve_density, resolve_tick
+from ..time import IntervalLike, Position, PositionLike, resolve_interval, resolve_tick
 from .color import Color, ColorLike, ColorValue
 from .direction import (
     AirDirection,
@@ -401,7 +401,7 @@ class R:
             x,
             w,
             h=h,
-            gap=resolve_density(gap),
+            gap=resolve_interval(gap),
             color=color,
             til=til,
         )

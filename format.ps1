@@ -6,7 +6,7 @@
   Do not run clang-format.
 
 .PARAMETER SkipPython
-  Do not run ruff on the Python SDK.
+  Do not run ruff on the Python client.
 
 .PARAMETER Check
   Use clang-format --dry-run --Werror and ruff format --check
@@ -82,7 +82,7 @@ try {
     if (-not $SkipPython) {
         $pyRoot = $RepoRoot
         if (-not (Test-Path -LiteralPath $pyRoot)) {
-            Write-Host "Python SDK path not found: $pyRoot"
+            Write-Host "Python package path not found: $pyRoot"
         }
         else {
             $ruff = Get-Command ruff -ErrorAction SilentlyContinue

@@ -5,7 +5,7 @@ from enum import IntEnum, StrEnum
 from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
 
 from ..constants import STANDARD_FIELD_WIDTH
-from ..time import Position, PositionLike
+from ..time import IntervalLike, Position, PositionLike
 from .direction import direction_from_proto
 from .raw import RawNote
 from .types import NoteInfo
@@ -89,16 +89,16 @@ class Note(Protocol):
         """Return a :meth:`clone` scaled about ``pivot``, leaving ``self`` unchanged."""
         ...
 
-    def align(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
+    def align(self, interval: int | IntervalLike, *, mode: AlignMode = "round") -> Self:
         """Snap the note's timing to a multiple of ``interval``, in place; returns ``self``.
 
         Args:
-            interval: Grid spacing in ticks, or a :data:`Position` resolved to ticks.
+            interval: Grid spacing in ticks, or an :data:`IntervalLike` resolved to ticks.
             mode: How to snap: ``"round"`` (nearest), ``"floor"``, or ``"ceil"``.
         """
         ...
 
-    def aligned(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
+    def aligned(self, interval: int | IntervalLike, *, mode: AlignMode = "round") -> Self:
         """Return a :meth:`clone` aligned to ``interval``, leaving ``self`` unchanged."""
         ...
 
@@ -110,7 +110,7 @@ class Note(Protocol):
         """Return a :meth:`clone` flipped within ``field``, leaving ``self`` unchanged."""
         ...
 
-    def clamp_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+    def clamp(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
         """Clamp the note's lane extent to ``[left, right)``, in place; returns ``self``.
 
         Args:
@@ -273,12 +273,12 @@ class _TransformMixin:
     def scaled(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
         return self.clone().scale(factor, pivot=pivot)
 
-    def align(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
+    def align(self, interval: int | IntervalLike, *, mode: AlignMode = "round") -> Self:
         from .transform import _align
 
         return cast(Self, _align(cast(Any, self), interval, mode))
 
-    def aligned(self, interval: int | PositionLike, *, mode: AlignMode = "round") -> Self:
+    def aligned(self, interval: int | IntervalLike, *, mode: AlignMode = "round") -> Self:
         return self.clone().align(interval, mode=mode)
 
     def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
@@ -289,13 +289,13 @@ class _TransformMixin:
     def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
         return self.clone().flip(field=field)
 
-    def clamp_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
-        from .transform import _clamp_w
+    def clamp(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+        from .transform import _clamp
 
-        return cast(Self, _clamp_w(cast(Any, self), left, right))
+        return cast(Self, _clamp(cast(Any, self), left, right))
 
     def clamped_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
-        return self.clone().clamp_w(left=left, right=right)
+        return self.clone().clamp(left=left, right=right)
 
     def clone(self) -> Self:
         from .transform import _clone

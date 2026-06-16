@@ -4,16 +4,14 @@ This file provides guidance to agents when working with code in this repository.
 
 ## What this is
 
-Margrete RPC is a Margrete plugin + Python SDK for scripting chart edits programmatically. It has two parts:
-
 - **`plugin/`** — C++ Margrete plugin that runs a TCP/protobuf RPC **server** inside Margrete
-- **`src/margrete_rpc/`** — Python **client** SDK that connects to the plugin and applies chart edits
+- **`src/margrete_rpc/`** — Python **client** package that connects to the plugin
 - **`proto/`** — protobuf definitions shared by both
-- **`docs/`** — Fumadocs documentation site; auto-generates API reference from the Python SDK
+- **`docs/`** — Fumadocs documentation site; auto-generates API reference from the Python package
 
-## Python SDK commands
+## Client (Python) commands
 
-All SDK commands use `uv` as the project tool (the `.venv` does not have pip/pytest directly):
+All commands use `uv` as the project tool (the `.venv` does not have pip/pytest directly):
 
 ```bash
 uv run --extra dev pytest                          # run all tests

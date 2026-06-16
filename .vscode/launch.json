@@ -6,9 +6,9 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "cwd": "${workspaceFolder}/sdk",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "python": "${workspaceFolder}/sdk/.venv/Scripts/python.exe"
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe"
         }
     ]
 }

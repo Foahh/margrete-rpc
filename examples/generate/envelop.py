@@ -43,7 +43,7 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(DOUBLE)
         inner = Curve(t=t0, x=LEFT).to(t=t1, x=LEFT + 4)
         outer = Curve(t=t0, x=RIGHT - 4).to(t=t1, x=RIGHT)
-        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp_w())
+        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp())
 
     track.skip(BEAT)
 
@@ -52,7 +52,7 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(DOUBLE)
         inner = Curve(t=t0, x=1).to(t=t1, x=6, ease_x="in_sine")
         outer = Curve(t=t0, x=7).to(t=t1, x=13, ease_x="out_sine")
-        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp_w())
+        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp())
 
     track.skip(BEAT)
 
@@ -62,7 +62,7 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(DOUBLE)
         inner = Curve(t=t0, x=LEFT).to(t=t1, x=RIGHT)
         outer = Curve(t=t0, x=RIGHT).to(t=t1, x=LEFT)
-        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp_w())
+        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp())
 
     track.skip(BEAT)
 
@@ -71,7 +71,7 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(DOUBLE)
         inner = Curve(t=t0, x=3).to(t=t1, x=5, ease_x="in_out_sine")
         outer = Curve(t=t0, x=8).to(t=t1, x=13, ease_x="in_out_expo")
-        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp_w())
+        notes.append(envelope(inner, outer, count=count).to_slide(w=WIDTH).clamp())
 
     track.skip(BEAT)
 

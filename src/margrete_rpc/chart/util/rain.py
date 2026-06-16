@@ -4,7 +4,7 @@ import random
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..notes import AirCrush, ColorLike, ColorValue
-from ..time import IntervalLike, PositionLike, resolve_density, resolve_tick
+from ..time import IntervalLike, PositionLike, resolve_interval, resolve_tick
 
 
 def rain(
@@ -50,10 +50,10 @@ def rain(
     end = resolve_tick(t1)
     if end <= start:
         raise ValueError("t1 must be later than t0")
-    step_ticks = resolve_density(step)
+    step_ticks = resolve_interval(step)
     if step_ticks <= 0:
         raise ValueError("step must be a positive duration")
-    length_ticks = step_ticks if length is None else resolve_density(length)
+    length_ticks = step_ticks if length is None else resolve_interval(length)
     if length_ticks <= 0:
         raise ValueError("length must be a positive duration")
 

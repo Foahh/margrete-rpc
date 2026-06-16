@@ -53,7 +53,7 @@ def build_notes() -> list[ChartNote]:
     for x_range in (1, 2, 3, 4, 6):
         t0, t1 = track.slot(SPAN)
         base = Curve(t=t0, x=LEFT).to(t=t1, x=RIGHT, ease_x="out_quad")
-        notes.append(crease(base, count=4, x_range=x_range).to_slide(w=WIDTH).clamp_w())
+        notes.append(crease(base, count=4, x_range=x_range).to_slide(w=WIDTH).clamp())
 
     track.skip(BEAT)
 
@@ -80,16 +80,16 @@ def build_notes() -> list[ChartNote]:
     track.skip(BEAT)
 
     # ----------------------------------------------------------- Section 5: large amplitude + clamp; double-crease
-    # Large amplitude: x_range=8 sends points well outside the field; clamp_w brings them back.
+    # Large amplitude: x_range=8 sends points well outside the field; clamp brings them back.
     t0, t1 = track.slot(DOUBLE)
     base = Curve(t=t0, x=6).to(t=t1, x=10)
-    notes.append(crease(base, count=6, x_range=8).to_slide(w=WIDTH).clamp_w())
+    notes.append(crease(base, count=6, x_range=8).to_slide(w=WIDTH).clamp())
 
     # Double crease: apply crease twice to produce a finer secondary zigzag.
     t0, t1 = track.slot(DOUBLE)
     base = Curve(t=t0, x=4).to(t=t1, x=12)
     first = crease(base, count=4, x_range=3)
-    notes.append(crease(first, count=3, x_range=1).to_slide(w=WIDTH).clamp_w())
+    notes.append(crease(first, count=3, x_range=1).to_slide(w=WIDTH).clamp())
 
     # Crease on an eased base → AirSlide with Tap parent.
     t0, t1 = track.slot(DOUBLE)

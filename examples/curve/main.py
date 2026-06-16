@@ -109,7 +109,7 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(2 * SPAN)
         inner = Curve(t=t0, x=0).to(t=t1, x=8, ease_x="in_sine")
         outer = Curve(t=t0, x=6).to(t=t1, x=15, ease_x="out_sine")
-        notes.append(envelope(inner, outer, count=cycles).to_slide(w=2).clamp_w())
+        notes.append(envelope(inner, outer, count=cycles).to_slide(w=2).clamp())
 
     # Section 5: a single multi-joint curve built by chaining .to(), each leg eased on its own.
     t0, t1 = track.slot(2 * SPAN)

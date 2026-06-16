@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Self, cast
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
-from ..time import Interval, IntervalLike, PositionLike, resolve_density, resolve_tick, t2d
+from ..time import Interval, IntervalLike, PositionLike, resolve_interval, resolve_tick, t2d
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
     ColorLike,
@@ -228,7 +228,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
 
     @gap.setter
     def gap(self, value: int | IntervalLike) -> None:
-        self._info.option_value = resolve_density(value)
+        self._info.option_value = resolve_interval(value)
 
     @property
     def interval(self) -> Interval:

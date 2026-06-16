@@ -6,7 +6,7 @@ from typing import Any, Literal
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 
 from ..constants import DEFAULT_H
-from ..time import IntervalLike, Position, PositionLike, resolve_density, resolve_tick, t2p
+from ..time import IntervalLike, Position, PositionLike, resolve_interval, resolve_tick, t2p
 from .color import (
     Color,
     ColorLike,
@@ -144,7 +144,7 @@ class NoteInfo:
         self._direction = Direction(direction_to_proto(type, direction))
         self._variation_id = Color(color_to_value(variation_id))
         self._t = resolve_tick(p) if p is not None else t
-        self._option_value = resolve_density(option_value)
+        self._option_value = resolve_interval(option_value)
 
     @property
     def direction(self) -> Direction:
@@ -181,7 +181,7 @@ class NoteInfo:
 
     @option_value.setter
     def option_value(self, value: int | IntervalLike) -> None:
-        self._option_value = resolve_density(value)
+        self._option_value = resolve_interval(value)
 
     def copy(self, **changes: Any) -> NoteInfo:
         """Return a copy with any given fields overridden by keyword."""

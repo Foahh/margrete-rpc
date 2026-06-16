@@ -372,7 +372,7 @@ def t2d(ticks: int) -> Interval:
     return Interval(frac.numerator, frac.denominator)
 
 
-def resolve_density(value: int | IntervalLike) -> int:
+def resolve_interval(value: int | IntervalLike) -> int:
     """Coerce a tick-count-or-fraction argument to an int tick count.
 
     Args:
@@ -406,5 +406,5 @@ __all__ = [
     "pop_tick_resolver",
     "d2t",
     "t2d",
-    "resolve_density",
+    "resolve_interval",
 ]
