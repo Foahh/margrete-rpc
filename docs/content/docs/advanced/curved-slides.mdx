@@ -1,11 +1,11 @@
 ---
-title: Sketch Slides
-description: Generate slides, air slides, and air-crush paths with curve utilities.
+title: Curved Slides
+description: Sketch curved slides, air slides, and air-crush paths.
 ---
 
-The utilities in [`margrete_rpc.chart.util`](/docs/reference/chart/util) help you sketch complex slide patterns.
-The usual workflow is to draw a path as a [`Curve`](/docs/reference/chart/util/curve/Curve), then materialize it
-as a [`Slide`](/docs/reference/chart/notes/long/Slide), [`AirSlide`](/docs/reference/chart/notes/air/AirSlide), or
+The [`Curve`](/docs/reference/chart/util/curve/Curve) utility helps you sketch width-agnostic slide paths before
+turning them into notes. The usual workflow is to draw a path as a curve, then materialize it as a
+[`Slide`](/docs/reference/chart/notes/long/Slide), [`AirSlide`](/docs/reference/chart/notes/air/AirSlide), or
 [`AirCrush`](/docs/reference/chart/notes/long/AirCrush). For hand-built notes and joints, start with
 [Notes](/docs/basic/notes#long-notes).
 
@@ -28,7 +28,7 @@ with m.open_edit() as tx:
 
 ## Mental model
 
-A [`Curve`](/docs/reference/chart/util/curve/Curve) is a width-agnostic path. It stores [`Waypoint`](/docs/reference/chart/util/curve/Waypoint) values with:
+A [`Curve`](/docs/reference/chart/util/curve/Curve) stores [`Waypoint`](/docs/reference/chart/util/curve/Waypoint) values with:
 
 | Field    | Meaning                                             |
 | -------- | --------------------------------------------------- |
@@ -41,7 +41,8 @@ A [`Curve`](/docs/reference/chart/util/curve/Curve) is a width-agnostic path. It
 The first waypoint anchors the curve, so its easing values do not affect the path. `h` is preserved when you
 materialize a ground slide, but it only has visible effect on air-slide and air-crush paths.
 
-Add legs with [`to(...)`](/docs/reference/chart/util/curve/Curve#functions). Each target time must be later than the current end of the curve.
+Add legs with [`to(...)`](/docs/reference/chart/util/curve/Curve#functions). Each target time must be later than
+the current end of the curve.
 
 ```python
 from margrete_rpc.chart.util import Curve
@@ -142,7 +143,7 @@ slide = (
 Custom easings should return `0` at input `0` and `1` at input `1` so the generated path lands exactly on its
 waypoints.
 
-## Inspect and compose curves
+## Inspect and compose
 
 Call [`points()`](/docs/reference/chart/util/curve/Curve#functions) to preview the quantized path before creating
 a note.
@@ -192,86 +193,3 @@ copy = path.to_slide(w=existing_slide.w)
 
 `from_note()` creates mutable control waypoints with linear easing by default, so you can edit each waypoint's
 `ease_x` or `ease_h` before materializing. Width is intentionally dropped because `Curve` is width-agnostic.
-
-## Pattern helpers
-
-The helpers [`crease()`](/docs/reference/chart/util/crease), [`envelope()`](/docs/reference/chart/util/envelope),
-and [`rain()`](/docs/reference/chart/util/rain) generate common slide-like shapes. They return either a [`Curve`](/docs/reference/chart/util/curve/Curve)
-that you can materialize, or notes directly.
-
-### Crease
-
-`crease(base, count=..., x_range=..., h_range=...)` creates a zigzag around a base curve. The first and last
-points stay on the base; interior points alternate positive and negative offsets.
-
-```python
-from margrete_rpc.chart.util import Curve, crease
-
-base = Curve(t=(0, 0), x=2, h=70).to(t=(1, 0), x=12, h=120, ease_x="out_quad")
-
-slide = crease(base, count=6, x_range=2).to_slide(w=4).clamp()
-air = crease(base, count=6, x_range=0, h_range=20).to_air_slide(w=4)
-```
-
-Use `.clamp()` after materializing if the offsets may push the note outside the lane field.
-
-### Envelope
-
-`envelope(inner, outer, count=...)` weaves between two boundary curves. Both curves must share the same start
-and end time. An even `count` ends back on `inner`; an odd `count` ends on `outer`.
-
-```python
-from margrete_rpc.chart.util import Curve, envelope
-
-inner = Curve(t=(0, 0), x=2).to(t=(1, 0), x=6, ease_x="in_sine")
-outer = Curve(t=(0, 0), x=10).to(t=(1, 0), x=14, ease_x="out_sine")
-
-slide = envelope(inner, outer, count=4).to_slide(w=2)
-```
-
-### Rain
-
-`rain(...)` generates a list of short `AirCrush` notes across a time range. Use `seed=` when you want the same
-scatter every time the script runs.
-
-```python
-from margrete_rpc.chart.util import rain
-
-drops = rain(
-    t0=(0, 0),
-    t1=(4, 0),
-    step=(1, 16),
-    length=(1, 16),
-    x_range=(0, 15),
-    h_range=(60, 140),
-    w=1,
-    color="sky",
-    seed=42,
-)
-
-tx.chart.notes.extend(drops)
-```
-
-`x_range` and `h_range` are inclusive. Drops that would extend past `t1` are truncated to end at `t1`.
-
-## Editing workflow
-
-Generated notes are normal note objects. After materializing, you can transform, validate, append, or attach
-them just like manually built notes.
-
-```python
-from margrete_rpc import Margrete
-from margrete_rpc.chart.notes import Tap
-from margrete_rpc.chart.util import Curve, crease
-
-m = Margrete()
-
-with m.open_edit() as tx:
-    base = Curve(t=(8, 0), x=2, h=60).to(t=(9, 0), x=12, h=120)
-    air_slide = crease(base, count=5, x_range=2, h_range=20).to_air_slide(w=3)
-
-    parent = Tap(t=air_slide.t, x=air_slide.x, w=air_slide.w).add_air(air_slide)
-    parent.validate()
-
-    tx.chart.notes.append(parent)
-```
