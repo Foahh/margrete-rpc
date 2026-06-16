@@ -1,5 +1,5 @@
 {
   "title": "Guides",
   "icon": "BookOpen",
-  "pages": ["edit", "time", "notes", "transforms", "sketch-slide"]
+  "pages": ["edit-transactions", "time-position", "notes", "note-transforms", "sketch-slide"]
 }
