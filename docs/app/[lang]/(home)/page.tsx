@@ -49,7 +49,7 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
   return (
     <main className="flex flex-1 flex-col">
       {/* Hero */}
-      <section className="border-fd-border relative overflow-hidden border-b">
+      <section className="border-fd-border relative flex flex-1 flex-col justify-center overflow-hidden border-b">
         {/* decorative grid */}
         <div
           aria-hidden
@@ -60,13 +60,8 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
             backgroundSize: "56px 56px",
           }}
         />
-        {/* decorative glow */}
-        <div
-          aria-hidden
-          className="bg-fd-primary/15 pointer-events-none absolute -top-40 left-1/2 size-[40rem] -translate-x-1/2 rounded-full blur-[120px]"
-        />
 
-        <div className="relative mx-auto flex max-w-5xl flex-col items-center px-6 py-24 text-center sm:py-32">
+        <div className="relative mx-auto flex max-w-5xl shrink-0 flex-col items-center px-6 py-24 text-center sm:py-32">
           <h1 className="from-fd-foreground to-fd-foreground/55 max-w-3xl bg-gradient-to-b bg-clip-text pb-2 text-5xl font-bold tracking-tight text-transparent sm:text-6xl">
             Margrete RPC
           </h1>
@@ -92,24 +87,6 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
             </a>
           </div>
 
-          {/* Code preview */}
-          <div className="mt-16 w-full max-w-2xl text-left">
-            <ServerCodeBlock
-              lang="python"
-              code={`\
-from margrete_rpc import Margrete
-from margrete_rpc.chart.notes import Tap
-
-m = Margrete()  # auto-detect the plugin
-with m.open_edit() as tx:
-    tx.chart.notes.append(Tap(t=0, x=0, w=4))
-# applied atomically on exit`}
-              codeblock={{
-                title: "example.py",
-                className: "my-0 bg-fd-card/70 shadow-2xl shadow-fd-primary/5 backdrop-blur",
-              }}
-            />
-          </div>
         </div>
       </section>
     </main>
