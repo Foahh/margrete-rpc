@@ -111,7 +111,7 @@ class TimeCalculator:
     time-signature segments. Bars before the first event default to 4/4. Most callers use
     the module-level :func:`tick_to_pos` / :func:`pos_to_tick` instead of constructing this
     directly.
-"""
+    """
 
     def __init__(self, beat_events: Iterable[BeatEvent]) -> None:
         """Build a calculator from a chart's beat (time-signature) events."""

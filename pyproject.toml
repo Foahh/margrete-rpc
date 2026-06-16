@@ -33,6 +33,7 @@ exclude = ["**/margrete_rpc/_proto/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
 
 [tool.pyright]
 include = ["src"]

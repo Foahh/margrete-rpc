@@ -6,8 +6,8 @@ from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     TICK_RESOLUTION,
     div_to_tick,
-    pos_to_tick,
     pop_beat_events,
+    pos_to_tick,
     push_beat_events,
     resolve_division,
     tick_to_div,

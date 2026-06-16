@@ -18,9 +18,9 @@ from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
     PositionLike,
     TickResolver,
-    pos_to_tick,
     pop_beat_events,
     pop_tick_resolver,
+    pos_to_tick,
     push_beat_events,
     push_tick_resolver,
 )
