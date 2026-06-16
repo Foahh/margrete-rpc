@@ -39,7 +39,7 @@ from margrete_rpc.chart.notes import (
     UnsupportedNoteTree,
     wrap_raw_note,
 )
-from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
+from margrete_rpc.chart.time import TICK_RESOLUTION, d2t
 
 
 def test_note_type_factories_set_kind_and_geometry():
@@ -142,7 +142,7 @@ def test_new_note_api_is_exported_from_namespaced_packages():
         Tap,
         UnsupportedNoteTree,
     )
-    from margrete_rpc.chart.time import TICKS_PER_BEAT, d2t
+    from margrete_rpc.chart.time import TICK_RESOLUTION, d2t
 
     assert R.tap(t=0, x=4, w=2).type is NoteType.TAP
     assert RawNote().info == NoteInfo()
@@ -154,7 +154,7 @@ def test_new_note_api_is_exported_from_namespaced_packages():
     assert AirSlide is not None
     assert AirHold is not None
     assert issubclass(UnsupportedNoteTree, ValueError)
-    assert TICKS_PER_BEAT == 1920
+    assert TICK_RESOLUTION == 1920
     assert d2t(1, 4) == 480
     assert NoopTracer() is not None
 
@@ -359,7 +359,7 @@ def test_d2t_rejects_non_whole_tick():
 
 def test_d2t_rejects_denominator_above_ticks_per_beat():
     with pytest.raises(ValueError, match="denominator must not exceed"):
-        d2t(1, TICKS_PER_BEAT + 1)
+        d2t(1, TICK_RESOLUTION + 1)
 
 
 def test_d2t_rejects_non_int_types():
@@ -383,8 +383,8 @@ def test_note_and_raw_tick_are_plain_int():
 
 def test_high_level_notes_accept_short_geometry_aliases():
     tap = Tap(t=(1, 0), x=4, w=2)
-    assert tap.t == TICKS_PER_BEAT
-    assert tap.t == TICKS_PER_BEAT
+    assert tap.t == TICK_RESOLUTION
+    assert tap.t == TICK_RESOLUTION
     assert tap.w == 2
     assert tap.w == 2
 

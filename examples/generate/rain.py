@@ -15,9 +15,6 @@ Usage (run from examples/generate/):
 
 from __future__ import annotations
 
-from margrete_rpc.chart import ChartNote
-from margrete_rpc.chart.util import rain
-
 from _common import (
     BEAT,
     COLORS,
@@ -27,13 +24,16 @@ from _common import (
     RIGHT,
     SPAN,
     WIDTH,
-    _Track,
     _summarize,
+    _Track,
     make_arg_parser,
     push_gallery,
 )
 
-SECTION = 4 * SPAN   # each section spans 4 beats
+from margrete_rpc.chart import ChartNote
+from margrete_rpc.chart.util import rain
+
+SECTION = 4 * SPAN  # each section spans 4 beats
 
 
 def build_notes() -> list[ChartNote]:
@@ -44,10 +44,14 @@ def build_notes() -> list[ChartNote]:
     t0, t1 = track.slot(SECTION)
     notes.extend(
         rain(
-            t0=t0, t1=t1,
-            step=(1, 16), length=(1, 16),
-            x_range=(LEFT, RIGHT), h_range=(H_LOW, H_HIGH),
-            w=1, seed=42,
+            t0=t0,
+            t1=t1,
+            step=(1, 16),
+            length=(1, 16),
+            x_range=(LEFT, RIGHT),
+            h_range=(H_LOW, H_HIGH),
+            w=1,
+            seed=42,
         )
     )
 
@@ -57,10 +61,14 @@ def build_notes() -> list[ChartNote]:
     t0, t1 = track.slot(SECTION)
     notes.extend(
         rain(
-            t0=t0, t1=t1,
-            step=(1, 2), length=(1, 4),
-            x_range=(LEFT, RIGHT), h_range=(H_LOW, H_HIGH),
-            w=WIDTH, seed=7,
+            t0=t0,
+            t1=t1,
+            step=(1, 2),
+            length=(1, 4),
+            x_range=(LEFT, RIGHT),
+            h_range=(H_LOW, H_HIGH),
+            w=WIDTH,
+            seed=7,
         )
     )
 
@@ -70,10 +78,13 @@ def build_notes() -> list[ChartNote]:
     t0, t1 = track.slot(SECTION)
     notes.extend(
         rain(
-            t0=t0, t1=t1,
+            t0=t0,
+            t1=t1,
             step=(1, 8),
-            x_range=(0, 15), h_range=(H_LOW, H_HIGH),
-            w=1, seed=99,
+            x_range=(0, 15),
+            h_range=(H_LOW, H_HIGH),
+            w=1,
+            seed=99,
         )
     )
 
@@ -87,10 +98,14 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(2 * SPAN)
         notes.extend(
             rain(
-                t0=t0, t1=t1,
+                t0=t0,
+                t1=t1,
                 step=(1, 8),
-                x_range=(x_lo, x_hi), h_range=(H_LOW, H_HIGH),
-                w=1, color=color, seed=i * 13,
+                x_range=(x_lo, x_hi),
+                h_range=(H_LOW, H_HIGH),
+                w=1,
+                color=color,
+                seed=i * 13,
             )
         )
 
@@ -109,10 +124,13 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(2 * SPAN)
         notes.extend(
             rain(
-                t0=t0, t1=t1,
+                t0=t0,
+                t1=t1,
                 step=(1, 8),
-                x_range=(LEFT, RIGHT), h_range=(h_lo, h_hi),
-                w=1, seed=h_lo,
+                x_range=(LEFT, RIGHT),
+                h_range=(h_lo, h_hi),
+                w=1,
+                seed=h_lo,
             )
         )
 
@@ -123,10 +141,14 @@ def build_notes() -> list[ChartNote]:
         t0, t1 = track.slot(2 * SPAN)
         notes.extend(
             rain(
-                t0=t0, t1=t1,
-                step=(1, 8), length=length_frac,
-                x_range=(LEFT, RIGHT), h_range=(H_LOW, H_HIGH),
-                w=1, seed=101,
+                t0=t0,
+                t1=t1,
+                step=(1, 8),
+                length=length_frac,
+                x_range=(LEFT, RIGHT),
+                h_range=(H_LOW, H_HIGH),
+                w=1,
+                seed=101,
             )
         )
 

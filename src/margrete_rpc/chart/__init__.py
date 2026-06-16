@@ -6,7 +6,7 @@ from margrete_rpc.chart.events import (
     TimelineSpeedEvent,
 )
 from margrete_rpc.chart.time import (
-    TICKS_PER_BEAT,
+    TICK_RESOLUTION,
     Interval,
     IntervalLike,
     Position,
@@ -31,7 +31,7 @@ __all__ = [
     "PositionLike",
     "p2t",
     "resolve_interval",
-    "TICKS_PER_BEAT",
+    "TICK_RESOLUTION",
     "TimelineSpeedEvent",
     "d2t",
     "t2d",

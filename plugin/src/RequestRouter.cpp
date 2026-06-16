@@ -179,11 +179,9 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " beat_change_events=" + std::to_string(begin->beat_change_events_size()) +
                     " timeline_speed_events=" + std::to_string(begin->timeline_speed_events_size()) +
                     " note_speed_events=" + std::to_string(begin->note_speed_events_size()) +
-                    " event_scan_lookahead_ticks=" +
-                    std::to_string(begin->event_scan_lookahead_ticks()) + " event_scan_til_ids_count=" +
-                    std::to_string(begin->event_scan_til_ids_size()) + " snapshot=" +
-                    std::to_string(begin->snapshot()) +
-                    " note_til_only=" + std::to_string(noteTilOnly));
+                    " event_scan_lookahead_ticks=" + std::to_string(begin->event_scan_lookahead_ticks()) +
+                    " event_scan_til_ids_count=" + std::to_string(begin->event_scan_til_ids_size()) +
+                    " snapshot=" + std::to_string(begin->snapshot()) + " note_til_only=" + std::to_string(noteTilOnly));
             return response;
         }
         if (request.has_apply_edit_request())

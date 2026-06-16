@@ -17,22 +17,22 @@ Usage (run from examples/generate/):
 
 from __future__ import annotations
 
+from _common import (
+    BEAT,
+    WIDTH,
+    _summarize,
+    _Track,
+    make_arg_parser,
+    push_gallery,
+)
+
 from margrete_rpc.chart import ChartNote
 from margrete_rpc.chart.events import TimelineSpeedEvent
 from margrete_rpc.chart.notes import Tap
 from margrete_rpc.chart.util import timing_glitch
 
-from _common import (
-    BEAT,
-    WIDTH,
-    _Track,
-    _summarize,
-    make_arg_parser,
-    push_gallery,
-)
-
-SECTION = 4 * BEAT   # each section occupies 4 beats
-TIL = 0              # all notes and events on the main timeline
+SECTION = 4 * BEAT  # each section occupies 4 beats
+TIL = 0  # all notes and events on the main timeline
 
 
 def _beat_taps(t0: int, t1: int, step: int = BEAT) -> list[Tap]:
@@ -83,9 +83,7 @@ def build_chart() -> tuple[list[ChartNote], list[TimelineSpeedEvent]]:
     # ----------------------------------------------------------- Section 4: dense fast glitch (32 spikes)
     t0, t1 = track.slot(SECTION)
     notes.extend(_beat_taps(t0, t1, step=BEAT // 4))
-    events.extend(
-        timing_glitch(t0=t0, t1=t1, count=32, speed_range=0.5, base_speed=1.0, til=TIL)
-    )
+    events.extend(timing_glitch(t0=t0, t1=t1, count=32, speed_range=0.5, base_speed=1.0, til=TIL))
 
     track.skip(BEAT)
 

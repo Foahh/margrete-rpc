@@ -5,25 +5,25 @@ from __future__ import annotations
 import argparse
 
 from margrete_rpc import Margrete
-from margrete_rpc.chart import TICKS_PER_BEAT, ChartNote, d2t
+from margrete_rpc.chart import TICK_RESOLUTION, ChartNote, d2t
 from margrete_rpc.chart.events import TimelineSpeedEvent
 from margrete_rpc.chart.notes import ColorValue
 from margrete_rpc.chart.util import EASINGS
 
 # ------------------------------------------------------------------------------- timing constants
 
-BEAT = TICKS_PER_BEAT   # 1920 ticks — one quarter-note beat
+BEAT = TICK_RESOLUTION  # 1920 ticks — one whole note
 HALF = BEAT // 2
 DOUBLE = 2 * BEAT
-GAP = d2t(1, 8)         # 1/8-beat gap between consecutive notes
-SPAN = BEAT             # default note duration: one beat
+GAP = d2t(1, 8)  # 1/8-beat gap between consecutive notes
+SPAN = BEAT  # default note duration: one beat
 
 # ------------------------------------------------------------------------------- layout constants
 
 SEGMENT_GAP: tuple[int, int] = (1, 8)  # air-crush segment gap as a beat fraction
-WIDTH = 2                               # constant lane width for generated notes
-LEFT, RIGHT = 1, 13                     # lane sweep range within the 16-lane field
-H_LOW, H_HIGH = 20, 120                # air-height sweep range
+WIDTH = 2  # constant lane width for generated notes
+LEFT, RIGHT = 1, 13  # lane sweep range within the 16-lane field
+H_LOW, H_HIGH = 20, 120  # air-height sweep range
 
 EASING_NAMES: list[str] = list(EASINGS)
 

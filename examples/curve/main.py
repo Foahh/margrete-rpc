@@ -20,13 +20,13 @@ Usage:
 import argparse
 
 from margrete_rpc import Margrete
-from margrete_rpc.chart import TICKS_PER_BEAT, ChartNote, d2t
+from margrete_rpc.chart import TICK_RESOLUTION, ChartNote, d2t
 from margrete_rpc.chart.notes import ColorValue, Tap
 from margrete_rpc.chart.util import EASINGS, Curve, envelope
 
 # --- Layout knobs ------------------------------------------------------------
 
-BEAT = TICKS_PER_BEAT  # one quarter-note beat in ticks (1920)
+BEAT = TICK_RESOLUTION  # one whole note in ticks (1920)
 SPAN = BEAT  # each generated note lasts one beat
 GAP = d2t(1, 8)  # 1/8-beat gap between consecutive notes
 SEGMENT_GAP = (1, 8)  # air-crush internal segment gap (1/8 beat)
@@ -153,7 +153,7 @@ def main() -> None:
 
     mg = Margrete()
     print(mg.status())
-    with mg.open_edit("slide gallery", replace_all=True) as tx:
+    with mg.open_edit(replace_all=True) as tx:
         tx.chart.notes = notes
     print("Pushed the slide gallery to Margrete (replaced the existing chart).")
 

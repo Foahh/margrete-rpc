@@ -7,5 +7,5 @@ DEFAULT_H = 80
 DEFAULT_AIRCRUSH_GAP = 0
 """Default gap (in ticks) between AirCrush joints when none is specified."""
 
-TICKS_PER_BEAT = 1920
-"""Number of ticks in one quarter-note beat; the resolution of all tick values."""
+TICK_RESOLUTION = 1920
+"""Tick resolution: the number of ticks in one whole note (1/1)."""

@@ -4,7 +4,7 @@ import pytest
 
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (
-    TICKS_PER_BEAT,
+    TICK_RESOLUTION,
     d2t,
     p2t,
     pop_beat_events,
@@ -25,7 +25,7 @@ def test_t2p_second_beat_4_4():
 
 
 def test_t2p_second_bar_4_4():
-    assert t2p(TICKS_PER_BEAT, beat_events=[]) == (1, 0, 0)
+    assert t2p(TICK_RESOLUTION, beat_events=[]) == (1, 0, 0)
 
 
 def test_t2p_with_explicit_4_4_at_bar_zero():
@@ -39,11 +39,11 @@ def test_t2p_rejects_negative_tick():
 
 
 def test_p2t_bar_beat_offset_4_4():
-    assert p2t(1, 0, 0, beat_events=[]) == TICKS_PER_BEAT
+    assert p2t(1, 0, 0, beat_events=[]) == TICK_RESOLUTION
 
 
 def test_p2t_defaults_beat_and_offset():
-    assert p2t(1, beat_events=[]) == TICKS_PER_BEAT
+    assert p2t(1, beat_events=[]) == TICK_RESOLUTION
 
 
 def test_round_trip_ticks_4_4():
@@ -127,11 +127,11 @@ def test_d2t_1_over_384():
 
 
 def test_d2t_1_over_4():
-    assert d2t(1, 4) == TICKS_PER_BEAT // 4
+    assert d2t(1, 4) == TICK_RESOLUTION // 4
 
 
 def test_d2t_whole_beat():
-    assert d2t(1, 1) == TICKS_PER_BEAT
+    assert d2t(1, 1) == TICK_RESOLUTION
 
 
 def test_d2t_rejects_non_integer_division():
@@ -173,7 +173,7 @@ def test_resolve_interval_passes_int_through():
 
 def test_resolve_interval_tuple():
     assert resolve_interval((1, 384)) == 5
-    assert resolve_interval((1, 4)) == TICKS_PER_BEAT // 4
+    assert resolve_interval((1, 4)) == TICK_RESOLUTION // 4
 
 
 def test_resolve_interval_rejects_wrong_tuple_length():
@@ -188,7 +188,7 @@ def test_noteinfo_option_value_accepts_division_tuple():
     assert info.option_value == 5
 
     info.option_value = (1, 4)
-    assert info.option_value == TICKS_PER_BEAT // 4
+    assert info.option_value == TICK_RESOLUTION // 4
 
 
 def test_aircrush_gap_accepts_division_tuple():
@@ -202,4 +202,4 @@ def test_aircrush_gap_accepts_division_tuple():
     assert note.interval.denominator == 384
 
     note.gap = (1, 4)
-    assert note.gap == TICKS_PER_BEAT // 4
+    assert note.gap == TICK_RESOLUTION // 4

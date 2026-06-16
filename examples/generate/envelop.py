@@ -14,10 +14,6 @@ Usage (run from examples/generate/):
 
 from __future__ import annotations
 
-from margrete_rpc.chart import ChartNote
-from margrete_rpc.chart.notes import Tap
-from margrete_rpc.chart.util import Curve, envelope
-
 from _common import (
     BEAT,
     DOUBLE,
@@ -26,11 +22,15 @@ from _common import (
     LEFT,
     RIGHT,
     WIDTH,
-    _Track,
     _summarize,
+    _Track,
     make_arg_parser,
     push_gallery,
 )
+
+from margrete_rpc.chart import ChartNote
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import Curve, envelope
 
 
 def build_notes() -> list[ChartNote]:

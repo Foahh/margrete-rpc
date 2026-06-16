@@ -14,10 +14,6 @@ Usage (run from examples/generate/):
 
 from __future__ import annotations
 
-from margrete_rpc.chart import ChartNote
-from margrete_rpc.chart.notes import Tap
-from margrete_rpc.chart.util import Curve, crease
-
 from _common import (
     BEAT,
     COLORS,
@@ -29,11 +25,15 @@ from _common import (
     SEGMENT_GAP,
     SPAN,
     WIDTH,
-    _Track,
     _summarize,
+    _Track,
     make_arg_parser,
     push_gallery,
 )
+
+from margrete_rpc.chart import ChartNote
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import Curve, crease
 
 
 def build_notes() -> list[ChartNote]:
@@ -63,8 +63,9 @@ def build_notes() -> list[ChartNote]:
         base = Curve(t=t0, x=LEFT, h=H_LOW).to(t=t1, x=RIGHT, h=H_HIGH)
         color = COLORS[i % len(COLORS)]
         notes.append(
-            crease(base, count=count, x_range=2, h_range=15)
-            .to_air_crush(w=WIDTH, gap=SEGMENT_GAP, color=color)
+            crease(base, count=count, x_range=2, h_range=15).to_air_crush(
+                w=WIDTH, gap=SEGMENT_GAP, color=color
+            )
         )
 
     track.skip(BEAT)

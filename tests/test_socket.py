@@ -77,9 +77,7 @@ def test_generated_chart_transaction_messages_exist():
     )
     note.children.add(type=messages_pb2.NOTE_TYPE_AIR, tick=1000, x=4)
 
-    begin_edit = messages_pb2.Envelope(
-        begin_edit_request=messages_pb2.BeginEditRequest()
-    )
+    begin_edit = messages_pb2.Envelope(begin_edit_request=messages_pb2.BeginEditRequest())
     apply_edit = messages_pb2.Envelope(
         apply_edit_request=messages_pb2.ApplyEditRequest(
             notes_upsert=[note],

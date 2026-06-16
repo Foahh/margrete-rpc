@@ -152,7 +152,7 @@ class Margrete:
         """Return the playhead position in the editor, in ticks from the chart start.
 
         Returns:
-            The current tick (``TICKS_PER_BEAT`` ticks per beat).
+            The current tick (``TICK_RESOLUTION`` ticks per whole note).
         """
         with self._tracer.span("margrete.client.current_tick"):
             response = self._transport.request(

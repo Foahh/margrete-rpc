@@ -18,20 +18,20 @@ Usage (run from examples/generate/):
 
 from __future__ import annotations
 
-from margrete_rpc.chart import ChartNote
-from margrete_rpc.chart.events import TimelineSpeedEvent
-from margrete_rpc.chart.notes import Tap
-from margrete_rpc.chart.util import timing_easing_by_disp
-
 from _common import (
     BEAT,
     EASING_NAMES,
     WIDTH,
-    _Track,
     _summarize,
+    _Track,
     make_arg_parser,
     push_gallery,
 )
+
+from margrete_rpc.chart import ChartNote
+from margrete_rpc.chart.events import TimelineSpeedEvent
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import timing_easing_by_disp
 
 SECTION = 4 * BEAT
 TIL = 0

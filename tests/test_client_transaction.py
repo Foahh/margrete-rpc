@@ -192,7 +192,9 @@ def test_snapshot_false_rejects_existing_note_ids_before_commit_request():
     )
     mg = Margrete(transport=transport)
 
-    with pytest.raises(ValueError, match="snapshot=false transactions cannot send existing note ids"):
+    with pytest.raises(
+        ValueError, match="snapshot=false transactions cannot send existing note ids"
+    ):
         with mg.open_edit(snapshot=False) as tx:
             note = R.tap(t=480, x=2, w=1)
             note._id = 99

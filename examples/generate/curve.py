@@ -17,10 +17,6 @@ from __future__ import annotations
 
 import math
 
-from margrete_rpc.chart import ChartNote
-from margrete_rpc.chart.notes import Tap
-from margrete_rpc.chart.util import Curve
-
 from _common import (
     BEAT,
     COLORS,
@@ -31,14 +27,17 @@ from _common import (
     LEFT,
     RIGHT,
     SEGMENT_GAP,
-    SPAN,
     WIDTH,
-    _Track,
     _summarize,
     _sweep,
+    _Track,
     make_arg_parser,
     push_gallery,
 )
+
+from margrete_rpc.chart import ChartNote
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import Curve
 
 HALF = BEAT // 2
 
@@ -152,8 +151,12 @@ def build_notes() -> list[ChartNote]:
     # AirCrush from two concatenated segments (height arcs up then down)
     t0, t1 = track.slot(DOUBLE)
     mid = (t0 + t1) // 2
-    arc_up = Curve(t=t0, x=LEFT, h=H_LOW).to(t=mid, x=RIGHT, h=H_HIGH, ease_x="out_quint", ease_h="in_quint")
-    arc_dn = Curve(t=mid, x=RIGHT, h=H_HIGH).to(t=t1, x=LEFT, h=H_LOW, ease_x="in_quint", ease_h="out_quint")
+    arc_up = Curve(t=t0, x=LEFT, h=H_LOW).to(
+        t=mid, x=RIGHT, h=H_HIGH, ease_x="out_quint", ease_h="in_quint"
+    )
+    arc_dn = Curve(t=mid, x=RIGHT, h=H_HIGH).to(
+        t=t1, x=LEFT, h=H_LOW, ease_x="in_quint", ease_h="out_quint"
+    )
     notes.append((arc_up + arc_dn).to_air_crush(w=WIDTH, gap=SEGMENT_GAP, color=COLORS[4]))
 
     track.skip(BEAT)

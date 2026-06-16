@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from typing import NamedTuple
 
-from .constants import TICKS_PER_BEAT as TICKS_PER_BEAT
+from .constants import TICK_RESOLUTION as TICK_RESOLUTION
 from .events import BeatEvent
 
 
@@ -101,7 +101,7 @@ def _build_time_signatures(beat_events: Iterable[BeatEvent]) -> list[_TimeSignat
 
 
 def _measure_length(ts: _TimeSignature) -> int:
-    return TICKS_PER_BEAT // ts.beat_unit * ts.beats_per_bar
+    return TICK_RESOLUTION // ts.beat_unit * ts.beats_per_bar
 
 
 class TimeCalculator:
@@ -138,7 +138,7 @@ class TimeCalculator:
         delta = tick - ts.tick
         bars_since = delta // measure_len
         remainder = delta % measure_len
-        beat_tick = TICKS_PER_BEAT // ts.beat_unit
+        beat_tick = TICK_RESOLUTION // ts.beat_unit
         beat = remainder // beat_tick
         offset = remainder % beat_tick
         return Position(ts.bar + bars_since, beat, offset)
@@ -180,7 +180,7 @@ class TimeCalculator:
         idx = self._find_segment_index_for_bar(bar)
         ts = self._segments[idx]
         measure_len = _measure_length(ts)
-        beat_tick = TICKS_PER_BEAT // ts.beat_unit
+        beat_tick = TICK_RESOLUTION // ts.beat_unit
         if beat >= ts.beats_per_bar:
             raise ValueError(
                 f"beat {beat} out of range for {ts.beats_per_bar} beats per bar at bar {bar}"
@@ -325,26 +325,26 @@ def d2t(numerator: int, denominator: int) -> int:
     """Convert a ``numerator/denominator`` beat fraction to a tick count.
 
     For example ``d2t(1, 4)`` is the ticks in a quarter note and ``d2t(1, 1)`` equals
-    ``TICKS_PER_BEAT``.
+    ``TICK_RESOLUTION``.
 
     Args:
         numerator: Fraction numerator (number of divisions).
-        denominator: Fraction denominator (1..``TICKS_PER_BEAT``).
+        denominator: Fraction denominator (1..``TICK_RESOLUTION``).
 
     Returns:
         The duration in ticks.
 
     Raises:
-        ValueError: If the denominator is non-positive, exceeds ``TICKS_PER_BEAT``, or the
+        ValueError: If the denominator is non-positive, exceeds ``TICK_RESOLUTION``, or the
             fraction does not land on a whole tick.
     """
     if type(numerator) is not int or type(denominator) is not int:
         raise TypeError("numerator and denominator must be ints")
     if denominator <= 0:
         raise ValueError("denominator must be positive")
-    if denominator > TICKS_PER_BEAT:
-        raise ValueError(f"denominator must not exceed {TICKS_PER_BEAT}")
-    frac = Fraction(numerator * TICKS_PER_BEAT, denominator)
+    if denominator > TICK_RESOLUTION:
+        raise ValueError(f"denominator must not exceed {TICK_RESOLUTION}")
+    frac = Fraction(numerator * TICK_RESOLUTION, denominator)
     if frac.denominator != 1:
         raise ValueError("beat division must resolve to a whole tick")
     return frac.numerator
@@ -368,7 +368,7 @@ def t2d(ticks: int) -> Interval:
         raise TypeError("ticks must be int")
     if ticks < 0:
         raise ValueError("ticks must be non-negative")
-    frac = Fraction(ticks, TICKS_PER_BEAT)
+    frac = Fraction(ticks, TICK_RESOLUTION)
     return Interval(frac.numerator, frac.denominator)
 
 
@@ -390,7 +390,7 @@ def resolve_interval(value: int | IntervalLike) -> int:
 
 
 __all__ = [
-    "TICKS_PER_BEAT",
+    "TICK_RESOLUTION",
     "Interval",
     "IntervalLike",
     "Position",
