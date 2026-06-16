@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..notes import AirCrush, AirHold, AirSlide, ColorLike, ColorValue, Hold, Slide
-from ..time import DivisionLike, PositionLike, resolve_tick
+from ..time import DivisionLike, Position, PositionLike, resolve_tick, tick_to_pos
 from .easing import EaseLike, Easing, resolve_easing
 
 _LINEAR = resolve_easing("linear")
@@ -14,18 +13,79 @@ type SlideLike = Slide | Hold | AirSlide | AirHold | AirCrush
 """A long note whose path (begin + joints) can be loaded into a :class:`Curve`."""
 
 
-@dataclass(frozen=True, slots=True)
 class Waypoint:
     """One control point on a :class:`Curve`: tick, lane, height, and per-axis leg easing.
 
     ``ease_x`` and ``ease_h`` are ignored on the first waypoint (no incoming leg).
     """
 
-    t: int
+    __slots__ = ("_ease_h", "_ease_x", "_t", "h", "x")
+
+    _t: int
     x: int
     h: int
-    ease_x: Easing = _LINEAR
-    ease_h: Easing = _LINEAR
+    _ease_x: Easing
+    _ease_h: Easing
+
+    def __init__(
+        self,
+        t: int | PositionLike,
+        x: int,
+        h: int,
+        ease_x: EaseLike = _LINEAR,
+        ease_h: EaseLike = _LINEAR,
+    ) -> None:
+        self.t = t
+        self.x = x
+        self.h = h
+        self.ease_x = ease_x
+        self.ease_h = ease_h
+
+    @property
+    def t(self) -> int:
+        return self._t
+
+    @t.setter
+    def t(self, value: int | PositionLike) -> None:
+        self._t = resolve_tick(value)
+
+    @property
+    def p(self) -> Position:
+        """Timing as a ``(bar, beat, offset)`` :class:`Position`; the read-only view of ``t``."""
+        return tick_to_pos(self.t)
+
+    @property
+    def ease_x(self) -> Easing:
+        return self._ease_x
+
+    @ease_x.setter
+    def ease_x(self, value: EaseLike) -> None:
+        self._ease_x = resolve_easing(value)
+
+    @property
+    def ease_h(self) -> Easing:
+        return self._ease_h
+
+    @ease_h.setter
+    def ease_h(self, value: EaseLike) -> None:
+        self._ease_h = resolve_easing(value)
+
+    def __repr__(self) -> str:
+        return (
+            f"Waypoint(t={self.t!r}, x={self.x!r}, h={self.h!r}, "
+            f"ease_x={self.ease_x!r}, ease_h={self.ease_h!r})"
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Waypoint):
+            return NotImplemented
+        return (
+            self.t == other.t
+            and self.x == other.x
+            and self.h == other.h
+            and self.ease_x == other.ease_x
+            and self.ease_h == other.ease_h
+        )
 
 
 class Curve:

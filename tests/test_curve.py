@@ -42,6 +42,28 @@ def test_to_stores_sparse_control_waypoints() -> None:
     assert path.waypoints[-1].ease_h is EASINGS["linear"]
 
 
+def test_waypoint_resolves_position_and_easing_inputs() -> None:
+    point = Waypoint((0, 2), 6, 40, ease_x="out_cubic", ease_h="in_sine")
+
+    assert point.t == 960
+    assert point.p == (0, 2, 0)
+    assert point.ease_x is EASINGS["out_cubic"]
+    assert point.ease_h is EASINGS["in_sine"]
+
+
+def test_waypoint_assignment_resolves_position_and_easing_inputs() -> None:
+    point = Waypoint(0, 0, 40)
+
+    point.t = (1, 0)
+    point.ease_x = "out_cubic"
+    point.ease_h = "in_sine"
+
+    assert point.t == 1920
+    assert point.p == (1, 0, 0)
+    assert point.ease_x is EASINGS["out_cubic"]
+    assert point.ease_h is EASINGS["in_sine"]
+
+
 def test_points_endpoints_exact() -> None:
     path = Curve(t=0, x=0, h=40).to(t=960, x=12, h=120, ease_x="in_out_sine")
     pts = path.points()
@@ -290,6 +312,17 @@ def test_from_note_loads_slide_path() -> None:
     # Re-materializing reproduces the same joint geometry (linear legs round-trip).
     again = curve.to_slide(w=2)
     assert [(int(j.t), j.x) for j in again.joints] == [(int(j.t), j.x) for j in slide.joints]
+
+
+def test_from_note_waypoint_easing_can_be_edited() -> None:
+    slide = Curve(t=0, x=0).to(t=960, x=12).to_slide(w=2)
+    curve = Curve.from_note(slide)
+
+    curve.waypoints[-1].ease_x = "in_quad"
+
+    assert curve.waypoints[-1].ease_x is EASINGS["in_quad"]
+    assert curve.at(480).x == 3
+    assert len(curve.points()) > 2
 
 
 def test_from_note_air_crush_carries_height() -> None:
