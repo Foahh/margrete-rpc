@@ -3,7 +3,7 @@ title: Note Transforms
 description: Shift, align, flip, scale, clone, split, merge, and convert notes.
 ---
 
-Transforms are methods on `Note` objects. Use them when you want to adjust existing notes instead of rebuilding them by hand.
+Transforms are methods on [`Note`](/docs/reference/chart/notes/shared/Note) objects. Use them when you want to adjust existing notes instead of rebuilding them by hand. This guide shows the common patterns; use the [`Note` functions reference](/docs/reference/chart/notes/shared/Note#functions) for core transform method signatures. For the note constructors these methods apply to, see [Notes](/docs/basic/notes).
 
 ```python
 from margrete_rpc import Margrete
@@ -18,19 +18,19 @@ with m.open_edit() as tx:
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
 exception, no changes are applied.
 
-## Mutated or cloned
+## Mutating or cloning
 
 Most transform methods come in two forms:
 
-| Mutating       | Cloning          | Meaning                                             |
-| -------------- | ---------------- | --------------------------------------------------- |
-| `shift(...)`   | `shifted(...)`   | Change this note, or return a changed copy.         |
-| `scale(...)`   | `scaled(...)`    | Change this note, or return a changed copy.         |
-| `align(...)`   | `aligned(...)`   | Change this note, or return a changed copy.         |
-| `flip(...)`    | `flipped(...)`   | Change this note, or return a changed copy.         |
-| `clamp(...)`   | `clamped_w(...)` | Change this note, or return a changed copy.         |
-| n/a            | `converted(...)` | Return a compatible note type with copied geometry. |
-| n/a            | `clone()`        | Return a deep copy.                                 |
+| Mutating     | Cloning          | Meaning                                             |
+| ------------ | ---------------- | --------------------------------------------------- |
+| `shift(...)` | `shifted(...)`   | Change this note, or return a changed copy.         |
+| `scale(...)` | `scaled(...)`    | Change this note, or return a changed copy.         |
+| `align(...)` | `aligned(...)`   | Change this note, or return a changed copy.         |
+| `flip(...)`  | `flipped(...)`   | Change this note, or return a changed copy.         |
+| `clamp(...)` | `clamped_w(...)` | Change this note, or return a changed copy.         |
+| n/a          | `converted(...)` | Return a compatible note type with copied geometry. |
+| n/a          | `clone()`        | Return a deep copy.                                 |
 
 Use the mutated form when editing `tx.chart.notes` directly:
 
@@ -50,7 +50,7 @@ with m.open_edit() as tx:
 
 ## Shift notes
 
-`shift()` adds deltas to note fields.
+[`shift()`](/docs/reference/chart/notes/shared/Note#functions) adds deltas to note fields.
 
 ```python
 note.shift(t=1920)  # move later by one beat
@@ -59,7 +59,7 @@ note.shift(w=1)     # make 1 lane wider
 note.shift(h=20)    # raise air height by 20
 ```
 
-For `t`, you can also pass a `Position` tuple. This is resolved the same way as [constructor positions](/docs/guides/notes#positioning).
+For `t`, you can also pass a [`Position`](/docs/reference/chart/time/Position) tuple. This is resolved the same way as [constructor positions](/docs/basic/notes#positioning).
 
 ```python
 note.shift(t=(1, 0))  # shift by one bar in the active time-signature context
@@ -74,7 +74,7 @@ note.shift(w=lambda w: max(1, w - 1))
 
 ## Align notes to a grid
 
-`align()` snaps timing to a grid interval.
+[`align()`](/docs/reference/chart/notes/shared/Note#functions) snaps timing to a grid interval.
 
 ```python
 with m.open_edit() as tx:
@@ -96,7 +96,7 @@ note.align((1, 384), mode="floor")
 
 ## Flip notes
 
-`flip()` mirrors notes horizontally across the field. The default field width is 16 lanes.
+[`flip()`](/docs/reference/chart/notes/shared/Note#functions) mirrors notes horizontally across the field. The default field width is 16 lanes.
 
 ```python
 note.flip()
@@ -114,11 +114,10 @@ Directional notes are mirrored too. For example, `"left"` flicks become `"right"
 
 ## Clamp lane
 
-`clamp()` keeps note geometry inside a lane range, default to `[0, 16)`.
-
+[`clamp()`](/docs/reference/chart/notes/shared/Note#functions) keeps note geometry inside a lane range, defaulting to `[0, 16)`.
 
 ```python
-note.clamp() # default left=0, right=16
+note.clamp()  # default left=0, right=16
 ```
 
 The right edge is exclusive, so `right=16` means the note must end before lane 16. Also, width is never clamped below `1`.
@@ -132,7 +131,7 @@ for note in tx.chart.notes:
 
 ## Scale timing
 
-`scale()` changes timing around a pivot tick which defaults to `0`.
+[`scale()`](/docs/reference/chart/notes/shared/Note#functions) changes timing around a pivot tick which defaults to `0`.
 
 ```python
 note.scale(2.0, pivot=0)
@@ -153,7 +152,7 @@ note.scale(1.5, pivot=(4, 0))
 
 ## Clone notes
 
-`clone()` makes a deep copy. Use it when duplicating notes.
+[`clone()`](/docs/reference/chart/notes/shared/Note#functions) makes a deep copy. Use it when duplicating notes.
 
 ```python
 with m.open_edit() as tx:
@@ -167,7 +166,7 @@ with m.open_edit() as tx:
 
 ## Split slides
 
-`split()` divides a slide-like note into two notes. It supports `Slide`, `AirSlide`, and `AirCrush`.
+[`split()`](/docs/reference/chart/notes/transform#functions) divides a slide-like note into two notes. It supports [`Slide`](/docs/reference/chart/notes/long/Slide), [`AirSlide`](/docs/reference/chart/notes/air/AirSlide), and [`AirCrush`](/docs/reference/chart/notes/long/AirCrush).
 
 ```python
 from margrete_rpc.chart.notes import Slide, split
@@ -186,7 +185,7 @@ The split point can be a `Position` tuple, a raw tick, or one of the note's join
 
 ## Merge slides
 
-`merge()` combines consecutive slide-like notes of the same type. It supports `Slide`, `AirSlide`, and `AirCrush`.
+[`merge()`](/docs/reference/chart/notes/transform#functions) combines consecutive slide-like notes of the same type. It supports [`Slide`](/docs/reference/chart/notes/long/Slide), [`AirSlide`](/docs/reference/chart/notes/air/AirSlide), and [`AirCrush`](/docs/reference/chart/notes/long/AirCrush).
 
 ```python
 from margrete_rpc.chart.notes import Slide, merge
@@ -201,7 +200,7 @@ The notes must not overlap, and all notes passed to `merge()` must be the same t
 
 ## Convert notes
 
-Use `converted()` when you want to rebuild a note as another compatible note type without manually copying its timing and geometry.
+Use `converted()` when you want to rebuild a note as another compatible note type without manually copying its timing and geometry. It is documented on the concrete note classes that support it, such as [`Tap`](/docs/reference/chart/notes/ground/Tap#functions), [`Hold`](/docs/reference/chart/notes/long/Hold#functions), and [`AirSlide`](/docs/reference/chart/notes/air/AirSlide#functions).
 
 `converted()` always returns a new note. It does not change the original note. Pass keyword overrides for fields the target type needs, such as `dir`, `h`, `gap`, or `color`.
 

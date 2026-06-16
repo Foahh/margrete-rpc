@@ -6,7 +6,7 @@ description: Create, inspect, and modify notes.
 import PositioningNotesExampleImage from "../assets/positioning-notes-example.png";
 import AirCrushIntervalImage from "../assets/air-crush-interval.png";
 
-Note classes live in `margrete_rpc.chart.notes`. In normal edit transactions, `tx.chart.notes` contains these `Note` objects when Margrete RPC recognizes the note tree, and `RawNote` objects for structures that need low-level handling.
+Note classes live in [`margrete_rpc.chart.notes`](/docs/reference/chart/notes). In normal [edit transactions](/docs/basic/edit-transactions), `tx.chart.notes` contains these [`Note`](/docs/reference/chart/notes/shared/Note) objects when Margrete RPC recognizes the note tree, and [`RawNote`](/docs/reference/chart/notes/raw/RawNote) objects for structures that need low-level handling.
 
 Most `Note` work follows the same pattern:
 
@@ -23,21 +23,20 @@ with m.open_edit() as tx:
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
 exception, no changes are applied.
 
-
 ## Mental model
 
 A note is defined by its timing and lane geometry:
 
-| Field | Meaning                                                                               |
-| ----- | ------------------------------------------------------------------------------------- |
-| `t`   | Timing. Pass a raw tick `int`, or a `Position` tuple such as `(bar, beat, offset)`.      |
-| `x`   | Left lane index. Margrete's standard ground field is 16 lanes wide, from `0` to `15`. |
-| `w`   | Width in lanes. A note with `x=4, w=4` covers lanes `4`, `5`, `6`, and `7`.           |
-| `h`   | Air height. Only air-long notes and air-crush notes use this.                         |
+| Field | Meaning                                                                                                                    |
+| ----- | -------------------------------------------------------------------------------------------------------------------------- |
+| `t`   | Timing. Pass a raw tick `int`, or a [`Position`](/docs/reference/chart/time/Position) tuple such as `(bar, beat, offset)`. |
+| `x`   | Left lane index. Margrete's standard ground field is 16 lanes wide, from `0` to `15`.                                      |
+| `w`   | Width in lanes. A note with `x=4, w=4` covers lanes `4`, `5`, `6`, and `7`.                                                |
+| `h`   | Air height. Only air-long notes and air-crush notes use this.                                                              |
 
 ## Positioning
 
-Every `Note` accepts `t` as either a raw tick or a `Position` tuple:
+Every [`Note`](/docs/reference/chart/notes/shared/Note) accepts `t` as either a raw tick or a [`Position`](/docs/reference/chart/time/Position) tuple:
 
 | Form                  | Meaning               |
 | --------------------- | --------------------- |
@@ -47,7 +46,7 @@ Every `Note` accepts `t` as either a raw tick or a `Position` tuple:
 
 Position values are zero-based. `(2, 0, 0)` means bar 2, beat 0, offset 0 in the Python API, which is the third bar if you are counting bars from 1 by hand.
 
-Inside `with m.open_edit()` blocks, `Position` tuples resolve with the chart's actual time signatures. Outside an edit transaction, they use the default 4/4 context unless you call the time helpers with explicit beat events. See the [Time & Position](/docs/guides/time) guide for the full timing model.
+Inside `with m.open_edit()` blocks, `Position` tuples resolve with the chart's actual time signatures. Outside an edit transaction, they use the default 4/4 context unless you call the time helpers with explicit beat events. See the [Time & Position](/docs/basic/time-position) guide for the full timing model and the [`TimeCalculator`](/docs/reference/chart/time/TimeCalculator) reference for reusable conversions.
 
 <div className="flex items-center justify-start gap-2">
     ```python
@@ -79,7 +78,7 @@ damage = Damage(t=(0, 3), x=4, w=4)
 
 ### Tap
 
-Use `Tap` for a basic ground tap.
+Use [`Tap`](/docs/reference/chart/notes/ground/Tap) for a basic ground tap.
 
 ```python
 from margrete_rpc.chart.notes import Tap
@@ -89,7 +88,7 @@ note = Tap(t=(0, 0), x=4, w=4)
 
 ### Flick
 
-Use `Flick` for left/right flicks. `dir` accepts `FlickDirection` or a string.
+Use [`Flick`](/docs/reference/chart/notes/ground/Flick) for left/right flicks. `dir` accepts [`FlickDirection`](/docs/reference/chart/notes/direction/FlickDirection) or a string.
 
 ```python
 from margrete_rpc.chart.notes import Flick, FlickDirection
@@ -103,7 +102,7 @@ auto = Flick(t=(0, 2), x=4, w=4)  # defaults to "auto"
 
 ### Extap
 
-Use `Extap` for directional ex-taps. `dir` accepts `ExtapDirection` or a string.
+Use [`Extap`](/docs/reference/chart/notes/ground/Extap) for directional ex-taps. `dir` accepts [`ExtapDirection`](/docs/reference/chart/notes/direction/ExtapDirection) or a string.
 
 ```python
 from margrete_rpc.chart.notes import Extap, ExtapDirection
@@ -116,7 +115,7 @@ spin = Extap(t=(0, 1), x=4, w=4, dir="rotate_left")
 
 ### Damage
 
-Use `Damage` for penalty notes.
+Use [`Damage`](/docs/reference/chart/notes/ground/Damage) for penalty notes.
 
 ```python
 from margrete_rpc.chart.notes import Damage
@@ -150,9 +149,11 @@ slide.add_step(t=(1, 0), x=4, w=4)
 
 Joints must be added in increasing time order. Long notes must have at least one joint before being sent to Margrete.
 
+For generated slide paths instead of hand-written joints, see [Sketch Slides](/docs/advanced/sketch-slide).
+
 ### Hold
 
-A hold starts at the begin point and ends at a single step joint.
+A [`Hold`](/docs/reference/chart/notes/long/Hold) starts at the begin point and ends at a single step joint.
 
 ```python
 from margrete_rpc.chart.notes import Hold
@@ -164,7 +165,7 @@ Calling `with_step()` again on a hold replaces its end joint in the returned cop
 
 ### Slide
 
-A slide can move through step and control joints.
+A [`Slide`](/docs/reference/chart/notes/long/Slide) can move through step and control joints.
 
 ```python
 from margrete_rpc.chart.notes import Slide
@@ -180,13 +181,13 @@ The final joint will automatically become a step joint before being sent to Marg
 
 ### AirCrush
 
-`AirCrush` is an air-lane long note. It uses the same begin/joint structure as a slide, plus:
+[`AirCrush`](/docs/reference/chart/notes/long/AirCrush) is an air-lane long note. It uses the same begin/joint structure as a slide, plus:
 
-| Field   | Meaning                                                 |
-| ------- | ------------------------------------------------------- |
-| `h`     | Air height at the begin or joint.                       |
-| `gap`   | Segment spacing, as raw ticks or a `Division` tuple. |
-| `color` | Crush color, as `ColorValue` or a string.               |
+| Field   | Meaning                                                                                     |
+| ------- | ------------------------------------------------------------------------------------------- |
+| `h`     | Air height at the begin or joint.                                                           |
+| `gap`   | Segment spacing, as raw ticks or a [`Division`](/docs/reference/chart/time/Division) tuple. |
+| `color` | Crush color, as [`ColorValue`](/docs/reference/chart/notes/color/ColorValue) or a string.   |
 
 ```python
 from margrete_rpc.chart.notes import AirCrush
@@ -208,7 +209,7 @@ crush = (
 
 Air notes are attached to a ground note or long note through the parent note's `.air` property.
 
-You can use `add_air()` or assign `.air` directly:
+You can use [`add_air()`](/docs/reference/chart/notes/air/_AirAttachable#functions) or assign `.air` directly:
 
 ```python
 from margrete_rpc.chart.notes import Air, AirDirection, Tap
@@ -216,14 +217,14 @@ from margrete_rpc.chart.notes import Air, AirDirection, Tap
 tap = Tap(t=(0, 0), x=4, w=4)
 air = Air(AirDirection.UP, t=(0, 0), x=4, w=4)
 
-tap.air = air # or
+tap.air = air  # or
 tap.add_air(air)
 ```
 
-Use `with_air()` when you want to keep the original note unchanged:
+Use [`with_air()`](/docs/reference/chart/notes/air/_AirAttachable#functions) when you want to keep the original note unchanged:
 
 ```python
-tap_with_air = tap.with_air(Air("up", t=(0, 0), x=4, w=4)) # returning copy, tap unchanged
+tap_with_air = tap.with_air(Air("up", t=(0, 0), x=4, w=4))  # tap unchanged
 ```
 
 The attached air note's geometry must match its parent:
@@ -231,11 +232,11 @@ The attached air note's geometry must match its parent:
 - For a ground note, it must match the ground note's `t`, `x`, and `w`.
 - For a long note, it must match the long note's final joint `t`, `x`, and `w`.
 
-`AirDirection` values are `"up"`, `"down"`, `"up_left"`, `"up_right"`, `"down_left"`, and `"down_right"`.
+[`AirDirection`](/docs/reference/chart/notes/direction/AirDirection) values are `"up"`, `"down"`, `"up_left"`, `"up_right"`, `"down_left"`, and `"down_right"`.
 
 ### Air on ground notes
 
-Attach `Air` above a tap, flick, extap, or damage note.
+Attach [`Air`](/docs/reference/chart/notes/air/Air) above a tap, flick, extap, or damage note.
 
 ```python
 from margrete_rpc.chart.notes import Air, Flick
@@ -247,7 +248,7 @@ flick = Flick(t=(0, 0), x=4, w=4, dir="right").with_air(
 
 ### Air on long notes
 
-Attach `Air`, `AirSlide`, or `AirHold` to a long note's end joint.
+Attach [`Air`](/docs/reference/chart/notes/air/Air), [`AirSlide`](/docs/reference/chart/notes/air/AirSlide), or [`AirHold`](/docs/reference/chart/notes/air/AirHold) to a long note's end joint.
 
 ```python
 from margrete_rpc.chart.notes import AirHold, Hold
@@ -276,7 +277,7 @@ slide_with_air = slide.with_air(
 
 ## RawNote
 
-`RawNote` is the [low-level Margrete representation](https://github.com/MargreteSDK/MargretePluginSDK/blob/b8d0c87125e090880a75f6f0ff57a773510299a8/include/MargretePlugin.h#L126-L138). You usually do not need it for normal scripting.
+[`RawNote`](/docs/reference/chart/notes/raw/RawNote) is the [low-level Margrete representation](https://github.com/MargreteSDK/MargretePluginSDK/blob/b8d0c87125e090880a75f6f0ff57a773510299a8/include/MargretePlugin.h#L126-L138). You usually do not need it for normal scripting.
 
 ```python
 from margrete_rpc.chart.notes import R, RawNote, Tap
@@ -291,7 +292,7 @@ raw = typed.to_raw()
 
 ## Validation
 
-Call `note.validate()` when you want to catch invalidations early.
+Call [`note.validate()`](/docs/reference/chart/notes/shared/Note#functions) when you want to catch invalid notes early.
 `to_raw()` also validates by default.
 
 ```python

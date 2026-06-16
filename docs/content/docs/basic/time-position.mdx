@@ -6,11 +6,11 @@ description: Convert between raw ticks, musical positions, and note divisions.
 import NoteTickListImage from "../assets/note-ticks-list.png";
 import TimeSignatureChangedImage from "../assets/time-signature-changed.png";
 
-Margrete stores time as integer ticks. The Python API lets you work at that level when you need exact control, or use musical tuple forms for charting code that is easier to read.
+Margrete stores time as integer ticks. The Python API lets you work at that level when you need exact control, or use musical tuple forms for charting code that is easier to read. Notes and events both use this model; see [Notes](/docs/basic/notes#positioning) and [Events](/docs/basic/events) for chart-editing examples.
 
 ## Ticks
 
-The lowest-level unit of time is the **tick**. Margrete RPC uses a resolution of `1920` ticks per whole note, so common note values map to these tick counts:
+The lowest-level unit of time is the **tick**. Margrete RPC uses a resolution of [`TICK_RESOLUTION`](/docs/reference/chart/time) ticks per whole note, so common note values map to these tick counts:
 
 <div className="flex gap-2">
 
@@ -42,7 +42,7 @@ Pass raw ticks anywhere a time argument such as `t=` is accepted.
 
 ## Positions
 
-Raw tick math often gets hard to read. A position lets you write time as a musical location instead:
+Raw tick math often gets hard to read. A [`Position`](/docs/reference/chart/time/Position) lets you write time as a musical location instead:
 
 | Form                  | Meaning               |
 | --------------------- | --------------------- |
@@ -87,7 +87,7 @@ Here `(2, 0)` still means the start of bar 2, even though the first two bars hav
 
 ### Manual conversion
 
-Use `tick_to_pos` and `pos_to_tick` when you need to convert values yourself:
+Use [`tick_to_pos`](/docs/reference/chart/time#functions) and [`pos_to_tick`](/docs/reference/chart/time#functions) when you need to convert values yourself:
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
@@ -116,7 +116,7 @@ tick = pos_to_tick(10, 0, 0, beat_events=beats)
 
 ## Division
 
-Positions describe _where_ something starts. Durations describe _how long_ something lasts. Use `div_to_tick(numerator, denominator)` to convert a note value to ticks:
+Positions describe _where_ something starts. Durations describe _how long_ something lasts. Use [`div_to_tick(numerator, denominator)`](/docs/reference/chart/time#functions) to convert a note value to ticks:
 
 ```python
 from margrete_rpc.chart.time import div_to_tick, tick_to_div
@@ -146,7 +146,7 @@ AirCrush(t=0, x=0, w=4, h=4, gap=(3, 4), ...)
 
 ## Working with time signatures
 
-Time signatures live in `tx.chart.events.beat` as `BeatEvent` objects. Each event starts at a bar and applies until the next event:
+Time signatures live in `tx.chart.events.beat` as [`BeatEvent`](/docs/reference/chart/events/BeatEvent) objects. Each event starts at a bar and applies until the next event:
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
@@ -164,7 +164,7 @@ with m.open_edit(snapshot=False) as tx:
     # Bar 16: 3/4
 ```
 
-For repeated manual conversions, build a `TimeCalculator` once instead of passing `beat_events` to every helper call:
+For repeated manual conversions, build a [`TimeCalculator`](/docs/reference/chart/time/TimeCalculator) once instead of passing `beat_events` to every helper call:
 
 ```python
 from margrete_rpc.chart.time import TimeCalculator

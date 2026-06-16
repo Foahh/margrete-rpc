@@ -6,7 +6,7 @@ description: Read and modify chart notes and events.
 import CurrentTickPlayhead from "../assets/current-tick-playhead.png";
 
 An **edit transaction** is the normal way to script chart changes with Margrete RPC.
-Open a transaction, change the in-memory chart, then leave the `with` block.
+Open a transaction, modify the chart, then leave the `with{:py}` block.
 
 ```python
 from margrete_rpc import Margrete
@@ -21,32 +21,34 @@ with m.open_edit() as tx:
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
 exception, no changes are applied.
 
+For the exact method signature, see [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) and the [`EditTransaction`](/docs/reference/transaction/EditTransaction) reference.
+
 ## Mental model
 
 Think of `open_edit()` as a four-step workflow:
 
 1. **Snapshot** - Margrete sends the current raw notes, events, and cursor tick to Python.
-2. **Parse** - The Python API converts `RawNote` to `Note` objects such as `Tap`
-   and `Slide`. <br/> If `raw_notes=True`, this step keeps every note as `RawNote` instead.
+2. **Parse** - The Python API converts [`RawNote`](/docs/reference/chart/notes/raw/RawNote) to [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap)
+   and [`Slide`](/docs/reference/chart/notes/long/Slide). <br/> If `raw_notes=True`, this step keeps every note as `RawNote` instead.
 3. **Mutate** - Your script edits normal Python objects: lists, notes, and event objects.
 4. **Apply** - The Python client compares the final chart to the snapshot and sends one undoable edit.
 
-The transaction object has three things you will use most often:
+The [`EditTransaction`](/docs/reference/transaction/EditTransaction) object has three things you will use most often:
 
-| Object            | What it is for                                                              |
-| ----------------- | --------------------------------------------------------------------------- |
-| `tx.chart.notes`  | A mutable `list` of chart notes.                                            |
-| `tx.chart.events` | Mutable event lists for BPM, time signatures, scroll speed, and note speed. |
-| `tx.current_tick` | The editor cursor tick captured when the transaction opened.                |
+| Object            | What it is for                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `tx.chart.notes`  | A mutable `list` of chart notes. See the [`Chart`](/docs/reference/chart/chart/Chart) reference. |
+| `tx.chart.events` | Mutable event lists for BPM, time signatures, scroll speed, and note speed.                      |
+| `tx.current_tick` | The editor cursor tick captured when the transaction opened.                                     |
 
-`tx.chart.events` groups chart events by kind:
+`tx.chart.events` groups chart events by kind. See [Events](/docs/basic/events) for examples that add, mutate, and filter each event list:
 
-| List                         | Contains                                                           |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `tx.chart.events.bpm`        | `BpmEvent(t, bpm)` tempo changes.                                  |
-| `tx.chart.events.beat`       | `BeatEvent(bar, beats_per_bar, beat_unit)` time-signature changes. |
-| `tx.chart.events.til`        | `TimelineSpeedEvent(til, t, speed)` scroll-speed changes.          |
-| `tx.chart.events.note_speed` | `NoteSpeedEvent(t, speed)` note-speed changes.                     |
+| List                         | Contains                                                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `tx.chart.events.bpm`        | [`BpmEvent(t, bpm)`](/docs/reference/chart/events/BpmEvent) tempo changes.                                   |
+| `tx.chart.events.beat`       | [`BeatEvent(bar, beats_per_bar, beat_unit)`](/docs/reference/chart/events/BeatEvent) time-signature changes. |
+| `tx.chart.events.til`        | [`TimelineSpeedEvent(til, t, speed)`](/docs/reference/chart/events/TimelineSpeedEvent) scroll-speed changes. |
+| `tx.chart.events.note_speed` | [`NoteSpeedEvent(t, speed)`](/docs/reference/chart/events/NoteSpeedEvent) note-speed changes.                |
 
 ## Practical examples
 
@@ -87,7 +89,7 @@ with m.open_edit() as tx:
 
 ### Move every note right by two lanes
 
-Notes are regular objects. Transform methods mutate them in place.
+Notes are regular objects. Transform methods mutate them in place. See [Note Transforms](/docs/basic/note-transforms) for examples and the [`Note`](/docs/reference/chart/notes/shared/Note#functions) reference for exact signatures.
 
 ```python
 with m.open_edit() as tx:
@@ -151,7 +153,7 @@ with m.open_edit() as tx:
 
 ### Inspect unsupported notes safely
 
-By default, the Python API will parse recognized `RawNote` to `Note` objects such as `Tap` or `Slide`. If the
+By default, the Python API will parse recognized [`RawNote`](/docs/reference/chart/notes/raw/RawNote) to [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap) or [`Slide`](/docs/reference/chart/notes/long/Slide). If the
 Python API sees an unsupported note, it keeps that note as `RawNote` instead of dropping it.
 
 ```python
@@ -179,7 +181,7 @@ you are unfamiliar with it.
 
 <ImageZoom src={CurrentTickPlayhead} alt="Cursor image" width="300" />
 
-Use `m.current_tick()` when you need the live cursor position outside a transaction:
+Use [`m.current_tick()`](/docs/reference/client/Margrete#functions) when you need the live cursor position outside a transaction:
 
 ```python
 tick = m.current_tick()

@@ -4,8 +4,8 @@ description: Work with tempo, time-signature, and speed changes.
 ---
 
 Events are chart-wide changes such as BPM, time signatures, scroll speed, and note
-speed. On the Python side they are simple objects in `tx.chart.events`, so most
-event edits are just list edits inside an `open_edit()` block.
+speed. On the Python side they are simple objects in [`tx.chart.events`](/docs/reference/chart/chart/ChartEvents), so most
+event edits are just list edits inside a [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) block.
 
 ```python
 from margrete_rpc import Margrete
@@ -24,12 +24,12 @@ exception, no changes are applied.
 
 `tx.chart.events` has four lists:
 
-| List                         | What it controls                         |
-| ---------------------------- | ---------------------------------------- |
-| `tx.chart.events.bpm`        | Song tempo changes.                      |
-| `tx.chart.events.beat`       | Time-signature changes.                  |
-| `tx.chart.events.til`        | Scroll speed for a specific timeline.    |
-| `tx.chart.events.note_speed` | Note speed, independent of scroll speed. |
+| List                         | What it controls                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `tx.chart.events.bpm`        | [`BpmEvent`](/docs/reference/chart/events/BpmEvent) song tempo changes.                                       |
+| `tx.chart.events.beat`       | [`BeatEvent`](/docs/reference/chart/events/BeatEvent) time-signature changes.                                 |
+| `tx.chart.events.til`        | [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent) scroll speed for a specific timeline. |
+| `tx.chart.events.note_speed` | [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent) note speed, independent of scroll speed.      |
 
 Each list contains normal dataclass objects. You can append new events, change fields
 on existing events, or replace the list with a filtered list.
@@ -51,7 +51,7 @@ with m.open_edit() as tx:
 
 ## Change the chart BPM
 
-Use `BpmEvent(t, bpm)` to set the tempo from a tick onward.
+Use [`BpmEvent(t, bpm)`](/docs/reference/chart/events/BpmEvent) to set the tempo from a tick onward.
 
 ```python
 from margrete_rpc.chart.events import BpmEvent
@@ -76,7 +76,7 @@ with m.open_edit() as tx:
 
 ## Add a time-signature change
 
-Use `BeatEvent(bar, beats_per_bar, beat_unit)` for time signatures. Unlike most
+Use [`BeatEvent(bar, beats_per_bar, beat_unit)`](/docs/reference/chart/events/BeatEvent) for time signatures. Unlike most
 events, it is placed by bar number instead of tick.
 
 ```python
@@ -103,7 +103,7 @@ with m.open_edit(snapshot=False) as tx:
 
 ## Make a scroll-speed bump
 
-Use `TimelineSpeedEvent(til, t, speed)` to change scroll speed on one timeline.
+Use [`TimelineSpeedEvent(til, t, speed)`](/docs/reference/chart/events/TimelineSpeedEvent) to change scroll speed on one timeline.
 For normal ground notes, timeline `0` is the common one.
 
 ```python
@@ -130,7 +130,7 @@ with m.open_edit() as tx:
 
 ## Change note speed
 
-Use `NoteSpeedEvent(t, speed)` when you want note speed changes separate from
+Use [`NoteSpeedEvent(t, speed)`](/docs/reference/chart/events/NoteSpeedEvent) when you want note speed changes separate from
 timeline scroll speed.
 
 ```python

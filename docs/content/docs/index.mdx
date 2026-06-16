@@ -11,7 +11,7 @@ import EnableThePluginImage from "./assets/enable-the-plugin.png";
 import ActivateThePluginImage from "./assets/activate-the-plugin.png";
 import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png";
 
-**Margrete RPC** is a Margrete plugin plus a Python client package that lets you script chart editing for [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro).
+**Margrete RPC** is a Margrete plugin plus a [Python client package](/docs/reference/client) that lets you script chart editing for [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro).
 
 It lets you read and rewrite charts programmatically — place notes, edit events, and apply changes inside the editor.
 
@@ -92,7 +92,7 @@ It lets you read and rewrite charts programmatically — place notes, edit event
    # changes are applied when the `with` block exits successfully
    ```
 
-   This connects to Margrete, print the plugin status, opens an edit transaction, and appends a Tap note to the chart.
+   This connects to Margrete, prints the [`ServerStatus`](/docs/reference/client/ServerStatus), opens an [edit transaction](/docs/basic/edit-transactions), and appends a [`Tap`](/docs/reference/chart/notes/ground/Tap) note to the chart.
 
 3. Run the script and check the editor:
 
@@ -106,9 +106,11 @@ It lets you read and rewrite charts programmatically — place notes, edit event
 
 ## Handle multiple Margrete instances
 
-`Margrete()` with no arguments only discovers the single running plugin instance.
+[`Margrete()`](/docs/reference/client/Margrete) with no arguments only discovers the single running plugin instance.
 
-When multiple Margrete instances are running, pass `endpoint` or `instance_id`:
+When multiple Margrete instances are running, pass `endpoint` or `instance_id`.
+
+Use [`list_instances()`](/docs/reference/discovery) when you need to inspect available [`MargreteInstance`](/docs/reference/discovery/MargreteInstance) values first:
 
 ```python
 from margrete_rpc import Margrete, list_instances

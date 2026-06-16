@@ -1,19 +1,19 @@
 ---
 title: Limitations
-description: Known constraints in the Margrete RPC, and how to work around them.
+description: Known constraints in Margrete RPC, and how to work around them.
 icon: TriangleAlert
 ---
 
 ## Event scanning
 
-Due to a [limitation in the Margrete plugin SDK](https://github.com/inonote/umiguri-issue-repo/issues/6), `open_edit` scans for scroll-speed events (`TimelineSpeedEvent`) rather than reading them directly. This has two practical consequences:
+Due to a [limitation in the Margrete plugin SDK](https://github.com/inonote/umiguri-issue-repo/issues/6), [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) scans for scroll-speed events ([`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)) rather than reading them directly. This has two practical consequences:
 
 - **Events far past the last note may not be read.** By default, the scan covers up to 19200 ticks beyond the last note.
 - **Charts with many scroll-speed events can be slow to open** — [_Dead Soul_](https://pgko.dev/bundles/019cafe9-6901-7000-a8e5-0785150fdf94) is a known example.
 
 ### Workarounds
 
-Use `open_edit` parameters to control the scan:
+Use the `open_edit` parameters described in [Edit Transactions](/docs/basic/edit-transactions#open_edit-options) to control the scan:
 
 ```python
 with m.open_edit(
@@ -26,17 +26,17 @@ with m.open_edit(
 Or provide an explicit list of timeline IDs to scan:
 
 ```python
-with m.open_edit(event_scan_til_ids=[0, 3840, 7680]) as tx:
+with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
     ...
 ```
 
-Pass `event_scan_til_ids=[]` to scan all default timelines (0-15) without note-based filtering:
+Pass `event_scan_til_ids=[]` to scan all default timelines (`0` through `15`) without note-based filtering.
 
 ## Undo and note deletion
 
 When a Python-scripted edit **deletes** notes, pressing Undo in Margrete may restore those notes in a duplicated state instead of cleanly reversing the deletion.
 
-Additions and modifications undo safely — only deletions are affected.
+Additions and modifications undo safely. Only deletions are affected, so note-cleanup scripts should use the deletion workflow in [Edit Transactions](/docs/basic/edit-transactions#delete-notes-in-a-lane-range) with this limitation in mind.
 
 ### Workarounds
 
