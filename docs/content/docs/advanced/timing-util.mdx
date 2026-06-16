@@ -1,4 +1,135 @@
 ---
 title: Timing Utilities
-description: Generate common timing patterns.
+description: Generate common scroll-speed patterns.
 ---
+
+Timing utilities generate [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent) lists. Append
+those events to `tx.chart.events.til` to change scroll speed over time.
+
+```python
+from margrete_rpc.chart.util import timing_easing
+
+with m.open_edit() as tx:
+    tx.chart.events.til.extend(
+        timing_easing(
+            t0=(16, 0),
+            t1=(20, 0),
+            start_speed=1.0,
+            end_speed=2.0,
+            count=8,
+            easing="linear",
+        )
+    )
+```
+
+## Glitch stutters
+
+Use [`timing_glitch(...)`](/docs/reference/chart/util/timing#functions) for a quick stutter effect. It places
+`count` evenly spaced speed spikes from `t0` up to, but not including, `t1`. Each spike lasts one tick, then the
+speed resets to `base_speed`.
+
+```python
+from margrete_rpc.chart.util import timing_glitch
+
+events = timing_glitch(
+    t0=(24, 0),
+    t1=(24, 2),
+    count=4,
+    speed_range=2.0,
+    base_speed=1.0,
+)
+
+with m.open_edit() as tx:
+    tx.chart.events.til.extend(events)
+```
+
+The spike speeds alternate around `base_speed`:
+
+```python
+# base_speed=1.0, speed_range=2.0
+# spike speeds: -1.0, 3.0, -1.0, 3.0
+```
+
+Use `base_speed=1.0` when you want the chart to jitter around normal scroll speed. Use `base_speed=0.0` when
+you want a freeze-style stutter that briefly jumps backward and forward.
+
+```python
+freeze = timing_glitch(
+    t0=(32, 0),
+    t1=(33, 0),
+    count=8,
+    speed_range=3.0,
+    base_speed=0.0,
+)
+```
+
+`timing_glitch(...)` returns two events per spike: the spike event, then the reset event one tick later. A
+`count` of `8` returns `16` events.
+
+## Speed ramps
+
+Use [`timing_easing(...)`](/docs/reference/chart/util/timing#functions) when you want the speed itself to move
+from `start_speed` to `end_speed`.
+
+```python
+from margrete_rpc.chart.util import timing_easing
+
+slow_into_fast = timing_easing(
+    t0=(40, 0),
+    t1=(44, 0),
+    start_speed=0.5,
+    end_speed=2.0,
+    count=16,
+    easing="in_out_sine",
+)
+
+with m.open_edit() as tx:
+    tx.chart.events.til.extend(slow_into_fast)
+```
+
+The easing controls how the speed value changes:
+
+| Easing        | Result                                                 |
+| ------------- | ------------------------------------------------------ |
+| `linear`      | Equal speed changes throughout the range.              |
+| `in_quad`     | Small speed changes first, larger changes near `t1`.   |
+| `out_quad`    | Larger speed changes first, smaller changes near `t1`. |
+| `in_out_sine` | Smooth start and smooth end.                           |
+
+See [Easings](/docs/advanced/easings) for the full list of built-in names and custom easing rules.
+
+`count` is the number of subdivisions between `t0` and `t1`. The helper returns `count + 1` events, including
+one event exactly at `t0` and one event exactly at `t1`.
+
+## Displacement-shaped timing
+
+Use [`timing_easing_by_disp(...)`](/docs/reference/chart/util/timing#functions) when you care about the shape of
+the scrolling motion, not just the listed speed values.
+
+This helper samples the easing curve's slope. Steep parts of the curve become high speed, and flat parts become
+low speed. The accumulated scroll displacement follows the easing shape.
+
+```python
+from margrete_rpc.chart.util import timing_easing_by_disp
+
+motion = timing_easing_by_disp(
+    t0=(48, 0),
+    t1=(52, 0),
+    base_speed=1.0,
+    count=24,
+    easing="out_cubic",
+)
+
+with m.open_edit() as tx:
+    tx.chart.events.til.extend(motion)
+```
+
+The difference between the two easing helpers is important:
+
+| Helper                  | Samples         | Think of it as...                          |
+| ----------------------- | --------------- | ------------------------------------------ |
+| `timing_easing`         | Easing value    | "Set speed to this eased value."           |
+| `timing_easing_by_disp` | Easing velocity | "Move the scroll position with this ease." |
+
+For `easing="linear"`, `timing_easing_by_disp(...)` produces constant speed because a linear curve has constant
+slope. For `easing="in_quad"`, the speeds accelerate because the curve gets steeper toward the end.

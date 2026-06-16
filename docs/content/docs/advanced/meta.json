@@ -1,5 +1,5 @@
 {
   "title": "Advanced",
   "icon": "GraduationCap",
-  "pages": ["curved-slides", "more-slide-util", "timing-util"]
+  "pages": ["easings", "curved-slides", "more-slide-util", "timing-util"]
 }

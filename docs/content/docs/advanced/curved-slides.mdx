@@ -106,42 +106,8 @@ crush = (
 `Curve` samples eased legs into integer waypoints. Linear legs stay compact, while curved legs get enough
 control points to reproduce the sketched motion after conversion to notes.
 
-## Easings
-
-`ease_x` and `ease_h` accept a built-in easing name, an [`Easing`](/docs/reference/chart/util/easing/Easing)
-object, or a custom callable from `0..1` to `0..1`.
-
-Built-in names include:
-
-| Family | Names                                  |
-| ------ | -------------------------------------- |
-| Linear | `linear`                               |
-| Sine   | `in_sine`, `out_sine`, `in_out_sine`   |
-| Power  | `in_quad`, `out_cubic`, `in_out_quint` |
-| Expo   | `in_expo`, `out_expo`, `in_out_expo`   |
-| Circ   | `in_circ`, `out_circ`, `in_out_circ`   |
-
-Use a custom callable for shapes that are not in the registry:
-
-```python
-import math
-
-from margrete_rpc.chart.util import Curve
-
-
-def stepped_4(t: float) -> float:
-    return math.floor(t * 4) / 4 if t < 1 else 1.0
-
-
-slide = (
-    Curve(t=(0, 0), x=0)
-    .to(t=(1, 0), x=12, ease_x=stepped_4)
-    .to_slide(w=4)
-)
-```
-
-Custom easings should return `0` at input `0` and `1` at input `1` so the generated path lands exactly on its
-waypoints.
+`ease_x` and `ease_h` accept built-in easing names, [`Easing`](/docs/reference/chart/util/easing/Easing)
+objects, or custom callables. See [Easings](/docs/advanced/easings) for the full list and custom easing rules.
 
 ## Inspect and compose
 
@@ -191,5 +157,4 @@ for point in path.waypoints[1:]:
 copy = path.to_slide(w=existing_slide.w)
 ```
 
-`from_note()` creates mutable control waypoints with linear easing by default, so you can edit each waypoint's
-`ease_x` or `ease_h` before materializing. Width is intentionally dropped because `Curve` is width-agnostic.
+Width is intentionally dropped because `Curve` is width-agnostic.
