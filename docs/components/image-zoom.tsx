@@ -30,7 +30,7 @@ function getImageSrc(src: ImageProps["src"]): string {
   return "";
 }
 
-export function ImageZoom({ zoomInProps, children, rmiz, ...props }: ImageZoomProps) {
+export function ImageZoom({ zoomInProps, children, rmiz, className, ...props }: ImageZoomProps) {
   return (
     <Zoom
       zoomMargin={20}
@@ -43,7 +43,11 @@ export function ImageZoom({ zoomInProps, children, rmiz, ...props }: ImageZoomPr
       }}
     >
       {children ?? (
-        <Image sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 900px" {...props} />
+        <Image
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 900px"
+          className={`rounded-md ${className ?? ""}`.trim()}
+          {...props}
+        />
       )}
     </Zoom>
   );
