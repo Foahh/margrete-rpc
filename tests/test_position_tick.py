@@ -2,6 +2,7 @@ import pytest
 
 from margrete_rpc import Margrete
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
+from margrete_rpc.chart import BpmEvent, NoteSpeedEvent, TimelineSpeedEvent
 from margrete_rpc.chart.notes import AirSlide, Hold, NoteInfo, R, Slide, Tap
 from margrete_rpc.chart.time import (
     Position,
@@ -66,6 +67,21 @@ def test_noteinfo_is_the_resolution_sink():
 def test_note_tap_accepts_position_tuple():
     assert Tap(t=(1, 0), x=0, w=4).t == BAR
     assert Tap(t=1920, x=0, w=4).t == 1920  # int still works
+
+
+def test_events_accept_position_tuple_and_t_setter_resolves():
+    bpm = BpmEvent(t=(1, 0), bpm=120.0)
+    assert bpm.t == BAR
+    assert bpm.p == Position(1, 0, 0)
+    assert bpm.to_proto().tick == BAR
+
+    bpm.t = Position(0, 1, 0)
+    assert bpm.t == BEAT
+    assert bpm.p == Position(0, 1, 0)
+    assert bpm.to_proto().tick == BEAT
+
+    assert TimelineSpeedEvent(til=2, t=(0, 1), speed=0.75).t == BEAT
+    assert NoteSpeedEvent(t=(1, 1), speed=1.25).t == BAR + BEAT
 
 
 def test_note_chained_joints_accept_positions():
@@ -142,3 +158,26 @@ def test_open_edit_resolves_positions_against_chart_time_signature():
 
     # resolver is removed once the transaction exits
     assert resolve_tick((1, 0)) == BAR
+
+
+def test_open_edit_resolves_event_positions_against_chart_time_signature():
+    transport = FakeTransport(
+        [
+            _begin_with_beat(3, 4),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit() as tx:
+        tx.chart.events.bpm.append(BpmEvent(t=(1, 0), bpm=180.0))
+        tx.chart.events.til.append(TimelineSpeedEvent(til=2, t=(0, 2), speed=1.5))
+        tx.chart.events.note_speed.append(NoteSpeedEvent(t=(1, 1), speed=1.25))
+        assert tx.chart.events.bpm[-1].p == Position(1, 0, 0)
+        assert tx.chart.events.til[-1].p == Position(0, 2, 0)
+        assert tx.chart.events.note_speed[-1].p == Position(1, 1, 0)
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.bpm_upsert[0].tick == 3 * BEAT
+    assert apply_request.til_upsert[0].tick == 2 * BEAT
+    assert apply_request.note_speed_upsert[0].tick == 4 * BEAT
