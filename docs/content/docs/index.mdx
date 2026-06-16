@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+description: Install Margrete RPC and write your first chart script.
 icon: Rocket
 ---
 
@@ -8,6 +9,7 @@ import { PencilIcon, MusicIcon, ClockIcon, TriangleAlertIcon } from "lucide-reac
 import MargreteIcon from "./assets/margrete.ico";
 import EnableThePluginImage from "./assets/enable-the-plugin.png";
 import ActivateThePluginImage from "./assets/activate-the-plugin.png";
+import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png";
 
 **Margrete RPC** is a plugin + SDK system that lets you script chart editing for [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro) from Python.
 
@@ -27,58 +29,86 @@ It lets you read and rewrite charts programmatically — place notes, edit event
 2. Open `margrete-rpc-vX.X.X.zip` and copy `margrete-rpc.dll` and `margrete-rpc.ini` to your Margrete plugins directory.
 
    <Files>
-     <Folder name="Margrete" defaultOpen>
-       <Folder name="data" />
-       <Folder name="i18n" />
-       <Folder name={<span className="font-medium">plugins 👈</span>} defaultOpen>
+     <Folder name="Margrete" defaultOpen disabled>
+       <Folder name="data" disabled />
+       <Folder name="i18n" disabled />
+       <Folder name={<span className="font-medium">plugins 👈</span>} defaultOpen disabled>
          <File name={<span className="font-medium">margrete-rpc.dll</span>} />
          <File name={<span className="font-medium">margrete-rpc.ini</span>} />
        </Folder>
-       <Folder name="scripts" />
+       <Folder name="scripts" disabled />
        <File
          name="Margrete.exe"
-         icon={<img src={MargreteIcon.src} alt="Favicon" width="16" height="16" />}
+         icon={<img src={MargreteIcon} alt="Favicon" width="16" height="16" />}
        />
      </Folder>
    </Files>
 
 3. Restart Margrete. Then open **Extensions** → **Manage Extensions**, enable ✔ **margrete-rpc.dll**, and click **Confirm**.
 
-   <ImageZoom src={EnableThePluginImage.src} alt="Enable the plugin" width="500" height="500" />
-
-4. Open **Extensions** → **Margrete RPC** to start the plugin.
-
-   <ImageZoom src={ActivateThePluginImage.src} alt="Start the plugin" width="500" height="500" />
-
-   <Callout type="info">You need to start the plugin each time Margrete restarts.</Callout>
+   <ImageZoom src={EnableThePluginImage} alt="Enable the plugin" width="500" />
 
 ### 2. Install the Python SDK
 
+{/* prettier-ignore */}
 <Tabs items={["pip", "uv"]}>
-  <Tab value="pip">```bash pip install margrete-rpc ```</Tab>
-  <Tab value="uv">```bash uv add margrete-rpc ```</Tab>
+  <Tab value="pip">
+    ```bash
+    pip install margrete-rpc
+    ```
+  </Tab>
+  <Tab value="uv">
+    ```bash
+    uv add margrete-rpc
+    ```
+  </Tab>
 </Tabs>
 
 ## Quick start
 
-Connect to the running Margrete instance and open an edit transaction:
+1. In Margrete, open **Extensions** → **Margrete RPC** to start the plugin.
 
-```python
-from margrete_rpc import Margrete
-from margrete_rpc.chart.notes import Tap
+   <div className="flex items-center justify-start gap-1">
+     <ImageZoom src={ExtensionToMargreteRpcImage} alt="Extension to Margrete RPC" width="300" />
+     <div className="flex items-center">👉</div>
+     <ImageZoom src={ActivateThePluginImage} alt="Start the plugin" width="400" />
+   </div>
 
-m = Margrete()  # auto-detect the running plugin instance
+   <Callout type="info">You need to start the plugin each time Margrete restarts.</Callout>
 
-with m.open_edit("add a tap") as tx:
-    tx.chart.notes.append(Tap(t=(0, 0, 0), x=0, w=4))
-# changes are applied when the with block exits cleanly
-```
+2. Create a file called `example.py`:
 
-`t=(0, 0, 0)` is a `(bar, beat, offset)` position tuple — bar 0, beat 0, offset 0. Inside a `with m.open_edit()` block these tuples resolve to absolute ticks automatically using the chart's time signature.
+   ```python
+   from margrete_rpc import Margrete
+   from margrete_rpc.chart.notes import Tap
 
-## Connecting to a specific instance
+   m = Margrete()  # auto-detect the running plugin instance
+   status = m.status()
+   print(f"Plugin v{status.server_version} (pid {status.pid})")
+   print(f"Log: {status.log_path}")
 
-`Margrete()` with no arguments discovers the single running plugin instance. When multiple instances are running, or when you want a deterministic connection, pass `endpoint` or `instance_id`:
+   with m.open_edit("add a tap") as tx:
+       tx.chart.notes.append(Tap(t=0, x=0, w=4))
+   # changes are applied when the `with` block exits successfully
+   ```
+
+   This connects to Margrete, print the plugin status, opens an edit transaction, and appends a Tap note to the chart.
+
+3. Run the script and check the editor:
+
+   ```bash
+   python example.py
+   ```
+
+   A new Tap note will appear in the editor.
+
+   ![Margrete editor changes after quick start](assets/after-quick-start-margrete.png)
+
+## Handle multiple Margrete instances
+
+`Margrete()` with no arguments only discovers the single running plugin instance.
+
+When multiple Margrete instances are running, pass `endpoint` or `instance_id`:
 
 ```python
 from margrete_rpc import Margrete, list_instances
@@ -87,65 +117,11 @@ from margrete_rpc import Margrete, list_instances
 for inst in list_instances():
     print(inst.instance_id, inst.endpoint)
 
-# connect by explicit host:port
-m = Margrete(endpoint="localhost:12345")
+# connect by explicit host:port (left Margrete)
+m_left = Margrete(endpoint="127.0.0.1:1328")
 
-# connect by the instance_id shown in the plugin
-m = Margrete(instance_id="abc123")
+# connect by the instance_id (right Margrete)
+m_right = Margrete(instance_id="47824-6a30f65d-b7f8afde84506008")
 ```
 
-## Checking server status
-
-```python
-status = m.status()
-print(f"Plugin v{status.server_version} (pid {status.pid})")
-print(f"Log: {status.log_path}")
-```
-
-## Error handling
-
-```python
-from margrete_rpc import Margrete, MargreteError, MargreteDiscoveryError
-
-try:
-    m = Margrete()
-except MargreteDiscoveryError as exc:
-    print("Could not find a running Margrete instance:", exc)
-
-try:
-    with m.open_edit("my edit") as tx:
-        ...
-except MargreteError as exc:
-    print("RPC error:", exc)
-```
-
-If the `with` block raises any exception the edit is **not** applied. Margrete only sees the change when the block exits cleanly.
-
-## Learn more
-
-<Cards>
-  <Card
-    icon={<PencilIcon />}
-    title="Edit Transactions"
-    href="/docs/guides/transactions"
-    description="Atomic chart edits with open_edit."
-  />
-  <Card
-    icon={<MusicIcon />}
-    title="Note Types"
-    href="/docs/guides/notes"
-    description="Tap, Hold, Slide, AirCrush, and more."
-  />
-  <Card
-    icon={<ClockIcon />}
-    title="Time & Position"
-    href="/docs/guides/time"
-    description="Ticks, bar/beat positions, and beat fractions."
-  />
-  <Card
-    icon={<TriangleAlertIcon />}
-    title="Limitations"
-    href="/docs/limitations"
-    description="Known constraints and workarounds."
-  />
-</Cards>
+![Two Margrete instances with different endpoints](assets/2-margrete-instance.png)

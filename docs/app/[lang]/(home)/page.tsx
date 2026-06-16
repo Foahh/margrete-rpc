@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -28,8 +29,15 @@ const dictionary: Record<string, Copy> = {
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M12 .5C5.73.5.5 5.74.5 12.02c0 5.1 3.29 9.42 7.86 10.95.58.1.79-.25.79-.56v-2.1c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.69 5.41-5.26 5.69.41.36.78 1.08.78 2.18v3.23c0 .31.21.67.8.56A11.53 11.53 0 0 0 23.5 12.02C23.5 5.74 18.27.5 12 .5z" />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      fill="currentColor"
+      className={className}
+      viewBox="0 0 16 16"
+    >
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8" />
     </svg>
   );
 }
@@ -86,40 +94,21 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
 
           {/* Code preview */}
           <div className="mt-16 w-full max-w-2xl text-left">
-            <div className="border-fd-border bg-fd-card/70 shadow-fd-primary/5 overflow-hidden rounded-xl border shadow-2xl backdrop-blur">
-              <div className="border-fd-border flex items-center gap-2 border-b px-4 py-3">
-                <span className="size-3 rounded-full bg-red-400/80" />
-                <span className="size-3 rounded-full bg-yellow-400/80" />
-                <span className="size-3 rounded-full bg-green-400/80" />
-                <span className="text-fd-muted-foreground ml-2 font-mono text-xs">example.py</span>
-              </div>
-              <pre className="overflow-x-auto p-5 font-mono text-sm leading-relaxed">
-                <code>
-                  <span className="text-fd-muted-foreground">from</span> margrete_rpc{" "}
-                  <span className="text-fd-muted-foreground">import</span> Margrete
-                  {"\n"}
-                  <span className="text-fd-muted-foreground">
-                    from
-                  </span> margrete_rpc.chart.notes{" "}
-                  <span className="text-fd-muted-foreground">import</span> Tap
-                  {"\n\n"}m = <span className="text-fd-primary">Margrete</span>()
-                  <span className="text-fd-muted-foreground"> # auto-detect the plugin</span>
-                  {"\n"}
-                  <span className="text-fd-muted-foreground">with</span> m.
-                  <span className="text-fd-primary">open_edit</span>(
-                  <span className="text-green-600 dark:text-green-400">&quot;add a tap&quot;</span>){" "}
-                  <span className="text-fd-muted-foreground">as</span> tx:
-                  {"\n"}
-                  {"    "}tx.chart.notes.<span className="text-fd-primary">append</span>(
-                  <span className="text-fd-primary">Tap</span>(t=
-                  <span className="text-amber-600 dark:text-amber-400">0</span>, x=
-                  <span className="text-amber-600 dark:text-amber-400">0</span>, w=
-                  <span className="text-amber-600 dark:text-amber-400">4</span>))
-                  {"\n"}
-                  <span className="text-fd-muted-foreground"># applied atomically on exit</span>
-                </code>
-              </pre>
-            </div>
+            <ServerCodeBlock
+              lang="python"
+              code={`\
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+m = Margrete()  # auto-detect the plugin
+with m.open_edit("add a tap") as tx:
+    tx.chart.notes.append(Tap(t=0, x=0, w=4))
+# applied atomically on exit`}
+              codeblock={{
+                title: "example.py",
+                className: "my-0 bg-fd-card/70 shadow-2xl shadow-fd-primary/5 backdrop-blur",
+              }}
+            />
           </div>
         </div>
       </section>
