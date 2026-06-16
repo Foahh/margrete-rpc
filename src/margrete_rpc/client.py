@@ -45,14 +45,6 @@ class Margrete:
     This is the entry point of the SDK. Construct one to connect to a Margrete
     instance, then call :meth:`open_edit` to make scriptable changes to the current
     chart inside a transaction.
-
-    Example:
-        >>> from margrete_rpc import Margrete
-        >>> from margrete_rpc.chart.notes import Tap
-        >>> m = Margrete()  # auto-detect the running instance
-        >>> with m.open_edit("add a tap") as tx:
-        ...     tx.chart.notes.append(Tap(t=(0, 0, 0), x=0, w=4))
-        >>> # changes are applied to Margrete when the `with` block exits cleanly
     """
 
     def __init__(
@@ -202,11 +194,6 @@ class Margrete:
 
         Returns:
             An :class:`~margrete_rpc.transaction.EditTransaction` bound to the loaded chart.
-
-        Example:
-            >>> with m.open_edit("nudge notes") as tx:
-            ...     for note in tx.chart.notes:
-            ...         note.shift(x=2)
         """
         from margrete_rpc.chart import Chart
         from margrete_rpc.transaction import EditTransaction
