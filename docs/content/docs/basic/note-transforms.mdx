@@ -173,8 +173,8 @@ from margrete_rpc.chart.notes import Slide, split
 
 slide = (
     Slide(t=(0, 0), x=0, w=4)
-    .with_ctrl(t=(0, 2), x=6, w=4) # joints[0]
-    .with_step(t=(1, 0), x=8, w=4) # joints[1]
+    .with_ctrl(t=(0, 2), x=6, w=4)  # joints[0]
+    .with_step(t=(1, 0), x=8, w=4)  # joints[1]
 )
 
 left, right = split(slide, (0, 2))

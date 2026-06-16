@@ -4,7 +4,7 @@ description: Work with tempo, time-signature, and speed changes.
 ---
 
 Events are chart-wide changes such as BPM, time signatures, scroll speed, and note
-speed. On the Python side they are simple objects in [`tx.chart.events`](/docs/reference/chart/chart/ChartEvents), so most
+speed. In Python, they are simple objects in [`tx.chart.events`](/docs/reference/chart/chart/ChartEvents), so most
 event edits are just list edits inside a [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) block.
 
 ```python
@@ -88,7 +88,7 @@ with m.open_edit() as tx:
 ```
 
 After you add beat events, tuple positions in the same transaction use them
-automatically (see [Time & Position](/docs/basic/time-position#positions) for detail):
+automatically. See [Time & Position](/docs/basic/time-position#positions) for detail.
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
@@ -125,7 +125,8 @@ with m.open_edit() as tx:
 
 <Callout type="warn">
   Scroll-speed events are scanned when an edit opens. If an event is far beyond the last note, use
-  `open_edit(event_scan_lookahead_ticks=...)`. See [Limitations](/docs/limitations#event-scanning).
+  `open_edit(event_scan_lookahead_ticks=...)`. See
+  [Limitations](/docs/limitations#scroll-speed-event-scanning).
 </Callout>
 
 ## Change note speed

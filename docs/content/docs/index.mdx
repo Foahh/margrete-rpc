@@ -4,8 +4,6 @@ description: Install Margrete RPC and write your first chart script.
 icon: Rocket
 ---
 
-import { PencilIcon, MusicIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
-
 import MargreteIcon from "./assets/margrete.ico";
 import EnableThePluginImage from "./assets/enable-the-plugin.png";
 import ActivateThePluginImage from "./assets/activate-the-plugin.png";
@@ -13,7 +11,7 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
 
 **Margrete RPC** is a Margrete plugin plus a [Python client package](/docs/reference/client) that lets you script chart editing for [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro).
 
-It lets you read and rewrite charts programmatically — place notes, edit events, and apply changes inside the editor.
+Use it to read and rewrite charts programmatically: place notes, edit events, and apply changes inside the editor.
 
 ## Requirements
 
@@ -39,12 +37,12 @@ It lets you read and rewrite charts programmatically — place notes, edit event
        <Folder name="scripts" disabled />
        <File
          name="Margrete.exe"
-         icon={<img src={MargreteIcon} alt="Favicon" width="16" height="16" />}
+         icon={<img src={MargreteIcon} alt="Margrete icon" width="16" height="16" />}
        />
      </Folder>
    </Files>
 
-3. Restart Margrete. Then open **Extensions** → **Manage Extensions**, enable ✔ **margrete-rpc.dll**, and click **Confirm**.
+3. Restart Margrete. Then open **Extensions** → **Manage Extensions**, enable **margrete-rpc.dll**, and click **Confirm**.
 
    <ImageZoom src={EnableThePluginImage} alt="Enable the plugin" width="500" />
 
@@ -89,7 +87,7 @@ It lets you read and rewrite charts programmatically — place notes, edit event
 
    with m.open_edit() as tx:
        tx.chart.notes.append(Tap(t=0, x=0, w=4))
-   # changes are applied when the `with` block exits successfully
+       # changes are applied when this block exits successfully
    ```
 
    This connects to Margrete, prints the [`ServerStatus`](/docs/reference/client/ServerStatus), opens an [edit transaction](/docs/basic/edit-transactions), and appends a [`Tap`](/docs/reference/chart/notes/ground/Tap) note to the chart.
@@ -100,13 +98,13 @@ It lets you read and rewrite charts programmatically — place notes, edit event
    python example.py
    ```
 
-   A new Tap note will appear in the editor.
+   A new tap note will appear in the editor.
 
    ![Margrete editor changes after quick start](assets/after-quick-start-margrete.png)
 
 ## Handle multiple Margrete instances
 
-[`Margrete()`](/docs/reference/client/Margrete) with no arguments only discovers the single running plugin instance.
+[`Margrete()`](/docs/reference/client/Margrete) with no arguments works when exactly one running plugin instance is discovered.
 
 When multiple Margrete instances are running, pass `endpoint` or `instance_id`.
 

@@ -149,7 +149,7 @@ slide.add_step(t=(1, 0), x=4, w=4)
 
 Joints must be added in increasing time order. Long notes must have at least one joint before being sent to Margrete.
 
-For generated slide paths instead of hand-written joints, see [Curves](/docs/advanced/curve).
+For generated slide paths instead of hand-written joints, see [Curved Slides](/docs/advanced/curved-slides).
 
 ### Hold
 
@@ -201,7 +201,7 @@ crush = (
 
 `gap=(1, 8)` means one eighth note. You can read the tick value with `crush.gap` and the beat-fraction view with `crush.interval`.
 
-<ImageZoom src={AirCrushIntervalImage} alt="Air-Cursh interval" width="400" />
+<ImageZoom src={AirCrushIntervalImage} alt="AirCrush interval" width="400" />
 
 `ColorValue` string values are `"default"`, `"red"`, `"orange"`, `"yellow"`, `"green"`, `"sky"`, `"blue"`, `"violet"`, `"pink"`, `"white"`, `"black"`, `"grass"`, `"sky_blue"`, `"cobalt_blue"`, `"purple"`, and `"none"`.
 
@@ -306,5 +306,4 @@ Common validation failures include:
 - zero or negative width,
 - long-note joints that are not in increasing time order,
 - missing joints on long notes,
-- attached air notes whose `t`/`x`/`w` do not match the parent attachment point,
-- etc.
+- attached air notes whose `t`/`x`/`w` do not match the parent attachment point.

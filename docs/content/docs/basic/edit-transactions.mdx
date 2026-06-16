@@ -6,7 +6,7 @@ description: Read and modify chart notes and events.
 import CurrentTickPlayhead from "../assets/current-tick-playhead.png";
 
 An **edit transaction** is the normal way to script chart changes with Margrete RPC.
-Open a transaction, modify the chart, then leave the `with{:py}` block.
+Open a transaction, modify the chart, then exit the `with{:py}` block.
 
 ```python
 from margrete_rpc import Margrete
@@ -28,7 +28,7 @@ For the exact method signature, see [`Margrete.open_edit()`](/docs/reference/cli
 Think of `open_edit()` as a four-step workflow:
 
 1. **Snapshot** - Margrete sends the current raw notes, events, and cursor tick to Python.
-2. **Parse** - The Python API converts [`RawNote`](/docs/reference/chart/notes/raw/RawNote) to [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap)
+2. **Parse** - The Python API converts [`RawNote`](/docs/reference/chart/notes/raw/RawNote) objects to [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap)
    and [`Slide`](/docs/reference/chart/notes/long/Slide). <br/> If `raw_notes=True`, this step keeps every note as `RawNote` instead.
 3. **Mutate** - Your script edits normal Python objects: lists, notes, and event objects.
 4. **Apply** - The Python client compares the final chart to the snapshot and sends one undoable edit.
@@ -106,7 +106,7 @@ Assign a filtered list back to `tx.chart.notes`.
 
 ```python
 with m.open_edit() as tx:
-    # Keep only notes that start outside lanes 0-3.
+    # Keep only notes that start at lane 4 or later.
     tx.chart.notes = [note for note in tx.chart.notes if note.x >= 4]
 ```
 
@@ -153,8 +153,7 @@ with m.open_edit() as tx:
 
 ### Inspect unsupported notes safely
 
-By default, the Python API will parse recognized [`RawNote`](/docs/reference/chart/notes/raw/RawNote) to [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap) or [`Slide`](/docs/reference/chart/notes/long/Slide). If the
-Python API sees an unsupported note, it keeps that note as `RawNote` instead of dropping it.
+By default, the Python API parses recognized [`RawNote`](/docs/reference/chart/notes/raw/RawNote) objects into [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap) or [`Slide`](/docs/reference/chart/notes/long/Slide). If it sees an unsupported note, it keeps that note as `RawNote` instead of dropping it.
 
 ```python
 from margrete_rpc.chart.notes import RawNote
@@ -179,7 +178,7 @@ The cursor is the red playhead line in the editor. See the
 [Margrete docs](https://umgr.inonote.jp/en/margrete/getting-started/user-interface) if
 you are unfamiliar with it.
 
-<ImageZoom src={CurrentTickPlayhead} alt="Cursor image" width="300" />
+<ImageZoom src={CurrentTickPlayhead} alt="Current cursor playhead in Margrete" width="300" />
 
 Use [`m.current_tick()`](/docs/reference/client/Margrete#functions) when you need the live cursor position outside a transaction:
 

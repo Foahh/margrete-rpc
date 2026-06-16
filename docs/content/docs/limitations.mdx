@@ -4,12 +4,12 @@ description: Known constraints in Margrete RPC, and how to work around them.
 icon: TriangleAlert
 ---
 
-## Event scanning
+## Scroll-speed event scanning
 
-Due to a [limitation in the Margrete plugin SDK](https://github.com/inonote/umiguri-issue-repo/issues/6), [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) scans for scroll-speed events ([`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)) rather than reading them directly. This has two practical consequences:
+Because of a [limitation in the Margrete plugin SDK](https://github.com/inonote/umiguri-issue-repo/issues/6), [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) scans for scroll-speed events ([`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)) instead of reading them directly. This has two practical consequences:
 
 - **Events far past the last note may not be read.** By default, the scan covers up to 19200 ticks beyond the last note.
-- **Charts with many scroll-speed events can be slow to open** — [_Dead Soul_](https://pgko.dev/bundles/019cafe9-6901-7000-a8e5-0785150fdf94) is a known example.
+- **Charts with many scroll-speed events can be slow to open.** [_Dead Soul_](https://pgko.dev/bundles/019cafe9-6901-7000-a8e5-0785150fdf94) is a known example.
 
 ### Workarounds
 
@@ -36,9 +36,9 @@ Pass `event_scan_til_ids=[]` to scan all default timelines (`0` through `15`) wi
 
 When a Python-scripted edit **deletes** notes, pressing Undo in Margrete may restore those notes in a duplicated state instead of cleanly reversing the deletion.
 
-Additions and modifications undo safely. Only deletions are affected, so note-cleanup scripts should use the deletion workflow in [Edit Transactions](/docs/basic/edit-transactions#delete-notes-in-a-lane-range) with this limitation in mind.
+Additions and modifications can be undone safely. Only deletions are affected, so note-cleanup scripts should use the deletion workflow in [Edit Transactions](/docs/basic/edit-transactions#delete-notes-in-a-lane-range) with this limitation in mind.
 
 ### Workarounds
 
 - Prefer designs that add or modify notes rather than delete them.
-- Use [`Margrete.undo()`](/docs/reference/client/Margrete#functions) instead of Margrete's built-in Undo — it removes duplicates automatically.
+- Use [`Margrete.undo()`](/docs/reference/client/Margrete#functions) instead of Margrete's built-in Undo. It removes duplicates automatically.
