@@ -58,7 +58,7 @@ Tap(t=(2, 1, 480), x=0, w=4)   # bar 2, beat 1, offset 480
 Inside a `with m.open_edit()` block, the chart's beat events are active as a context variable. Position tuples resolve against the **actual time signature** of the chart automatically — no need to pass beat events explicitly.
 
 ```python
-with m.open_edit("place") as tx:
+with m.open_edit() as tx:
     # resolves against the chart's real time signatures
     tx.chart.notes.append(Tap(t=(4, 0, 0), x=0, w=4))
 ```

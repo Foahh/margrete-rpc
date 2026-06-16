@@ -1,0 +1,150 @@
+---
+title: Edit Transactions
+description: Reading the chart, modifying notes and events.
+---
+
+import PositioningNotesExampleImage from "../assets/positioning-notes-example.png"
+import CurrentTickPlayhead from "../assets/current-tick-playhead.png"
+
+An **edit transaction** is the core of the Margrete RPC workflow. It snapshots the current chart, lets you mutate it freely, and on clean exit sends only the changed parts to Margrete as a single undoable edit.
+
+## Basic pattern
+
+```python
+from margrete_rpc import Margrete
+
+m = Margrete()
+
+with m.open_edit() as tx:
+    notes = tx.chart.notes
+    events = tx.chart.events
+    # mutate notes and events here
+    ...
+# on clean exit, changes are applied to Margrete
+# if the block raises, nothing is sent
+```
+
+## Reading the chart
+
+`tx.chart` is a `Chart` object with two attributes:
+
+- **`tx.chart.notes`** — `list[ChartNote]`, the notes in the chart
+- **`tx.chart.events`** — `ChartEvents` with `.bpm`, `.beat`, `.til`, and `.note_speed` lists
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        if isinstance(note, Tap):
+            print(f"Tap at {note.t}, lane {note.x}")
+
+    for event in tx.chart.events.bpm:
+        print(f"BPM {event.bpm} at tick {event.t}")
+```
+
+## Modifying notes
+
+Append, remove, or mutate items in `tx.chart.notes`. On exit, the diff is computed and changes are sent to the plugin.
+
+```python
+from margrete_rpc.chart.notes import Tap, Flick
+
+with m.open_edit() as tx:
+    # add a note
+    tx.chart.notes.append(Tap(t=0, x=4, w=4))
+
+    # remove notes by filtering
+    tx.chart.notes = [n for n in tx.chart.notes if n.x >= 4]
+
+    # mutate in place
+    for note in tx.chart.notes:
+        note.shift(x=2)
+```
+
+## Apply options
+
+Two parameters on `open_edit()` control how changes are applied in Margrete:
+
+| Parameter          | Default | Behaviour                                                            |
+| ------------------ | ------- | -------------------------------------------------------------------- |
+| `scan=True`        | yes     | Snapshots the chart on enter; sends only modified notes on exit.     |
+| `scan=False`       | —       | No snapshot; sends all notes in the final chart as new insertions.   |
+| `replace_all=True` | —       | Replaces the entire chart instead of merging changes.                |
+
+```python
+# default: snapshot on enter, send only changes on exit
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.shift(x=1)
+
+# replace the entire chart on exit
+with m.open_edit(replace_all=True) as tx:
+    tx.chart.notes = [Tap(t=0, x=4, w=4)]
+
+# skip snapshot + replace all
+with m.open_edit(scan=False, raw=True, replace_all=True) as tx:
+    tx.chart.notes = raw_notes_for_frame()
+```
+
+## Event scan parameters
+
+When a chart has many timeline-speed (TIL) events, you can control how far the plugin scans for them:
+
+```python
+with m.open_edit(
+    "edit",
+    event_scan_extra_tick=1920 * 4,  # scan 4 beats past the last note
+    event_scan_note_til_only=True,   # only scan ticks that carry notes
+) as tx:
+    ...
+```
+
+These tune completeness against request latency. The defaults work for most charts.
+
+## Positioning notes
+
+Inside a `with m.open_edit(){:python}` block, you can use `t=(bar, beat, offset)` and `Note.p` directly. See the [Time & Ticks](/docs/guides/time) guide for details.
+
+<div className="flex items-center justify-start gap-2">
+    ```python
+    with m.open_edit(scan=False) as tx:
+        # bar=2, beat=0, offset=0
+        tx.chart.notes.append(Tap(t=(2, 0, 0), x=0, w=4))
+        tx.chart.notes.append(Tap(t=(2, 1), x=0, w=4))
+
+        pos = tx.chart.notes[0].p # pos == (2, 0, 0)
+    ```
+    <div className="flex items-center">👉</div>
+    <ImageZoom src={PositioningNotesExampleImage} alt="Positioning notes example" width="200" />
+</div>
+
+## Undo and redo
+
+You can trigger undo/redo programmatically:
+
+```python
+m.undo()  # returns True if something was undone
+m.redo()  # returns True if something was redone
+```
+
+<Callout type="warn">
+  There is a known issue of manually undo/redo in Margrete, see [Limitations](/docs/limitations#undo-and-note-deletion) for details.
+</Callout>
+
+## Current cursor position
+
+Cursor is the red line shown in the editor, see [Margrete docs](https://umgr.inonote.jp/en/margrete/getting-started/user-interface) if you don't know it.
+
+<ImageZoom src={CurrentTickPlayhead} alt="Cursor image" width="300" />
+
+```python
+tick = m.current_tick()  # cursor position in the editor (in ticks)
+```
+
+This is also available as `tx.current_tick` — the tick captured when the transaction opened.
+
+```python
+with m.open_edit() as tx:
+    tick = tx.current_tick
+```

@@ -87,7 +87,7 @@ It lets you read and rewrite charts programmatically — place notes, edit event
    print(f"Plugin v{status.server_version} (pid {status.pid})")
    print(f"Log: {status.log_path}")
 
-   with m.open_edit("add a tap") as tx:
+   with m.open_edit() as tx:
        tx.chart.notes.append(Tap(t=0, x=0, w=4))
    # changes are applied when the `with` block exits successfully
    ```

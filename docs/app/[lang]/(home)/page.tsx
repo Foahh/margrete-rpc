@@ -101,7 +101,7 @@ from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
 m = Margrete()  # auto-detect the plugin
-with m.open_edit("add a tap") as tx:
+with m.open_edit() as tx:
     tx.chart.notes.append(Tap(t=0, x=0, w=4))
 # applied atomically on exit`}
               codeblock={{

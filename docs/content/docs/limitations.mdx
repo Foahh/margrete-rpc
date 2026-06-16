@@ -29,7 +29,7 @@ with m.open_edit(
 Or provide an explicit list of timeline IDs to scan with `event_scan_til`:
 
 ```python
-with m.open_edit("edit", event_scan_til=[0, 3840, 7680]) as tx:
+with m.open_edit(event_scan_til=[0, 3840, 7680]) as tx:
     ...
 ```
 
