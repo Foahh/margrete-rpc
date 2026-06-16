@@ -13,7 +13,7 @@ const itemVariants = cva(
 
 export function Files({ className, ...props }: HTMLAttributes<HTMLDivElement>): React.ReactElement {
   return (
-    <div className={cn("not-prose rounded-md border bg-fd-card p-2", className)} {...props}>
+    <div className={cn("not-prose bg-fd-card rounded-md border p-2", className)} {...props}>
       {props.children}
     </div>
   );

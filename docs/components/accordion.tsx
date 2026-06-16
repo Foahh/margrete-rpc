@@ -45,7 +45,7 @@ export function Accordions({
       onValueChange={setValue}
       className={(s) =>
         cn(
-          "divide-y divide-fd-border overflow-hidden rounded-lg border bg-fd-card",
+          "divide-fd-border bg-fd-card divide-y overflow-hidden rounded-lg border",
           typeof className === "function" ? className(s) : className,
         )
       }

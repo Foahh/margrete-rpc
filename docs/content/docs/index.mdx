@@ -5,15 +5,15 @@ icon: Rocket
 
 import { PencilIcon, MusicIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
 
-import MargreteIcon from './assets/margrete.ico'
-import EnableThePluginImage from './assets/enable-the-plugin.png'
-import ActivateThePluginImage from './assets/activate-the-plugin.png'
+import MargreteIcon from "./assets/margrete.ico";
+import EnableThePluginImage from "./assets/enable-the-plugin.png";
+import ActivateThePluginImage from "./assets/activate-the-plugin.png";
 
 **Margrete RPC** is a plugin + SDK system that lets you script chart editing for [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro) from Python.
 
 It lets you read and rewrite charts programmatically — place notes, edit events, and apply changes inside the editor.
 
-## Requirements 
+## Requirements
 
 - Python 3.13 or later
 - Margrete 1.8.0 or later
@@ -25,47 +25,39 @@ It lets you read and rewrite charts programmatically — place notes, edit event
 1. Download the latest release from the [GitHub Releases page](https://github.com/Foahh/margrete-rpc/releases).
 
 2. Open `margrete-rpc-vX.X.X.zip` and copy `margrete-rpc.dll` and `margrete-rpc.ini` to your Margrete plugins directory.
-    
-    <Files>
-      <Folder name="Margrete" defaultOpen>
-        <Folder name="data"/>
-        <Folder name="i18n"/>
-        <Folder name={<span className="font-medium">plugins 👈</span>} defaultOpen>
-          <File name={<span className="font-medium">margrete-rpc.dll</span>}/>
-          <File name={<span className="font-medium">margrete-rpc.ini</span>}/>
-        </Folder>
-        <Folder name="scripts"/>
-        <File name="Margrete.exe" icon={<img src={MargreteIcon.src} alt="Favicon" width="16" height="16" />}/>
-      </Folder>
-    </Files>
+
+   <Files>
+     <Folder name="Margrete" defaultOpen>
+       <Folder name="data" />
+       <Folder name="i18n" />
+       <Folder name={<span className="font-medium">plugins 👈</span>} defaultOpen>
+         <File name={<span className="font-medium">margrete-rpc.dll</span>} />
+         <File name={<span className="font-medium">margrete-rpc.ini</span>} />
+       </Folder>
+       <Folder name="scripts" />
+       <File
+         name="Margrete.exe"
+         icon={<img src={MargreteIcon.src} alt="Favicon" width="16" height="16" />}
+       />
+     </Folder>
+   </Files>
 
 3. Restart Margrete. Then open **Extensions** → **Manage Extensions**, enable ✔ **margrete-rpc.dll**, and click **Confirm**.
-    
-    <ImageZoom src={EnableThePluginImage.src} alt="Enable the plugin" width="500" height="500"/>
+
+   <ImageZoom src={EnableThePluginImage.src} alt="Enable the plugin" width="500" height="500" />
 
 4. Open **Extensions** → **Margrete RPC** to start the plugin.
 
-    <ImageZoom src={ActivateThePluginImage.src} alt="Start the plugin" width="500" height="500" />
+   <ImageZoom src={ActivateThePluginImage.src} alt="Start the plugin" width="500" height="500" />
 
-    <Callout type="info">
-      You need to start the plugin each time Margrete restarts.
-    </Callout>
+   <Callout type="info">You need to start the plugin each time Margrete restarts.</Callout>
 
 ### 2. Install the Python SDK
 
-<Tabs items={['pip', 'uv']}>
-  <Tab value="pip">
-  ```bash
-  pip install margrete-rpc
-  ```
-  </Tab>
-  <Tab value="uv">
-  ```bash
-  uv add margrete-rpc
-  ```
-  </Tab>
+<Tabs items={["pip", "uv"]}>
+  <Tab value="pip">```bash pip install margrete-rpc ```</Tab>
+  <Tab value="uv">```bash uv add margrete-rpc ```</Tab>
 </Tabs>
-
 
 ## Quick start
 

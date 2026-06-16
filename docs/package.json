@@ -4,14 +4,14 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
-    "start": "next start",
     "build:docs": "bun scripts/python-generate.mjs && bun scripts/generate-docs.mjs",
-    "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
+    "dev": "next dev",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
     "postinstall": "fumadocs-mdx",
     "lint": "oxlint",
-    "fmt": "prettier --write .",
-    "fmt:check": "prettier --check ."
+    "start": "next start",
+    "types:check": "fumadocs-mdx && next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

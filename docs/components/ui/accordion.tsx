@@ -11,7 +11,7 @@ export function Accordion({ className, ...props }: ComponentProps<typeof Primiti
     <Primitive.Root
       className={(s) =>
         cn(
-          "divide-y divide-fd-border overflow-hidden rounded-lg border bg-fd-card",
+          "divide-fd-border bg-fd-card divide-y overflow-hidden rounded-lg border",
           typeof className === "function" ? className(s) : className,
         )
       }
@@ -33,7 +33,7 @@ export function AccordionHeader({
     <Primitive.Header
       className={(s) =>
         cn(
-          "scroll-m-24 not-prose flex flex-row items-center text-fd-card-foreground font-medium has-focus-visible:bg-fd-accent",
+          "not-prose text-fd-card-foreground has-focus-visible:bg-fd-accent flex scroll-m-24 flex-row items-center font-medium",
           typeof className === "function" ? className(s) : className,
         )
       }
