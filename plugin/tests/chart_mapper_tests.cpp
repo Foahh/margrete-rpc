@@ -72,7 +72,7 @@ TEST_CASE("chart mapper scans events through configured tick range")
     REQUIRE(beat->refCountValue() == 1);
 }
 
-TEST_CASE("chart mapper event_scan_note_til_only skips timelines without notes")
+TEST_CASE("chart mapper note_til_only skips timelines without notes")
 {
     FakeContext context;
     auto *root = context.chart.addExistingNote(10);

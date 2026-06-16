@@ -88,17 +88,17 @@ message Envelope {
     PingResponse ping_response = 3;
     BeginEditRequest begin_edit_request = 4;
     BeginEditResponse begin_edit_response = 5;
-    ApplyEditRequest apply_edit_request = 13;
-    ApplyEditResponse apply_edit_response = 14;
-    UndoRequest undo_request = 15;
-    UndoResponse undo_response = 16;
-    RedoRequest redo_request = 17;
-    RedoResponse redo_response = 18;
-    CurrentTickRequest current_tick_request = 19;
-    CurrentTickResponse current_tick_response = 20;
-    StatusRequest status_request = 21;
-    StatusResponse status_response = 22;
-    ErrorResponse error_response = 12;
+    ApplyEditRequest apply_edit_request = 6;
+    ApplyEditResponse apply_edit_response = 7;
+    UndoRequest undo_request = 8;
+    UndoResponse undo_response = 9;
+    RedoRequest redo_request = 10;
+    RedoResponse redo_response = 11;
+    CurrentTickRequest current_tick_request = 12;
+    CurrentTickResponse current_tick_response = 13;
+    StatusRequest status_request = 14;
+    StatusResponse status_response = 15;
+    ErrorResponse error_response = 16;
   }
 }
 
@@ -157,11 +157,14 @@ message NoteSpeedEvent {
   double speed = 2;
 }
 
+message ScanTilList {
+  repeated int32 tids = 1;
+}
+
 message BeginEditRequest {
-  int32 event_scan_extra_tick = 2;
-  repeated int32 event_scan_til = 3;
-  bool scan = 4;
-  bool event_scan_note_til_only = 5;
+  int32 event_scan_extra_tick = 1;
+  optional ScanTilList event_scan_til = 2;
+  bool scan = 3;
 }
 
 message BeginEditResponse {
@@ -174,7 +177,6 @@ message BeginEditResponse {
   int32 event_scan_extra_tick = 7;
   repeated int32 event_scan_til = 8;
   bool scan = 9;
-  bool event_scan_note_til_only = 10;
 }
 
 message TimelineSpeedKey {
@@ -183,19 +185,19 @@ message TimelineSpeedKey {
 }
 
 message ApplyEditRequest {
-  bool replace_all_notes = 2;
-  repeated Note notes_upsert = 3;
-  repeated int32 note_ids_delete = 4;
+  bool replace_all_notes = 1;
+  repeated Note notes_upsert = 2;
+  repeated int32 note_ids_delete = 3;
 
-  repeated BpmEvent bpm_upsert = 10;
-  repeated BeatChangeEvent beat_upsert = 11;
-  repeated TimelineSpeedEvent til_upsert = 12;
-  repeated NoteSpeedEvent note_speed_upsert = 13;
+  repeated BpmEvent bpm_upsert = 4;
+  repeated BeatChangeEvent beat_upsert = 5;
+  repeated TimelineSpeedEvent til_upsert = 6;
+  repeated NoteSpeedEvent note_speed_upsert = 7;
 
-  repeated int32 bpm_ticks_delete = 20;
-  repeated int32 beat_bars_delete = 21;
-  repeated TimelineSpeedKey til_keys_delete = 22;
-  repeated int32 note_speed_ticks_delete = 23;
+  repeated int32 bpm_ticks_delete = 8;
+  repeated int32 beat_bars_delete = 9;
+  repeated TimelineSpeedKey til_keys_delete = 10;
+  repeated int32 note_speed_ticks_delete = 11;
 }
 
 message ApplyEditResponse {}

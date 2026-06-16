@@ -277,20 +277,24 @@ class NoteSpeedEvent(_message.Message):
     speed: float
     def __init__(self, tick: _Optional[int] = ..., speed: _Optional[float] = ...) -> None: ...
 
+class ScanTilList(_message.Message):
+    __slots__ = ("tids",)
+    TIDS_FIELD_NUMBER: _ClassVar[int]
+    tids: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, tids: _Optional[_Iterable[int]] = ...) -> None: ...
+
 class BeginEditRequest(_message.Message):
-    __slots__ = ("event_scan_extra_tick", "event_scan_til", "scan", "event_scan_note_til_only")
+    __slots__ = ("event_scan_extra_tick", "event_scan_til", "scan")
     EVENT_SCAN_EXTRA_TICK_FIELD_NUMBER: _ClassVar[int]
     EVENT_SCAN_TIL_FIELD_NUMBER: _ClassVar[int]
     SCAN_FIELD_NUMBER: _ClassVar[int]
-    EVENT_SCAN_NOTE_TIL_ONLY_FIELD_NUMBER: _ClassVar[int]
     event_scan_extra_tick: int
-    event_scan_til: _containers.RepeatedScalarFieldContainer[int]
+    event_scan_til: ScanTilList
     scan: bool
-    event_scan_note_til_only: bool
-    def __init__(self, event_scan_extra_tick: _Optional[int] = ..., event_scan_til: _Optional[_Iterable[int]] = ..., scan: _Optional[bool] = ..., event_scan_note_til_only: _Optional[bool] = ...) -> None: ...
+    def __init__(self, event_scan_extra_tick: _Optional[int] = ..., event_scan_til: _Optional[_Union[ScanTilList, _Mapping]] = ..., scan: _Optional[bool] = ...) -> None: ...
 
 class BeginEditResponse(_message.Message):
-    __slots__ = ("current_tick", "notes", "bpm_events", "beat_change_events", "timeline_speed_events", "note_speed_events", "event_scan_extra_tick", "event_scan_til", "scan", "event_scan_note_til_only")
+    __slots__ = ("current_tick", "notes", "bpm_events", "beat_change_events", "timeline_speed_events", "note_speed_events", "event_scan_extra_tick", "event_scan_til", "scan")
     CURRENT_TICK_FIELD_NUMBER: _ClassVar[int]
     NOTES_FIELD_NUMBER: _ClassVar[int]
     BPM_EVENTS_FIELD_NUMBER: _ClassVar[int]
@@ -300,7 +304,6 @@ class BeginEditResponse(_message.Message):
     EVENT_SCAN_EXTRA_TICK_FIELD_NUMBER: _ClassVar[int]
     EVENT_SCAN_TIL_FIELD_NUMBER: _ClassVar[int]
     SCAN_FIELD_NUMBER: _ClassVar[int]
-    EVENT_SCAN_NOTE_TIL_ONLY_FIELD_NUMBER: _ClassVar[int]
     current_tick: int
     notes: _containers.RepeatedCompositeFieldContainer[Note]
     bpm_events: _containers.RepeatedCompositeFieldContainer[BpmEvent]
@@ -310,8 +313,7 @@ class BeginEditResponse(_message.Message):
     event_scan_extra_tick: int
     event_scan_til: _containers.RepeatedScalarFieldContainer[int]
     scan: bool
-    event_scan_note_til_only: bool
-    def __init__(self, current_tick: _Optional[int] = ..., notes: _Optional[_Iterable[_Union[Note, _Mapping]]] = ..., bpm_events: _Optional[_Iterable[_Union[BpmEvent, _Mapping]]] = ..., beat_change_events: _Optional[_Iterable[_Union[BeatChangeEvent, _Mapping]]] = ..., timeline_speed_events: _Optional[_Iterable[_Union[TimelineSpeedEvent, _Mapping]]] = ..., note_speed_events: _Optional[_Iterable[_Union[NoteSpeedEvent, _Mapping]]] = ..., event_scan_extra_tick: _Optional[int] = ..., event_scan_til: _Optional[_Iterable[int]] = ..., scan: _Optional[bool] = ..., event_scan_note_til_only: _Optional[bool] = ...) -> None: ...
+    def __init__(self, current_tick: _Optional[int] = ..., notes: _Optional[_Iterable[_Union[Note, _Mapping]]] = ..., bpm_events: _Optional[_Iterable[_Union[BpmEvent, _Mapping]]] = ..., beat_change_events: _Optional[_Iterable[_Union[BeatChangeEvent, _Mapping]]] = ..., timeline_speed_events: _Optional[_Iterable[_Union[TimelineSpeedEvent, _Mapping]]] = ..., note_speed_events: _Optional[_Iterable[_Union[NoteSpeedEvent, _Mapping]]] = ..., event_scan_extra_tick: _Optional[int] = ..., event_scan_til: _Optional[_Iterable[int]] = ..., scan: _Optional[bool] = ...) -> None: ...
 
 class TimelineSpeedKey(_message.Message):
     __slots__ = ("tick", "timeline_id")

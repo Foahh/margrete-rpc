@@ -100,7 +100,6 @@ TEST_CASE("router begins edit transaction with note snapshot")
     margrete::rpc::v1::Envelope request;
     request.set_request_id(20);
     auto *begin = request.mutable_begin_edit_request();
-    begin->set_name("edit");
     begin->set_scan(true);
 
     const auto response = router.route(request);
@@ -112,7 +111,8 @@ TEST_CASE("router begins edit transaction with note snapshot")
     REQUIRE(response.begin_edit_response().notes_size() == 1);
     REQUIRE(response.begin_edit_response().notes(0).id() == 10);
     REQUIRE(response.begin_edit_response().event_scan_extra_tick() == 19200);
-    REQUIRE(response.begin_edit_response().event_scan_til_size() == 16);
+    REQUIRE(response.begin_edit_response().event_scan_til_size() == 1);
+    REQUIRE(response.begin_edit_response().event_scan_til(0) == 0);
     REQUIRE(response.begin_edit_response().bpm_events_size() == 1);
     REQUIRE(response.begin_edit_response().bpm_events(0).tick() == 200);
 }
@@ -128,7 +128,6 @@ TEST_CASE("router begins edit transaction without scan")
     margrete::rpc::v1::Envelope request;
     request.set_request_id(23);
     auto *begin = request.mutable_begin_edit_request();
-    begin->set_name("append style");
     begin->set_scan(false);
 
     const auto response = router.route(request);
@@ -156,7 +155,6 @@ TEST_CASE("router applies edit request")
     margrete::rpc::v1::Envelope request;
     request.set_request_id(22);
     auto *edit = request.mutable_apply_edit_request();
-    edit->set_name("edit");
     edit->set_replace_all_notes(true);
     edit->add_notes_upsert()->set_type(margrete::rpc::v1::NOTE_TYPE_TAP);
     edit->add_bpm_ticks_delete(200);

@@ -139,26 +139,34 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             }
 
             std::vector<std::int32_t> scanTil;
-            if (req.event_scan_til_size() > 0)
+            bool noteTilOnly = false;
+            if (req.has_event_scan_til())
             {
-                scanTil.reserve(static_cast<std::size_t>(req.event_scan_til_size()));
-                for (const auto til : req.event_scan_til())
+                const auto &tilList = req.event_scan_til();
+                if (tilList.tids_size() > 0)
                 {
-                    scanTil.push_back(til);
+                    scanTil.reserve(static_cast<std::size_t>(tilList.tids_size()));
+                    for (const auto til : tilList.tids())
+                    {
+                        scanTil.push_back(til);
+                    }
+                }
+                else
+                {
+                    scanTil = DefaultEventScanTil();
                 }
             }
             else
             {
                 scanTil = DefaultEventScanTil();
+                noteTilOnly = true;
             }
 
             const bool scan = req.scan();
-            const bool eventScanNoteTilOnly = req.event_scan_note_til_only();
             begin->set_scan(scan);
-            begin->set_event_scan_note_til_only(eventScanNoteTilOnly);
             if (scan)
             {
-                ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, eventScanNoteTilOnly, *begin);
+                ChartMapper::SnapshotForEdit(session.chart(), scanExtraTick, scanTil, noteTilOnly, *begin);
             }
             else
             {
@@ -173,7 +181,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
                     " note_speed_events=" + std::to_string(begin->note_speed_events_size()) +
                     " scan_extra_tick=" + std::to_string(begin->event_scan_extra_tick()) + " scan_til_count=" +
                     std::to_string(begin->event_scan_til_size()) + " scan=" + std::to_string(begin->scan()) +
-                    " event_scan_note_til_only=" + std::to_string(begin->event_scan_note_til_only()));
+                    " note_til_only=" + std::to_string(noteTilOnly));
             return response;
         }
         if (request.has_apply_edit_request())

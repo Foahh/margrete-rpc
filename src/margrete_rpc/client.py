@@ -165,7 +165,6 @@ class Margrete:
         *,
         event_scan_extra_tick: int | None = None,
         event_scan_til: list[int] | None = None,
-        event_scan_note_til_only: bool = False,
         scan: bool = True,
         raw: bool = False,
         replace_all: bool = False,
@@ -180,9 +179,9 @@ class Margrete:
         Args:
             event_scan_extra_tick: Extra tick window to scan for timeline events beyond
                 the note range; ``None`` uses the server default.
-            event_scan_til: Explicit list of ticks at which to scan timeline-speed events.
-            event_scan_note_til_only: Restrict timeline-speed scanning to ticks that carry
-                notes.
+            event_scan_til: Timeline IDs to scan for speed events. ``None`` (default)
+                restricts scanning to timelines that carry notes. Pass an explicit list
+                (including ``[]`` for all default timelines) to override.
             scan: Capture a baseline snapshot so only changed notes are sent on apply.
                 Disable to skip diffing.
             raw: Load the chart as a raw protobuf-tree model (:class:`RawNote`) instead of
@@ -198,13 +197,11 @@ class Margrete:
 
         tx_type = "edit_raw" if raw else "edit"
         with self._tracer.span("margrete.tx.begin", attrs={"tx.type": tx_type}):
-            req = messages_pb2.BeginEditRequest(
-                scan=scan, event_scan_note_til_only=event_scan_note_til_only
-            )
+            req = messages_pb2.BeginEditRequest(scan=scan)
             if event_scan_extra_tick is not None:
                 req.event_scan_extra_tick = event_scan_extra_tick
             if event_scan_til is not None:
-                req.event_scan_til.extend(event_scan_til)
+                req.event_scan_til.CopyFrom(messages_pb2.ScanTilList(tids=event_scan_til))
             response = self._transport.request(messages_pb2.Envelope(begin_edit_request=req))
         begin = response.begin_edit_response
         chart = Chart.from_begin_edit_response(begin, raw=raw)

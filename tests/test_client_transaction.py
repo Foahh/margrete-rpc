@@ -92,21 +92,53 @@ def test_current_tick_sends_request_and_returns_tick():
     assert transport.requests[0].HasField("current_tick_request")
 
 
-def test_open_edit_sends_event_scan_note_til_only():
+def test_open_edit_absent_event_scan_til_means_note_til_mode():
     transport = FakeTransport(
         [
             messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(
-                    current_tick=0, scan=True, event_scan_note_til_only=True
-                )
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, scan=True)
             ),
             messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
         ]
     )
     mg = Margrete(transport=transport)
-    with mg.open_edit(event_scan_note_til_only=True):
+    with mg.open_edit():
         pass
-    assert transport.requests[0].begin_edit_request.event_scan_note_til_only is True
+    assert not transport.requests[0].begin_edit_request.HasField("event_scan_til")
+
+
+def test_open_edit_explicit_event_scan_til_sets_wrapper():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, scan=True)
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+    with mg.open_edit(event_scan_til=[1, 2]):
+        pass
+    req = transport.requests[0].begin_edit_request
+    assert req.HasField("event_scan_til")
+    assert list(req.event_scan_til.tids) == [1, 2]
+
+
+def test_open_edit_empty_event_scan_til_sets_wrapper():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, scan=True)
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+    with mg.open_edit(event_scan_til=[]):
+        pass
+    req = transport.requests[0].begin_edit_request
+    assert req.HasField("event_scan_til")
+    assert list(req.event_scan_til.tids) == []
 
 
 def test_open_edit_scan_false_replaces_open_append_flow():

@@ -58,19 +58,7 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
         "error_response",
     ]
 
-    assert fields_by_name["begin_edit_request"].number == 4
-    assert fields_by_name["begin_edit_response"].number == 5
-    assert fields_by_name["apply_edit_request"].number == 13
-    assert fields_by_name["apply_edit_response"].number == 14
-    assert fields_by_name["undo_request"].number == 15
-    assert fields_by_name["undo_response"].number == 16
-    assert fields_by_name["redo_request"].number == 17
-    assert fields_by_name["redo_response"].number == 18
-    assert fields_by_name["current_tick_request"].number == 19
-    assert fields_by_name["current_tick_response"].number == 20
-    assert fields_by_name["status_request"].number == 21
-    assert fields_by_name["status_response"].number == 22
-    assert fields_by_name["error_response"].number == 12
+    assert [field.number for field in body.fields] == list(range(2, 17))
     assert not OLD_ENVELOPE_BODY_FIELDS.intersection(fields_by_name)
 
 
@@ -83,19 +71,38 @@ def test_begin_edit_request_and_response_have_scan_field():
 
 
 def test_begin_edit_scan_fields_use_expected_numbers():
-    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["scan"].number == 4
+    assert (
+        messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_extra_tick"].number
+        == 1
+    )
+    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_til"].number == 2
+    assert messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["scan"].number == 3
     assert messages_pb2.BeginEditResponse.DESCRIPTOR.fields_by_name["scan"].number == 9
 
 
-def test_begin_edit_event_scan_note_til_only_field_numbers():
-    assert (
-        messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_note_til_only"].number
-        == 5
-    )
-    assert (
-        messages_pb2.BeginEditResponse.DESCRIPTOR.fields_by_name["event_scan_note_til_only"].number
-        == 10
-    )
+def test_begin_edit_event_scan_til_is_scan_til_list():
+    field = messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_til"]
+    assert field.number == 2
+    assert field.message_type.name == "ScanTilList"
+    assert field.has_presence is True
+
+
+def test_apply_edit_request_fields_are_sequential():
+    fields = messages_pb2.ApplyEditRequest.DESCRIPTOR.fields
+    assert [field.name for field in fields] == [
+        "replace_all_notes",
+        "notes_upsert",
+        "note_ids_delete",
+        "bpm_upsert",
+        "beat_upsert",
+        "til_upsert",
+        "note_speed_upsert",
+        "bpm_ticks_delete",
+        "beat_bars_delete",
+        "til_keys_delete",
+        "note_speed_ticks_delete",
+    ]
+    assert [field.number for field in fields] == list(range(1, 12))
 
 
 def test_air_crush_color_wire_values_are_named_enum():

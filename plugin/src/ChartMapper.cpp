@@ -128,7 +128,7 @@ std::vector<margrete::rpc::v1::Note> ChartMapper::SnapshotNotes(IMargretePluginC
 }
 
 void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventScanExtraTicks,
-                                  const std::vector<std::int32_t> &eventScanTil, bool eventScanNoteTilOnly,
+                                  const std::vector<std::int32_t> &eventScanTil, bool noteTilOnly,
                                   margrete::rpc::v1::BeginEditResponse &response)
 {
     response.set_scan(true);
@@ -143,7 +143,7 @@ void ChartMapper::SnapshotForEdit(IMargretePluginChart &chart, MpInteger eventSc
     }
 
     std::vector<std::int32_t> scanTil = eventScanTil;
-    if (eventScanNoteTilOnly)
+    if (noteTilOnly)
     {
         scanTil = FilterEventScanTilByNotes(notes, eventScanTil);
     }
