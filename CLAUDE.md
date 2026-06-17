@@ -7,7 +7,7 @@ This file provides guidance to agents when working with code in this repository.
 - **`plugin/`** — C++ Margrete plugin that runs a TCP/protobuf RPC **server** inside Margrete
 - **`src/margrete_rpc/`** — Python **client** package that connects to the plugin
 - **`proto/`** — protobuf definitions shared by both
-- **`docs/`** — Fumadocs documentation site; auto-generates API reference from the Python package
+- **`website/`** — Fumadocs documentation site; auto-generates API reference from the Python package
 
 ## Client (Python) commands
 

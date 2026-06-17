@@ -20,4 +20,4 @@ specific transforms, but it can also feel brittle when you want to:
 
 - **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the Python client
 
-- **[`docs/`](docs/)**: Fumadocs documentation site; auto-generates API reference from the Python package
+- **[`website/`](website/)**: Fumadocs documentation site; auto-generates API reference from the Python package
