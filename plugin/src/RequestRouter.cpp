@@ -99,6 +99,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             status->set_server_version(PRODUCT_VERSION);
             status->set_server_build_time(BUILD_TIME);
             status->set_instance_id(instanceId_);
+            status->set_api_version(RPC_API_VERSION);
 
             RouterStatusSnapshot snapshot;
             {

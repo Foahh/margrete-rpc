@@ -45,6 +45,7 @@ TEST_CASE("router responds to status")
     REQUIRE(response.status_response().server_version() == PRODUCT_VERSION);
     REQUIRE(response.status_response().server_build_time() == BUILD_TIME);
     REQUIRE_FALSE(response.status_response().server_build_time().empty());
+    REQUIRE(response.status_response().api_version() == RPC_API_VERSION);
     REQUIRE(response.status_response().instance_id() == "test-instance");
     REQUIRE(response.status_response().uptime() == 42);
     REQUIRE(response.status_response().pid() == 1234);

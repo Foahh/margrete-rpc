@@ -192,7 +192,7 @@ class StatusRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class StatusResponse(_message.Message):
-    __slots__ = ("server_name", "server_version", "server_build_time", "instance_id", "uptime", "pid", "log_path", "config_path")
+    __slots__ = ("server_name", "server_version", "server_build_time", "instance_id", "uptime", "pid", "log_path", "config_path", "api_version")
     SERVER_NAME_FIELD_NUMBER: _ClassVar[int]
     SERVER_VERSION_FIELD_NUMBER: _ClassVar[int]
     SERVER_BUILD_TIME_FIELD_NUMBER: _ClassVar[int]
@@ -201,6 +201,7 @@ class StatusResponse(_message.Message):
     PID_FIELD_NUMBER: _ClassVar[int]
     LOG_PATH_FIELD_NUMBER: _ClassVar[int]
     CONFIG_PATH_FIELD_NUMBER: _ClassVar[int]
+    API_VERSION_FIELD_NUMBER: _ClassVar[int]
     server_name: str
     server_version: str
     server_build_time: str
@@ -209,7 +210,8 @@ class StatusResponse(_message.Message):
     pid: int
     log_path: str
     config_path: str
-    def __init__(self, server_name: _Optional[str] = ..., server_version: _Optional[str] = ..., server_build_time: _Optional[str] = ..., instance_id: _Optional[str] = ..., uptime: _Optional[int] = ..., pid: _Optional[int] = ..., log_path: _Optional[str] = ..., config_path: _Optional[str] = ...) -> None: ...
+    api_version: int
+    def __init__(self, server_name: _Optional[str] = ..., server_version: _Optional[str] = ..., server_build_time: _Optional[str] = ..., instance_id: _Optional[str] = ..., uptime: _Optional[int] = ..., pid: _Optional[int] = ..., log_path: _Optional[str] = ..., config_path: _Optional[str] = ..., api_version: _Optional[int] = ...) -> None: ...
 
 class Note(_message.Message):
     __slots__ = ("id", "type", "long_attr", "direction", "ex_attr", "variation_id", "x", "width", "height", "tick", "timeline_id", "option_value", "children")

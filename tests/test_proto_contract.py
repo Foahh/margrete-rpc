@@ -70,6 +70,13 @@ def test_begin_edit_request_and_response_have_snapshot_field():
     assert response.snapshot is False
 
 
+def test_status_response_has_api_version_field():
+    response = messages_pb2.StatusResponse(api_version=1)
+
+    assert response.api_version == 1
+    assert messages_pb2.StatusResponse.DESCRIPTOR.fields_by_name["api_version"].number == 9
+
+
 def test_begin_edit_snapshot_fields_use_expected_numbers():
     assert (
         messages_pb2.BeginEditRequest.DESCRIPTOR.fields_by_name["event_scan_lookahead_ticks"].number

@@ -117,6 +117,7 @@ message StatusResponse {
   uint32 pid = 6;
   string log_path = 7;
   string config_path = 8;
+  uint32 api_version = 9;
 }
 
 message Note {

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient
 from margrete_rpc._transport import RpcTransport
+from margrete_rpc._version import ensure_compatible_api_version
 from margrete_rpc.discovery import resolve_endpoint
 from margrete_rpc.trace import NoopTracer, Tracer
 
@@ -27,6 +28,7 @@ class ServerStatus:
         pid: Process id of the host Margrete process.
         log_path: Absolute path to the plugin's log file.
         config_path: Absolute path to the plugin's configuration file.
+        api_version: RPC API compatibility version reported by the plugin.
     """
 
     server_name: str
@@ -37,6 +39,7 @@ class ServerStatus:
     pid: int
     log_path: str
     config_path: str
+    api_version: int
 
 
 class Margrete:
@@ -55,6 +58,7 @@ class Margrete:
         timeout: float = 60.0,
         transport: RpcTransport | None = None,
         tracer: Tracer | None = None,
+        ensure_version: bool | None = None,
     ) -> None:
         """Connect to a Margrete RPC server.
 
@@ -70,12 +74,18 @@ class Margrete:
             transport: Pre-built transport to use instead of opening a socket; intended
                 for testing. Cannot be combined with ``endpoint`` or ``instance_id``.
             tracer: Optional tracer for observability spans; defaults to a no-op.
+            ensure_version: Validate that the connected plugin RPC API version is
+                compatible with this Python client. Defaults to enabled for socket
+                connections and disabled when a custom ``transport`` is supplied.
 
         Raises:
             ValueError: If conflicting connection arguments are supplied.
             MargreteDiscoveryError: If auto-detection cannot resolve an instance.
+            MargreteVersionError: If the plugin RPC API and Python client are not
+                compatible.
         """
         self._tracer = tracer if tracer is not None else NoopTracer()
+        check_version = ensure_version if ensure_version is not None else transport is None
         if transport is not None:
             if endpoint is not None or instance_id is not None:
                 raise ValueError("endpoint and instance_id cannot be used with transport")
@@ -86,6 +96,10 @@ class Margrete:
             if endpoint is None:
                 endpoint = resolve_endpoint(instance_id, timeout=min(timeout, 1.0))
             self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
+
+        if check_version:
+            status = self.status()
+            ensure_compatible_api_version(status.api_version, server_version=status.server_version)
 
     def ping(self) -> None:
         """Check connectivity by round-tripping an empty request to the server.
@@ -116,6 +130,7 @@ class Margrete:
             pid=status.pid,
             log_path=status.log_path,
             config_path=status.config_path,
+            api_version=status.api_version,
         )
 
     def undo(self) -> bool:
