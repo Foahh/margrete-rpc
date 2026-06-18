@@ -47,4 +47,3 @@ Output DLL: `plugin/build/Release/margrete-rpc.dll`.
 ## Development Notes
 
 - Follow conventional commit style: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`.
-- The project is not yet published, so cleaner implementation and future maintainability are prioritized over backward compatibility.

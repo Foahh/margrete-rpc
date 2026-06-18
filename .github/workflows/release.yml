@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: Client package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
+      - name: Sync dependencies
+        run: uv sync --extra dev
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Typecheck
+        run: uv run pyright
+      - name: Tests
+        run: uv run pytest
+      - name: Build distributions
+        run: uv build
+      - name: Check distributions
+        run: uv run --with twine twine check dist/*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+
+  plugin:
+    name: Plugin artifact
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build, test, and stage plugin
+        shell: pwsh
+        run: |
+          if (-not $env:VCPKG_ROOT -and $env:VCPKG_INSTALLATION_ROOT) {
+            $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          }
+          if (-not $env:VCPKG_ROOT -and (Test-Path -LiteralPath 'C:\vcpkg')) {
+            $env:VCPKG_ROOT = 'C:\vcpkg'
+          }
+          ./build.ps1 -Configuration Release -Test -Publish -SkipVcVars
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $archive = "margrete-rpc-plugin-$tag-windows-x64.zip"
+          Compress-Archive -Path publish\* -DestinationPath $archive -Force
+          $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $archive
+          "$($hash.Hash.ToLowerInvariant())  $archive" | Set-Content -Encoding ascii SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plugin-release
+          path: |
+            margrete-rpc-plugin-${{ github.ref_name }}-windows-x64.zip
+            SHA256SUMS.txt
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [client, plugin]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub release
+    needs: [client, plugin]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: plugin-release
+          path: release-assets
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            release-assets/* \
+            --verify-tag \
+            --generate-notes

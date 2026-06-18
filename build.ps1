@@ -180,8 +180,12 @@ try {
     if ($Publish) {
         $dll = Find-BuiltDll -BuildDir $BuildDir
         $ini = Find-BuiltIni -BuildDir $BuildDir
+        $installReadme = Join-Path $PluginDir 'config\README-install.txt'
         if (-not $dll) { throw "Could not find margrete-rpc.dll under $BuildDir" }
         if (-not $ini) { throw "Could not find margrete-rpc.ini under $BuildDir" }
+        if (-not (Test-Path -LiteralPath $installReadme)) {
+            throw "Install README not found: $installReadme"
+        }
 
         $PublishDir = Join-Path $RepoRoot 'publish'
         Write-Host "`n==> Publishing to $PublishDir"
@@ -189,7 +193,8 @@ try {
         New-Item -ItemType Directory -Path $PublishDir | Out-Null
         Copy-Item -LiteralPath $dll -Destination (Join-Path $PublishDir 'margrete-rpc.dll')
         Copy-Item -LiteralPath $ini -Destination (Join-Path $PublishDir 'margrete-rpc.ini')
-        Write-Host "    Copied DLL and INI."
+        Copy-Item -LiteralPath $installReadme -Destination (Join-Path $PublishDir 'README-install.txt')
+        Write-Host "    Copied DLL, INI, and install README."
     }
 
     Write-Host "`n==> Done."

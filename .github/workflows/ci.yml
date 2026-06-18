@@ -10,8 +10,8 @@ jobs:
     name: Client (Python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
       - name: Sync dependencies
         run: uv sync --extra dev
       - name: Lint (ruff)
@@ -27,7 +27,7 @@ jobs:
     name: Plugin (C++)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - uses: ilammy/msvc-dev-cmd@v1
