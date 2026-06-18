@@ -175,41 +175,49 @@ class Curve:
         waypoint = Waypoint(t1, x, h1, resolve_easing(ease_x), resolve_easing(ease_h))
         return Curve._of((*self.waypoints, waypoint))
 
-    def points(self) -> tuple[Waypoint, ...]:
+    def points(self, *, grid: int = 5) -> tuple[Waypoint, ...]:
         """Quantize the path into integer waypoints.
+
+        Args:
+            grid: Snap generated joints to absolute multiples of ``grid`` ticks (default
+                ``5``); pass ``grid=1`` for full resolution. The anchor and ``.to(...)``
+                ticks stay exact.
 
         Returns:
             All sampled waypoints in order; useful to preview the realized joints before
             calling a ``to_*`` materializer.
 
         Raises:
-            ValueError: If the curve has no legs yet (only an anchor).
+            ValueError: If the curve has no legs yet (only an anchor), or ``grid < 1``.
         """
         if len(self.waypoints) < 2:
             raise ValueError("add at least one .to(...) leg before materializing a Curve")
+        if grid < 1:
+            raise ValueError("grid must be at least 1")
         out: list[Waypoint] = []
         for a, b in zip(self.waypoints, self.waypoints[1:]):
-            leg = _sample_segment(a.t, a.x, a.h, b.t, b.x, b.h, b.ease_x, b.ease_h)
+            leg = _sample_segment(a.t, a.x, a.h, b.t, b.x, b.h, b.ease_x, b.ease_h, grid)
             out.extend(leg[1:] if out else leg)
         return tuple(out)
 
-    def _path(self) -> tuple[Waypoint, list[Waypoint], Waypoint]:
+    def _path(self, grid: int) -> tuple[Waypoint, list[Waypoint], Waypoint]:
         """Quantize, then split into ``(first, interior, last)`` (always >= 2 points)."""
-        first, *mid, last = self.points()
+        first, *mid, last = self.points(grid=grid)
         return first, mid, last
 
-    def to_slide(self, *, w: int, til: int = 0) -> Slide:
+    def to_slide(self, *, w: int, til: int = 0, grid: int = 5) -> Slide:
         """Materialize as a ground :class:`Slide`.
 
         Args:
             w: Constant lane width for every joint.
             til: Timeline index assigned to the note.
+            grid: Snap generated joints to a tick grid (default ``5``). See :meth:`points`.
 
         Returns:
             A :class:`Slide` whose joints follow the quantized path. Height is preserved
             in the underlying raw note fields.
         """
-        first, mid, last = self._path()
+        first, mid, last = self._path(grid)
         slide = Slide(t=first.t, x=first.x, w=w)
         slide._info.h = first.h
         slide.til = til
@@ -220,17 +228,18 @@ class Curve:
         slide.joints[-1]._info.h = last.h
         return slide
 
-    def to_air_slide(self, *, w: int, til: int = 0) -> AirSlide:
+    def to_air_slide(self, *, w: int, til: int = 0, grid: int = 5) -> AirSlide:
         """Materialize as an :class:`AirSlide`.
 
         Args:
             w: Constant lane width for every joint.
             til: Timeline index assigned to the note.
+            grid: Snap generated joints to a tick grid (default ``5``). See :meth:`points`.
 
         Returns:
             An :class:`AirSlide` whose joints follow the quantized path.
         """
-        first, mid, last = self._path()
+        first, mid, last = self._path(grid)
         air = AirSlide(t=first.t, x=first.x, w=w, h=first.h)
         air.til = til
         for wp in mid:
@@ -245,6 +254,7 @@ class Curve:
         gap: int | DivisionLike = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int = 0,
+        grid: int = 5,
     ) -> AirCrush:
         """Materialize as an :class:`AirCrush`.
 
@@ -255,11 +265,12 @@ class Curve:
                 :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
             color: Crush particle color.
             til: Timeline index assigned to the note.
+            grid: Snap generated joints to a tick grid (default ``5``). See :meth:`points`.
 
         Returns:
             An :class:`AirCrush` whose joints follow the quantized path.
         """
-        first, mid, last = self._path()
+        first, mid, last = self._path(grid)
         crush = AirCrush(t=first.t, x=first.x, w=w, h=first.h, gap=gap, color=color)
         crush.til = til
         for wp in (*mid, last):
@@ -340,6 +351,56 @@ def _is_linear(reals: list[tuple[int, float, float]]) -> bool:
     return True
 
 
+def _drop_collinear(pts: list[Waypoint]) -> tuple[Waypoint, ...]:
+    """Drop interior waypoints that lie exactly on the chord through their neighbours.
+
+    Keeps the running kept point as the anchor so an entire collinear run collapses, leaving
+    Margrete's linear reconstruction unchanged (a lossless simplification).
+    """
+    out = [pts[0]]
+    for cur, nxt in zip(pts[1:-1], pts[2:]):
+        if not _collinear(out[-1], cur, nxt):
+            out.append(cur)
+    out.append(pts[-1])
+    return tuple(out)
+
+
+def _sample_segment_grid(
+    t0: int,
+    x0: int,
+    h0: int,
+    t1: int,
+    x1: int,
+    h1: int,
+    ease_x: Easing,
+    ease_h: Easing,
+    grid: int,
+) -> tuple[Waypoint, ...]:
+    """Quantize an eased segment onto absolute multiples of ``grid`` ticks.
+
+    Interior joints land on grid ticks (``t % grid == 0``); the endpoints stay exact.
+    """
+    span = t1 - t0
+    interior = range(((t0 // grid) + 1) * grid, t1, grid)
+    reals = [
+        (
+            t,
+            x0 + ease_x.solve((t - t0) / span) * (x1 - x0),
+            h0 + ease_h.solve((t - t0) / span) * (h1 - h0),
+        )
+        for t in interior
+    ]
+    reals = [(t0, float(x0), float(h0)), *reals, (t1, float(x1), float(h1))]
+    if _is_linear(reals):
+        return (Waypoint(t0, x0, h0), Waypoint(t1, x1, h1))
+
+    pts = [Waypoint(t0, x0, h0)]
+    for t, rx, rh in reals[1:-1]:
+        pts.append(Waypoint(t, round(rx), round(rh)))
+    pts.append(Waypoint(t1, x1, h1))
+    return _drop_collinear(pts)
+
+
 def _sample_segment(
     t0: int,
     x0: int,
@@ -349,10 +410,17 @@ def _sample_segment(
     h1: int,
     ease_x: Easing,
     ease_h: Easing,
+    grid: int = 1,
 ) -> tuple[Waypoint, ...]:
-    """Quantize an eased segment to integer waypoints driven by the smaller-delta axis."""
+    """Quantize an eased segment to integer waypoints driven by the smaller-delta axis.
+
+    With ``grid > 1`` joints are instead snapped to absolute multiples of ``grid`` ticks
+    (see :func:`_sample_segment_grid`).
+    """
     if t1 <= t0:
         raise ValueError("segment end tick must be later than its start")
+    if grid > 1:
+        return _sample_segment_grid(t0, x0, h0, t1, x1, h1, ease_x, ease_h, grid)
     span = t1 - t0
     reals = [
         (
@@ -377,13 +445,7 @@ def _sample_segment(
             pts.append(Waypoint(t, nx, nh))
             last = nx if drive_x else nh
     pts.append(Waypoint(t1, x1, h1))
-
-    out = [pts[0]]
-    for cur, nxt in zip(pts[1:-1], pts[2:]):
-        if not _collinear(out[-1], cur, nxt):
-            out.append(cur)
-    out.append(pts[-1])
-    return tuple(out)
+    return _drop_collinear(pts)
 
 
 def _stored_height(obj: object) -> int:

@@ -120,9 +120,23 @@ crush = (
 )
 ```
 
+### Limiting resolution
+
+The materialize methods snap joint tick to absolute multiples of
+`grid`. The default is `5`, pass `grid=1` for full resolution.
+
+```python
+slide = (
+    Curve(t=(0, 0), x=0)
+    .to(t=(1, 0), x=13, ease_x="in_out_sine")
+    .to_slide(w=2, grid=1)  # full resolution; default grid=5 snaps joints to multiples of 5 (1/384)
+)
+```
+
 ## Edit Waypoints
 
-Call [`points()`](/docs/reference/chart/util/curve/Curve) to preview the quantized curve.
+Call [`points()`](/docs/reference/chart/util/curve/Curve) to preview the quantized curve. Pass
+`grid=` to snap joints to a tick grid.
 
 ```python
 path = Curve(t=(0, 0), x=0).to(t=(1, 0), x=12, ease_x="in_out_sine")

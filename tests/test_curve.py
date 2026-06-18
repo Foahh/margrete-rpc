@@ -94,7 +94,7 @@ def test_smaller_delta_axis_drives_no_flat_runs() -> None:
     # x moves 12 lanes, h moves 100 units: the smaller-delta axis (x) drives sampling, so x
     # advances one lane per joint -- no long flat X runs that would look like a blocky
     # staircase in the main view -- and the joint count tracks the x delta, not the h delta.
-    pts = Curve(t=0, x=1, h=20).to(t=960, x=13, h=120, ease_h="in_out_sine").points()
+    pts = Curve(t=0, x=1, h=20).to(t=960, x=13, h=120, ease_h="in_out_sine").points(grid=1)
     xs = [wp.x for wp in pts]
     assert xs == sorted(xs)
     assert all(b > a for a, b in zip(xs, xs[1:]))  # strictly increasing: no repeated X
@@ -103,7 +103,7 @@ def test_smaller_delta_axis_drives_no_flat_runs() -> None:
 
 def test_height_drives_when_it_has_smaller_delta() -> None:
     # When height has the smaller delta, it drives instead and gains no flat runs.
-    pts = Curve(t=0, x=0, h=0).to(t=960, x=12, h=4, ease_h="in_out_sine").points()
+    pts = Curve(t=0, x=0, h=0).to(t=960, x=12, h=4, ease_h="in_out_sine").points(grid=1)
     hs = [wp.h for wp in pts]
     assert hs == sorted(hs)
     assert all(b > a for a, b in zip(hs, hs[1:]))
@@ -112,9 +112,47 @@ def test_height_drives_when_it_has_smaller_delta() -> None:
 def test_eased_driver_has_no_flat_start_run() -> None:
     # A flat-starting easing must not emit two joints at the same lane (the j1 == j2 == 0 then
     # j3 == 1 artifact): the driver advances by one lane every joint, never repeating a value.
-    pts = Curve(t=0, x=0).to(t=960, x=12, ease_x="in_quad").points()
+    pts = Curve(t=0, x=0).to(t=960, x=12, ease_x="in_quad").points(grid=1)
     xs = [wp.x for wp in pts]
     assert all(b != a for a, b in zip(xs, xs[1:]))  # no flat lane segments anywhere
+
+
+def test_grid_default_is_five() -> None:
+    # The default grid is 5, so the default path matches an explicit grid=5.
+    curve = Curve(t=0, x=0, h=20).to(t=960, x=12, h=120, ease_x="in_out_sine")
+    assert curve.points() == curve.points(grid=5)
+    assert all(wp.t % 5 == 0 for wp in curve.points()[1:-1])
+
+
+def test_grid_snaps_interior_joints_to_multiples() -> None:
+    pts = Curve(t=0, x=0).to(t=960, x=13, ease_x="in_out_sine").points(grid=5)
+    ticks = [wp.t for wp in pts]
+    assert ticks == sorted(set(ticks))  # strictly increasing, no duplicates
+    assert ticks[0] == 0 and ticks[-1] == 960  # endpoints exact
+    assert all(t % 5 == 0 for t in ticks[1:-1])  # interior joints on the grid
+
+
+def test_grid_keeps_off_grid_endpoints_exact() -> None:
+    pts = Curve(t=3, x=0).to(t=963, x=13, ease_x="in_out_sine").points(grid=5)
+    assert (pts[0].t, pts[-1].t) == (3, 963)  # user ticks preserved
+    assert all(wp.t % 5 == 0 for wp in pts[1:-1])  # generated joints snap to the grid
+
+
+def test_grid_linear_leg_still_collapses() -> None:
+    pts = Curve(t=0, x=0, h=20).to(t=960, x=12, h=80).points(grid=5)
+    assert len(pts) == 2
+    assert (pts[0].t, pts[0].x, pts[0].h) == (0, 0, 20)
+    assert (pts[-1].t, pts[-1].x, pts[-1].h) == (960, 12, 80)
+
+
+def test_grid_rejects_zero() -> None:
+    curve = Curve(t=0, x=0).to(t=960, x=12, ease_x="in_out_sine")
+    with pytest.raises(ValueError):
+        curve.points(grid=0)
+
+
+def test_grid_materializes_valid_note() -> None:
+    Curve(t=0, x=0).to(t=960, x=13, ease_x="in_out_sine").to_slide(w=2, grid=5).validate()
 
 
 def test_non_monotonic_easing_overshoots() -> None:

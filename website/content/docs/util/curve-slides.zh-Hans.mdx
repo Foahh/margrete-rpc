@@ -111,9 +111,22 @@ crush = (
 )
 ```
 
+## 限制分辨率
+
+物件化方法会把节点 tick 对齐到 `grid` 的整数倍上。默认值为 `5`，传入 `grid=1` 可使用完整分辨率。
+
+```python
+slide = (
+    Curve(t=(0, 0), x=0)
+    .to(t=(1, 0), x=13, ease_x="in_out_sine")
+    .to_slide(w=2, grid=1)  # 完整分辨率；默认情况会把节点对齐到 5 tick (1/384) 的整数倍上
+)
+```
+
 ## 编辑路径点
 
-调用 [`points()`](/docs/reference/chart/util/curve/Curve) 可以预览拟合后的曲线。
+调用 [`points()`](/docs/reference/chart/util/curve/Curve) 可以预览拟合后的曲线。传入 `grid=`
+可将生成的节点对齐到 tick 网格。
 
 ```python
 path = Curve(t=(0, 0), x=0).to(t=(1, 0), x=12, ease_x="in_out_sine")
