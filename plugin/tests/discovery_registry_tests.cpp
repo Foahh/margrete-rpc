@@ -77,13 +77,12 @@ TEST_CASE("discovery publishes configured host")
         const std::filesystem::path logPath = base / "test.log";
         Logger logger(logPath);
 
-        DiscoveryRegistry::Publish(
-            instanceId,
-            std::vector<DiscoveryTransport>{
-                DiscoveryTransport{"tcp", "192.168.1.23:49000", ""},
-                DiscoveryTransport{"npipe", "", "\\\\.\\pipe\\margrete-rpc-test"},
-            },
-            logPath, "test-version", logger);
+        DiscoveryRegistry::Publish(instanceId,
+                                   std::vector<DiscoveryTransport>{
+                                       DiscoveryTransport{"tcp", "192.168.1.23:49000", ""},
+                                       DiscoveryTransport{"npipe", "", "\\\\.\\pipe\\margrete-rpc-test"},
+                                   },
+                                   logPath, "test-version", logger);
 
         const std::filesystem::path recordPath = base / "MargreteRPC" / "instances" / (instanceId + ".json");
         std::ifstream in(recordPath);

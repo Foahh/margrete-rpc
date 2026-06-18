@@ -94,21 +94,21 @@ void ServerController::start(IMargretePluginContext *context)
     if (activeConfig_.transport == ServerTransportMode::Tcp || activeConfig_.transport == ServerTransportMode::Both)
     {
         const std::string publishHost = activeConfig_.host;
-        socketServer_ = std::make_unique<SocketServer>(
-            activeConfig_.host, activeConfig_.port, router_, logger_, [this, publishHost](std::uint16_t port) {
-                {
-                    std::scoped_lock lock(discoveryMutex_);
-                    actualPort_ = port;
-                }
-                publishDiscovery();
-            });
+        socketServer_ = std::make_unique<SocketServer>(activeConfig_.host, activeConfig_.port, router_, logger_,
+                                                       [this, publishHost](std::uint16_t port) {
+                                                           {
+                                                               std::scoped_lock lock(discoveryMutex_);
+                                                               actualPort_ = port;
+                                                           }
+                                                           publishDiscovery();
+                                                       });
         socketServer_->start();
     }
 
     if (activeConfig_.transport == ServerTransportMode::Pipe || activeConfig_.transport == ServerTransportMode::Both)
     {
-        pipeServer_ = std::make_unique<NamedPipeServer>(
-            resolvePipeName(), router_, logger_, [this](const std::string &pipePath) {
+        pipeServer_ =
+            std::make_unique<NamedPipeServer>(resolvePipeName(), router_, logger_, [this](const std::string &pipePath) {
                 {
                     std::scoped_lock lock(discoveryMutex_);
                     actualPipePath_ = pipePath;
@@ -163,11 +163,9 @@ void ServerController::logConfig(const ServerConfig &config, const char *label)
         logger_.info(std::string(label) + " path=" + config.sourcePath.string() +
                      (config.loadedFromFile ? " (loaded)" : " (not found; using defaults)"));
     }
-    logger_.info(std::string(label) + " transport=" + std::string(TransportModeName(config.transport)) +
-                 " host=" + config.host +
-                 " port=" + (config.autoPort ? std::string("auto") : std::to_string(config.port)) +
-                 " pipe_name=" + config.pipeName +
-                 " resolved_log=" + logPath_.string());
+    logger_.info(std::string(label) + " transport=" + std::string(TransportModeName(config.transport)) + " host=" +
+                 config.host + " port=" + (config.autoPort ? std::string("auto") : std::to_string(config.port)) +
+                 " pipe_name=" + config.pipeName + " resolved_log=" + logPath_.string());
 }
 
 void ServerController::publishDiscovery()
@@ -177,8 +175,7 @@ void ServerController::publishDiscovery()
         std::scoped_lock lock(discoveryMutex_);
         if (actualPort_ != 0)
         {
-            transports.push_back(
-                DiscoveryTransport{"tcp", activeConfig_.host + ":" + std::to_string(actualPort_), ""});
+            transports.push_back(DiscoveryTransport{"tcp", activeConfig_.host + ":" + std::to_string(actualPort_), ""});
         }
         if (!actualPipePath_.empty())
         {

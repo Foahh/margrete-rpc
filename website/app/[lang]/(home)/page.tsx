@@ -86,7 +86,6 @@ export default async function HomePage({ params }: { params: Promise<{ lang: str
               {t.viewOnGitHub}
             </a>
           </div>
-
         </div>
       </section>
     </main>

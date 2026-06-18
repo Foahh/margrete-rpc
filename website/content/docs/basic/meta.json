@@ -1,5 +1,12 @@
 {
   "title": "Basic",
   "icon": "BookOpen",
-  "pages": ["edit-transactions", "notes", "events", "note-transforms", "time-position", "handle-multi-margrete"]
+  "pages": [
+    "edit-transactions",
+    "notes",
+    "events",
+    "note-transforms",
+    "time-position",
+    "handle-multi-margrete"
+  ]
 }

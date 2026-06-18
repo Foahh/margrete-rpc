@@ -32,8 +32,7 @@ std::string LastErrorMessage(const char *prefix)
 }
 } // namespace
 
-NamedPipeServer::NamedPipeServer(std::string pipeName, RequestRouter &router, Logger &logger,
-                                 StartedCallback onStarted)
+NamedPipeServer::NamedPipeServer(std::string pipeName, RequestRouter &router, Logger &logger, StartedCallback onStarted)
     : pipeName_(std::move(pipeName)), router_(router), logger_(logger), onStarted_(std::move(onStarted))
 {
 }
@@ -93,9 +92,8 @@ void NamedPipeServer::run()
     {
         reapClientThreads(false);
         HANDLE pipe = CreateNamedPipeW(path.c_str(), PIPE_ACCESS_DUPLEX,
-                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                                       PIPE_UNLIMITED_INSTANCES, FrameProtocol::MaxFrameSize,
-                                       FrameProtocol::MaxFrameSize, 0, nullptr);
+                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+                                       FrameProtocol::MaxFrameSize, FrameProtocol::MaxFrameSize, 0, nullptr);
         if (pipe == INVALID_HANDLE_VALUE)
         {
             logger_.error(LastErrorMessage("CreateNamedPipeW"));
