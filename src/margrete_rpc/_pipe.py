@@ -1,21 +1,17 @@
 from __future__ import annotations
 
-import ctypes
 import sys
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 from margrete_rpc._framed_client import ByteStream, FramedRpcClient
 from margrete_rpc.errors import MargreteProtocolError, MargreteTimeoutError
 from margrete_rpc.trace import NoopTracer, Tracer
 
-GENERIC_READ = 0x80000000
-GENERIC_WRITE = 0x40000000
-OPEN_EXISTING = 3
-FILE_ATTRIBUTE_NORMAL = 0x80
-INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
-ERROR_FILE_NOT_FOUND = 2
-ERROR_PIPE_BUSY = 231
-ERROR_SEM_TIMEOUT = 121
+
+def _require_windows() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("named pipe transport is only available on Windows")
 
 
 def normalize_pipe_endpoint(endpoint: str) -> str:
@@ -37,113 +33,45 @@ def display_pipe_endpoint(path: str) -> str:
     return path
 
 
-class _Kernel32:
-    def __init__(self) -> None:
-        if sys.platform != "win32":
-            raise RuntimeError("named pipe transport is only available on Windows")
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        self._kernel32 = kernel32
-        self.CreateFileW = kernel32.CreateFileW
-        self.CreateFileW.argtypes = [
-            ctypes.c_wchar_p,
-            ctypes.c_uint32,
-            ctypes.c_uint32,
-            ctypes.c_void_p,
-            ctypes.c_uint32,
-            ctypes.c_uint32,
-            ctypes.c_void_p,
-        ]
-        self.CreateFileW.restype = ctypes.c_void_p
-        self.ReadFile = kernel32.ReadFile
-        self.ReadFile.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_uint32,
-            ctypes.POINTER(ctypes.c_uint32),
-            ctypes.c_void_p,
-        ]
-        self.ReadFile.restype = ctypes.c_int
-        self.WriteFile = kernel32.WriteFile
-        self.WriteFile.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_uint32,
-            ctypes.POINTER(ctypes.c_uint32),
-            ctypes.c_void_p,
-        ]
-        self.WriteFile.restype = ctypes.c_int
-        self.CloseHandle = kernel32.CloseHandle
-        self.CloseHandle.argtypes = [ctypes.c_void_p]
-        self.CloseHandle.restype = ctypes.c_int
-        self.WaitNamedPipeW = kernel32.WaitNamedPipeW
-        self.WaitNamedPipeW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32]
-        self.WaitNamedPipeW.restype = ctypes.c_int
-
-    def last_error(self) -> int:
-        return ctypes.get_last_error()
-
-
-_kernel32: _Kernel32 | None = None
-
-
-def _win32() -> _Kernel32:
-    global _kernel32
-    if _kernel32 is None:
-        _kernel32 = _Kernel32()
-    return _kernel32
-
-
-def _raise_last_error(prefix: str) -> None:
-    code = _win32().last_error()
-    raise OSError(code, f"{prefix} failed with Windows error {code}")
+def _winerror(exc: BaseException) -> int | None:
+    return getattr(exc, "winerror", None) or (exc.args[0] if exc.args else None)
 
 
 @dataclass
 class PipeStream:
-    handle: int
+    handle: Any
 
     def read_exact(self, size: int) -> bytes:
+        _require_windows()
+        import win32file
+
         chunks: list[bytes] = []
         remaining = size
         while remaining:
-            buffer = ctypes.create_string_buffer(remaining)
-            read = ctypes.c_uint32(0)
-            ok = _win32().ReadFile(
-                ctypes.c_void_p(self.handle),
-                buffer,
-                remaining,
-                ctypes.byref(read),
-                None,
-            )
-            if not ok:
-                _raise_last_error("ReadFile")
-            if read.value == 0:
+            _, chunk = win32file.ReadFile(self.handle, remaining)
+            chunk = cast(bytes, chunk)
+            if not chunk:
                 raise MargreteProtocolError("pipe closed before frame completed")
-            chunks.append(buffer.raw[: read.value])
-            remaining -= read.value
+            chunks.append(chunk)
+            remaining -= len(chunk)
         return b"".join(chunks)
 
     def write_all(self, data: bytes) -> None:
+        _require_windows()
+        import win32file
+
         offset = 0
         while offset < len(data):
-            chunk = data[offset:]
-            buffer = ctypes.create_string_buffer(chunk)
-            written = ctypes.c_uint32(0)
-            ok = _win32().WriteFile(
-                ctypes.c_void_p(self.handle),
-                buffer,
-                len(chunk),
-                ctypes.byref(written),
-                None,
-            )
-            if not ok:
-                _raise_last_error("WriteFile")
-            if written.value == 0:
+            _, written = win32file.WriteFile(self.handle, data[offset:])
+            if written == 0:
                 raise MargreteProtocolError("pipe closed before frame completed")
-            offset += written.value
+            offset += written
 
     def close(self) -> None:
-        _win32().CloseHandle(ctypes.c_void_p(self.handle))
+        _require_windows()
+        import win32api
+
+        win32api.CloseHandle(self.handle)
 
 
 @dataclass
@@ -157,33 +85,49 @@ class PipeRpcClient(FramedRpcClient):
         self._path = normalize_pipe_endpoint(self.endpoint)
 
     def _open_connection(self) -> ByteStream:
+        _require_windows()
+        import pywintypes
+        import win32file
+        import win32pipe
+        import winerror
+
+        retryable_errors = {
+            winerror.ERROR_FILE_NOT_FOUND,
+            winerror.ERROR_PIPE_BUSY,
+            winerror.ERROR_SEM_TIMEOUT,
+        }
         timeout_ms = max(1, min(int(self.timeout * 1000), 0xFFFFFFFF))
-        handle = _win32().CreateFileW(
-            self._path,
-            GENERIC_READ | GENERIC_WRITE,
-            0,
-            None,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            None,
-        )
-        if handle == INVALID_HANDLE_VALUE:
-            code = _win32().last_error()
-            if code in {ERROR_FILE_NOT_FOUND, ERROR_PIPE_BUSY, ERROR_SEM_TIMEOUT}:
-                if not _win32().WaitNamedPipeW(self._path, timeout_ms):
-                    raise MargreteTimeoutError(f"timed out connecting to pipe {self.endpoint}")
-                handle = _win32().CreateFileW(
-                    self._path,
-                    GENERIC_READ | GENERIC_WRITE,
-                    0,
-                    None,
-                    OPEN_EXISTING,
-                    FILE_ATTRIBUTE_NORMAL,
-                    None,
-                )
-            if handle == INVALID_HANDLE_VALUE:
-                _raise_last_error("CreateFileW")
-        return PipeStream(int(handle))
+        try:
+            handle = win32file.CreateFile(
+                self._path,
+                win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                0,
+                None,
+                win32file.OPEN_EXISTING,
+                win32file.FILE_ATTRIBUTE_NORMAL,
+                None,
+            )
+        except pywintypes.error as exc:
+            if _winerror(exc) not in retryable_errors:
+                raise
+            try:
+                win32pipe.WaitNamedPipe(self._path, timeout_ms)
+            except pywintypes.error as wait_exc:
+                if _winerror(wait_exc) in retryable_errors:
+                    raise MargreteTimeoutError(
+                        f"timed out connecting to pipe {self.endpoint}"
+                    ) from wait_exc
+                raise
+            handle = win32file.CreateFile(
+                self._path,
+                win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                0,
+                None,
+                win32file.OPEN_EXISTING,
+                win32file.FILE_ATTRIBUTE_NORMAL,
+                None,
+            )
+        return PipeStream(handle)
 
 
 __all__ = ["PipeRpcClient", "display_pipe_endpoint", "normalize_pipe_endpoint"]
