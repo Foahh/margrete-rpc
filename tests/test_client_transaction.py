@@ -210,6 +210,7 @@ def test_open_edit_chart_has_no_nested_events_group():
         assert not hasattr(tx.chart, "beat")
         assert not hasattr(tx.chart, "til")
         assert not hasattr(tx.chart, "note_speed")
+        assert not hasattr(tx.chart, "note_speeds")
 
 
 def test_open_append_is_removed():
@@ -349,7 +350,7 @@ def test_snapshot_note_speed_value_edit_with_same_tick_sends_apply_request():
     mg = Margrete(transport=transport)
 
     with mg.open_edit() as tx:
-        tx.chart.note_speeds[0].speed = 1.25
+        tx.chart.speeds[0].speed = 1.25
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.note_speed_upsert[0].speed == 1.25

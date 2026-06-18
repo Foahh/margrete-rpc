@@ -172,10 +172,10 @@ def test_open_edit_resolves_event_positions_against_chart_time_signature():
     with mg.open_edit() as tx:
         tx.chart.bpms.append(BpmEvent(t=(1, 0), bpm=180.0))
         tx.chart.tils.append(TimelineSpeedEvent(til=2, t=(0, 2), speed=1.5))
-        tx.chart.note_speeds.append(NoteSpeedEvent(t=(1, 1), speed=1.25))
+        tx.chart.speeds.append(NoteSpeedEvent(t=(1, 1), speed=1.25))
         assert tx.chart.bpms[-1].p == Position(1, 0, 0)
         assert tx.chart.tils[-1].p == Position(0, 2, 0)
-        assert tx.chart.note_speeds[-1].p == Position(1, 1, 0)
+        assert tx.chart.speeds[-1].p == Position(1, 1, 0)
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.bpm_upsert[0].tick == 3 * BEAT

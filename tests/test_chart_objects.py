@@ -1521,7 +1521,7 @@ def test_event_normalization_uses_last_write_wins_by_key():
             TimelineSpeedEvent(t=960, til=1, speed=0.5),
             TimelineSpeedEvent(t=960, til=1, speed=0.75),
         ],
-        note_speeds=[NoteSpeedEvent(480, 1.5), NoteSpeedEvent(480, 1.25)],
+        speeds=[NoteSpeedEvent(480, 1.5), NoteSpeedEvent(480, 1.25)],
     )
 
     normalized = chart.normalized_events()
@@ -1529,7 +1529,7 @@ def test_event_normalization_uses_last_write_wins_by_key():
     assert normalized.bpms == [BpmEvent(0, 180.0)]
     assert normalized.beats == [BeatEvent(0, 4, 4)]
     assert normalized.tils == [TimelineSpeedEvent(1, 960, 0.75)]
-    assert normalized.note_speeds == [NoteSpeedEvent(480, 1.25)]
+    assert normalized.speeds == [NoteSpeedEvent(480, 1.25)]
 
 
 def test_chart_events_group_is_not_exported():

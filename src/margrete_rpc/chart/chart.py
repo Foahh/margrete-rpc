@@ -34,14 +34,14 @@ class Chart:
         beats: Time-signature changes (:class:`BeatEvent`); these drive position<->tick
             conversion.
         tils: Timeline-speed events (:class:`TimelineSpeedEvent`).
-        note_speeds: Note-speed events (:class:`NoteSpeedEvent`).
+        speeds: Note-speed events (:class:`NoteSpeedEvent`).
     """
 
     notes: list[ChartNote] = field(default_factory=list)
     bpms: list[BpmEvent] = field(default_factory=list)
     beats: list[BeatEvent] = field(default_factory=list)
     tils: list[TimelineSpeedEvent] = field(default_factory=list)
-    note_speeds: list[NoteSpeedEvent] = field(default_factory=list)
+    speeds: list[NoteSpeedEvent] = field(default_factory=list)
 
     @classmethod
     def from_begin_edit_response(
@@ -75,7 +75,7 @@ class Chart:
                 TimelineSpeedEvent.from_proto(event)
                 for event in response.timeline_speed_events
             ],
-            note_speeds=[
+            speeds=[
                 NoteSpeedEvent.from_proto(event) for event in response.note_speed_events
             ],
         )
@@ -94,7 +94,7 @@ class Chart:
                 self.tils,
                 lambda event: (event.t, event.til),
             ),
-            note_speeds=_last_by_key(self.note_speeds, lambda event: event.t),
+            speeds=_last_by_key(self.speeds, lambda event: event.t),
         )
 
 
