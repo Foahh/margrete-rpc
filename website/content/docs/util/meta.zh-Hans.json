@@ -1,0 +1,5 @@
+{
+  "title": "实用工具",
+  "icon": "ToolCase",
+  "pages": ["note-transforms", "easings", "curve-slides", "slide-util", "timing-util"]
+}

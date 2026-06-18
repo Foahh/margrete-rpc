@@ -1,9 +1,12 @@
 {
   "title": "Documentation",
   "pages": [
-    "---Introduction---",
     "index",
+    "margrete",
+    "---Guides---",
     "basic",
+    "util",
+    "---Misc---",
     "advanced",
     "limitations",
     "---Reference---",

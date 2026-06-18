@@ -1,0 +1,171 @@
+---
+title: 谱面编辑
+---
+
+## 如何理解
+
+我们通常使用 [`open_edit()`](/docs/reference/client/Margrete) 读取并编辑谱面：
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+```
+
+当 `open_edit()` 的代码块正常退出时，修改会发送到 Margrete。如果这个代码块抛出异常，则不会发生任何事情。
+
+可以把 `open_edit()` 理解为一个四步流程：
+
+1. **读取** - Margrete 将当前谱面和状态发送给 Python。
+2. **解析** - Python 读取底层物件，将它们转换为更易用的高级物件，例如 [`Tap`](/docs/reference/chart/notes/ground/Tap)
+   和 [`Slide`](/docs/reference/chart/notes/long/Slide)。
+3. **编辑** - 你的代码在此时发挥作用。
+4. **应用** - 退出 `open_edit()` 的代码块后，Python 会计算出你的修改，并将编辑发送给 Margrete。
+
+如果想读取或修改谱面，请使用 `open_edit()` 返回的这些内容：
+
+| 对象              | 用途                                                                                                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tx.chart.notes`  | 包含所有物件的列表，例如 [`Tap`](/docs/reference/chart/notes/ground/Tap)、[`Slide`](/docs/reference/chart/notes/long/Slide)、[`AirCrush`](/docs/reference/chart/notes/long/AirCrush)。 |
+| `tx.chart.bpms`   | BPM 事件列表 [`BpmEvent`](/docs/reference/chart/events/BpmEvent)。                                                                                                                     |
+| `tx.chart.beats`  | 变拍事件列表 [`BeatEvent`](/docs/reference/chart/events/BeatEvent)。                                                                                                                   |
+| `tx.chart.tils`   | 时间线变速事件列表 [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)。                                                                                           |
+| `tx.chart.speeds` | 物件速度事件列表 [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent)。                                                                                                     |
+| `tx.current_tick` | 当前光标（红线）所在 tick。                                                                                                                                                            |
+
+## 实用示例
+
+### 读取谱面
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        for note in tx.chart.notes:
+            if isinstance(note, Tap):
+                print(f"Tap at tick {note.t}, lane {note.x}")
+
+        for event in tx.chart.bpms:
+            print(f"BPM {event.bpm} at tick {event.t}")
+
+        for event in tx.chart.beats:
+            print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+```
+
+### 在当前光标处添加物件
+
+在 `open_edit()` 内，请使用 `tx.current_tick`，其在代码块运行期间不会变化：
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
+```
+
+### 将所有物件向右移动两个轨道
+
+关于 `Note.shift()` 方法，请见 [物件变形](/docs/basic/note-transforms)。
+
+```python
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.shift(x=2)
+```
+
+### 删除某个轨道范围内的物件
+
+将过滤后的列表重新赋值给 `tx.chart.notes`。
+
+```python
+with m.open_edit() as tx:
+    # 只保留从第 4 轨或更靠右开始的物件
+    tx.chart.notes = [note for note in tx.chart.notes if note.x >= 4]
+```
+
+<Callout type="warn">
+  删除物件后，在 Margrete 中撤销这次编辑时存在已知问题。详情见
+  [限制](/docs/limitations#undo-note-deletion)。
+</Callout>
+
+### 替换所有物件
+
+当有意替换谱面中的所有物件时，请使用 `replace_all_notes=True`。
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+with m.open_edit(replace_all_notes=True) as tx:
+    tx.chart.notes = [
+        Tap(t=(0, 0), x=0, w=4),
+        Tap(t=(0, 1), x=4, w=4),
+        Tap(t=(0, 2), x=8, w=4),
+        Tap(t=(0, 3), x=12, w=4),
+    ]
+```
+
+### 编辑事件
+
+```python
+from margrete_rpc.chart.events import BpmEvent, TimelineSpeedEvent
+
+with m.open_edit() as tx:
+    tx.chart.bpms.append(BpmEvent(t=0, bpm=180.0))
+    tx.chart.tils.append(TimelineSpeedEvent(til=0, t=(4 * 1920), speed=1.5))
+
+    # 删除 4/4 谱面中第 8 小节之后的物件速度事件。
+    tx.chart.speeds = [
+        event for event in tx.chart.speeds if event.t < 8 * 4 * 1920
+    ]
+```
+
+## `open_edit` 的选项
+
+| 参数                         | 默认值  | 使用场景                                                                  |
+| ---------------------------- | ------- | ------------------------------------------------------------------------- |
+| `snapshot`                   | `True`  | 你想读取当前谱面。                                                        |
+| `replace_all_notes`          | `False` | 你希望替换谱面中的所有物件。                                              |
+| `replace_all_events`         | `False` | 你希望替换谱面中的所有事件，需要 `snapshot=True`。                        |
+| `raw_notes`                  | `False` | 你希望每个物件都是 [`RawNote`](/docs/reference/chart/notes/raw/RawNote)，而不是 [`Note`](/docs/reference/chart/notes/shared/Note) 对象。                        |
+| `event_scan_lookahead_ticks` | `None`  | 在读取谱面时，你需要寻找距离最后一个物件更远的事件。默认为 19200 ticks。  |
+| `event_scan_til_ids`         | `None`  | 在读取谱面时，你需要控制寻找哪些 TIL 的变速事件。默认为 TIL `0` 到 `15`。 |
+
+常见写法：
+
+```python
+# 平时的用法
+with m.open_edit() as tx:
+    ...
+
+# 替换谱面中的所有物件。
+with m.open_edit(replace_all_notes=True) as tx:
+    tx.chart.notes = build_notes()
+
+# 替换谱面中扫描到的所有事件。
+with m.open_edit(replace_all_events=True, event_scan_til_ids=[]) as tx:
+    tx.chart.bpms = build_bpms()
+    tx.chart.tils = build_tils()
+
+# 只想编辑底层物件。
+with m.open_edit(raw_notes=True) as tx:
+    ...
+
+# 不读取当前谱面。
+with m.open_edit(snapshot=False) as tx:
+    tx.chart.notes = build_notes()
+
+# 读取最后一个物件之后更远位置的变速事件。
+with m.open_edit(event_scan_lookahead_ticks=1920 * 16) as tx:
+    ...
+
+# 扫描指定 TIL 的变速事件。
+with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
+    ...
+```

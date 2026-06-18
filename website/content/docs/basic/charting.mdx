@@ -1,0 +1,172 @@
+---
+title: Charting
+---
+
+## Mental model
+
+We often use [`open_edit()`](/docs/reference/client/Margrete) to read and edit a chart:
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+```
+
+The edit is sent to Margrete when the `open_edit()` block exits normally. If this block raises an
+exception, no changes are applied.
+
+Think of `open_edit()` as a four-step process:
+
+1. **Read** - Margrete sends the current chart and state to Python.
+2. **Parse** - Python reads low-level notes and converts them to easier high-level note objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap)
+   and [`Slide`](/docs/reference/chart/notes/long/Slide).
+3. **Edit** - Your code makes changes.
+4. **Apply** - When the `open_edit()` block exits, Python calculates the differences and sends the edit to Margrete.
+
+To read or modify a chart, use these fields returned by `open_edit()`:
+
+| Object            | What it is for                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `tx.chart.notes`  | List containing all notes, such as [`Tap`](/docs/reference/chart/notes/ground/Tap), [`Slide`](/docs/reference/chart/notes/long/Slide), and [`AirCrush`](/docs/reference/chart/notes/long/AirCrush).                                            |
+| `tx.chart.bpms`   | BPM event list containing [`BpmEvent`](/docs/reference/chart/events/BpmEvent).                                |
+| `tx.chart.beats`  | Time-signature event list containing [`BeatEvent`](/docs/reference/chart/events/BeatEvent).                   |
+| `tx.chart.tils`   | Timeline speed event list containing [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent). |
+| `tx.chart.speeds` | Note speed event list containing [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent).             |
+| `tx.current_tick` | The current cursor tick, shown as the red line in Margrete.                                                   |
+
+## Practical examples
+
+### Reading the chart
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        for note in tx.chart.notes:
+            if isinstance(note, Tap):
+                print(f"Tap at tick {note.t}, lane {note.x}")
+
+        for event in tx.chart.bpms:
+            print(f"BPM {event.bpm} at tick {event.t}")
+
+        for event in tx.chart.beats:
+            print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+```
+
+### Add a note at the current cursor
+
+Inside `open_edit()`, use `tx.current_tick`, which does not change while the block runs:
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
+```
+
+### Move every note right by two lanes
+
+See [Note Transforms](/docs/basic/note-transforms) for more about `Note.shift()` method.
+
+```python
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.shift(x=2)
+```
+
+### Delete notes in a lane range
+
+Assign a filtered list back to `tx.chart.notes`.
+
+```python
+with m.open_edit() as tx:
+    # Keep only notes that start at lane 4 or later.
+    tx.chart.notes = [note for note in tx.chart.notes if note.x >= 4]
+```
+
+<Callout type="warn">
+  There is a known issue with undoing edits that deleted notes. See
+  [Limitations](/docs/limitations#undo-note-deletion) for details.
+</Callout>
+
+### Replace all notes
+
+Use `replace_all_notes=True` when the script is intentionally replacing every note in the chart.
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+with m.open_edit(replace_all_notes=True) as tx:
+    tx.chart.notes = [
+        Tap(t=(0, 0), x=0, w=4),
+        Tap(t=(0, 1), x=4, w=4),
+        Tap(t=(0, 2), x=8, w=4),
+        Tap(t=(0, 3), x=12, w=4),
+    ]
+```
+
+### Edit events
+
+```python
+from margrete_rpc.chart.events import BpmEvent, TimelineSpeedEvent
+
+with m.open_edit() as tx:
+    tx.chart.bpms.append(BpmEvent(t=0, bpm=180.0))
+    tx.chart.tils.append(TimelineSpeedEvent(til=0, t=(4 * 1920), speed=1.5))
+
+    # Remove note-speed events after bar 8 in a 4/4 chart.
+    tx.chart.speeds = [
+        event for event in tx.chart.speeds if event.t < 8 * 4 * 1920
+    ]
+```
+
+## `open_edit` options
+
+| Parameter                    | Default | Use it when                                                                                                               |
+| ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `snapshot`                   | `True`  | You want to read the current chart.                                                                                       |
+| `replace_all_notes`          | `False` | You want to replace every note in the chart.                                                                              |
+| `replace_all_events`         | `False` | You want to replace every event in the chart. Requires `snapshot=True`.                                                   |
+| `raw_notes`                  | `False` | You want every note as a [`RawNote`](/docs/reference/chart/notes/raw/RawNote) instead of [`Note`](/docs/reference/chart/notes/shared/Note) objects.                                                             |
+| `event_scan_lookahead_ticks` | `None`  | When reading the chart, you need to find events farther past the last note. The default is 19200 ticks.                   |
+| `event_scan_til_ids`         | `None`  | When reading the chart, you need to control which TILs are scanned for speed events. The default is TIL `0` through `15`. |
+
+Common forms:
+
+```python
+# Normal edit: snapshot on enter, diff on exit.
+with m.open_edit() as tx:
+    ...
+
+# Replace every note in the chart.
+with m.open_edit(replace_all_notes=True) as tx:
+    tx.chart.notes = build_notes()
+
+# Replace every scanned event in the chart.
+with m.open_edit(replace_all_events=True, event_scan_til_ids=[]) as tx:
+    tx.chart.bpms = build_bpms()
+    tx.chart.tils = build_tils()
+
+# Raw low-level editing.
+with m.open_edit(raw_notes=True) as tx:
+    ...
+
+# Do not read the current chart first.
+with m.open_edit(snapshot=False) as tx:
+    tx.chart.notes = build_notes()
+
+# Read scroll-speed events farther beyond the last note.
+with m.open_edit(event_scan_lookahead_ticks=1920 * 16) as tx:
+    ...
+
+# Scan specific timelines for scroll-speed events.
+with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
+    ...
+```

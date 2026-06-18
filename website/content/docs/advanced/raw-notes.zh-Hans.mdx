@@ -1,0 +1,100 @@
+---
+title: 底层物件
+---
+
+[`RawNote`](/docs/reference/chart/notes/raw/RawNote) 是 [Margrete 的底层物件](https://github.com/MargreteSDK/MargretePluginSDK/blob/b8d0c87125e090880a75f6f0ff57a773510299a8/include/MargretePlugin.h#L126-L138)。
+普通脚本通常不需要直接使用它。大多数情况下，使用 [`Tap`](/docs/reference/chart/notes/ground/Tap), [`Slide`](/docs/reference/chart/notes/long/Slide) 等高级物件会更方便。
+
+如果你需要处理暂时不支持的物件结构，或是进行一些复杂的操作，再使用 `RawNote`。
+
+## 如何理解
+
+默认情况下，Python 会把 [`RawNote`](/docs/reference/chart/notes/raw/RawNote) 解析为高级物件 [`Note`](/docs/reference/chart/notes/shared/Note)。
+如果某个物件无法解析，它会保留为 `RawNote`，不会被丢弃。
+
+`RawNote` 是一棵树。每个节点都有一组底层字段，长条物件的节点和附着在物件上的 Air 都会放在 `children` 里。
+
+| 字段       | 说明                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------- |
+| `info`     | 当前节点的底层字段，类型是 [`NoteInfo`](/docs/reference/chart/notes/types/NoteInfo)。 |
+| `children` | 子节点列表。长条物件的节点, 附着的 Air 等结构会放在这里。                             |
+
+## 常用字段
+
+`RawNote` 会把 `info` 里的常用字段暴露成属性，所以你通常可以直接读写 `note.t`, `note.x`, `note.w` 等字段。
+
+| 字段           | 说明                                                                              |
+| -------------- | --------------------------------------------------------------------------------- |
+| `type`         | 物件类型，例如 `NoteType.TAP`, `NoteType.SLIDE`, `NoteType.AIR`。                 |
+| `long_attr`    | 当前节点在长条结构中的角色，例如 `BEGIN`, `STEP`, `CONTROL`, `END`。              |
+| `t`            | 时间，单位是 tick。赋值时也可以传入音符位置（Position）。                         |
+| `p`            | 以音符位置（Position）形式读取 `t`。这是只读属性。                                |
+| `x`            | 轨道位置。                                                                        |
+| `w`            | 宽度。                                                                            |
+| `h`            | 高度，主要用于 Air 类物件。                                                       |
+| `dir`          | 方向，用于 Flick, Extap, Air 等物件。                                             |
+| `ex_attr`      | 额外属性，例如反色 Air。                                                          |
+| `variation_id` | AirCrush 会用它表示颜色。                                                         |
+| `til`          | 所属 TIL。                                                                        |
+| `option_value` | AirCrush 的 `gap`：Step 间隔；`0` 表示 AirTrace，`0x7FFFFFFF` 表示只有头部 Step。 |
+
+## 读取底层物件
+
+在普通编辑中，无法解析的物件会保留为 `RawNote`。你可以用 `isinstance()` 找到它们：
+
+```python
+from margrete_rpc.chart.notes import RawNote
+
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        if isinstance(note, RawNote):
+            print(note.type, note.t, note.x, note.w)
+```
+
+如果希望所有物件都保持底层形式，请传入 `raw_notes=True`：
+
+```python
+with m.open_edit(raw_notes=True) as tx:
+    for note in tx.chart.notes:
+        print(note.type, note.t, note.x, note.w)
+```
+
+## 创建底层物件
+
+你可以通过 [`R`](/docs/reference/chart/notes/raw/R) 工厂快速创建常见类型的底层节点。
+
+| 类型     | 常用方法                                                                               |
+| -------- | -------------------------------------------------------------------------------------- |
+| 地面物件 | `R.tap()`, `R.extap()`, `R.flick()`, `R.damage()`                                      |
+| 地面长条 | `R.hold_begin()`, `R.hold_end()`, `R.slide_begin()`, `R.slide_step()`, `R.slide_end()` |
+| Air      | `R.air()`                                                                              |
+| Air 长条 | `R.air_slide_begin()`, `R.air_slide_step()`, `R.air_slide_end()`, `R.air_hold_begin()` |
+| AirCrush | `R.air_crush_begin()`, `R.air_crush_control()`, `R.air_crush_end()`                    |
+
+每个方法只会创建一个节点。如果要创建长条或附着 Air，需要用 [`RawNote.child()`](/docs/reference/chart/notes/raw/RawNote) 或 `RawNote.children` 把子节点接到父节点上。
+
+```python
+from margrete_rpc.chart.notes import R
+
+tap = R.tap(t=0, x=4, w=4)
+
+air_slide_begin = R.air_slide_begin(t=0, x=4, w=4, h=0)
+air_slide_step = R.air_slide_step(t=(0, 2, 0), x=8, w=4, h=4)
+air_slide_end = R.air_slide_end(t=(1, 0, 0), x=4, w=4, h=0)
+
+air_slide_begin.child(air_slide_step, air_slide_end)
+tap.children = [air_slide_begin]
+```
+
+## 从高级物件转换
+
+高级物件可以通过 [`to_raw()`](/docs/reference/chart/notes/shared/Note) 转换为 `RawNote`。默认情况下，转换前会先验证物件是否合法。
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+typed = Tap(t=(0, 0), x=4, w=4)
+
+raw = typed.to_raw()  # 先验证，再返回 RawNote
+raw = typed.to_raw(skip_validation=True)  # 跳过验证
+```

@@ -1,0 +1,75 @@
+---
+title: Getting Started
+icon: Rocket
+---
+
+import CurrentTickPlayhead from "./assets/current-tick-playhead.png";
+import ActivateThePluginImage from "./assets/activate-the-plugin.png";
+import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png";
+
+## Hello World
+
+1. In Margrete, open **Extensions** → **Margrete RPC** in the menu to start the plugin.
+
+   <div className="prose-no-margin flex items-center justify-start gap-1 [&_.my-6]:my-0 [&_figure]:my-0 [&_img]:my-0 [&>[data-rmiz]]:shrink-0 [&>figure]:min-w-0 [&>figure]:flex-1 [&>figure]:basis-0">
+     <ImageZoom src={ExtensionToMargreteRpcImage} alt="Extension to Margrete RPC" width="300" />
+     <div className="flex shrink-0 items-center">👉</div>
+     <ImageZoom src={ActivateThePluginImage} alt="Start the plugin" width="400" />
+   </div>
+
+   <Callout type="info">You need to start the plugin each time Margrete restarts.</Callout>
+
+2. Create a file called `example.py` and run this script:
+
+   ```python
+   from margrete_rpc import Margrete
+   from margrete_rpc.chart.notes import Tap
+
+   with Margrete() as m:
+       m.ping()
+       status = m.status()
+       print(status.server_version)
+       print(status.server_name)
+       print(status.instance_id)
+
+       with m.open_edit() as tx:
+           tx.chart.notes.append(Tap(t=0, x=0, w=4))
+           # changes are applied when this block exits successfully
+   ```
+
+   ```bash
+   python example.py
+   ```
+
+   This connects to Margrete, prints the plugin status, and appends a `Tap` note to the chart.
+
+   With no arguments, `Margrete()` auto-detects the running plugin instance. This is the normal form when one Margrete window is open. If you have multiple running instances, see [Multiple Margrete](/docs/advanced/handle-multi-margrete).
+
+## Get cursor position
+
+The cursor is the red playhead line in the editor.
+Use [`Margrete.current_tick()`](/docs/reference/client/Margrete) to get the current cursor position.
+
+<div className="prose-no-margin flex items-center justify-start gap-3 [&_.my-6]:my-0 [&_figure]:my-0 [&_img]:my-0 [&>figure]:min-w-0 [&>figure]:basis-0 [&>figure]:flex-1 [&>[data-rmiz]]:shrink-0">
+    <ImageZoom src={CurrentTickPlayhead} alt="Current cursor playhead in Margrete" width="300" />
+
+    ```python
+    with Margrete() as m:
+        tick = m.current_tick()
+    ```
+
+</div>
+
+## Undo and redo
+
+You can trigger undo and redo from the client:
+
+```python
+m.undo()  # returns True if something was undone
+m.redo()  # returns True if something was redone
+```
+
+<Callout type="warn">
+  Undo have some limitations in Margrete. See [Limitations](/docs/limitations#undo-note-deletion)
+  for details.
+</Callout>

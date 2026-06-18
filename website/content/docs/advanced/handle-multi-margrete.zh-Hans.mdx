@@ -1,13 +1,8 @@
 ---
-title: 多个 Margrete
-description: 处理多个正在运行的插件实例。
+title: 连接多个 Margrete
 ---
 
-当只发现一个正在运行的插件实例时，不带参数调用 [`Margrete()`](/docs/reference/client/Margrete) 就能正常工作。
-
-如果同时运行了多个 Margrete 实例，请传入 `endpoint` 或 `instance_id`。
-
-如果需要先查看可用的 [`MargreteInstance`](/docs/reference/discovery/MargreteInstance)，可以使用 [`list_instances()`](/docs/reference/discovery)：
+`Margrete()` 会自动检测正在运行的插件实例。通常情况下，如果只打开了一个 Margrete 窗口，直接使用 `Margrete()` 即可。如果同时运行了多个实例，请传入 `endpoint` 或 `instance_id`：
 
 ```python
 from margrete_rpc import Margrete, list_instances
@@ -25,18 +20,14 @@ with Margrete(endpoint="127.0.0.1:1328") as m_left:
 # 通过 instance_id 连接（右侧 Margrete）
 with Margrete(instance_id="47824-6a30f65d-b7f8afde84506008") as m_right:
     print(m_right.status())
-
-# 通过显式 named-pipe endpoint 连接
-with Margrete(endpoint="npipe://./pipe/margrete-rpc-47824-6a30f65d-b7f8afde84506008") as m_pipe:
-    print(m_pipe.status())
 ```
 
-显式 endpoint 支持以下格式：
+![Two Margrete instances with different endpoints](../assets/2-margrete-instance.png)
+
+`endpoint` 支持以下格式：
 
 | 格式                              | Transport          |
 | --------------------------------- | ------------------ |
 | `127.0.0.1:1328`                  | TCP                |
 | `tcp://127.0.0.1:1328`            | TCP                |
 | `npipe://./pipe/margrete-rpc-...` | Windows named pipe |
-
-![Two Margrete instances with different endpoints](../assets/2-margrete-instance.png)

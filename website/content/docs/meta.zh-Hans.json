@@ -1,9 +1,12 @@
 {
   "title": "文档",
   "pages": [
-    "---入门---",
     "index",
+    "margrete",
+    "---教程---",
     "basic",
+    "util",
+    "---其他---",
     "advanced",
     "limitations",
     "---参考---",

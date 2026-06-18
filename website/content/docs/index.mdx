@@ -1,26 +1,20 @@
 ---
-title: Getting Started
-description: Install Margrete RPC and write your first chart script.
-icon: Rocket
+title: Installation
+icon: PackageOpen
 ---
 
 import MargreteIcon from "./assets/margrete.ico";
 import EnableThePluginImage from "./assets/enable-the-plugin.png";
-import ActivateThePluginImage from "./assets/activate-the-plugin.png";
 import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png";
 
 **Margrete RPC** is a [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro) plugin that lets you script chart editing via Python.
 
-## Prerequisites
+## 1. Requirements
 
-{/* prettier-ignore */}
-<Callout title="Requirements" type="info">
-  - Python 3.13 or later 
-  - Margrete 1.8.0 or later
-</Callout>
+- Python 3.13 or later
+- Margrete 1.8.0 or later
 
-
-### 1. Install the Python module
+## 2. Install the Python module
 
 {/* prettier-ignore */}
 <Tabs items={["pip", "uv"]}>
@@ -36,7 +30,7 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
   </Tab>
 </Tabs>
 
-### 2. Install the Margrete plugin
+## 3. Install the Margrete plugin
 
 1. Download the latest release from the [GitHub Releases](https://github.com/Foahh/margrete-rpc/releases).
 
@@ -62,40 +56,6 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
 
    <ImageZoom src={EnableThePluginImage} alt="Enable the plugin" width="500" />
 
-## Quick start
+4. The installation is complete when **Extensions** → **Margrete RPC** appears in the menu.
 
-1. In Margrete, open **Extensions** → **Margrete RPC** to start the plugin.
-
-   <div className="flex items-center justify-start gap-1">
-     <ImageZoom src={ExtensionToMargreteRpcImage} alt="Extension to Margrete RPC" width="300" />
-     <div className="flex items-center">👉</div>
-     <ImageZoom src={ActivateThePluginImage} alt="Start the plugin" width="400" />
-   </div>
-
-   <Callout type="info">You need to start the plugin each time Margrete restarts.</Callout>
-
-2. Create a file called `example.py`:
-
-   ```python
-   from margrete_rpc import Margrete
-   from margrete_rpc.chart.notes import Tap
-
-   with Margrete() as m:  # auto-detect the running plugin instance and transport
-       status = m.status()
-       print(f"Plugin v{status.server_version} (pid {status.pid})")
-       print(f"Log: {status.log_path}")
-
-       with m.open_edit() as tx:
-           tx.chart.notes.append(Tap(t=0, x=0, w=4))
-           # changes are applied when this block exits successfully
-   ```
-
-3. Run the script and check the editor:
-
-   ```bash
-   python example.py
-   ```
-
-   This connects to Margrete, prints the plugin status, and appends a Tap note to the chart.
-
-   ![Margrete editor changes after quick start](assets/after-quick-start-margrete.png)
+   <ImageZoom src={ExtensionToMargreteRpcImage} alt="Extension to Margrete RPC" width="300" />

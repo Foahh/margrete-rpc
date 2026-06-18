@@ -1,18 +1,17 @@
 ---
-title: Time & Position
-description: Convert between raw ticks, musical positions, and note divisions.
+title: Time & Musical Position
 ---
 
 import NoteTickListImage from "../assets/note-ticks-list.png";
 import TimeSignatureChangedImage from "../assets/time-signature-changed.png";
 
-Margrete stores time as integer ticks. The Python API lets you work at that level when you need exact control, or use musical tuple forms for charting code that is easier to read. Notes and events both use this model; see [Notes](/docs/basic/notes#positioning) and [Events](/docs/basic/events) for chart-editing examples.
+The Python API uses the models below to express time. All time-related APIs use these models.
 
 ## Ticks
 
-The lowest-level unit of time is the **tick**. Margrete RPC uses a resolution of [`TICK_RESOLUTION`](/docs/reference/chart/time) ticks per whole note, so common note values map to these tick counts:
+The lowest-level unit of time is the **tick**. In Margrete, a whole note has a resolution of [`TICK_RESOLUTION`](/docs/reference/chart/time) (1920) ticks, so common note values map to these tick counts:
 
-<div className="flex gap-2">
+<div className="prose-no-margin flex gap-2 [&_.my-6]:my-0 [&_figure]:my-0 [&_img]:my-0">
 
     <div className="flex-1">
 
@@ -34,15 +33,15 @@ The lowest-level unit of time is the **tick**. Margrete RPC uses a resolution of
 from margrete_rpc.chart.notes import Tap
 from margrete_rpc.chart.time import TICK_RESOLUTION
 
-tap = Tap(t=TICK_RESOLUTION // 4, x=0, w=4)  # bar 0, beat 1 in 4/4
+tap = Tap(t=TICK_RESOLUTION // 4, x=0, w=4)  # bar 1, beat 2 in 4/4
 print(tap.t)  # 480
 ```
 
-Pass raw ticks anywhere a time argument such as `t=` is accepted.
+You can pass ticks directly anywhere a time argument such as `t=` is accepted.
 
 ## Positions
 
-Raw tick math often gets hard to read. A [`Position`](/docs/reference/chart/time/Position) lets you write time as a musical location instead:
+Raw tick math often gets hard to read. A musical position ([`Position`](/docs/reference/chart/time/Position)) lets you write time in bars and beats:
 
 | Form                  | Meaning               |
 | --------------------- | --------------------- |
@@ -50,44 +49,44 @@ Raw tick math often gets hard to read. A [`Position`](/docs/reference/chart/time
 | `(bar, beat)`         | Beat inside a bar     |
 | `(bar, beat, offset)` | Beat plus tick offset |
 
-All fields are zero-based. Missing fields default to zero, and `offset` is measured in ticks inside the beat.
+All fields are zero-based. For example, bar 1, beat 1 is `(0, 0, 0)`.
 
 ```
 For 4/4:
 
-bar 0, beat 0 ──── bar 0, beat 1 ──── bar 0, beat 2 ──── bar 0, beat 3
-tick 0             tick 480           tick 960           tick 1440
+bar 1, beat 1 ── bar 1, beat 2 ── bar 1, beat 3 ── bar 1, beat 4
+tick 0           tick 480         tick 960         tick 1440
 ```
 
-Any API that takes a time argument can take a position tuple:
+Any API that takes a time argument can take a musical position (`Position`) tuple:
 
 ```python
 from margrete_rpc.chart.notes import Tap
 
-Tap(t=(2,), x=0, w=4)           # bar 2, beat 0
-Tap(t=(2, 1), x=0, w=4)         # bar 2, beat 1
-Tap(t=(2, 1, 240), x=0, w=4)    # bar 2, beat 1, halfway through the beat
+Tap(t=(2,), x=0, w=4)         # bar 3, beat 1
+Tap(t=(2, 1), x=0, w=4)       # bar 3, beat 2
+Tap(t=(2, 1, 240), x=0, w=4)  # bar 3, beat 2, plus 240 ticks
 ```
 
-Inside `with m.open_edit()` blocks, positions follow the chart's time signatures:
+Inside an `open_edit()` block, musical position (`Position`) tuples are resolved using the chart's actual time signatures:
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.notes import Tap
 
 with m.open_edit(snapshot=False) as tx:
-    tx.chart.events.beat.append(BeatEvent(0, 2, 4))  # 2/4 at bar 0
-    tx.chart.events.beat.append(BeatEvent(1, 1, 4))  # 1/4 at bar 1
+    tx.chart.beats.append(BeatEvent(0, 2, 4))  # 2/4 starting at bar 1
+    tx.chart.beats.append(BeatEvent(1, 1, 4))  # 1/4 starting at bar 2
     tx.chart.notes.append(Tap(t=(2, 0), x=0, w=4))
 ```
 
-Here `(2, 0)` still means the start of bar 2, even though the first two bars have different lengths.
+Here `(2, 0)` still means the start of bar 3, but the resulting tick is affected by the preceding time signatures.
 
 <ImageZoom src={TimeSignatureChangedImage} alt="Time-signature changed" width="400" />
 
 ### Manual conversion
 
-Use [`tick_to_pos`](/docs/reference/chart/time#functions) and [`pos_to_tick`](/docs/reference/chart/time#functions) when you need to convert values yourself:
+Use [`tick_to_pos`](/docs/reference/chart/time) and [`pos_to_tick`](/docs/reference/chart/time) when you need to convert values manually:
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
@@ -102,9 +101,9 @@ tick = pos_to_tick(2, 3, beat_events=beat_events)
 print(tick)  # 2 * 1920 + 3 * 480 = 5280
 ```
 
-When `beat_events` is omitted, conversions follow the current chart inside an edit transaction. Outside a transaction, they fall back to default 4/4.
+When `beat_events` is omitted, these conversion functions use the current chart's time signatures inside `open_edit()`. Outside `open_edit()`, they use the default 4/4 time signature.
 
-For scripts running outside a transaction, pass beat events explicitly when the chart is not plain 4/4:
+If your code runs outside `open_edit()` and the chart is not plain 4/4, pass time signature events explicitly:
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
@@ -116,7 +115,9 @@ tick = pos_to_tick(10, 0, 0, beat_events=beats)
 
 ## Division
 
-Positions describe _where_ something starts. Durations describe _how long_ something lasts. Use [`div_to_tick(numerator, denominator)`](/docs/reference/chart/time#functions) to convert a note value to ticks:
+Musical positions describe _where_ something starts. A division ([`Division`](/docs/reference/chart/time/Division)) describes _how long_ it lasts.
+
+Use [`div_to_tick(numerator, denominator)`](/docs/reference/chart/time) to convert a note value to ticks:
 
 ```python
 from margrete_rpc.chart.time import div_to_tick, tick_to_div
@@ -128,50 +129,30 @@ dotted  = div_to_tick(3, 4)    # 1440 ticks (three quarter notes)
 division = tick_to_div(480)    # Division(numerator=1, denominator=4)
 ```
 
-APIs that take durations also accept a division tuple:
+Some APIs also accept division (`Division`) tuples, such as `align()` or an AirCrush `gap`:
 
 ```python
 # Snap a note's start to the nearest eighth note
 note.align((1, 8))
 
-# AirCrush with a dotted-quarter gap between segments
-AirCrush(t=0, x=0, w=4, h=4, gap=(3, 4), ...)
+# AirCrush with a sixteenth-note Step gap
+AirCrush(t=0, x=0, w=4, h=4, gap=(1, 16), ...)
 ```
 
-<Callout type="warn">
-  `div_to_tick` raises `ValueError` if the fraction doesn't land exactly on a whole tick. This can
-  happen with denominators that do not divide `1920`, such as `1/7`, or denominators larger than the
-  tick resolution, such as `1/2048`.
+<Callout type="info">
+  Positive durations smaller than `1` tick (`1/1920`), such as `1/2048`, are converted to `1` tick.
 </Callout>
 
-## Working with time signatures
+## Using TimeCalculator
 
-Time signatures live in `tx.chart.events.beat` as [`BeatEvent`](/docs/reference/chart/events/BeatEvent) objects. Each event starts at a bar and applies until the next event:
-
-```python
-from margrete_rpc.chart.events import BeatEvent
-
-with m.open_edit(snapshot=False) as tx:
-    beats = tx.chart.events.beat
-
-    beats.append(BeatEvent(0, 4, 4))
-    beats.append(BeatEvent(16, 3, 4))
-
-    for event in beats:
-        print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
-
-    # Bar 0: 4/4
-    # Bar 16: 3/4
-```
-
-For repeated manual conversions, build a [`TimeCalculator`](/docs/reference/chart/time/TimeCalculator) once instead of passing `beat_events` to every helper call:
+For repeated manual time conversions, create a [`TimeCalculator`](/docs/reference/chart/time/TimeCalculator) once instead of passing `beat_events` to every helper call:
 
 ```python
 from margrete_rpc.chart.time import TimeCalculator
 
-calc = TimeCalculator(tx.chart.events.beat)
+calc = TimeCalculator(tx.chart.beats)
 pos = calc.tick_to_pos(3840)
 tick = calc.pos_to_tick(1, 2, 0)
 ```
 
-You usually only need `TimeCalculator` in utility code that runs outside an edit transaction. Inside a transaction, tuple positions already resolve with the chart's beat events.
+You usually only need `TimeCalculator` in code that runs outside `open_edit()`. Inside `open_edit()`, ticks are calculated automatically using the chart's time signatures.

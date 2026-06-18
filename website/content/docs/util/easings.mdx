@@ -1,0 +1,42 @@
+---
+title: Easing Functions
+---
+
+## Mental model
+
+Easings describe how a value changes from `0` to `1` over a time range. The Python API uses them to calculate curved things.
+
+Some functions accept an easing parameter. You can pass the name of a built-in easing directly:
+
+```python
+from margrete_rpc.chart.util import Curve
+
+slide = Curve(...).to(..., ease_x="in_out_sine")
+```
+
+| Family | Names                                   |
+| ------ | --------------------------------------- |
+| Linear | `linear`                                |
+| Sine   | `in_sine`, `out_sine`, `in_out_sine`    |
+| Quad   | `in_quad`, `out_quad`, `in_out_quad`    |
+| Cubic  | `in_cubic`, `out_cubic`, `in_out_cubic` |
+| Quart  | `in_quart`, `out_quart`, `in_out_quart` |
+| Quint  | `in_quint`, `out_quint`, `in_out_quint` |
+| Expo   | `in_expo`, `out_expo`, `in_out_expo`    |
+| Circ   | `in_circ`, `out_circ`, `in_out_circ`    |
+
+## Custom easings
+
+Anywhere an easing name is accepted, you can also pass a function that maps `0..1` to `0..1`.
+
+```python
+import math
+from margrete_rpc.chart.util import Curve
+
+def stepped_4(t: float) -> float:
+    return math.floor(t * 4) / 4 if t < 1 else 1.0
+
+curve = Curve(...).to(..., ease_x=stepped_4)
+```
+
+Custom easings should usually return `0` at input `0` and `1` at input `1`. This keeps generated curves landing exactly on their start and end points.

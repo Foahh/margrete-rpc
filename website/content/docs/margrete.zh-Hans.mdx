@@ -1,0 +1,75 @@
+---
+title: 快速上手
+icon: Rocket
+---
+
+import CurrentTickPlayhead from "./assets/current-tick-playhead.png";
+import ActivateThePluginImage from "./assets/activate-the-plugin.png";
+import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png";
+
+## Hello World
+
+1. 在 Margrete 中打开菜单 **Extensions** → **Margrete RPC** 启动插件。
+
+   <div className="prose-no-margin flex items-center justify-start gap-1 [&_.my-6]:my-0 [&_figure]:my-0 [&_img]:my-0 [&>[data-rmiz]]:shrink-0 [&>figure]:min-w-0 [&>figure]:flex-1 [&>figure]:basis-0">
+     <ImageZoom src={ExtensionToMargreteRpcImage} alt="Extension to Margrete RPC" width="300" />
+     <div className="flex shrink-0 items-center">👉</div>
+     <ImageZoom src={ActivateThePluginImage} alt="Start the plugin" width="400" />
+   </div>
+
+   <Callout type="info">每次开启 Margrete 后，都需要重新启动插件。</Callout>
+
+2. 创建一个名为 `example.py` 的文件，并运行这段脚本：
+
+   ```python
+   from margrete_rpc import Margrete
+   from margrete_rpc.chart.notes import Tap
+
+   with Margrete() as m:
+       m.ping()
+       status = m.status()
+       print(status.server_version)
+       print(status.server_name)
+       print(status.instance_id)
+
+       with m.open_edit() as tx:
+           tx.chart.notes.append(Tap(t=0, x=0, w=4))
+           # 这个代码块正常退出后，修改会被应用
+   ```
+
+   ```bash
+   python example.py
+   ```
+
+   这段代码会连接到 Margrete，打印插件状态，并向谱面中添加一个 `Tap` 物件。
+
+   不传入参数时，`Margrete()` 会自动检测正在运行的插件实例。通常情况下，如果只打开了一个 Margrete 窗口，直接使用 `Margrete()` 即可。如果同时运行了多个实例，请参阅 [多个 Margrete](/docs/advanced/handle-multi-margrete)。
+
+## 获取光标位置
+
+光标是编辑器中的红色线条。
+请使用 [`Margrete.current_tick()`](/docs/reference/client/Margrete) 获取当前光标位置。
+
+<div className="prose-no-margin flex items-center justify-start gap-3 [&_.my-6]:my-0 [&_figure]:my-0 [&_img]:my-0 [&>figure]:min-w-0 [&>figure]:basis-0 [&>figure]:flex-1 [&>[data-rmiz]]:shrink-0">
+    <ImageZoom src={CurrentTickPlayhead} alt="Current cursor playhead in Margrete" width="300" />
+
+    ```python
+    with Margrete() as m:
+        tick = m.current_tick()
+    ```
+
+</div>
+
+## 撤销和重做
+
+你可以从 `Margrete()` 触发撤销和重做：
+
+```python
+with Margrete() as m:
+    m.undo()  # 如果撤销了内容，返回 True
+    m.redo()  # 如果重做了内容，返回 True
+```
+
+<Callout type="warn">
+  Margrete 的撤销操作有一些限制。详情请参阅 [限制](/docs/limitations#撤销物件删除)。
+</Callout>

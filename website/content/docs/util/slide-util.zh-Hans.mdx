@@ -1,0 +1,75 @@
+---
+title: 其他 Slide 工具
+---
+
+import CreaseExampleImage from "../assets/crease-example.png";
+import EnvelopeExampleImage from "../assets/envelope-example.png";
+import RainExampleImage from "../assets/rain-example.png";
+
+## 这是什么
+
+下面是一些你可能会用到的妙妙工具。
+
+<Callout type="warn">
+  如果生成的物件超出轨道范围，可以调用 `.clamp()`，将所有节点限制在轨道内。
+</Callout>
+
+## Crease
+
+[`crease(...)`](/docs/reference/chart/util/crease) 会围绕一条基准曲线创建锯齿形轨迹。首尾路径点保持不变，中间的路径点会在正负偏移之间交替。
+
+```python
+from margrete_rpc.chart.util import Curve, crease
+
+base = Curve(t=(0, 0), x=2, h=70).to(t=(1, 0), x=12, h=120, ease_x="out_quad")
+
+slide = crease(base, count=6, x_range=2).to_slide(w=4).clamp()
+air = crease(base, count=6, x_range=0, h_range=20).to_air_slide(w=4)
+```
+
+<ImageZoom src={CreaseExampleImage} alt="Crease example" width="400" />
+
+## Envelope
+
+[`envelope(...)`](/docs/reference/chart/util/envelope) 会在两条曲线之间来回穿梭。
+这两条曲线必须拥有相同的开始时间和结束时间。
+`count` 为偶数时会回到 `inner` 结束；为奇数时会在 `outer` 结束。
+
+```python
+from margrete_rpc.chart.util import Curve, envelope
+
+inner = Curve(t=(0, 0), x=0).to(t=(1, 0), x=14, ease_x="in_sine")
+outer = Curve(t=(0, 0), x=2).to(t=(1, 0), x=14, ease_x="out_sine")
+
+slide = envelope(inner, outer, count=64).to_slide(w=2)
+```
+
+<ImageZoom src={EnvelopeExampleImage} alt="Envelope example" width="400" />
+
+## Rain
+
+[`rain(...)`](/docs/reference/chart/util/rain) 会在一个时间范围内生成一组像雨滴一样散布的 `AirCrush`。
+
+```python
+from margrete_rpc.chart.util import rain
+
+drops = rain(
+    t0=(0, 0),
+    t1=(1, 0),
+    step=(1, 64),
+    length=(1, 32),
+    x_range=(0, 15),
+    h_range=(0, 140),
+    w=2,
+    color="sky",
+)
+
+for n in drops:
+    n.clamp()
+
+tx.chart.notes.extend(drops)
+```
+
+<ImageZoom src={RainExampleImage} alt="Rain example" width="400" />
+
+`x_range` 和 `h_range` 都是闭区间。原本会超出 `t1` 的雨滴会被截断，使其正好在 `t1` 结束。

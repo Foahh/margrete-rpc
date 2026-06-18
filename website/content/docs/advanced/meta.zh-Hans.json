@@ -1,5 +1,5 @@
 {
-  "title": "进阶教程",
-  "icon": "GraduationCap",
-  "pages": ["easings", "curve-slides", "slide-util", "timing-util"]
+  "title": "进阶用法",
+  "icon": "Stone",
+  "pages": ["raw-notes", "handle-multi-margrete"]
 }

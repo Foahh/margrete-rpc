@@ -1,0 +1,100 @@
+---
+title: Raw Notes
+---
+
+[`RawNote`](/docs/reference/chart/notes/raw/RawNote) is Margrete's [low-level note structure](https://github.com/MargreteSDK/MargretePluginSDK/blob/b8d0c87125e090880a75f6f0ff57a773510299a8/include/MargretePlugin.h#L126-L138).
+Most scripts do not need to use it directly. In most cases, high-level note objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap) and [`Slide`](/docs/reference/chart/notes/long/Slide) are more convenient.
+
+Use `RawNote` only when you need to handle note structures that are not supported yet, or when you need more complex low-level control.
+
+## Mental Model
+
+By default, Python parses [`RawNote`](/docs/reference/chart/notes/raw/RawNote) into high-level [`Note`](/docs/reference/chart/notes/shared/Note) objects.
+If a note cannot be parsed, it stays as `RawNote` and is not discarded.
+
+`RawNote` is a tree. Each node has a set of low-level fields, and long-note joints or attached Air notes are stored in `children`.
+
+| Field      | Description                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| `info`     | Low-level fields for the current node, as [`NoteInfo`](/docs/reference/chart/notes/types/NoteInfo). |
+| `children` | Child nodes. Long-note joints, attached Air notes, and similar structures are stored here.          |
+
+## Common Fields
+
+`RawNote` exposes common fields from `info` as properties, so you can usually read and write fields such as `note.t`, `note.x`, and `note.w` directly.
+
+| Field          | Description                                                                             |
+| -------------- | --------------------------------------------------------------------------------------- |
+| `type`         | Note type, such as `NoteType.TAP`, `NoteType.SLIDE`, or `NoteType.AIR`.                 |
+| `long_attr`    | The node's role in a long-note structure, such as `BEGIN`, `STEP`, `CONTROL`, or `END`. |
+| `t`            | Time in ticks. You can also assign a note position (`Position`) to it.                  |
+| `p`            | Reads `t` as a note position (`Position`). This property is read-only.                  |
+| `x`            | Lane position.                                                                          |
+| `w`            | Width.                                                                                  |
+| `h`            | Height, mainly used by Air notes.                                                       |
+| `dir`          | Direction, used by notes such as Flick, Extap, and Air.                                 |
+| `ex_attr`      | Extra attributes, such as inverted-color Air.                                           |
+| `variation_id` | Used by AirCrush to represent color.                                                    |
+| `til`          | The TIL this note belongs to.                                                           |
+| `option_value` | AirCrush `gap`: Step interval; `0` means AirTrace, `0x7FFFFFFF` means head Step only.   |
+
+## Reading Raw Notes
+
+In normal edits, notes that cannot be parsed stay as `RawNote`. You can find them with `isinstance()`:
+
+```python
+from margrete_rpc.chart.notes import RawNote
+
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        if isinstance(note, RawNote):
+            print(note.type, note.t, note.x, note.w)
+```
+
+Pass `raw_notes=True` if you want every note to stay in the low-level form:
+
+```python
+with m.open_edit(raw_notes=True) as tx:
+    for note in tx.chart.notes:
+        print(note.type, note.t, note.x, note.w)
+```
+
+## Creating Raw Notes
+
+You can use the [`R`](/docs/reference/chart/notes/raw/R) factory to quickly create common low-level note nodes.
+
+| Type         | Common methods                                                                         |
+| ------------ | -------------------------------------------------------------------------------------- |
+| Ground notes | `R.tap()`, `R.extap()`, `R.flick()`, `R.damage()`                                      |
+| Ground longs | `R.hold_begin()`, `R.hold_end()`, `R.slide_begin()`, `R.slide_step()`, `R.slide_end()` |
+| Air          | `R.air()`                                                                              |
+| Air longs    | `R.air_slide_begin()`, `R.air_slide_step()`, `R.air_slide_end()`, `R.air_hold_begin()` |
+| AirCrush     | `R.air_crush_begin()`, `R.air_crush_control()`, `R.air_crush_end()`                    |
+
+Each method only creates one node. To create a long note or attach Air, use [`RawNote.child()`](/docs/reference/chart/notes/raw/RawNote) or `RawNote.children` to attach child nodes to the parent.
+
+```python
+from margrete_rpc.chart.notes import R
+
+tap = R.tap(t=0, x=4, w=4)
+
+air_slide_begin = R.air_slide_begin(t=0, x=4, w=4, h=0)
+air_slide_step = R.air_slide_step(t=(0, 2, 0), x=8, w=4, h=4)
+air_slide_end = R.air_slide_end(t=(1, 0, 0), x=4, w=4, h=0)
+
+air_slide_begin.child(air_slide_step, air_slide_end)
+tap.children = [air_slide_begin]
+```
+
+## Converting From High-Level Notes
+
+High-level notes can be converted to `RawNote` with [`to_raw()`](/docs/reference/chart/notes/shared/Note). By default, the note is validated before conversion.
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+typed = Tap(t=(0, 0), x=4, w=4)
+
+raw = typed.to_raw()  # validate first, then return RawNote
+raw = typed.to_raw(skip_validation=True)  # skip validation
+```

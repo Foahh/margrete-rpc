@@ -1,11 +1,10 @@
 {
-  "title": "基础用法",
+  "title": "基础教程",
   "icon": "BookOpen",
   "pages": [
-    "edit-transactions",
+    "charting",
     "notes",
     "events",
-    "note-transforms",
     "time-position",
     "handle-multi-margrete"
   ]

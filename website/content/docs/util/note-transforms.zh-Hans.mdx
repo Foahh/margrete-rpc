@@ -1,0 +1,244 @@
+---
+title: 物件变换
+---
+
+## 如何理解
+
+[`Note`](/docs/reference/chart/notes/shared/Note) 对象提供了一系列便捷方法，用来移动、对齐、翻转、缩放或转换物件。
+
+```python
+from margrete_rpc import Margrete
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        for note in tx.chart.notes:
+            note.shift(x=2)  # 向右移动 2 格
+```
+
+大多数变换方法都有两种形式：
+
+| 修改         | 克隆             | 含义                               |
+| ------------ | ---------------- | ---------------------------------- |
+| `shift(...)` | `shifted(...)`   | 修改当前物件，或返回修改后的副本。 |
+| `scale(...)` | `scaled(...)`    | 修改当前物件，或返回修改后的副本。 |
+| `align(...)` | `aligned(...)`   | 修改当前物件，或返回修改后的副本。 |
+| `flip(...)`  | `flipped(...)`   | 修改当前物件，或返回修改后的副本。 |
+| `clamp(...)` | `clamped(...)`   | 修改当前物件，或返回修改后的副本。 |
+| n/a          | `converted(...)` | 返回转换成其他物件类型后的新物件。 |
+| n/a          | `clone()`        | 返回物件的深拷贝。                 |
+
+直接编辑谱面中的物件时，通常使用修改形式：
+
+```python
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.shift(x=2)
+```
+
+如果想保留原物件不变，请使用克隆形式：
+
+```python
+with m.open_edit() as tx:
+    copies = [note.shifted(t=1920, x=4) for note in tx.chart.notes]
+    tx.chart.notes.extend(copies)
+```
+
+## 位移
+
+[`shift()`](/docs/reference/chart/notes/shared/Note) 可以偏移物件的 `t`, `x`, `w`, `h` 字段。除了普通数值外，也可以传入匿名函数：
+
+```python
+note.shift(t=1920)    # 向后移动 1920 ticks
+note.shift(t=(1, 0))  # 向后移动一个小节
+note.shift(x=2)       # 向右移动 2 格
+note.shift(w=1)       # 宽度增加 1 格
+note.shift(h=20)      # 高度增加 20
+
+note.shift(x=lambda x: x // 4)         # 根据当前 x 计算偏移量
+note.shift(w=lambda w: max(1, w - 1))  # 根据当前宽度计算偏移量
+```
+
+## 时间对齐
+
+[`align()`](/docs/reference/chart/notes/shared/Note) 会把物件的 tick 吸附到给定间隔上。`mode=` 用来控制吸附方式：
+
+| Mode      | 行为                             |
+| --------- | -------------------------------- |
+| `"round"` | 吸附到最近的网格线。这是默认值。 |
+| `"floor"` | 向后吸附到前一个网格线。         |
+| `"ceil"`  | 向前吸附到下一个网格线。         |
+
+```python
+with m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.align((1, 384))  # 吸附到距离最近的 1/384 上
+        note.align((1, 384), mode="floor")  # 吸附到前一个 1/384 上
+```
+
+## 水平镜像
+
+[`flip()`](/docs/reference/chart/notes/shared/Note) 会让物件沿水平方向镜像。默认镜像轴是第 8 轨，也就是标准 16 格轨道的中心线。需要使用不同镜像轴时，请传入 `lane=`。
+
+```python
+note.flip()
+note.flip(lane=4)
+```
+
+某些物件自带的 `dir` 属性也会被镜像。例如，`"left"` Flick 会变成 `"right"` Flick。
+
+## 限制物件宽度
+
+[`clamp()`](/docs/reference/chart/notes/shared/Note) 会把物件的位置和宽度限制在轨道范围内，默认是 `[0, 16)`。这在位移或翻转后很有用：
+
+```python
+for note in tx.chart.notes:
+    note.shift(x=-2).clamp()  # 默认 left=0, right=16
+```
+
+右边界不包含在范围内，因此 `right=16` 表示物件不能超出第 16 轨。另外，宽度永远不会被限制到小于 `1`。
+
+## 缩放时间
+
+[`scale()`](/docs/reference/chart/notes/shared/Note) 会围绕参照点（`pivot`）缩放物件的时间。`pivot` 默认是 `0`。
+
+例如，当 `factor=2.0` 时，每个时间点都会移动到距离 `pivot` 两倍远的位置。当 `factor=0.5` 时，每个时间点都会向 `pivot` 靠近一半。
+
+`pivot` 可以是 tick，也可以是音符位置（[`Position`](/docs/reference/chart/time/Position)）。详细说明请见 [时间与音符位置](/docs/basic/time-position)。
+
+```python
+note.scale(2.0, pivot=0)
+
+for note in tx.chart.notes:
+    note.scale(0.5)
+
+note.scale(1.5, pivot=(4, 0))
+```
+
+## 深拷贝
+
+[`clone()`](/docs/reference/chart/notes/shared/Note) 会创建深拷贝。需要复制物件时可以使用它。
+
+```python
+with m.open_edit() as tx:
+    copies = []
+
+    for note in tx.chart.notes:
+        copies.append(note.clone().shift(t=1920))
+
+    tx.chart.notes.extend(copies)
+```
+
+## 分割 Slide
+
+[`split()`](/docs/reference/chart/notes/transform) 会把 Slide 类物件分割成两个。它支持 [`Slide`](/docs/reference/chart/notes/long/Slide)、[`AirSlide`](/docs/reference/chart/notes/air/AirSlide) 和 [`AirCrush`](/docs/reference/chart/notes/long/AirCrush)。
+
+```python
+from margrete_rpc.chart.notes import Slide, split
+
+slide = (
+    Slide(t=(0, 0), x=0, w=4)
+    .with_ctrl(t=(0, 2), x=6, w=4)  # joints[0]
+    .with_step(t=(1, 0), x=8, w=4)  # joints[1]
+)
+
+left, right = split(slide, 960)
+left, right = split(slide, (0, 2))
+left, right = split(slide, slide.joints[0])
+```
+
+分割位置可以是 tick、音符位置（[`Position`](/docs/reference/chart/time/Position)），或物件中的某个节点。分割必须发生在物件内部，不能位于最后一个节点。
+
+## 合并 Slide
+
+[`merge()`](/docs/reference/chart/notes/transform) 会合并连续且类型相同的 Slide 类物件。它支持 [`Slide`](/docs/reference/chart/notes/long/Slide)、[`AirSlide`](/docs/reference/chart/notes/air/AirSlide) 和 [`AirCrush`](/docs/reference/chart/notes/long/AirCrush)。
+
+```python
+from margrete_rpc.chart.notes import Slide, merge
+
+first = Slide(t=(0, 0), x=0, w=4).with_step(t=(1, 0), x=4, w=4)
+second = Slide(t=(1, 0), x=4, w=4).with_step(t=(2, 0), x=8, w=4)
+
+combined = merge([first, second])
+```
+
+这些物件之间不能重叠，并且传给 `merge()` 的所有物件必须是同一类型。
+
+## 转换物件
+
+如果想把一个物件转换为另一种物件类型，请使用 `converted()`。
+
+`converted()` 总是返回一个新物件，不会修改原物件。
+
+| 源物件     | 可以转换成的类型                           |
+| ---------- | ------------------------------------------ |
+| `Air`      | `Tap`, `Extap`, `Flick`, `Damage`          |
+| `Tap`      | `Air`, `Extap`, `Flick`, `Damage`          |
+| `Extap`    | `Air`, `Tap`, `Flick`, `Damage`            |
+| `Flick`    | `Air`, `Tap`, `Extap`, `Damage`            |
+| `Damage`   | `Air`, `Tap`, `Extap`, `Flick`             |
+| `Hold`     | `Slide`, `AirSlide`, `AirCrush`, `AirHold` |
+| `Slide`    | `AirSlide`, `AirCrush`                     |
+| `AirSlide` | `Slide`, `AirCrush`                        |
+| `AirHold`  | `Slide`, `AirSlide`, `AirCrush`            |
+| `AirCrush` | `Slide`, `AirSlide`                        |
+
+### 地面物件转换
+
+地面物件可以在 `Air`, `Tap`, `Flick`, `Extap`, `Damage` 之间转换。
+
+```python
+from margrete_rpc.chart.notes import Damage, Extap, Flick, Tap
+
+tap = Tap(t=(0, 0), x=4, w=4)
+
+flick = tap.converted(Flick, dir="right")
+extap = flick.converted(Extap, dir="up")
+damage = extap.converted(Damage)
+tap_again = damage.converted(Tap)
+```
+
+在地面物件之间转换时，附着的 Air 类物件也会被复制。
+
+```python
+from margrete_rpc.chart.notes import Air
+
+tap = Tap(t=(0, 0), x=4, w=4).with_air(Air("up", t=(0, 0), x=4, w=4))
+flick = tap.converted(Flick, dir="left")
+```
+
+### 长条物件转换
+
+```python
+from margrete_rpc.chart.notes import AirCrush, AirSlide, Hold, Slide
+
+hold = Hold(t=(0, 0), x=4, w=4).with_step(t=(1, 0), x=8, w=4)
+
+slide = hold.converted(Slide)
+air_slide = hold.converted(AirSlide, h=80)
+crush = slide.converted(AirCrush, h=80, gap=(1, 8), color="green")
+```
+
+### Air 类长条物件转换
+
+```python
+from margrete_rpc.chart.notes import AirCrush, AirSlide, Slide
+
+air_slide = (
+    AirSlide(t=(0, 0), x=4, w=4, h=80)
+    .with_ctrl(t=(0, 2), x=6, w=4, h=100)
+    .with_step(t=(1, 0), x=8, w=4, h=80)
+)
+
+ground_slide = air_slide.converted(Slide)
+crush = air_slide.converted(AirCrush, gap=(1, 8), color="blue")
+back_to_air_slide = crush.converted(AirSlide)
+```
+
+`Hold` 也可以转换为 `AirHold`：
+
+```python
+from margrete_rpc.chart.notes import AirHold, Hold
+
+hold = Hold(t=(0, 0), x=4, w=4).with_step(t=(1, 0), x=4, w=4)
+air_hold = hold.converted(AirHold, h=80)
+```

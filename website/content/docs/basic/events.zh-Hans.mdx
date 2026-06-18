@@ -1,162 +1,111 @@
 ---
-title: Events
-description: 处理 tempo、time-signature 和 speed changes。
+title: 事件编辑
 ---
 
-Events 是谱面范围内的变化，例如 BPM、time signatures、scroll speed 和 note speed。在 Python 中，它们是 [`tx.chart.events`](/docs/reference/chart/chart/ChartEvents) 里的简单对象，所以大多数 event 编辑都只是 [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) 代码块内的列表编辑。
+## 如何理解
 
-```python
-from margrete_rpc import Margrete
-from margrete_rpc.chart.events import BpmEvent
+事件包括变 BPM, 变拍（time-signature）, 谱面变速（scroll-speed）和物件变速（note-speed）。
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
-```
+`tx.chart` 有四个事件列表：
 
-当 `with{:py}` 代码块正常退出时，编辑会发送到 Margrete。如果代码块抛出异常，则不会应用任何修改。
-
-## 心智模型
-
-`tx.chart.events` 有四个列表：
-
-| 列表                         | 控制内容                                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `tx.chart.events.bpm`        | [`BpmEvent`](/docs/reference/chart/events/BpmEvent) 歌曲 tempo 变化。                                   |
-| `tx.chart.events.beat`       | [`BeatEvent`](/docs/reference/chart/events/BeatEvent) time-signature 变化。                             |
-| `tx.chart.events.til`        | [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent) 指定 timeline 的 scroll speed。 |
-| `tx.chart.events.note_speed` | [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent) note speed，独立于 scroll speed。       |
-
-每个列表都包含普通的 dataclass 对象。你可以追加新 events、修改已有 events 的字段，也可以用过滤后的列表替换原列表。
+| 列表              | 控制内容                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| `tx.chart.bpms`   | [`BpmEvent`](/docs/reference/chart/events/BpmEvent) 控制歌曲 BPM 变化。                           |
+| `tx.chart.beats`  | [`BeatEvent`](/docs/reference/chart/events/BeatEvent) 控制拍号变化。                              |
+| `tx.chart.tils`   | [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent) 控制指定 TIL 的谱面变速。 |
+| `tx.chart.speeds` | [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent) 控制指定物件的流速。              |
 
 ```python
 with m.open_edit() as tx:
     # 读取
-    for event in tx.chart.events.bpm:
+    for event in tx.chart.bpms:
         print(event.t, event.bpm)
 
     # 修改
-    tx.chart.events.bpm[0].bpm = 185.0
+    tx.chart.bpms[0].bpm = 185.0
 
     # 过滤
-    tx.chart.events.note_speed = [
-        event for event in tx.chart.events.note_speed if event.t < 7680
+    tx.chart.speeds = [
+        event for event in tx.chart.speeds if event.t < 7680
     ]
 ```
 
-## 修改谱面 BPM
+## BPM 事件
 
-使用 [`BpmEvent(t, bpm)`](/docs/reference/chart/events/BpmEvent) 从某个 tick 开始设置 tempo。
+使用 [`BpmEvent(t, bpm)`](/docs/reference/chart/events/BpmEvent) 从指定时间开始设置 BPM。
 
 ```python
 from margrete_rpc.chart.events import BpmEvent
 
 with m.open_edit() as tx:
-    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
-    tx.chart.events.bpm.append(BpmEvent(t=7680, bpm=200.0))
+    tx.chart.bpms.append(BpmEvent(t=0, bpm=180.0))
+    tx.chart.bpms.append(BpmEvent(t=(1, 0, 0), bpm=200.0))
 ```
 
-如果想更新已有的 BPM event，找到它并修改 `bpm`：
+如果想更新已有的 BPM 事件，找到它并修改 `bpm`：
 
 ```python
 with m.open_edit() as tx:
-    for event in tx.chart.events.bpm:
+    for event in tx.chart.bpms:
         if event.t == 0:
             event.bpm = 185.0
             break
 ```
 
-`t` 是原始 tick。常见 tick 值和 position helpers 见 [Time & Position](/docs/basic/time-position)。
+## 变拍事件
 
-## 添加 time-signature change
-
-使用 [`BeatEvent(bar, beats_per_bar, beat_unit)`](/docs/reference/chart/events/BeatEvent) 表示 time signatures。和多数 events 不同，它按小节编号放置，而不是按 tick。
+使用 [`BeatEvent(bar, beats_per_bar, beat_unit)`](/docs/reference/chart/events/BeatEvent) 表示拍号。和多数事件不同，变拍事件按小节编号放置，而不是按时间放置。
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
 
 with m.open_edit() as tx:
-    tx.chart.events.beat.append(BeatEvent(0, 4, 4))   # 从 bar 0 开始 4/4
-    tx.chart.events.beat.append(BeatEvent(16, 3, 4))  # 从 bar 16 开始 3/4
+    tx.chart.beats.append(BeatEvent(0, 4, 4))   # 从第 1 小节开始变为 4/4
+    tx.chart.beats.append(BeatEvent(16, 3, 4))  # 从第 17 小节开始变为 3/4
 ```
 
-添加 beat events 后，同一个 transaction 里的 tuple positions 会自动使用这些 events。详情见 [Time & Position](/docs/basic/time-position#positions)。
+添加变拍事件后，同一个 `open_edit()` 里的音符位置（Position）会自动使用新的拍号。详情见[时间与音符位置](/docs/basic/time-position#positions)。
 
 ```python
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.notes import Tap
 
 with m.open_edit(snapshot=False) as tx:
-    tx.chart.events.beat.append(BeatEvent(0, 3, 4))
+    tx.chart.beats.append(BeatEvent(0, 3, 4))
 
-    # 这里表示 3/4 中的 bar 4，而不是“4 * 1920 ticks”。
+    # 这里表示 3/4 的第 4 小节。
     tx.chart.notes.append(Tap(t=(4, 0), x=4, w=4))
 ```
 
-## 制作 scroll-speed bump
+## 删除事件
 
-使用 [`TimelineSpeedEvent(til, t, speed)`](/docs/reference/chart/events/TimelineSpeedEvent) 修改某条 timeline 上的 scroll speed。普通 ground notes 常用 timeline `0`。
-
-```python
-from margrete_rpc.chart.events import TimelineSpeedEvent
-
-with m.open_edit() as tx:
-    # 在 tick 3840 加速，然后在下一 tick 恢复正常。
-    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=3840, speed=1.5))
-    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=3841, speed=1.0))
-```
-
-如果是一段更长的区间，请把 reset 放在区间末尾：
+事件列表就是普通的 Python 列表，因此通常可以用过滤列表的方式删除事件：
 
 ```python
 with m.open_edit() as tx:
-    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=3840, speed=0.5))
-    tx.chart.events.til.append(TimelineSpeedEvent(til=0, t=7680, speed=1.0))
-```
-
-<Callout type="warn">
-  打开编辑时会扫描 scroll-speed events。如果某个 event 距离最后一个 note 很远，请使用
-  `open_edit(event_scan_lookahead_ticks=...)`。见
-  [Limitations](/docs/limitations#scroll-speed-event-scanning)。
-</Callout>
-
-## 修改 note speed
-
-如果希望 note speed 与 timeline scroll speed 分开变化，请使用 [`NoteSpeedEvent(t, speed)`](/docs/reference/chart/events/NoteSpeedEvent)。
-
-```python
-from margrete_rpc.chart.events import NoteSpeedEvent
-
-with m.open_edit() as tx:
-    tx.chart.events.note_speed.append(NoteSpeedEvent(t=0, speed=1.0))
-    tx.chart.events.note_speed.append(NoteSpeedEvent(t=3840, speed=1.25))
-```
-
-和 BPM、scroll speed 一样，这个值会从 `t` 开始生效，直到另一个 event 改变它。
-
-## 清理 events
-
-因为 event lists 就是普通 Python lists，清理通常就是过滤。
-
-```python
-with m.open_edit() as tx:
-    # 删除 tick 7680 之后的 BPM changes。
-    tx.chart.events.bpm = [
-        event for event in tx.chart.events.bpm if event.t <= 7680
+    # 删除 tick 7680 之后的所有 BPM 事件。
+    tx.chart.bpms = [
+        event for event in tx.chart.bpms if event.t <= 7680
     ]
 
-    # 删除 timeline 0 上的所有 scroll-speed events。
-    tx.chart.events.til = [
-        event for event in tx.chart.events.til if event.til != 0
+    # 删除 TIL 0 上的所有谱面变速事件。
+    tx.chart.tils = [
+        event for event in tx.chart.tils if event.til != 0
     ]
 ```
 
-如果两个 events 指向同一位置，发送编辑时列表中靠后的项目会生效：
+## 事件去重
+
+如果两个同类型的事件在同一位置，发送编辑时列表中靠后的项目会生效：
+
+| 事件类型      | 同一位置           |
+| ------------- | ------------------ |
+| BPM，物件变速 | 同一个 tick        |
+| 变拍          | 同一个小节         |
+| 变速          | 同一个 tick 和 TIL |
 
 ```python
 with m.open_edit() as tx:
-    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
-    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=185.0))  # 这个会生效
+    tx.chart.bpms.append(BpmEvent(t=0, bpm=180.0))
+    tx.chart.bpms.append(BpmEvent(t=0, bpm=185.0))  # 这个会生效
 ```
-
-对 BPM 和 note speed 来说，“同一位置”表示同一个 tick。对 time signatures 来说，表示同一个 bar。对 timeline speed 来说，表示同一个 tick 和 timeline id。

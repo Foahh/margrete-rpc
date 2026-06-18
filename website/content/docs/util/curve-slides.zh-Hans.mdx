@@ -1,0 +1,160 @@
+---
+title: 曲线 Slide
+---
+
+import CurveSlide1Image from "../assets/curve-slide-1.png";
+
+## 如何理解
+
+曲线 Slide 工具可以帮助你先勾勒曲线路径，再把它们转换成物件。
+
+<div className="prose-no-margin flex items-center justify-start gap-3 [&_.my-6]:my-0 [&_figure]:my-0 [&_img]:my-0 [&>figure]:min-w-0 [&>figure]:basis-0 [&>figure]:flex-1 [&>[data-rmiz]]:shrink-0">
+
+    ```python
+    from margrete_rpc import Margrete
+    from margrete_rpc.chart.util import Curve
+
+    with Margrete() as m:
+        with m.open_edit() as tx:
+            slide = (
+                Curve(t=(0, 0), x=-1)
+                .to(t=(1, 0), x=13, ease_x="in_out_cubic")
+                .to_slide(w=4)
+                .clamp()
+            )
+            tx.chart.notes.append(slide)
+    ```
+
+    <ImageZoom src={CurveSlide1Image} alt="Curve slide example 1" width="300" />
+
+</div>
+
+[`Curve`](/docs/reference/chart/util/curve/Curve) 会存储一串路径点（[`Waypoint`](/docs/reference/chart/util/curve/Waypoint)）。路径点包含以下字段：
+
+| 字段     | 含义                                   |
+| -------- | -------------------------------------- |
+| `t`      | tick 或音符位置元组（`Position`）。    |
+| `x`      | 轨道位置。                             |
+| `h`      | Air 高度。                             |
+| `ease_x` | 移动到这个路径点时 `x` 使用的 easing。 |
+| `ease_h` | 移动到这个路径点时 `h` 使用的 easing。 |
+
+第一个路径点用于锚定曲线的起点，因此它的缓动不会影响路径。
+
+你需要使用 [`to(...)`](/docs/reference/chart/util/curve/Curve) 添加路径点。每个路径点的时间都必须晚于前一个路径点。
+
+```python
+from margrete_rpc.chart.util import Curve
+
+path = (
+    Curve(t=(0, 0), x=2, h=60)
+    .to(t=(0, 2), x=12, h=120, ease_x="out_cubic", ease_h="in_sine")
+    .to(t=(1, 0), x=4, h=80, ease_x="in_cubic", ease_h="out_sine")
+)
+```
+
+## 物件化
+
+最终，你需要将曲线物件化。下面这些方法会通过[缓动函数](/docs/util/easings)，把曲线拟合为一系列直线节点。
+
+<Callout type="warn">
+  如果生成的物件超出轨道范围，可以调用 `.clamp()`，将所有节点限制在轨道内。
+</Callout>
+
+### Slide
+
+使用 [`to_slide()`](/docs/reference/chart/util/curve/Curve)。
+你需要提供宽度参数 `w=`。
+
+```python
+from margrete_rpc.chart.util import Curve
+
+slide = (
+    Curve(t=(0, 0), x=0)
+    .to(t=(0, 2), x=8, ease_x="out_quad")
+    .to(t=(1, 0), x=4, ease_x="in_quad")
+    .to_slide(w=4)
+)
+```
+
+### AirSlide
+
+使用 [`to_air_slide()`](/docs/reference/chart/util/curve/Curve)。在曲线起点和需要改变高度的路径点上传入 `h=`。
+你需要提供宽度参数 `w=`。
+
+```python
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import Curve
+
+air_slide = (
+    Curve(t=(0, 0), x=4, h=60)
+    .to(t=(0, 2), x=10, h=120, ease_x="in_out_sine", ease_h="out_quad")
+    .to(t=(1, 0), x=6, h=80, ease_x="in_out_sine", ease_h="in_quad")
+    .to_air_slide(w=4)
+)
+
+parent = Tap(t=air_slide.t, x=air_slide.x, w=air_slide.w).add_air(air_slide)
+```
+
+### AirCrush
+
+使用 [`to_air_crush()`](/docs/reference/chart/util/curve/Curve)。
+你需要提供宽度参数 `w=` 和 `gap=` 参数。`gap` 的写法请见 [AirCrush](/docs/basic/notes#aircrush)。
+
+```python
+from margrete_rpc.chart.util import Curve
+
+crush = (
+    Curve(t=(0, 0), x=2, h=80)
+    .to(t=(1, 0), x=14, h=120, ease_x="out_expo", ease_h="in_out_sine")
+    .to_air_crush(w=2, gap=(1, 16), color="blue")
+)
+```
+
+## 编辑路径点
+
+调用 [`points()`](/docs/reference/chart/util/curve/Curve) 可以预览拟合后的曲线。
+
+```python
+path = Curve(t=(0, 0), x=0).to(t=(1, 0), x=12, ease_x="in_out_sine")
+
+for point in path.points():
+    print(point.t, point.x, point.h)
+```
+
+使用 [`at(tick)`](/docs/reference/chart/util/curve/Curve) 可以求出曲线在指定 tick 上的值。
+
+```python
+path = Curve(t=0, x=0, h=80).to(t=960, x=12, h=120)
+mid = path.at(480)
+
+print(mid.x, mid.h)
+```
+
+使用 [`then()`](/docs/reference/chart/util/curve/Curve) 或 `+` 可以连接多条曲线。
+
+```python
+from margrete_rpc.chart.util import Curve
+
+out = Curve(t=(0, 0), x=0).to(t=(0, 2), x=12, ease_x="out_cubic")
+back = Curve(t=(0, 2), x=12).to(t=(1, 0), x=4, ease_x="in_cubic")
+
+slide = (out + back).to_slide(w=4)
+```
+
+## 从物件导入路径点
+
+如果想把长条物件导入为曲线的路径点，可以使用 [`Curve.from_note()`](/docs/reference/chart/util/curve/Curve)。
+
+```python
+from margrete_rpc.chart.util import Curve
+
+path = Curve.from_note(existing_slide)
+
+for point in path.waypoints:
+    point.ease_x = "out_cubic"  # 将所有路径点的缓动变成 "out_cubic"
+
+copy = path.to_slide(w=existing_slide.w)
+```
+
+物件本身的宽度将会被丢弃，因为曲线（`Curve`）本身与宽度无关。
