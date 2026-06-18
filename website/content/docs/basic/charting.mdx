@@ -28,14 +28,14 @@ Think of `open_edit()` as a four-step process:
 
 To read or modify a chart, use these fields returned by `open_edit()`:
 
-| Object            | What it is for                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------- |
-| `tx.chart.notes`  | List containing all notes, such as [`Tap`](/docs/reference/chart/notes/ground/Tap), [`Slide`](/docs/reference/chart/notes/long/Slide), and [`AirCrush`](/docs/reference/chart/notes/long/AirCrush).                                            |
-| `tx.chart.bpms`   | BPM event list containing [`BpmEvent`](/docs/reference/chart/events/BpmEvent).                                |
-| `tx.chart.beats`  | Time-signature event list containing [`BeatEvent`](/docs/reference/chart/events/BeatEvent).                   |
-| `tx.chart.tils`   | Timeline speed event list containing [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent). |
-| `tx.chart.speeds` | Note speed event list containing [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent).             |
-| `tx.current_tick` | The current cursor tick, shown as the red line in Margrete.                                                   |
+| Object            | What it is for                                                                                                                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tx.chart.notes`  | List containing all notes, such as [`Tap`](/docs/reference/chart/notes/ground/Tap), [`Slide`](/docs/reference/chart/notes/long/Slide), and [`AirCrush`](/docs/reference/chart/notes/long/AirCrush). |
+| `tx.chart.bpms`   | BPM event list containing [`BpmEvent`](/docs/reference/chart/events/BpmEvent).                                                                                                                      |
+| `tx.chart.beats`  | Time-signature event list containing [`BeatEvent`](/docs/reference/chart/events/BeatEvent).                                                                                                         |
+| `tx.chart.tils`   | Timeline speed event list containing [`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent).                                                                                       |
+| `tx.chart.speeds` | Note speed event list containing [`NoteSpeedEvent`](/docs/reference/chart/events/NoteSpeedEvent).                                                                                                   |
+| `tx.current_tick` | The current cursor tick, shown as the red line in Margrete.                                                                                                                                         |
 
 ## Practical examples
 
@@ -129,14 +129,14 @@ with m.open_edit() as tx:
 
 ## `open_edit` options
 
-| Parameter                    | Default | Use it when                                                                                                               |
-| ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `snapshot`                   | `True`  | You want to read the current chart.                                                                                       |
-| `replace_all_notes`          | `False` | You want to replace every note in the chart.                                                                              |
-| `replace_all_events`         | `False` | You want to replace every event in the chart. Requires `snapshot=True`.                                                   |
-| `raw_notes`                  | `False` | You want every note as a [`RawNote`](/docs/reference/chart/notes/raw/RawNote) instead of [`Note`](/docs/reference/chart/notes/shared/Note) objects.                                                             |
-| `event_scan_lookahead_ticks` | `None`  | When reading the chart, you need to find events farther past the last note. The default is 19200 ticks.                   |
-| `event_scan_til_ids`         | `None`  | When reading the chart, you need to control which TILs are scanned for speed events. The default is TIL `0` through `15`. |
+| Parameter                    | Default | Use it when                                                                                                                                         |
+| ---------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snapshot`                   | `True`  | You want to read the current chart.                                                                                                                 |
+| `replace_all_notes`          | `False` | You want to replace every note in the chart.                                                                                                        |
+| `replace_all_events`         | `False` | You want to replace every event in the chart. Requires `snapshot=True`.                                                                             |
+| `raw_notes`                  | `False` | You want every note as a [`RawNote`](/docs/reference/chart/notes/raw/RawNote) instead of [`Note`](/docs/reference/chart/notes/shared/Note) objects. |
+| `event_scan_lookahead_ticks` | `None`  | When reading the chart, you need to find events farther past the last note. The default is 19200 ticks.                                             |
+| `event_scan_til_ids`         | `None`  | When reading the chart, you need to control which TILs are scanned for speed events. The default is TIL `0` through `15`.                           |
 
 Common forms:
 

@@ -128,14 +128,14 @@ with m.open_edit() as tx:
 
 ## `open_edit` 的选项
 
-| 参数                         | 默认值  | 使用场景                                                                  |
-| ---------------------------- | ------- | ------------------------------------------------------------------------- |
-| `snapshot`                   | `True`  | 你想读取当前谱面。                                                        |
-| `replace_all_notes`          | `False` | 你希望替换谱面中的所有物件。                                              |
-| `replace_all_events`         | `False` | 你希望替换谱面中的所有事件，需要 `snapshot=True`。                        |
-| `raw_notes`                  | `False` | 你希望每个物件都是 [`RawNote`](/docs/reference/chart/notes/raw/RawNote)，而不是 [`Note`](/docs/reference/chart/notes/shared/Note) 对象。                        |
-| `event_scan_lookahead_ticks` | `None`  | 在读取谱面时，你需要寻找距离最后一个物件更远的事件。默认为 19200 ticks。  |
-| `event_scan_til_ids`         | `None`  | 在读取谱面时，你需要控制寻找哪些 TIL 的变速事件。默认为 TIL `0` 到 `15`。 |
+| 参数                         | 默认值  | 使用场景                                                                                                                                 |
+| ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `snapshot`                   | `True`  | 你想读取当前谱面。                                                                                                                       |
+| `replace_all_notes`          | `False` | 你希望替换谱面中的所有物件。                                                                                                             |
+| `replace_all_events`         | `False` | 你希望替换谱面中的所有事件，需要 `snapshot=True`。                                                                                       |
+| `raw_notes`                  | `False` | 你希望每个物件都是 [`RawNote`](/docs/reference/chart/notes/raw/RawNote)，而不是 [`Note`](/docs/reference/chart/notes/shared/Note) 对象。 |
+| `event_scan_lookahead_ticks` | `None`  | 在读取谱面时，你需要寻找距离最后一个物件更远的事件。默认为 19200 ticks。                                                                 |
+| `event_scan_til_ids`         | `None`  | 在读取谱面时，你需要控制寻找哪些 TIL 的变速事件。默认为 TIL `0` 到 `15`。                                                                |
 
 常见写法：
 
