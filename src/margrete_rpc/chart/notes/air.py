@@ -20,6 +20,7 @@ from .shared import (
 from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
 
 if TYPE_CHECKING:
+    from .ground import Damage, Extap, Flick, Tap
     from .long import AirCrush, Slide
 
 
@@ -87,6 +88,10 @@ class Air(_GeometryInfoMixin, _TransformMixin):
         if not skip_validation:
             self.validate()
         return RawNote(info=self._info.copy(), _id=self._id)
+
+    def converted[T: (Tap, Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new ground note of type ``target`` with this air note attached."""
+        return cast(T, self._converted_to(target, **overrides))
 
     def __str__(self) -> str:
         parts = [
@@ -235,6 +240,10 @@ class AirHold(_AttachableAirLong):
         if joint.kind is JointKind.CONTROL:
             return LongAttr.END_NOACT
         return LongAttr.END
+
+    def converted[T: (Slide, AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+        """Return a new note of type ``target`` carrying this note's geometry and joints."""
+        return cast(T, self._converted_to(target, **overrides))
 
 
 class _AirAttachable:

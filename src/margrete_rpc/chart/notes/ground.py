@@ -112,7 +112,9 @@ class Tap(_GroundNote):
         """
         super().__init__(resolve_tick(t), x, w, NoteType.TAP, _copy_info(_info), _id)
 
-    def converted[T: (Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+    def converted[T: (Air, Extap, Flick, Damage)](
+        self, target: type[T], **overrides: Any
+    ) -> T:
         """Return a new note of type ``target`` with this note's geometry.
 
         Args:
@@ -138,7 +140,9 @@ class Damage(_GroundNote):
     ) -> None:
         super().__init__(resolve_tick(t), x, w, NoteType.DAMAGE, _copy_info(_info), _id)
 
-    def converted[T: (Tap, Extap, Flick)](self, target: type[T], **overrides: Any) -> T:
+    def converted[T: (Air, Tap, Extap, Flick)](
+        self, target: type[T], **overrides: Any
+    ) -> T:
         """Return a new note of type ``target`` with this note's geometry."""
         return cast(T, self._converted_to(target, **overrides))
 
@@ -184,7 +188,9 @@ class Extap(_GroundNote):
     def _str_parts(self) -> list[str]:
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
-    def converted[T: (Tap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+    def converted[T: (Air, Tap, Flick, Damage)](
+        self, target: type[T], **overrides: Any
+    ) -> T:
         """Return a new note of type ``target`` with this note's geometry."""
         return cast(T, self._converted_to(target, **overrides))
 
@@ -230,6 +236,8 @@ class Flick(_GroundNote):
     def _str_parts(self) -> list[str]:
         return [*super()._str_parts(), f"dir={_note_enum_line(self.dir)}"]
 
-    def converted[T: (Tap, Extap, Damage)](self, target: type[T], **overrides: Any) -> T:
+    def converted[T: (Air, Tap, Extap, Damage)](
+        self, target: type[T], **overrides: Any
+    ) -> T:
         """Return a new note of type ``target`` with this note's geometry."""
         return cast(T, self._converted_to(target, **overrides))

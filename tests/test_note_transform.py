@@ -5,7 +5,9 @@ import pytest
 from margrete_rpc.chart.notes import (
     STANDARD_FIELD_WIDTH,
     STANDARD_FLIP_LANE,
+    Air,
     AirCrush,
+    AirDirection,
     AirHold,
     AirSlide,
     Color,
@@ -201,6 +203,67 @@ def test_converted_ground_preserves_attached_air_detached():
     assert extap._air.joints[-1].h == 90
 
 
+def test_converted_air_to_ground_notes():
+    air = Air(AirDirection.UP_LEFT, t=120, x=4, w=2, _id=8)
+    air._info.til = 3
+
+    tap = air.converted(Tap)
+    assert isinstance(tap, Tap)
+    assert (int(tap.t), tap.x, tap.w) == (120, 4, 2)
+    assert tap._info.til == 3
+    assert tap._air is not air
+    assert isinstance(tap._air, Air)
+    assert tap._air._id is None
+    assert tap._air.dir is AirDirection.UP_LEFT
+    tap.to_raw()
+
+    extap = air.converted(Extap, dir="down")
+    assert isinstance(extap, Extap)
+    assert extap.dir.value == "down"
+    assert isinstance(extap._air, Air)
+    extap.to_raw()
+
+    damage = air.converted(Damage)
+    assert isinstance(damage, Damage)
+    assert isinstance(damage._air, Air)
+
+    flick = air.converted(Flick, dir="left")
+    assert isinstance(flick, Flick)
+    assert flick.dir.value == "left"
+    assert isinstance(flick._air, Air)
+
+
+def test_converted_ground_notes_to_air():
+    notes = [
+        Tap(t=120, x=4, w=2),
+        Extap(t=120, x=4, w=2),
+        Damage(t=120, x=4, w=2),
+        Flick(t=120, x=4, w=2),
+    ]
+
+    for note in notes:
+        note._info.til = 3
+        air = note.converted(Air, dir="down_right", inverted=True)
+        assert isinstance(air, Air)
+        assert (int(air.t), air.x, air.w) == (120, 4, 2)
+        assert air._info.til == 3
+        assert air.dir is AirDirection.DOWN_RIGHT
+        assert air.inverted is True
+        assert air._id is None
+
+
+def test_converted_ground_to_air_requires_dir_unless_attached_air_exists():
+    with pytest.raises(ValueError):
+        Tap(t=0, x=4, w=2).converted(Air)
+
+    tap = Tap(t=0, x=4, w=2).with_air(Air("up_left", t=0, x=4, w=2, _id=9))
+    air = tap.converted(Air)
+    assert isinstance(air, Air)
+    assert air is not tap._air
+    assert air._id is None
+    assert air.dir is AirDirection.UP_LEFT
+
+
 def test_converted_slide_to_air_slide_and_back():
     slide = Slide(t=100, x=0, w=4).with_step(t=150, x=2, w=4).with_ctrl(t=200, x=4, w=4)
     air = slide.converted(AirSlide, h=80, inverted=True)
@@ -250,6 +313,32 @@ def test_converted_aircrush_to_airslide():
     assert (int(air.t), air.x, air.w) == (0, 2, 2)
     assert air.joints[-1].h == 100
     assert air._id is None  # detached
+
+
+def test_converted_airhold_to_slide_airslide_and_aircrush():
+    hold = (
+        AirHold(t=0, x=1, w=3, h=70, inverted=True)
+        .with_step(t=120, x=1, w=3, h=80)
+        .with_ctrl(t=240, x=2, w=3, h=90)
+    )
+
+    slide = hold.converted(Slide)
+    assert isinstance(slide, Slide)
+    assert (int(slide.t), slide.x, slide.w) == (0, 1, 3)
+    assert [(int(j.t), j.x, j.w, str(j.kind)) for j in slide.joints] == [
+        (120, 1, 3, "step"),
+        (240, 2, 3, "control"),
+    ]
+
+    air = hold.converted(AirSlide)
+    assert isinstance(air, AirSlide)
+    assert air.inverted is True
+    assert (air.h, air.joints[-1].h) == (70, 90)
+
+    crush = hold.converted(AirCrush, gap=6, color=Color.BLUE)
+    assert isinstance(crush, AirCrush)
+    assert (crush.h, crush.gap, crush.color) == (70, 6, ColorValue.BLUE)
+    assert crush.joints[-1].h == 90
 
 
 def test_convert_cross_shape_raises():

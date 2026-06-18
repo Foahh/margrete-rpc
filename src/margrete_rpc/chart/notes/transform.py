@@ -159,9 +159,15 @@ def _scale(note: Note, factor: float, pivot: int | PositionLike) -> Note:
 def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) -> T:
     if not isinstance(target, type):
         raise TypeError("convert target must be a note class")
+    if isinstance(note, Air) and issubclass(target, _GROUND_TYPES):
+        return cast(T, _convert_air_to_ground(note, target, overrides))
+    if isinstance(note, _GROUND_TYPES) and issubclass(target, Air):
+        return cast(T, _convert_ground_to_air(note, overrides))
     if isinstance(note, _GROUND_TYPES) and issubclass(target, _GROUND_TYPES):
         return cast(T, _convert_ground(note, target, overrides))
     if isinstance(note, Hold) and issubclass(target, (*_SLIDE_LIKE, AirHold)):
+        return cast(T, _convert_long(note, target, overrides))
+    if isinstance(note, AirHold) and issubclass(target, _SLIDE_LIKE):
         return cast(T, _convert_long(note, target, overrides))
     if isinstance(note, _SLIDE_LIKE) and issubclass(target, _SLIDE_LIKE):
         return cast(T, _convert_long(note, target, overrides))
@@ -183,6 +189,31 @@ def _convert_ground(note: _GroundNote, target: type[Note], overrides: dict[str, 
             new._air = _clone_air(air)
     new._id = None
     return new
+
+
+def _convert_air_to_ground(note: Air, target: type[Note], overrides: dict[str, Any]) -> Note:
+    new: _GroundNote = cast(Any, target)(t=int(note.t), x=note.x, w=note.w)
+    new._info.til = note._info.til
+    if isinstance(new, (Extap, Flick)) and "dir" in overrides:
+        new.dir = overrides["dir"]
+    new._air = cast(Air, _clone_air(note))
+    new._id = None
+    return new
+
+
+def _convert_ground_to_air(note: _GroundNote, overrides: dict[str, Any]) -> Air:
+    if "dir" not in overrides and isinstance(note._air, Air):
+        air = cast(Air, _clone_air(note._air))
+    else:
+        direction = overrides.get("dir")
+        if direction is None:
+            raise ValueError("converting a ground note to Air requires dir")
+        air = Air(direction, t=int(note.t), x=note.x, w=note.w)
+        air._info.til = note._info.til
+    if "inverted" in overrides:
+        air.inverted = bool(overrides["inverted"])
+    air._id = None
+    return air
 
 
 def _read_long(note: LongLike) -> tuple[_Point, list[_Point]]:
