@@ -54,11 +54,6 @@ void NamedPipeServer::start()
 void NamedPipeServer::stop()
 {
     running_.store(false);
-    const HANDLE listenPipe = listenPipe_.exchange(InvalidHandle);
-    if (listenPipe != InvalidHandle)
-    {
-        CloseHandle(listenPipe);
-    }
     shutdownClients();
     if (thread_.joinable())
     {
@@ -92,7 +87,7 @@ void NamedPipeServer::run()
     {
         reapClientThreads(false);
         HANDLE pipe = CreateNamedPipeW(path.c_str(), PIPE_ACCESS_DUPLEX,
-                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES,
+                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT, PIPE_UNLIMITED_INSTANCES,
                                        FrameProtocol::MaxFrameSize, FrameProtocol::MaxFrameSize, 0, nullptr);
         if (pipe == INVALID_HANDLE_VALUE)
         {
@@ -106,20 +101,49 @@ void NamedPipeServer::run()
             announced = true;
         }
 
-        const BOOL connected = ConnectNamedPipe(pipe, nullptr) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
-        HANDLE expectedListenPipe = pipe;
-        const bool stillOwnsListenPipe = listenPipe_.compare_exchange_strong(expectedListenPipe, InvalidHandle);
-        if (!stillOwnsListenPipe)
+        bool connected = false;
+        DWORD connectError = ERROR_SUCCESS;
+        while (running_.load())
         {
-            break;
+            const BOOL connectResult = ConnectNamedPipe(pipe, nullptr);
+            connectError = connectResult ? ERROR_SUCCESS : GetLastError();
+            if (connectResult || connectError == ERROR_PIPE_CONNECTED)
+            {
+                connected = true;
+                break;
+            }
+            if (connectError != ERROR_PIPE_LISTENING)
+            {
+                break;
+            }
+            Sleep(50);
         }
+
+        listenPipe_.store(InvalidHandle);
         if (!connected)
         {
             CloseHandle(pipe);
-            if (running_.load())
+            if (!running_.load())
             {
-                logger_.error(LastErrorMessage("ConnectNamedPipe"));
+                break;
             }
+            if (connectError != ERROR_SUCCESS)
+            {
+                logger_.error("ConnectNamedPipe failed error=" + std::to_string(connectError));
+            }
+            continue;
+        }
+        if (!running_.load())
+        {
+            CloseHandle(pipe);
+            break;
+        }
+
+        DWORD mode = PIPE_READMODE_BYTE | PIPE_WAIT;
+        if (!SetNamedPipeHandleState(pipe, &mode, nullptr, nullptr))
+        {
+            logger_.error(LastErrorMessage("SetNamedPipeHandleState"));
+            CloseHandle(pipe);
             continue;
         }
 

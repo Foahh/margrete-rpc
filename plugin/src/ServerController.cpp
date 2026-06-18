@@ -65,7 +65,10 @@ ServerControllerStatus ServerController::status() const
     value.instanceId = instanceId_;
     value.logPath = logPath_;
     value.actualPort = socketServer_ ? socketServer_->actualPort() : 0;
-    value.actualPipePath = actualPipePath_;
+    {
+        std::scoped_lock lock(discoveryMutex_);
+        value.actualPipePath = actualPipePath_;
+    }
     return value;
 }
 
