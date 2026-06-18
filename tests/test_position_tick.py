@@ -170,12 +170,12 @@ def test_open_edit_resolves_event_positions_against_chart_time_signature():
     mg = Margrete(transport=transport)
 
     with mg.open_edit() as tx:
-        tx.chart.events.bpm.append(BpmEvent(t=(1, 0), bpm=180.0))
-        tx.chart.events.til.append(TimelineSpeedEvent(til=2, t=(0, 2), speed=1.5))
-        tx.chart.events.note_speed.append(NoteSpeedEvent(t=(1, 1), speed=1.25))
-        assert tx.chart.events.bpm[-1].p == Position(1, 0, 0)
-        assert tx.chart.events.til[-1].p == Position(0, 2, 0)
-        assert tx.chart.events.note_speed[-1].p == Position(1, 1, 0)
+        tx.chart.bpms.append(BpmEvent(t=(1, 0), bpm=180.0))
+        tx.chart.tils.append(TimelineSpeedEvent(til=2, t=(0, 2), speed=1.5))
+        tx.chart.note_speeds.append(NoteSpeedEvent(t=(1, 1), speed=1.25))
+        assert tx.chart.bpms[-1].p == Position(1, 0, 0)
+        assert tx.chart.tils[-1].p == Position(0, 2, 0)
+        assert tx.chart.note_speeds[-1].p == Position(1, 1, 0)
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.bpm_upsert[0].tick == 3 * BEAT

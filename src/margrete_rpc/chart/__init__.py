@@ -1,4 +1,4 @@
-from margrete_rpc.chart.chart import Chart, ChartEvents, ChartNote
+from margrete_rpc.chart.chart import Chart, ChartNote
 from margrete_rpc.chart.events import (
     BeatEvent,
     BpmEvent,
@@ -22,7 +22,6 @@ __all__ = [
     "BeatEvent",
     "BpmEvent",
     "Chart",
-    "ChartEvents",
     "ChartNote",
     "Division",
     "DivisionLike",

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.chart.chart import Chart, ChartEvents, ChartNote
+from margrete_rpc.chart.chart import Chart, ChartNote
 from margrete_rpc.chart.notes import RawNote
 
 
@@ -12,11 +12,11 @@ class EditSnapshot:
     notes_signature: bytes = b""
     events_signature: bytes = b""
     notes: list[RawNote] = field(default_factory=list)
-    events: ChartEvents = field(default_factory=ChartEvents)
+    events: Chart = field(default_factory=Chart)
 
 
 def capture_edit_snapshot(chart: Chart) -> EditSnapshot:
-    normalized_events = chart.events.normalized()
+    normalized_events = chart.normalized_events()
     return EditSnapshot(
         notes_signature=_notes_signature(_final_notes_without_ids(chart)),
         events_signature=_event_signature_from_events(normalized_events),
@@ -32,7 +32,7 @@ def build_apply_edit_request(
     replace_all_notes: bool,
     snapshot: EditSnapshot | None,
 ) -> messages_pb2.ApplyEditRequest | None:
-    normalized_events = chart.events.normalized()
+    normalized_events = chart.normalized_events()
     request = messages_pb2.ApplyEditRequest()
 
     if replace_all_notes:
@@ -92,18 +92,18 @@ def _notes_signature(notes: list[RawNote]) -> bytes:
     return b"\n".join(note.to_proto().SerializeToString() for note in notes)
 
 
-def _event_signature_from_events(events: ChartEvents) -> bytes:
+def _event_signature_from_events(events: Chart) -> bytes:
     ev = events
-    bpm = sorted(ev.bpm, key=lambda event: int(event.t))
-    beat = sorted(ev.beat, key=lambda event: int(event.bar))
-    til = sorted(ev.til, key=lambda event: (int(event.t), int(event.til)))
-    note_speed = sorted(ev.note_speed, key=lambda event: int(event.t))
+    bpms = sorted(ev.bpms, key=lambda event: int(event.t))
+    beats = sorted(ev.beats, key=lambda event: int(event.bar))
+    tils = sorted(ev.tils, key=lambda event: (int(event.t), int(event.til)))
+    note_speeds = sorted(ev.note_speeds, key=lambda event: int(event.t))
     return b"\x1e".join(
         [
-            b"\x1f".join(event.to_proto().SerializeToString() for event in bpm),
-            b"\x1f".join(event.to_proto().SerializeToString() for event in beat),
-            b"\x1f".join(event.to_proto().SerializeToString() for event in til),
-            b"\x1f".join(event.to_proto().SerializeToString() for event in note_speed),
+            b"\x1f".join(event.to_proto().SerializeToString() for event in bpms),
+            b"\x1f".join(event.to_proto().SerializeToString() for event in beats),
+            b"\x1f".join(event.to_proto().SerializeToString() for event in tils),
+            b"\x1f".join(event.to_proto().SerializeToString() for event in note_speeds),
         ]
     )
 
@@ -119,14 +119,16 @@ def _clone_raw(note: RawNote) -> RawNote:
     return RawNote.from_proto(note.to_proto())
 
 
-def _clone_chart_events(events: ChartEvents) -> ChartEvents:
+def _clone_chart_events(events: Chart) -> Chart:
     from margrete_rpc.chart.events import BeatEvent, BpmEvent, NoteSpeedEvent, TimelineSpeedEvent
 
-    return ChartEvents(
-        bpm=[BpmEvent.from_proto(event.to_proto()) for event in events.bpm],
-        beat=[BeatEvent.from_proto(event.to_proto()) for event in events.beat],
-        til=[TimelineSpeedEvent.from_proto(event.to_proto()) for event in events.til],
-        note_speed=[NoteSpeedEvent.from_proto(event.to_proto()) for event in events.note_speed],
+    return Chart(
+        bpms=[BpmEvent.from_proto(event.to_proto()) for event in events.bpms],
+        beats=[BeatEvent.from_proto(event.to_proto()) for event in events.beats],
+        tils=[TimelineSpeedEvent.from_proto(event.to_proto()) for event in events.tils],
+        note_speeds=[
+            NoteSpeedEvent.from_proto(event.to_proto()) for event in events.note_speeds
+        ],
     )
 
 
@@ -176,11 +178,11 @@ def _append_scanned_note_diffs(
 
 def _append_scanned_event_diffs(
     request: messages_pb2.ApplyEditRequest,
-    orig_events: ChartEvents,
-    final_events: ChartEvents,
+    orig_events: Chart,
+    final_events: Chart,
 ) -> None:
-    orig_bpm = {int(event.t): event for event in orig_events.bpm}
-    final_bpm = {int(event.t): event for event in final_events.bpm}
+    orig_bpm = {int(event.t): event for event in orig_events.bpms}
+    final_bpm = {int(event.t): event for event in final_events.bpms}
     for t in orig_bpm:
         if t not in final_bpm:
             request.bpm_ticks_delete.append(t)
@@ -191,8 +193,8 @@ def _append_scanned_event_diffs(
         ):
             request.bpm_upsert.append(event.to_proto())
 
-    orig_beat = {int(event.bar): event for event in orig_events.beat}
-    final_beat = {int(event.bar): event for event in final_events.beat}
+    orig_beat = {int(event.bar): event for event in orig_events.beats}
+    final_beat = {int(event.bar): event for event in final_events.beats}
     for bar in orig_beat:
         if bar not in final_beat:
             request.beat_bars_delete.append(bar)
@@ -203,8 +205,8 @@ def _append_scanned_event_diffs(
         ):
             request.beat_upsert.append(event.to_proto())
 
-    orig_til = {(int(event.t), int(event.til)): event for event in orig_events.til}
-    final_til = {(int(event.t), int(event.til)): event for event in final_events.til}
+    orig_til = {(int(event.t), int(event.til)): event for event in orig_events.tils}
+    final_til = {(int(event.t), int(event.til)): event for event in final_events.tils}
     for key in orig_til:
         if key not in final_til:
             t, til = key
@@ -216,8 +218,8 @@ def _append_scanned_event_diffs(
         ):
             request.til_upsert.append(event.to_proto())
 
-    orig_note_speed = {int(event.t): event for event in orig_events.note_speed}
-    final_note_speed = {int(event.t): event for event in final_events.note_speed}
+    orig_note_speed = {int(event.t): event for event in orig_events.note_speeds}
+    final_note_speed = {int(event.t): event for event in final_events.note_speeds}
     for t in orig_note_speed:
         if t not in final_note_speed:
             request.note_speed_ticks_delete.append(t)
@@ -232,9 +234,9 @@ def _append_scanned_event_diffs(
 
 def _append_all_event_upserts(
     request: messages_pb2.ApplyEditRequest,
-    events: ChartEvents,
+    events: Chart,
 ) -> None:
-    request.bpm_upsert.extend(event.to_proto() for event in events.bpm)
-    request.beat_upsert.extend(event.to_proto() for event in events.beat)
-    request.til_upsert.extend(event.to_proto() for event in events.til)
-    request.note_speed_upsert.extend(event.to_proto() for event in events.note_speed)
+    request.bpm_upsert.extend(event.to_proto() for event in events.bpms)
+    request.beat_upsert.extend(event.to_proto() for event in events.beats)
+    request.til_upsert.extend(event.to_proto() for event in events.tils)
+    request.note_speed_upsert.extend(event.to_proto() for event in events.note_speeds)

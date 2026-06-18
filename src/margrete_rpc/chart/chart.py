@@ -22,53 +22,26 @@ with ``raw_notes=True`` or when a note's structure is not recognised by the type
 
 
 @dataclass
-class ChartEvents:
-    """Timeline events of a chart, grouped by kind.
-
-    Attributes:
-        bpm: Tempo changes (:class:`BpmEvent`).
-        beat: Time-signature changes (:class:`BeatEvent`); these drive position<->tick
-            conversion.
-        til: Timeline-speed events (:class:`TimelineSpeedEvent`).
-        note_speed: Note-speed events (:class:`NoteSpeedEvent`).
-    """
-
-    bpm: list[BpmEvent] = field(default_factory=list)
-    beat: list[BeatEvent] = field(default_factory=list)
-    til: list[TimelineSpeedEvent] = field(default_factory=list)
-    note_speed: list[NoteSpeedEvent] = field(default_factory=list)
-
-    def normalized(self) -> ChartEvents:
-        """Return a copy keeping only the last event for each duplicate key.
-
-        Collapses events that share the same position (tick/bar) so each timeline slot
-        holds a single event.
-        """
-        return ChartEvents(
-            bpm=_last_by_key(self.bpm, lambda event: event.t),
-            beat=_last_by_key(self.beat, lambda event: event.bar),
-            til=_last_by_key(
-                self.til,
-                lambda event: (event.t, event.til),
-            ),
-            note_speed=_last_by_key(self.note_speed, lambda event: event.t),
-        )
-
-
-@dataclass
 class Chart:
     """The notes and timeline events of the chart being edited.
 
     Obtained via :attr:`EditTransaction.chart`. Append, remove, or mutate items in
-    :attr:`notes` to describe an edit; :attr:`events` holds the read-mostly timeline.
+    :attr:`notes` to edit notes. Event lists are exposed directly on the chart.
 
     Attributes:
         notes: The chart's notes (typed :class:`Note` objects, or :class:`RawNote`).
-        events: The chart's :class:`ChartEvents`.
+        bpms: Tempo changes (:class:`BpmEvent`).
+        beats: Time-signature changes (:class:`BeatEvent`); these drive position<->tick
+            conversion.
+        tils: Timeline-speed events (:class:`TimelineSpeedEvent`).
+        note_speeds: Note-speed events (:class:`NoteSpeedEvent`).
     """
 
     notes: list[ChartNote] = field(default_factory=list)
-    events: ChartEvents = field(default_factory=ChartEvents)
+    bpms: list[BpmEvent] = field(default_factory=list)
+    beats: list[BeatEvent] = field(default_factory=list)
+    tils: list[TimelineSpeedEvent] = field(default_factory=list)
+    note_speeds: list[NoteSpeedEvent] = field(default_factory=list)
 
     @classmethod
     def from_begin_edit_response(
@@ -96,12 +69,33 @@ class Chart:
                 notes.append(raw_note)
         return cls(
             notes=notes,
-            events=_events_from_response(response),
+            bpms=[BpmEvent.from_proto(event) for event in response.bpm_events],
+            beats=[BeatEvent.from_proto(event) for event in response.beat_change_events],
+            tils=[
+                TimelineSpeedEvent.from_proto(event)
+                for event in response.timeline_speed_events
+            ],
+            note_speeds=[
+                NoteSpeedEvent.from_proto(event) for event in response.note_speed_events
+            ],
         )
 
     def normalized_events(self) -> Chart:
-        """Return a copy with the same notes but :meth:`ChartEvents.normalized` events."""
-        return Chart(notes=self.notes, events=self.events.normalized())
+        """Return a copy keeping only the last event for each duplicate key.
+
+        Collapses events that share the same position (tick/bar) so each timeline slot
+        holds a single event.
+        """
+        return Chart(
+            notes=self.notes,
+            bpms=_last_by_key(self.bpms, lambda event: event.t),
+            beats=_last_by_key(self.beats, lambda event: event.bar),
+            tils=_last_by_key(
+                self.tils,
+                lambda event: (event.t, event.til),
+            ),
+            note_speeds=_last_by_key(self.note_speeds, lambda event: event.t),
+        )
 
 
 def _last_by_key[T, K: Hashable](items: list[T], key: Callable[[T], K]) -> list[T]:
@@ -109,12 +103,3 @@ def _last_by_key[T, K: Hashable](items: list[T], key: Callable[[T], K]) -> list[
     for item in items:
         by_key[key(item)] = item
     return list(by_key.values())
-
-
-def _events_from_response(response: messages_pb2.BeginEditResponse) -> ChartEvents:
-    return ChartEvents(
-        bpm=[BpmEvent.from_proto(event) for event in response.bpm_events],
-        beat=[BeatEvent.from_proto(event) for event in response.beat_change_events],
-        til=[TimelineSpeedEvent.from_proto(event) for event in response.timeline_speed_events],
-        note_speed=[NoteSpeedEvent.from_proto(event) for event in response.note_speed_events],
-    )

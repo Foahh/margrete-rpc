@@ -41,7 +41,7 @@ class EditTransaction:
     Attributes:
         current_tick: The editor playhead tick captured when the transaction opened.
         chart: The loaded :class:`~margrete_rpc.chart.Chart`; mutate its ``notes`` and
-            ``events`` to describe the edit.
+            event lists to describe the edit.
         snapshot_enabled: Whether a baseline snapshot was captured for diffing.
         replace_all_notes: Replace all notes on apply instead of sending a diff.
     """
@@ -60,7 +60,7 @@ class EditTransaction:
     _beat_events_token: contextvars.Token[Iterable[BeatEvent] | None] | None = None
 
     def _resolve_position(self, pos: PositionLike) -> int:
-        return pos_to_tick(*pos, beat_events=self.chart.events.beat)
+        return pos_to_tick(*pos, beat_events=self.chart.beats)
 
     def __enter__(self) -> EditTransaction:
         self._span_active = self.tracer.span(
@@ -68,7 +68,7 @@ class EditTransaction:
             attrs={"tx.type": self.tx_type},
         )
         self._span_active.__enter__()
-        self._beat_events_token = push_beat_events(self.chart.events.beat)
+        self._beat_events_token = push_beat_events(self.chart.beats)
         self._resolver_token = push_tick_resolver(self._resolve_position)
 
         if self.snapshot_enabled:

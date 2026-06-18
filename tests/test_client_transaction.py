@@ -194,6 +194,24 @@ def test_open_edit_has_no_separate_raw_notes_method():
     assert not hasattr(mg, "open_edit_raw_notes")
 
 
+def test_open_edit_chart_has_no_nested_events_group():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, snapshot=True)
+            )
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit() as tx:
+        assert not hasattr(tx.chart, "events")
+        assert not hasattr(tx.chart, "bpm")
+        assert not hasattr(tx.chart, "beat")
+        assert not hasattr(tx.chart, "til")
+        assert not hasattr(tx.chart, "note_speed")
+
+
 def test_open_append_is_removed():
     mg = Margrete(transport=FakeTransport([]))
 
@@ -261,10 +279,34 @@ def test_snapshot_bpm_value_edit_with_same_tick_sends_apply_request():
     mg = Margrete(transport=transport)
 
     with mg.open_edit() as tx:
-        tx.chart.events.bpm[0].bpm = 180.0
+        tx.chart.bpms[0].bpm = 180.0
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.bpm_upsert[0].bpm == 180.0
+
+
+def test_snapshot_beat_value_edit_with_same_bar_sends_apply_request():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=960,
+                    snapshot=True,
+                    beat_change_events=[
+                        messages_pb2.BeatChangeEvent(bar=0, beats_per_bar=4, beat_unit=4)
+                    ],
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit() as tx:
+        tx.chart.beats[0].beats_per_bar = 3
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.beat_upsert[0].beats_per_bar == 3
 
 
 def test_snapshot_timeline_speed_value_edit_with_same_key_sends_apply_request():
@@ -285,10 +327,32 @@ def test_snapshot_timeline_speed_value_edit_with_same_key_sends_apply_request():
     mg = Margrete(transport=transport)
 
     with mg.open_edit() as tx:
-        tx.chart.events.til[0].speed = 1.5
+        tx.chart.tils[0].speed = 1.5
 
     apply_request = transport.requests[1].apply_edit_request
     assert apply_request.til_upsert[0].speed == 1.5
+
+
+def test_snapshot_note_speed_value_edit_with_same_tick_sends_apply_request():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=960,
+                    snapshot=True,
+                    note_speed_events=[messages_pb2.NoteSpeedEvent(tick=0, speed=1.0)],
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit() as tx:
+        tx.chart.note_speeds[0].speed = 1.25
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.note_speed_upsert[0].speed == 1.25
 
 
 def test_snapshot_note_edit_uses_id_upsert_when_children_unchanged():

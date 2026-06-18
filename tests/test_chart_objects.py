@@ -5,7 +5,6 @@ from margrete_rpc.chart import (
     BeatEvent,
     BpmEvent,
     Chart,
-    ChartEvents,
     NoteSpeedEvent,
     TimelineSpeedEvent,
 )
@@ -1485,7 +1484,8 @@ def test_chart_from_begin_edit_response_preserves_ordered_typed_and_raw_notes():
     assert isinstance(chart.notes[0], Tap)
     assert isinstance(chart.notes[1], RawNote)
     assert chart.notes[1]._id == 2
-    assert chart.events.bpm == [BpmEvent(0, 120.0)]
+    assert chart.bpms == [BpmEvent(0, 120.0)]
+    assert not hasattr(chart, "events")
 
 
 def test_chart_from_begin_edit_response_preserves_raw_extap_none_direction():
@@ -1512,23 +1512,27 @@ def test_chart_from_begin_edit_response_preserves_raw_extap_none_direction():
 
 def test_event_normalization_uses_last_write_wins_by_key():
     chart = Chart(
-        events=ChartEvents(
-            bpm=[BpmEvent(0, 120.0), BpmEvent(0, 180.0)],
-            beat=[
-                BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
-                BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
-            ],
-            til=[
-                TimelineSpeedEvent(t=960, til=1, speed=0.5),
-                TimelineSpeedEvent(t=960, til=1, speed=0.75),
-            ],
-            note_speed=[NoteSpeedEvent(480, 1.5), NoteSpeedEvent(480, 1.25)],
-        ),
+        bpms=[BpmEvent(0, 120.0), BpmEvent(0, 180.0)],
+        beats=[
+            BeatEvent(bar=0, beats_per_bar=3, beat_unit=4),
+            BeatEvent(bar=0, beats_per_bar=4, beat_unit=4),
+        ],
+        tils=[
+            TimelineSpeedEvent(t=960, til=1, speed=0.5),
+            TimelineSpeedEvent(t=960, til=1, speed=0.75),
+        ],
+        note_speeds=[NoteSpeedEvent(480, 1.5), NoteSpeedEvent(480, 1.25)],
     )
 
     normalized = chart.normalized_events()
 
-    assert normalized.events.bpm == [BpmEvent(0, 180.0)]
-    assert normalized.events.beat == [BeatEvent(0, 4, 4)]
-    assert normalized.events.til == [TimelineSpeedEvent(1, 960, 0.75)]
-    assert normalized.events.note_speed == [NoteSpeedEvent(480, 1.25)]
+    assert normalized.bpms == [BpmEvent(0, 180.0)]
+    assert normalized.beats == [BeatEvent(0, 4, 4)]
+    assert normalized.tils == [TimelineSpeedEvent(1, 960, 0.75)]
+    assert normalized.note_speeds == [NoteSpeedEvent(480, 1.25)]
+
+
+def test_chart_events_group_is_not_exported():
+    import margrete_rpc.chart as chart_module
+
+    assert not hasattr(chart_module, "ChartEvents")
