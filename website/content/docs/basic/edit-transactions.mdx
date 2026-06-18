@@ -1,12 +1,10 @@
 ---
-title: Edit Transactions
-description: Read and modify chart notes and events.
+title: Chart
 ---
 
 import CurrentTickPlayhead from "../assets/current-tick-playhead.png";
 
-An **edit transaction** is the normal way to script chart changes with Margrete RPC.
-Open a transaction, modify the chart, then exit the `with{:py}` block.
+`open_edit()` is the normal way to script charting with Python:
 
 ```python
 from margrete_rpc import Margrete
@@ -17,19 +15,16 @@ with Margrete() as m:
         tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
 ```
 
-The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
+The edit is sent to Margrete when the `with m.open_edit() as tx:{:py}` block exits normally. If this block raises an
 exception, no changes are applied.
-The outer `with Margrete() as m` closes the persistent RPC connection when your script is done.
-
-For the exact method signature, see [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) and the [`EditTransaction`](/docs/reference/transaction/EditTransaction) reference.
 
 ## Mental model
 
 Think of `open_edit()` as a four-step workflow:
 
-1. **Snapshot** - Margrete sends the current raw notes, events, and cursor tick to Python.
+1. **Snapshot** - Margrete sends the current chart and other information to Python.
 2. **Parse** - The Python API converts [`RawNote`](/docs/reference/chart/notes/raw/RawNote) objects to [`Note`](/docs/reference/chart/notes/shared/Note) objects such as [`Tap`](/docs/reference/chart/notes/ground/Tap)
-   and [`Slide`](/docs/reference/chart/notes/long/Slide). <br/> If `raw_notes=True`, this step keeps every note as `RawNote` instead.
+   and [`Slide`](/docs/reference/chart/notes/long/Slide).
 3. **Mutate** - Your script edits normal Python objects: lists, notes, and event objects.
 4. **Apply** - The Python client compares the final chart to the snapshot and sends one undoable edit.
 

@@ -1,0 +1,176 @@
+---
+title: Time & Position
+description: 在 raw ticks、musical positions 和 note divisions 之间转换。
+---
+
+import NoteTickListImage from "../assets/note-ticks-list.png";
+import TimeSignatureChangedImage from "../assets/time-signature-changed.png";
+
+Margrete 使用整数 ticks 存储时间。Python API 允许你在需要精确控制时直接使用这一层，也可以使用更易读的 musical tuple forms 来编写谱面代码。Notes 和 events 都使用这一模型；谱面编辑示例见 [Notes](/docs/basic/notes#positioning) 和 [Events](/docs/basic/events)。
+
+## Ticks
+
+最低层级的时间单位是 **tick**。Margrete RPC 使用每个 whole note [`TICK_RESOLUTION`](/docs/reference/chart/time) ticks 的分辨率，因此常见音符时值对应的 tick 数如下：
+
+<div className="flex gap-2">
+
+    <div className="flex-1">
+
+    | 时值                                  | Ticks |
+    | ------------------------------------- | ----- |
+    | Whole note (1/1)                      | 1920  |
+    | Half note (1/2)                       | 960   |
+    | Quarter note (1/4)                    | 480   |
+    | Eighth note (1/8)                     | 240   |
+    | Sixteenth note (1/16)                 | 120   |
+
+    </div>
+
+    <ImageZoom src={NoteTickListImage} alt="Note tick list" width="205" />
+
+</div>
+
+```python
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.time import TICK_RESOLUTION
+
+tap = Tap(t=TICK_RESOLUTION // 4, x=0, w=4)  # 4/4 中的 bar 0, beat 1
+print(tap.t)  # 480
+```
+
+任何接受时间参数的位置，例如 `t=`，都可以传入 raw ticks。
+
+## Positions
+
+直接计算 raw tick 往往不够直观。[`Position`](/docs/reference/chart/time/Position) 让你可以把时间写成 musical location：
+
+| 形式                  | 含义                |
+| --------------------- | ------------------- |
+| `(bar,)`              | 小节开头            |
+| `(bar, beat)`         | 小节内的 beat       |
+| `(bar, beat, offset)` | beat 加 tick offset |
+
+所有字段都从 0 开始。缺省字段默认为 0，`offset` 表示 beat 内的 ticks。
+
+```
+以 4/4 为例：
+
+bar 0, beat 0 ──── bar 0, beat 1 ──── bar 0, beat 2 ──── bar 0, beat 3
+tick 0             tick 480           tick 960           tick 1440
+```
+
+任何接受时间参数的 API 都可以接受 position tuple：
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+Tap(t=(2,), x=0, w=4)           # bar 2, beat 0
+Tap(t=(2, 1), x=0, w=4)         # bar 2, beat 1
+Tap(t=(2, 1, 240), x=0, w=4)    # bar 2, beat 1，位于该 beat 的一半
+```
+
+在 `with m.open_edit()` 代码块内，positions 会遵循谱面实际的 time signatures：
+
+```python
+from margrete_rpc.chart.events import BeatEvent
+from margrete_rpc.chart.notes import Tap
+
+with m.open_edit(snapshot=False) as tx:
+    tx.chart.events.beat.append(BeatEvent(0, 2, 4))  # bar 0 开始 2/4
+    tx.chart.events.beat.append(BeatEvent(1, 1, 4))  # bar 1 开始 1/4
+    tx.chart.notes.append(Tap(t=(2, 0), x=0, w=4))
+```
+
+这里的 `(2, 0)` 仍然表示 bar 2 的开头，即使前两个小节长度不同。
+
+<ImageZoom src={TimeSignatureChangedImage} alt="Time-signature changed" width="400" />
+
+### 手动转换
+
+当你需要自行转换数值时，使用 [`tick_to_pos`](/docs/reference/chart/time#functions) 和 [`pos_to_tick`](/docs/reference/chart/time#functions)：
+
+```python
+from margrete_rpc.chart.events import BeatEvent
+from margrete_rpc.chart.time import pos_to_tick, tick_to_pos
+
+beat_events = [BeatEvent(0, 4, 4)]
+
+pos = tick_to_pos(1920, beat_events=beat_events)
+print(pos)  # Position(bar=1, beat=0, offset=0)
+
+tick = pos_to_tick(2, 3, beat_events=beat_events)
+print(tick)  # 2 * 1920 + 3 * 480 = 5280
+```
+
+如果省略 `beat_events`，转换会在 edit transaction 内遵循当前谱面。在 transaction 外，则回退到默认 4/4。
+
+对于在 transaction 外运行的脚本，如果谱面不是普通 4/4，请显式传入 beat events：
+
+```python
+from margrete_rpc.chart.events import BeatEvent
+from margrete_rpc.chart.time import pos_to_tick
+
+beats = [BeatEvent(0, 3, 4)]  # 3/4
+tick = pos_to_tick(10, 0, 0, beat_events=beats)
+```
+
+## Division
+
+Positions 描述某个内容从**哪里**开始。Durations 描述它持续**多久**。使用 [`div_to_tick(numerator, denominator)`](/docs/reference/chart/time#functions) 将音符时值转换为 ticks：
+
+```python
+from margrete_rpc.chart.time import div_to_tick, tick_to_div
+
+quarter = div_to_tick(1, 4)    # 480 ticks
+eighth  = div_to_tick(1, 8)    # 240 ticks
+dotted  = div_to_tick(3, 4)    # 1440 ticks（三个 quarter notes）
+
+division = tick_to_div(480)    # Division(numerator=1, denominator=4)
+```
+
+接受 duration 的 API 也可以接受 division tuple：
+
+```python
+# 将 note 的开始位置吸附到最近的 eighth note
+note.align((1, 8))
+
+# AirCrush 的 segments 之间使用 dotted-quarter gap
+AirCrush(t=0, x=0, w=4, h=4, gap=(3, 4), ...)
+```
+
+<Callout type="warn">
+  如果分数不能精确落在整数 tick 上，`div_to_tick` 会抛出 `ValueError`。这可能发生在不能整除 `1920`
+  的 denominator 上，例如 `1/7`，或 denominator 大于 tick resolution，例如 `1/2048`。
+</Callout>
+
+## 使用 time signatures
+
+Time signatures 以 [`BeatEvent`](/docs/reference/chart/events/BeatEvent) 对象的形式存在于 `tx.chart.events.beat` 中。每个 event 从某个 bar 开始生效，直到下一个 event：
+
+```python
+from margrete_rpc.chart.events import BeatEvent
+
+with m.open_edit(snapshot=False) as tx:
+    beats = tx.chart.events.beat
+
+    beats.append(BeatEvent(0, 4, 4))
+    beats.append(BeatEvent(16, 3, 4))
+
+    for event in beats:
+        print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+
+    # Bar 0: 4/4
+    # Bar 16: 3/4
+```
+
+如果需要重复手动转换，可以先创建一个 [`TimeCalculator`](/docs/reference/chart/time/TimeCalculator)，而不是每次 helper 调用都传入 `beat_events`：
+
+```python
+from margrete_rpc.chart.time import TimeCalculator
+
+calc = TimeCalculator(tx.chart.events.beat)
+pos = calc.tick_to_pos(3840)
+tick = calc.pos_to_tick(1, 2, 0)
+```
+
+通常只有在 edit transaction 外运行的工具代码才需要 `TimeCalculator`。在 transaction 内，tuple positions 已经会使用谱面的 beat events 进行解析。

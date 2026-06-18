@@ -1,0 +1,307 @@
+---
+title: Notes
+description: 创建、检查和修改 notes。
+---
+
+import PositioningNotesExampleImage from "../assets/positioning-notes-example.png";
+import AirCrushIntervalImage from "../assets/air-crush-interval.png";
+
+Note classes 位于 [`margrete_rpc.chart.notes`](/docs/reference/chart/notes)。在普通的 [edit transactions](/docs/basic/edit-transactions) 中，如果 Margrete RPC 能识别 note tree，`tx.chart.notes` 会包含这些 [`Note`](/docs/reference/chart/notes/shared/Note) 对象；对于需要底层处理的结构，则会包含 [`RawNote`](/docs/reference/chart/notes/raw/RawNote) 对象。
+
+大多数 `Note` 操作都遵循同一种模式：
+
+```python
+from margrete_rpc import Margrete
+from margrete_rpc.chart.notes import Tap
+
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+```
+
+当 `with{:py}` 代码块正常退出时，编辑会发送到 Margrete。如果代码块抛出异常，则不会应用任何修改。
+
+## 心智模型
+
+一个 note 由 timing 和 lane geometry 定义：
+
+| 字段 | 含义                                                                                                                  |
+| ---- | --------------------------------------------------------------------------------------------------------------------- |
+| `t`  | Timing。传入 raw tick `int`，或 [`Position`](/docs/reference/chart/time/Position) tuple，例如 `(bar, beat, offset)`。 |
+| `x`  | 左侧 lane index。Margrete 的标准 ground field 宽 16 lanes，范围是 `0` 到 `15`。                                       |
+| `w`  | 以 lanes 为单位的宽度。`x=4, w=4` 的 note 会覆盖 lanes `4`、`5`、`6` 和 `7`。                                         |
+| `h`  | Air height。只有 air-long notes 和 air-crush notes 使用它。                                                           |
+
+## Positioning
+
+每个 [`Note`](/docs/reference/chart/notes/shared/Note) 的 `t` 都可以接受 raw tick 或 [`Position`](/docs/reference/chart/time/Position) tuple：
+
+| 形式                  | 含义                |
+| --------------------- | ------------------- |
+| `(bar,)`              | 小节开头            |
+| `(bar, beat)`         | 小节内的 beat       |
+| `(bar, beat, offset)` | beat 加 tick offset |
+
+Position values 从 0 开始。`(2, 0, 0)` 在 Python API 中表示 bar 2、beat 0、offset 0；如果你手动从 1 开始数小节，它就是第三小节。
+
+在 `with m.open_edit()` 代码块内，`Position` tuples 会按照谱面的实际 time signatures 解析。在 edit transaction 外，除非你调用 time helpers 时显式传入 beat events，否则它们会使用默认 4/4 context。完整 timing model 见 [Time & Position](/docs/basic/time-position) 指南；可复用转换见 [`TimeCalculator`](/docs/reference/chart/time/TimeCalculator) reference。
+
+<div className="flex items-center justify-start gap-2">
+    ```python
+    from margrete_rpc.chart.notes import Tap
+
+    with m.open_edit(snapshot=False) as tx:
+        tx.chart.notes.append(Tap(t=(2, 0, 0), x=0, w=4))
+        tx.chart.notes.append(Tap(t=(2, 1), x=4, w=4))
+
+        pos = tx.chart.notes[0].p  # Position(bar=2, beat=0, offset=0)
+    ```
+    <div className="flex items-center">-&gt;</div>
+    <ImageZoom src={PositioningNotesExampleImage} alt="Positioning notes example" width="200" />
+
+</div>
+
+## Ground notes
+
+Ground notes 使用 `t`、`x` 和 `w`。
+
+```python
+from margrete_rpc.chart.notes import Damage, Extap, Flick, Tap
+
+tap = Tap(t=(0, 0), x=4, w=4)
+flick = Flick(t=(0, 1), x=4, w=4, dir="left")
+extap = Extap(t=(0, 2), x=4, w=4, dir="up")
+damage = Damage(t=(0, 3), x=4, w=4)
+```
+
+### Tap
+
+基础 ground tap 使用 [`Tap`](/docs/reference/chart/notes/ground/Tap)。
+
+```python
+from margrete_rpc.chart.notes import Tap
+
+note = Tap(t=(0, 0), x=4, w=4)
+```
+
+### Flick
+
+Left/right flicks 使用 [`Flick`](/docs/reference/chart/notes/ground/Flick)。`dir` 接受 [`FlickDirection`](/docs/reference/chart/notes/direction/FlickDirection) 或字符串。
+
+```python
+from margrete_rpc.chart.notes import Flick, FlickDirection
+
+left = Flick(t=(0, 0), x=4, w=4, dir=FlickDirection.LEFT)
+right = Flick(t=(0, 1), x=4, w=4, dir="right")
+auto = Flick(t=(0, 2), x=4, w=4)  # 默认为 "auto"
+```
+
+`FlickDirection` 的值为 `"auto"`、`"left"` 和 `"right"`。
+
+### Extap
+
+Directional ex-taps 使用 [`Extap`](/docs/reference/chart/notes/ground/Extap)。`dir` 接受 [`ExtapDirection`](/docs/reference/chart/notes/direction/ExtapDirection) 或字符串。
+
+```python
+from margrete_rpc.chart.notes import Extap, ExtapDirection
+
+up = Extap(t=(0, 0), x=4, w=4, dir=ExtapDirection.UP)
+spin = Extap(t=(0, 1), x=4, w=4, dir="rotate_left")
+```
+
+`ExtapDirection` 的值为 `"up"`、`"down"`、`"center"`、`"left"`、`"right"`、`"rotate_left"`、`"rotate_right"`、`"in_out"` 和 `"out_in"`。
+
+### Damage
+
+Penalty notes 使用 [`Damage`](/docs/reference/chart/notes/ground/Damage)。
+
+```python
+from margrete_rpc.chart.notes import Damage
+
+note = Damage(t=(0, 0), x=4, w=4)
+```
+
+## Long notes
+
+Long notes 有一个 begin position，以及一个或多个 joints。Joint 是稍后时间点上的点，并拥有自己的 geometry。
+
+如果想使用 builder-style 代码，并让每次调用都返回新副本，请使用 `with_step()` 和 `with_ctrl()`：
+
+```python
+from margrete_rpc.chart.notes import Slide
+
+slide = (
+    Slide(t=(0, 0), x=0, w=4)
+    .with_ctrl(t=(0, 2), x=8, w=4)
+    .with_step(t=(1, 0), x=4, w=4)
+)
+```
+
+如果要原地修改已有 note，请使用 `add_step()` 和 `add_ctrl()`：
+
+```python
+slide = Slide(t=(0, 0), x=0, w=4)
+slide.add_ctrl(t=(0, 2), x=8, w=4)
+slide.add_step(t=(1, 0), x=4, w=4)
+```
+
+Joints 必须按时间递增顺序添加。Long notes 在发送到 Margrete 之前必须至少有一个 joint。
+
+如果希望生成 slide paths，而不是手写 joints，请参考 [Curved Slides](/docs/advanced/curved-slides)。
+
+### Hold
+
+[`Hold`](/docs/reference/chart/notes/long/Hold) 从 begin point 开始，并在一个 step joint 结束。
+
+```python
+from margrete_rpc.chart.notes import Hold
+
+hold = Hold(t=(0, 0), x=4, w=4).with_step(t=(1, 0), x=4, w=4)
+```
+
+对 hold 再次调用 `with_step()` 时，会在返回的副本中替换它的 end joint。
+
+### Slide
+
+[`Slide`](/docs/reference/chart/notes/long/Slide) 可以经过 step 和 control joints 移动。
+
+```python
+from margrete_rpc.chart.notes import Slide
+
+slide = (
+    Slide(t=(0, 0), x=0, w=4)
+    .with_ctrl(t=(0, 2), x=8, w=4)
+    .with_step(t=(1, 0), x=4, w=4)
+)
+```
+
+发送到 Margrete 之前，final joint 会自动变成 step joint。
+
+### AirCrush
+
+[`AirCrush`](/docs/reference/chart/notes/long/AirCrush) 是 air-lane long note。它使用与 slide 相同的 begin/joint 结构，另外还有：
+
+| 字段    | 含义                                                                                                  |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| `h`     | Begin 或 joint 处的 air height。                                                                      |
+| `gap`   | Segment spacing，可以是 raw ticks，也可以是 [`Division`](/docs/reference/chart/time/Division) tuple。 |
+| `color` | Crush color，可以是 [`ColorValue`](/docs/reference/chart/notes/color/ColorValue) 或字符串。           |
+
+```python
+from margrete_rpc.chart.notes import AirCrush
+
+crush = (
+    AirCrush(t=(0, 0), x=4, w=4, h=80, gap=(1, 8), color="blue")
+    .with_ctrl(t=(0, 2), x=6, w=4, h=100)
+    .with_ctrl(t=(1, 0), x=8, w=4, h=80)
+)
+```
+
+`gap=(1, 8)` 表示一个 eighth note。可以通过 `crush.gap` 读取 tick 值，通过 `crush.interval` 读取 beat-fraction 视图。
+
+<ImageZoom src={AirCrushIntervalImage} alt="AirCrush interval" width="400" />
+
+`ColorValue` 字符串值包括 `"default"`、`"red"`、`"orange"`、`"yellow"`、`"green"`、`"sky"`、`"blue"`、`"violet"`、`"pink"`、`"white"`、`"black"`、`"grass"`、`"sky_blue"`、`"cobalt_blue"`、`"purple"` 和 `"none"`。
+
+## Air notes
+
+Air notes 通过父 note 的 `.air` 属性附着到 ground note 或 long note 上。
+
+你可以使用 [`add_air()`](/docs/reference/chart/notes/air/_AirAttachable#functions)，也可以直接给 `.air` 赋值：
+
+```python
+from margrete_rpc.chart.notes import Air, AirDirection, Tap
+
+tap = Tap(t=(0, 0), x=4, w=4)
+air = Air(AirDirection.UP, t=(0, 0), x=4, w=4)
+
+tap.air = air  # 或者
+tap.add_air(air)
+```
+
+如果想保持原 note 不变，请使用 [`with_air()`](/docs/reference/chart/notes/air/_AirAttachable#functions)：
+
+```python
+tap_with_air = tap.with_air(Air("up", t=(0, 0), x=4, w=4))  # tap 不变
+```
+
+Attached air note 的 geometry 必须与父 note 匹配：
+
+- 对 ground note 来说，它必须匹配 ground note 的 `t`、`x` 和 `w`。
+- 对 long note 来说，它必须匹配 long note final joint 的 `t`、`x` 和 `w`。
+
+[`AirDirection`](/docs/reference/chart/notes/direction/AirDirection) 的值为 `"up"`、`"down"`、`"up_left"`、`"up_right"`、`"down_left"` 和 `"down_right"`。
+
+### Ground notes 上的 Air
+
+在 tap、flick、extap 或 damage note 上方附加 [`Air`](/docs/reference/chart/notes/air/Air)。
+
+```python
+from margrete_rpc.chart.notes import Air, Flick
+
+flick = Flick(t=(0, 0), x=4, w=4, dir="right").with_air(
+    Air("up_right", t=(0, 0), x=4, w=4)
+)
+```
+
+### Long notes 上的 Air
+
+将 [`Air`](/docs/reference/chart/notes/air/Air)、[`AirSlide`](/docs/reference/chart/notes/air/AirSlide) 或 [`AirHold`](/docs/reference/chart/notes/air/AirHold) 附加到 long note 的 end joint。
+
+```python
+from margrete_rpc.chart.notes import AirHold, Hold
+
+hold = Hold(t=(0, 0), x=4, w=4).with_step(t=(1, 0), x=6, w=4)
+
+hold_with_air = hold.with_air(
+    AirHold(t=(1, 0), x=6, w=4, h=80)
+    .with_step(t=(1, 2), x=6, w=4, h=120)
+)
+```
+
+`AirSlide` 的用法相同，但表示滑动的 air path：
+
+```python
+from margrete_rpc.chart.notes import AirSlide, Slide
+
+slide = Slide(t=(0, 0), x=0, w=4).with_step(t=(1, 0), x=8, w=4)
+
+slide_with_air = slide.with_air(
+    AirSlide(t=(1, 0), x=8, w=4, h=80)
+    .with_ctrl(t=(1, 2), x=10, w=4, h=120)
+    .with_step(t=(2, 0), x=8, w=4, h=80)
+)
+```
+
+## RawNote
+
+[`RawNote`](/docs/reference/chart/notes/raw/RawNote) 是 [Margrete 底层表示](https://github.com/MargreteSDK/MargretePluginSDK/blob/b8d0c87125e090880a75f6f0ff57a773510299a8/include/MargretePlugin.h#L126-L138)。普通脚本通常不需要使用它。
+
+```python
+from margrete_rpc.chart.notes import R, RawNote, Tap
+
+# 手动构建一个 raw tap。
+raw = R.tap(t=0, x=4, w=4)
+
+# 在底层检查之前，将 `Note` 转换为 `RawNote`。
+typed = Tap(t=(0, 0), x=4, w=4)
+raw = typed.to_raw()
+```
+
+## Validation
+
+如果想尽早发现无效 notes，请调用 [`note.validate()`](/docs/reference/chart/notes/shared/Note#functions)。
+`to_raw()` 默认也会执行 validation。
+
+```python
+note.validate()                       # 无效时抛出 ValueError
+raw = note.to_raw()                   # 先 validate，再返回 RawNote tree
+raw = note.to_raw(skip_validation=True)  # 如果你已经确认有效，可跳过 validation
+```
+
+常见 validation failures 包括：
+
+- 宽度为 0 或负数，
+- long-note joints 没有按时间递增，
+- long notes 缺少 joints，
+- attached air notes 的 `t`/`x`/`w` 与父 note attachment point 不匹配。

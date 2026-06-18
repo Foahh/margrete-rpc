@@ -1,0 +1,5 @@
+{
+  "title": "进阶教程",
+  "icon": "GraduationCap",
+  "pages": ["easings", "curve-slides", "slide-util", "timing-util"]
+}
