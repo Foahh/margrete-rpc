@@ -51,7 +51,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}\vcpkg-bincache
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('plugin/vcpkg.json', 'plugin/vcpkg-configuration.json', 'plugin/vcpkg-triplets/*.cmake') }}
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('plugin/vcpkg.json', 'plugin/vcpkg-configuration.json', 'plugin/vcpkg-triplets/*.cmake', 'plugin/CMakePresets.json') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-
       - name: Build, test, and stage plugin
