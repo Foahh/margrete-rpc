@@ -1,0 +1,41 @@
+---
+title: 问题 & 限制
+description: Margrete RPC 的已知限制，以及对应的处理方法。
+icon: TriangleAlert
+---
+
+## 事件扫描
+
+由于 [Margrete 的限制](https://github.com/inonote/umiguri-issue-repo/issues/6)，插件无法直接读取事件，而是通过扫描来寻找它们。这会带来两个实际影响：
+
+- **距离最后一个物件很远的事件可能读不到。** 默认情况下，插件会从最后一个物件开始，扫描到其往后的 19200 刻。
+- **包含大量事件的谱面打开速度可能较慢。** [_Dead Soul_](https://pgko.dev/bundles/019cafe9-6901-7000-a8e5-0785150fdf94) 是一个包含大量变速事件（[`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)）的已知例子。
+
+### 处理方法
+
+使用 [谱面编辑](/docs/basic/edit-transactions#open_edit-选项) 中介绍的 `open_edit` 参数控制扫描范围：
+
+```python
+with m.open_edit(
+    # 在最后一个 note 之后继续扫描的 ticks 数量（默认：19200）
+    event_scan_lookahead_ticks=1920 * 4,
+) as tx:
+    ...
+```
+
+也可以显式提供需要扫描的 TIL 列表：
+
+```python
+with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
+    ...
+```
+
+传入 `event_scan_til_ids=[]` 会扫描常见的 TIL（`0 — 15`）。
+
+## 撤销物件删除
+
+当你的代码**删除**了物件后，在 Margrete 中按下撤销，会出现两个相同的被删除的物件。
+
+### 处理方法
+
+- 使用 [`Margrete.undo()`](/docs/reference/client/Margrete#functions)，而不是在 Margrete 中撤销。

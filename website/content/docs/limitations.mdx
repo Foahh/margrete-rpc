@@ -1,15 +1,15 @@
 ---
-title: Limitations
+title: Bugs & Limitations
 description: Known constraints in Margrete RPC, and how to work around them.
 icon: TriangleAlert
 ---
 
-## Scroll-speed event scanning
+## Event scanning
 
-Because of a [limitation in the Margrete plugin SDK](https://github.com/inonote/umiguri-issue-repo/issues/6), [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) scans for scroll-speed events ([`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)) instead of reading them directly. This has two practical consequences:
+Because of a [limitation in the Margrete](https://github.com/inonote/umiguri-issue-repo/issues/6), plugin scans for events instead of reading them directly. This has two practical consequences:
 
 - **Events far past the last note may not be read.** By default, the scan covers up to 19200 ticks beyond the last note.
-- **Charts with many scroll-speed events can be slow to open.** [_Dead Soul_](https://pgko.dev/bundles/019cafe9-6901-7000-a8e5-0785150fdf94) is a known example.
+- **Charts with many events can be slow to open.** [_Dead Soul_](https://pgko.dev/bundles/019cafe9-6901-7000-a8e5-0785150fdf94) is a known example containing many scroll-speed event ([`TimelineSpeedEvent`](/docs/reference/chart/events/TimelineSpeedEvent)).
 
 ### Workarounds
 
@@ -23,22 +23,19 @@ with m.open_edit(
     ...
 ```
 
-Or provide an explicit list of timeline IDs to scan:
+Or provide an explicit list of TIL to scan:
 
 ```python
 with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
     ...
 ```
 
-Pass `event_scan_til_ids=[]` to scan all default timelines (`0` through `15`) without note-based filtering.
+Pass `event_scan_til_ids=[]` to scan common TIL (`0 — 15`).
 
-## Undo and note deletion
+## Undo note deletion
 
-When a Python-scripted edit **deletes** notes, pressing Undo in Margrete may restore those notes in a duplicated state instead of cleanly reversing the deletion.
-
-Additions and modifications can be undone safely. Only deletions are affected, so note-cleanup scripts should use the deletion workflow in [Edit Transactions](/docs/basic/edit-transactions#delete-notes-in-a-lane-range) with this limitation in mind.
+When you code **deletes** notes, pressing Undo in Margrete may restore those notes in a duplicated state instead of cleanly reversing the deletion.
 
 ### Workarounds
 
-- Prefer designs that add or modify notes rather than delete them.
-- Use [`Margrete.undo()`](/docs/reference/client/Margrete#functions) instead of Margrete's built-in Undo. It removes duplicates automatically.
+- Use [`Margrete.undo()`](/docs/reference/client/Margrete#functions) instead of undoing in Margrete.
