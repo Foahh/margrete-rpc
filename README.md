@@ -2,6 +2,14 @@
 
 **Margrete RPC** is a [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete) plugin plus a Python client package that lets you script **charting**.
 
+## Documentation
+
+For installation instructions and usage examples of this project, see:
+https://mg.foahh.com
+
+关于此项目的安装说明和使用示例请见：
+https://mg.foahh.com
+
 ## Motivation
 
 Existing tooling (including my earlier project, [margrete-air-curve-converter](https://github.com/Foahh/margrete-air-curve-converter)) can be useful for
