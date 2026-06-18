@@ -22,9 +22,7 @@ def test_glitch_event_count_and_spike_pattern() -> None:
 
 
 def test_glitch_spike_ticks_controls_reset_offset() -> None:
-    events = timing_glitch(
-        t0=0, t1=1920, count=4, speed_range=2.0, base_speed=1.0, spike_ticks=3
-    )
+    events = timing_glitch(t0=0, t1=1920, count=4, speed_range=2.0, base_speed=1.0, spike_ticks=3)
     spikes = events[0::2]
     resets = events[1::2]
     for spike, reset in zip(spikes, resets):

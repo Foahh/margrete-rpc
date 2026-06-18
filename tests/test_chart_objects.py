@@ -1166,9 +1166,7 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
 
 
 def test_air_slide_and_air_hold_inverted_map_to_outer_air_ex_attr():
-    air_slide = AirSlide(t=0, x=4, w=2, h=80, inverted=True).with_step(
-        t=480, x=6, w=2, h=100
-    )
+    air_slide = AirSlide(t=0, x=4, w=2, h=80, inverted=True).with_step(t=480, x=6, w=2, h=100)
     air_hold = AirHold(t=960, x=4, w=2, h=80).with_step(t=1440, x=4, w=2, h=80)
     air_hold.inverted = True
 
@@ -1475,16 +1473,12 @@ def test_wrap_raw_note_preserves_transformed_flick_direction(direction):
 def test_wrap_raw_note_preserves_inverted_air_slide_and_hold():
     raw_slide = R.tap(t=0, x=4, w=2).child(
         R.air(t=0, x=4, w=2, inverted=True).child(
-            R.air_slide_begin(t=0, x=4, w=2, h=80).child(
-                R.air_slide_end(t=480, x=6, w=2, h=100)
-            )
+            R.air_slide_begin(t=0, x=4, w=2, h=80).child(R.air_slide_end(t=480, x=6, w=2, h=100))
         )
     )
     raw_hold = R.tap(t=960, x=4, w=2).child(
         R.air(t=960, x=4, w=2, inverted=True).child(
-            R.air_hold_begin(t=960, x=4, w=2, h=80).child(
-                R.air_hold_end(t=1440, x=4, w=2, h=80)
-            )
+            R.air_hold_begin(t=960, x=4, w=2, h=80).child(R.air_hold_end(t=1440, x=4, w=2, h=80))
         )
     )
 

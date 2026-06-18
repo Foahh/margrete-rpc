@@ -71,13 +71,8 @@ class Chart:
             notes=notes,
             bpms=[BpmEvent.from_proto(event) for event in response.bpm_events],
             beats=[BeatEvent.from_proto(event) for event in response.beat_change_events],
-            tils=[
-                TimelineSpeedEvent.from_proto(event)
-                for event in response.timeline_speed_events
-            ],
-            speeds=[
-                NoteSpeedEvent.from_proto(event) for event in response.note_speed_events
-            ],
+            tils=[TimelineSpeedEvent.from_proto(event) for event in response.timeline_speed_events],
+            speeds=[NoteSpeedEvent.from_proto(event) for event in response.note_speed_events],
         )
 
     def normalized_events(self) -> Chart:

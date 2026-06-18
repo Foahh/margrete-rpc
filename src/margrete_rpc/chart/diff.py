@@ -141,9 +141,7 @@ def _clone_chart_events(events: Chart) -> Chart:
         bpms=[BpmEvent.from_proto(event.to_proto()) for event in events.bpms],
         beats=[BeatEvent.from_proto(event.to_proto()) for event in events.beats],
         tils=[TimelineSpeedEvent.from_proto(event.to_proto()) for event in events.tils],
-        speeds=[
-            NoteSpeedEvent.from_proto(event.to_proto()) for event in events.speeds
-        ],
+        speeds=[NoteSpeedEvent.from_proto(event.to_proto()) for event in events.speeds],
     )
 
 
