@@ -201,7 +201,8 @@ class Margrete:
         event_scan_til_ids: list[int] | None = None,
         snapshot: bool = True,
         raw_notes: bool = False,
-        replace_all: bool = False,
+        replace_all_notes: bool = False,
+        replace_all_events: bool = False,
     ) -> EditTransaction:
         """Begin an edit transaction over the current chart.
 
@@ -220,8 +221,10 @@ class Margrete:
                 Disable to skip diffing.
             raw_notes: Load every note as a raw protobuf-tree model (:class:`RawNote`)
                 instead of typed note objects.
-            replace_all: Replace every note in the chart on apply instead of applying a
-                diff. Useful for full rewrites.
+            replace_all_notes: Replace every note in the chart on apply instead of
+                applying a note diff. Useful for full note rewrites.
+            replace_all_events: Replace every event captured by the opening snapshot on
+                apply instead of applying an event diff. Requires ``snapshot=True``.
 
         Returns:
             An :class:`~margrete_rpc.transaction.EditTransaction` bound to the loaded chart.
@@ -248,5 +251,6 @@ class Margrete:
             snapshot_enabled=begin.snapshot,
             tracer=self._tracer,
             tx_type=tx_type,
-            replace_all_notes=replace_all,
+            replace_all_notes=replace_all_notes,
+            replace_all_events=replace_all_events,
         )

@@ -108,8 +108,9 @@ def test_apply_edit_request_fields_are_sequential():
         "beat_bars_delete",
         "til_keys_delete",
         "note_speed_ticks_delete",
+        "replace_all_events",
     ]
-    assert [field.number for field in fields] == list(range(1, 12))
+    assert [field.number for field in fields] == list(range(1, 13))
 
 
 def test_air_crush_color_wire_values_are_named_enum():

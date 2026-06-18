@@ -283,7 +283,7 @@ TEST_CASE("apply edit updates existing note and creates new note")
     REQUIRE(context.chart.appendedNotes == 1);
 }
 
-TEST_CASE("apply edit rejects replace_all with note ids")
+TEST_CASE("apply edit rejects replace_all_notes with note ids")
 {
     FakeContext context;
     MargreteSession session(context);

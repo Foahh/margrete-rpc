@@ -95,7 +95,7 @@ def stream(
             notes = frame_to_notes(frame, base_tick, tick_per_row, x_offset)
 
             t0 = time.perf_counter()
-            with mg.open_edit(snapshot=False, raw_notes=True, replace_all=True) as tx:
+            with mg.open_edit(snapshot=False, raw_notes=True, replace_all_notes=True) as tx:
                 tx.chart.notes = notes
             rpc_ms = (time.perf_counter() - t0) * 1000
 

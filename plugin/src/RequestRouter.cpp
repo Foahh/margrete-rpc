@@ -191,6 +191,7 @@ margrete::rpc::v1::Envelope RequestRouter::route(const margrete::rpc::v1::Envelo
             const auto &req = request.apply_edit_request();
             logInfo("apply_edit start id=" + std::to_string(request.request_id()) +
                     " replace_all_notes=" + std::to_string(req.replace_all_notes()) +
+                    " replace_all_events=" + std::to_string(req.replace_all_events()) +
                     " notes_upsert=" + std::to_string(req.notes_upsert_size()) +
                     " note_ids_delete=" + std::to_string(req.note_ids_delete_size()) + " bpm_upsert=" +
                     std::to_string(req.bpm_upsert_size()) + " beat_upsert=" + std::to_string(req.beat_upsert_size()) +

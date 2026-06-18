@@ -188,6 +188,38 @@ def test_open_edit_snapshot_false_replaces_open_append_flow():
     assert [note.tick for note in apply_request.notes_upsert] == [480, 720]
 
 
+def test_open_edit_replace_all_notes_and_events_are_separate_options():
+    transport = FakeTransport(
+        [
+            messages_pb2.Envelope(
+                begin_edit_response=messages_pb2.BeginEditResponse(
+                    current_tick=480,
+                    snapshot=True,
+                    notes=[
+                        messages_pb2.Note(
+                            id=1, type=messages_pb2.NOTE_TYPE_TAP, tick=0, x=1, width=2
+                        )
+                    ],
+                    bpm_events=[messages_pb2.BpmEvent(tick=0, bpm=120.0)],
+                )
+            ),
+            messages_pb2.Envelope(apply_edit_response=messages_pb2.ApplyEditResponse()),
+        ]
+    )
+    mg = Margrete(transport=transport)
+
+    with mg.open_edit(replace_all_notes=True, replace_all_events=True) as tx:
+        tx.chart.notes = [Tap(t=480, x=2, w=1)]
+        tx.chart.bpms = []
+
+    apply_request = transport.requests[1].apply_edit_request
+    assert apply_request.replace_all_notes is True
+    assert apply_request.replace_all_events is True
+    assert list(apply_request.bpm_ticks_delete) == [0]
+    assert len(apply_request.notes_upsert) == 1
+    assert not apply_request.notes_upsert[0].HasField("id")
+
+
 def test_open_edit_has_no_separate_raw_notes_method():
     mg = Margrete(transport=FakeTransport([]))
 

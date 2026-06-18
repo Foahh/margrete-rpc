@@ -30,6 +30,7 @@ def build_apply_edit_request(
     *,
     snapshot_enabled: bool,
     replace_all_notes: bool,
+    replace_all_events: bool,
     snapshot: EditSnapshot | None,
 ) -> messages_pb2.ApplyEditRequest | None:
     normalized_events = chart.normalized_events()
@@ -39,6 +40,11 @@ def build_apply_edit_request(
         final_notes = _final_notes_without_ids(chart)
         request.replace_all_notes = True
         request.notes_upsert.extend(note.to_proto() for note in final_notes)
+        if replace_all_events:
+            if not snapshot_enabled:
+                raise ValueError("replace_all_events requires snapshot=True")
+            request.replace_all_events = True
+            _append_all_event_deletes(request, (snapshot or EditSnapshot()).events)
         _append_all_event_upserts(request, normalized_events)
         return request
 
@@ -49,13 +55,22 @@ def build_apply_edit_request(
         if (
             _notes_signature(final_notes) == snapshot.notes_signature
             and final_events_sig == snapshot.events_signature
+            and not replace_all_events
         ):
             return None
 
         request.replace_all_notes = False
         _append_scanned_note_diffs(request, snapshot.notes, _final_notes(chart))
-        _append_scanned_event_diffs(request, snapshot.events, normalized_events)
+        if replace_all_events:
+            request.replace_all_events = True
+            _append_all_event_deletes(request, snapshot.events)
+            _append_all_event_upserts(request, normalized_events)
+        else:
+            _append_scanned_event_diffs(request, snapshot.events, normalized_events)
         return request
+
+    if replace_all_events:
+        raise ValueError("replace_all_events requires snapshot=True")
 
     final_notes = _final_notes(chart)
     if _has_existing_note_id(final_notes):
@@ -240,3 +255,16 @@ def _append_all_event_upserts(
     request.beat_upsert.extend(event.to_proto() for event in events.beats)
     request.til_upsert.extend(event.to_proto() for event in events.tils)
     request.note_speed_upsert.extend(event.to_proto() for event in events.speeds)
+
+
+def _append_all_event_deletes(
+    request: messages_pb2.ApplyEditRequest,
+    events: Chart,
+) -> None:
+    request.bpm_ticks_delete.extend(int(event.t) for event in events.bpms)
+    request.beat_bars_delete.extend(int(event.bar) for event in events.beats)
+    request.til_keys_delete.extend(
+        messages_pb2.TimelineSpeedKey(tick=int(event.t), timeline_id=int(event.til))
+        for event in events.tils
+    )
+    request.note_speed_ticks_delete.extend(int(event.t) for event in events.speeds)

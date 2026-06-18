@@ -326,7 +326,7 @@ class TimelineSpeedKey(_message.Message):
     def __init__(self, tick: _Optional[int] = ..., timeline_id: _Optional[int] = ...) -> None: ...
 
 class ApplyEditRequest(_message.Message):
-    __slots__ = ("replace_all_notes", "notes_upsert", "note_ids_delete", "bpm_upsert", "beat_upsert", "til_upsert", "note_speed_upsert", "bpm_ticks_delete", "beat_bars_delete", "til_keys_delete", "note_speed_ticks_delete")
+    __slots__ = ("replace_all_notes", "notes_upsert", "note_ids_delete", "bpm_upsert", "beat_upsert", "til_upsert", "note_speed_upsert", "bpm_ticks_delete", "beat_bars_delete", "til_keys_delete", "note_speed_ticks_delete", "replace_all_events")
     REPLACE_ALL_NOTES_FIELD_NUMBER: _ClassVar[int]
     NOTES_UPSERT_FIELD_NUMBER: _ClassVar[int]
     NOTE_IDS_DELETE_FIELD_NUMBER: _ClassVar[int]
@@ -338,6 +338,7 @@ class ApplyEditRequest(_message.Message):
     BEAT_BARS_DELETE_FIELD_NUMBER: _ClassVar[int]
     TIL_KEYS_DELETE_FIELD_NUMBER: _ClassVar[int]
     NOTE_SPEED_TICKS_DELETE_FIELD_NUMBER: _ClassVar[int]
+    REPLACE_ALL_EVENTS_FIELD_NUMBER: _ClassVar[int]
     replace_all_notes: bool
     notes_upsert: _containers.RepeatedCompositeFieldContainer[Note]
     note_ids_delete: _containers.RepeatedScalarFieldContainer[int]
@@ -349,7 +350,8 @@ class ApplyEditRequest(_message.Message):
     beat_bars_delete: _containers.RepeatedScalarFieldContainer[int]
     til_keys_delete: _containers.RepeatedCompositeFieldContainer[TimelineSpeedKey]
     note_speed_ticks_delete: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, replace_all_notes: _Optional[bool] = ..., notes_upsert: _Optional[_Iterable[_Union[Note, _Mapping]]] = ..., note_ids_delete: _Optional[_Iterable[int]] = ..., bpm_upsert: _Optional[_Iterable[_Union[BpmEvent, _Mapping]]] = ..., beat_upsert: _Optional[_Iterable[_Union[BeatChangeEvent, _Mapping]]] = ..., til_upsert: _Optional[_Iterable[_Union[TimelineSpeedEvent, _Mapping]]] = ..., note_speed_upsert: _Optional[_Iterable[_Union[NoteSpeedEvent, _Mapping]]] = ..., bpm_ticks_delete: _Optional[_Iterable[int]] = ..., beat_bars_delete: _Optional[_Iterable[int]] = ..., til_keys_delete: _Optional[_Iterable[_Union[TimelineSpeedKey, _Mapping]]] = ..., note_speed_ticks_delete: _Optional[_Iterable[int]] = ...) -> None: ...
+    replace_all_events: bool
+    def __init__(self, replace_all_notes: _Optional[bool] = ..., notes_upsert: _Optional[_Iterable[_Union[Note, _Mapping]]] = ..., note_ids_delete: _Optional[_Iterable[int]] = ..., bpm_upsert: _Optional[_Iterable[_Union[BpmEvent, _Mapping]]] = ..., beat_upsert: _Optional[_Iterable[_Union[BeatChangeEvent, _Mapping]]] = ..., til_upsert: _Optional[_Iterable[_Union[TimelineSpeedEvent, _Mapping]]] = ..., note_speed_upsert: _Optional[_Iterable[_Union[NoteSpeedEvent, _Mapping]]] = ..., bpm_ticks_delete: _Optional[_Iterable[int]] = ..., beat_bars_delete: _Optional[_Iterable[int]] = ..., til_keys_delete: _Optional[_Iterable[_Union[TimelineSpeedKey, _Mapping]]] = ..., note_speed_ticks_delete: _Optional[_Iterable[int]] = ..., replace_all_events: _Optional[bool] = ...) -> None: ...
 
 class ApplyEditResponse(_message.Message):
     __slots__ = ()

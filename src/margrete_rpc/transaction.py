@@ -44,6 +44,7 @@ class EditTransaction:
             event lists to describe the edit.
         snapshot_enabled: Whether a baseline snapshot was captured for diffing.
         replace_all_notes: Replace all notes on apply instead of sending a diff.
+        replace_all_events: Replace all scanned events on apply instead of sending a diff.
     """
 
     transport: RpcTransport
@@ -53,6 +54,7 @@ class EditTransaction:
     tracer: Tracer = field(default_factory=NoopTracer)
     tx_type: str = "edit"
     replace_all_notes: bool = False
+    replace_all_events: bool = False
     _span_active: AbstractContextManager[None] | None = None
 
     _snapshot: EditSnapshot | None = None
@@ -87,6 +89,7 @@ class EditTransaction:
                     self.chart,
                     snapshot_enabled=self.snapshot_enabled,
                     replace_all_notes=self.replace_all_notes,
+                    replace_all_events=self.replace_all_events,
                     snapshot=self._snapshot,
                 )
                 if request is not None:

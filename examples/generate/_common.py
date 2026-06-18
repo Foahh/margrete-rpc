@@ -102,8 +102,12 @@ def push_gallery(
     """Connect to Margrete and replace the chart with ``notes`` and optional ``events``."""
     mg = Margrete()
     print(mg.status())
-    with mg.open_edit(label, replace_all=True) as tx:
+    with mg.open_edit(
+        replace_all_notes=True,
+        replace_all_events=True,
+        event_scan_til_ids=[],
+    ) as tx:
         tx.chart.notes = notes
         if events:
-            tx.chart.events.til = events
+            tx.chart.tils = events
     print(f"Pushed '{label}' to Margrete (replaced the existing chart).")

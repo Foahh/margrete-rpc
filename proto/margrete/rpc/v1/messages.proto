@@ -199,6 +199,7 @@ message ApplyEditRequest {
   repeated int32 beat_bars_delete = 9;
   repeated TimelineSpeedKey til_keys_delete = 10;
   repeated int32 note_speed_ticks_delete = 11;
+  bool replace_all_events = 12;
 }
 
 message ApplyEditResponse {}

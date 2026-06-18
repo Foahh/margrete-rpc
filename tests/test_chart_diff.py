@@ -3,6 +3,7 @@ import pytest
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.chart import Chart
 from margrete_rpc.chart.diff import build_apply_edit_request, capture_edit_snapshot
+from margrete_rpc.chart.events import BpmEvent, TimelineSpeedEvent
 from margrete_rpc.chart.notes import R, RawNote
 
 
@@ -16,7 +17,11 @@ def test_snapshot_noop_returns_none():
     snap = capture_edit_snapshot(chart)
     final = Chart(notes=[_id_note(1)])
     req = build_apply_edit_request(
-        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+        final,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=False,
+        snapshot=snap,
     )
     assert req is None
 
@@ -25,7 +30,11 @@ def test_snapshot_modified_note_upserts_with_id():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1, x=1)]))
     final = Chart(notes=[_id_note(1, x=5)])
     req = build_apply_edit_request(
-        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+        final,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=False,
+        snapshot=snap,
     )
     assert req is not None
     assert len(req.notes_upsert) == 1
@@ -38,7 +47,11 @@ def test_snapshot_deleted_note_emits_delete():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1), _id_note(2, x=3)]))
     final = Chart(notes=[_id_note(1)])
     req = build_apply_edit_request(
-        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+        final,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=False,
+        snapshot=snap,
     )
     assert req is not None
     assert list(req.note_ids_delete) == [2]
@@ -49,7 +62,11 @@ def test_snapshot_added_note_upserts_without_id():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1)]))
     final = Chart(notes=[_id_note(1), R.tap(t=0, x=7, w=2)])
     req = build_apply_edit_request(
-        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+        final,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=False,
+        snapshot=snap,
     )
     assert req is not None
     assert len(req.notes_upsert) == 1
@@ -61,7 +78,11 @@ def test_snapshot_added_note_upserts_without_id():
 def test_replace_all_strips_ids():
     chart = Chart(notes=[_id_note(1)])
     req = build_apply_edit_request(
-        chart, snapshot_enabled=False, replace_all_notes=True, snapshot=None
+        chart,
+        snapshot_enabled=False,
+        replace_all_notes=True,
+        replace_all_events=False,
+        snapshot=None,
     )
     assert req is not None
     assert req.replace_all_notes is True
@@ -73,7 +94,11 @@ def test_snapshot_false_with_existing_id_raises():
     chart = Chart(notes=[_id_note(1)])
     with pytest.raises(ValueError):
         build_apply_edit_request(
-            chart, snapshot_enabled=False, replace_all_notes=False, snapshot=None
+            chart,
+            snapshot_enabled=False,
+            replace_all_notes=False,
+            replace_all_events=False,
+            snapshot=None,
         )
 
 
@@ -112,9 +137,54 @@ def test_snapshot_child_structure_change_deletes_and_recreates():
     snap = capture_edit_snapshot(Chart(notes=[RawNote.from_proto(orig_root)]))
     final = Chart(notes=[RawNote.from_proto(final_root)])
     req = build_apply_edit_request(
-        final, snapshot_enabled=True, replace_all_notes=False, snapshot=snap
+        final,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=False,
+        snapshot=snap,
     )
     assert req is not None
     assert list(req.note_ids_delete) == [1]
     assert len(req.notes_upsert) == 1
     assert req.notes_upsert[0].HasField("id") is False
+
+
+def test_replace_all_events_deletes_snapshot_events_and_upserts_final_events():
+    snap = capture_edit_snapshot(
+        Chart(
+            bpms=[BpmEvent(t=0, bpm=120.0)],
+            tils=[TimelineSpeedEvent(til=2, t=480, speed=1.0)],
+        )
+    )
+    final = Chart(
+        bpms=[BpmEvent(t=0, bpm=180.0)],
+        tils=[TimelineSpeedEvent(til=3, t=960, speed=0.5)],
+    )
+
+    req = build_apply_edit_request(
+        final,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=True,
+        snapshot=snap,
+    )
+
+    assert req is not None
+    assert req.replace_all_events is True
+    assert list(req.bpm_ticks_delete) == [0]
+    assert [(key.tick, key.timeline_id) for key in req.til_keys_delete] == [(480, 2)]
+    assert [(event.tick, event.bpm) for event in req.bpm_upsert] == [(0, 180.0)]
+    assert [(event.tick, event.timeline_id, event.speed) for event in req.til_upsert] == [
+        (960, 3, 0.5)
+    ]
+
+
+def test_replace_all_events_requires_snapshot():
+    with pytest.raises(ValueError, match="replace_all_events requires snapshot=True"):
+        build_apply_edit_request(
+            Chart(),
+            snapshot_enabled=False,
+            replace_all_notes=False,
+            replace_all_events=True,
+            snapshot=None,
+        )
