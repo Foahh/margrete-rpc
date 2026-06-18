@@ -7,8 +7,14 @@ STANDARD_FLIP_LANE = STANDARD_FIELD_WIDTH // 2
 DEFAULT_H = 80
 """Default air-note height (``h``) in editor units."""
 
-DEFAULT_AIRCRUSH_GAP = 0
-"""Default gap (in ticks) between AirCrush joints when none is specified."""
+AIRCRUSH_GAP_TRACELIKE = 0
+"""AirTrace mode: line only."""
+
+AIRCRUSH_GAP_HEADONLY = 0x7FFFFFFF
+"""Head-only mode: only one step at the head."""
+
+DEFAULT_AIRCRUSH_GAP = AIRCRUSH_GAP_TRACELIKE
+"""Default AirCrush gap: :data:`AIRCRUSH_GAP_TRACELIKE`."""
 
 TICK_RESOLUTION = 1920
 """Tick resolution: the number of ticks in one whole note (1/1)."""

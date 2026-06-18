@@ -35,7 +35,9 @@ def rain(
         h_range: Inclusive ``(lo, hi)`` height bounds; defaults to a constant :data:`DEFAULT_H`.
         length: Drop duration (tick count or beat fraction); defaults to ``step``.
         w: Constant width of every drop.
-        gap: Segment gap passed to each :class:`AirCrush`.
+        gap: Segment gap passed to each :class:`AirCrush`. Also accepts
+            :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE` and
+            :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
         color: Crush color for every drop.
         til: Timeline (TIL) index assigned to every drop.
         seed: Seed for the random stream; ``None`` is non-deterministic.

@@ -330,25 +330,22 @@ def div_to_tick(numerator: int, denominator: int) -> int:
 
     Args:
         numerator: Fraction numerator (number of divisions).
-        denominator: Fraction denominator (1..``TICK_RESOLUTION``).
+        denominator: Fraction denominator.
 
     Returns:
         The duration in ticks.
 
     Raises:
-        ValueError: If the denominator is non-positive, exceeds ``TICK_RESOLUTION``, or the
-            fraction does not land on a whole tick.
+        ValueError: If the denominator is non-positive.
     """
     if type(numerator) is not int or type(denominator) is not int:
         raise TypeError("numerator and denominator must be ints")
     if denominator <= 0:
         raise ValueError("denominator must be positive")
-    if denominator > TICK_RESOLUTION:
-        raise ValueError(f"denominator must not exceed {TICK_RESOLUTION}")
-    frac = Fraction(numerator * TICK_RESOLUTION, denominator)
-    if frac.denominator != 1:
-        raise ValueError("beat division must resolve to a whole tick")
-    return frac.numerator
+    ticks = numerator * TICK_RESOLUTION // denominator
+    if numerator > 0:
+        return max(1, ticks)
+    return ticks
 
 
 def tick_to_div(ticks: int) -> Division:

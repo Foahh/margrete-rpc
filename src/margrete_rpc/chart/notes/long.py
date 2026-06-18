@@ -189,9 +189,15 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
 class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     """An air-crush note: an air-lane long note with height and a color.
 
-    Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and a gap
-    (:attr:`gap`, with the :attr:`interval` beat-fraction view) controlling the spacing of
-    generated segments between joints. Add control joints with :meth:`with_ctrl` / :meth:`add_ctrl`.
+    Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and
+    a gap (:attr:`gap`, with the :attr:`interval` beat-fraction view) controlling the
+    spacing of generated segments between joints. Add control joints with
+    :meth:`with_ctrl` / :meth:`add_ctrl`.
+
+    Special ``gap`` values:
+
+    * :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE` (``0``): AirTrace (line only).
+    * :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY` (``0x7FFFFFFF``): head step only.
     """
 
     __slots__ = ()
@@ -219,6 +225,8 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
             w: Width in lane units.
             h: Air height.
             gap: Segment gap as a tick count or ``(numerator, denominator)`` beat fraction.
+                Also accepts :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE`
+                and :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
             color: Crush color (:class:`ColorValue` or raw int).
         """
         super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
@@ -231,7 +239,13 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         """Segment gap as an int tick count.
 
         Set with an int tick count or an :data:`DivisionLike` ``(numerator, denominator)``
-        beat fraction. Read the fraction form via the :attr:`interval` view."""
+        beat fraction. Read the fraction form via the :attr:`interval` view.
+
+        Special values:
+
+        * :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE` (``0``): AirTrace.
+        * :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY` (``0x7FFFFFFF``): head step only.
+        """
         return int(self._info.option_value)
 
     @gap.setter

@@ -134,9 +134,13 @@ def test_div_to_tick_whole_beat():
     assert div_to_tick(1, 1) == TICK_RESOLUTION
 
 
-def test_div_to_tick_rejects_non_integer_division():
-    with pytest.raises(ValueError, match="whole tick"):
-        div_to_tick(1, 7)
+def test_div_to_tick_quantizes_non_integer_division():
+    assert div_to_tick(1, 7) == TICK_RESOLUTION // 7
+
+
+def test_div_to_tick_clamps_positive_sub_tick_division():
+    assert div_to_tick(1, TICK_RESOLUTION + 1) == 1
+    assert div_to_tick(1, 2048) == 1
 
 
 def test_div_to_tick_rejects_zero_denominator():

@@ -250,7 +250,9 @@ class Curve:
 
         Args:
             w: Constant lane width for every joint.
-            gap: Segment gap between crush particles.
+            gap: Segment gap. Also accepts
+                :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE` and
+                :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
             color: Crush particle color.
             til: Timeline index assigned to the note.
 

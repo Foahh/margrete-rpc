@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from ..constants import STANDARD_FIELD_WIDTH, STANDARD_FLIP_LANE
+from ..constants import (
+    AIRCRUSH_GAP_HEADONLY,
+    AIRCRUSH_GAP_TRACELIKE,
+    STANDARD_FIELD_WIDTH,
+    STANDARD_FLIP_LANE,
+)
 from .air import Air, AirHold, AirSlide
 from .color import (
     Color,
@@ -36,6 +41,8 @@ from .wrap import wrap_raw_note
 __all__ = [
     "Air",
     "AirCrush",
+    "AIRCRUSH_GAP_HEADONLY",
+    "AIRCRUSH_GAP_TRACELIKE",
     "AirHold",
     "AirJoint",
     "AirSlide",

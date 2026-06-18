@@ -9,6 +9,8 @@ from margrete_rpc.chart import (
     TimelineSpeedEvent,
 )
 from margrete_rpc.chart.notes import (
+    AIRCRUSH_GAP_HEADONLY,
+    AIRCRUSH_GAP_TRACELIKE,
     Air,
     AirCrush,
     AirDirection,
@@ -56,12 +58,14 @@ def test_note_type_factories_set_kind_and_geometry():
     assert R.air_hold_begin(t=1, x=2, w=1, h=80).type is NoteType.AIRHOLD
     assert R.air_hold_begin(t=1, x=2, w=1, h=80).long_attr is LongAttr.BEGIN
     assert R.air_hold_end(t=1, x=2, w=1, h=80).long_attr is LongAttr.END
-    crush0 = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0)
+    assert AIRCRUSH_GAP_TRACELIKE == 0
+    assert AIRCRUSH_GAP_HEADONLY == 0x7FFFFFFF
+    crush0 = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=AIRCRUSH_GAP_TRACELIKE)
     assert crush0.type is NoteType.AIRCRUSH
     assert crush0.long_attr is LongAttr.BEGIN
     assert crush0.option_value == 0
-    head = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=0x7FFFFFFF)
-    assert head.option_value == 0x7FFFFFFF
+    head = R.air_crush_begin(t=1, x=2, w=1, h=80, gap=AIRCRUSH_GAP_HEADONLY)
+    assert head.option_value == AIRCRUSH_GAP_HEADONLY
     assert R.air_crush_begin(t=1, x=2, w=1, h=80, gap=120).option_value == 120
 
 
@@ -351,14 +355,12 @@ def test_raw_tick_augmented_assignment_matches_direct_tick_math():
     assert note.t == 300
 
 
-def test_d2t_rejects_non_whole_tick():
-    with pytest.raises(ValueError, match="whole tick"):
-        div_to_tick(1, 7)
+def test_d2t_quantizes_non_whole_tick():
+    assert div_to_tick(1, 7) == TICK_RESOLUTION // 7
 
 
-def test_d2t_rejects_denominator_above_ticks_per_beat():
-    with pytest.raises(ValueError, match="denominator must not exceed"):
-        div_to_tick(1, TICK_RESOLUTION + 1)
+def test_d2t_clamps_positive_sub_tick_division():
+    assert div_to_tick(1, TICK_RESOLUTION + 1) == 1
 
 
 def test_d2t_rejects_non_int_types():
