@@ -24,6 +24,16 @@
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-md"
       }
+    },
+    {
+      "name": "windows-x64-cicd",
+      "displayName": "Windows x64 Release (vcpkg static-md)",
+      "inherits": "windows-x64",
+      "cacheVariables": {
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/vcpkg-triplets",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md-release",
+        "VCPKG_HOST_TRIPLET": "x64-windows-release"
+      }
     }
   ],
   "buildPresets": [
@@ -36,6 +46,11 @@
       "name": "windows-x64-debug",
       "configurePreset": "windows-x64",
       "configuration": "Debug"
+    },
+    {
+      "name": "windows-x64-release-cicd",
+      "configurePreset": "windows-x64-cicd",
+      "configuration": "Release"
     }
   ]
 }

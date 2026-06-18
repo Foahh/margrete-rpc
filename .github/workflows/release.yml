@@ -43,8 +43,21 @@ jobs:
         with:
           submodules: recursive
       - uses: ilammy/msvc-dev-cmd@v1
+      - name: Prepare vcpkg binary cache
+        shell: pwsh
+        env:
+          VCPKG_DEFAULT_BINARY_CACHE: ${{ runner.temp }}\vcpkg-bincache
+        run: New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}\vcpkg-bincache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('plugin/vcpkg.json', 'plugin/vcpkg-configuration.json', 'plugin/vcpkg-triplets/*.cmake') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
       - name: Build, test, and stage plugin
         shell: pwsh
+        env:
+          VCPKG_DEFAULT_BINARY_CACHE: ${{ runner.temp }}\vcpkg-bincache
         run: |
           if (-not $env:VCPKG_ROOT -and $env:VCPKG_INSTALLATION_ROOT) {
             $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
@@ -52,7 +65,7 @@ jobs:
           if (-not $env:VCPKG_ROOT -and (Test-Path -LiteralPath 'C:\vcpkg')) {
             $env:VCPKG_ROOT = 'C:\vcpkg'
           }
-          ./build.ps1 -Configuration Release -Test -Publish -SkipVcVars
+          ./build.ps1 -Configuration Release -Test -Publish -SkipVcVars -ConfigurePreset windows-x64-cicd -BuildPreset windows-x64-release-cicd
       - name: Create release archive
         shell: pwsh
         run: |

@@ -20,6 +20,9 @@
 .PARAMETER ConfigurePreset
   CMake configure preset from plugin/CMakePresets.json (default: windows-x64).
 
+.PARAMETER BuildPreset
+  CMake build preset from plugin/CMakePresets.json. Defaults to <ConfigurePreset>-<configuration>.
+
 .PARAMETER InitSubmodules
   Run `git submodule update --init --recursive` before CMake configure.
 
@@ -37,6 +40,7 @@ param(
     [switch] $Publish,
     [string] $VcpkgRoot = $env:VCPKG_ROOT,
     [string] $ConfigurePreset = 'windows-x64',
+    [string] $BuildPreset,
     [switch] $InitSubmodules
 )
 
@@ -153,7 +157,10 @@ try {
 
     $env:VCPKG_ROOT = $VcpkgRoot
 
-    $buildPreset = "$ConfigurePreset-$($Configuration.ToLowerInvariant())"
+    $buildPreset = $BuildPreset
+    if ([string]::IsNullOrWhiteSpace($buildPreset)) {
+        $buildPreset = "$ConfigurePreset-$($Configuration.ToLowerInvariant())"
+    }
 
     if ($InitSubmodules) {
         Write-Host "`n==> git submodule update --init --recursive"
