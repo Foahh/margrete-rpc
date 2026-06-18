@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..constants import STANDARD_FIELD_WIDTH
+from ..constants import STANDARD_FIELD_WIDTH, STANDARD_FLIP_LANE
 from .air import Air, AirHold, AirSlide
 from .color import (
     Color,
@@ -52,6 +52,7 @@ __all__ = [
     "ExtapDirection",
     "ExtapDirectionLike",
     "STANDARD_FIELD_WIDTH",
+    "STANDARD_FLIP_LANE",
     "Flick",
     "FlickDirection",
     "FlickDirectionLike",

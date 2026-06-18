@@ -1,5 +1,8 @@
 STANDARD_FIELD_WIDTH = 16
-"""Width of the standard playfield in lane units; the default ``field`` for note flipping."""
+"""Width of the standard playfield in lane units."""
+
+STANDARD_FLIP_LANE = STANDARD_FIELD_WIDTH // 2
+"""Lane axis used by default for horizontal note flipping."""
 
 DEFAULT_H = 80
 """Default air-note height (``h``) in editor units."""

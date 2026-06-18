@@ -88,9 +88,9 @@ _MIRROR_H = {
 }
 
 
-def _flip(note: Note, field: int) -> Note:
+def _flip(note: Note, lane: int) -> Note:
     for info in _iter_infos(note):
-        info.x = field - info.x - info.w
+        info.x = 2 * lane - info.x - info.w
         mirrored = _MIRROR_H.get(Direction(int(info.direction)))
         if mirrored is not None:
             info.direction = mirrored

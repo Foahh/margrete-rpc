@@ -4,6 +4,7 @@ import pytest
 
 from margrete_rpc.chart.notes import (
     STANDARD_FIELD_WIDTH,
+    STANDARD_FLIP_LANE,
     AirCrush,
     AirHold,
     AirSlide,
@@ -143,7 +144,7 @@ def test_scale_about_pivot_keeps_pivot_fixed():
 def test_flip_mirrors_lane_and_is_self_inverse():
     tap = Tap(t=0, x=1, w=2)
     flipped = tap.flipped()
-    assert flipped.x == STANDARD_FIELD_WIDTH - 1 - 2
+    assert flipped.x == 2 * STANDARD_FLIP_LANE - 1 - 2
     assert flipped.flip().x == 1  # flipping twice restores
     assert tap.x == 1  # copy left original alone
 
@@ -153,8 +154,8 @@ def test_flip_swaps_left_right_directions():
     assert Flick(t=0, x=0, w=2, dir="right").flipped().dir.value == "left"
 
 
-def test_flip_custom_field_width():
-    assert Tap(t=0, x=2, w=2).flipped(field=8).x == 8 - 2 - 2
+def test_flip_custom_lane_axis():
+    assert Tap(t=0, x=2, w=2).flipped(lane=4).x == 2 * 4 - 2 - 2
 
 
 def test_flip_recurses_into_joints_and_air():
@@ -166,8 +167,8 @@ def test_flip_recurses_into_joints_and_air():
         .with_air(Air(AirDirection.UP_LEFT, t=100, x=10, w=2))
     )
     slide.flip()
-    assert slide.x == STANDARD_FIELD_WIDTH - 0 - 2
-    assert slide.joints[0].x == STANDARD_FIELD_WIDTH - 10 - 2
+    assert slide.x == 2 * STANDARD_FLIP_LANE - 0 - 2
+    assert slide.joints[0].x == 2 * STANDARD_FLIP_LANE - 10 - 2
     assert slide._air.dir.value == "up_right"
 
 

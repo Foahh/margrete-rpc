@@ -4,7 +4,7 @@ from collections.abc import Callable
 from enum import IntEnum, StrEnum
 from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
 
-from ..constants import STANDARD_FIELD_WIDTH
+from ..constants import STANDARD_FIELD_WIDTH, STANDARD_FLIP_LANE
 from ..time import DivisionLike, Position, PositionLike
 from .direction import direction_from_proto
 from .raw import RawNote
@@ -102,12 +102,12 @@ class Note(Protocol):
         """Return a :meth:`clone` aligned to ``interval``, leaving ``self`` unchanged."""
         ...
 
-    def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
-        """Mirror the note horizontally within ``field`` lanes, in place; returns ``self``."""
+    def flip(self, *, lane: int = STANDARD_FLIP_LANE) -> Self:
+        """Mirror the note horizontally across ``lane``, in place; returns ``self``."""
         ...
 
-    def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
-        """Return a :meth:`clone` flipped within ``field``, leaving ``self`` unchanged."""
+    def flipped(self, *, lane: int = STANDARD_FLIP_LANE) -> Self:
+        """Return a :meth:`clone` flipped across ``lane``, leaving ``self`` unchanged."""
         ...
 
     def clamp(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
@@ -287,13 +287,13 @@ class _TransformMixin:
     def aligned(self, interval: int | DivisionLike, *, mode: AlignMode = "round") -> Self:
         return self.clone().align(interval, mode=mode)
 
-    def flip(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
+    def flip(self, *, lane: int = STANDARD_FLIP_LANE) -> Self:
         from .transform import _flip
 
-        return cast(Self, _flip(cast(Any, self), field))
+        return cast(Self, _flip(cast(Any, self), lane))
 
-    def flipped(self, *, field: int = STANDARD_FIELD_WIDTH) -> Self:
-        return self.clone().flip(field=field)
+    def flipped(self, *, lane: int = STANDARD_FLIP_LANE) -> Self:
+        return self.clone().flip(lane=lane)
 
     def clamp(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
         from .transform import _clamp
