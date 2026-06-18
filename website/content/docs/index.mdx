@@ -101,29 +101,3 @@ Use it to read and rewrite charts programmatically: place notes, edit events, an
    A new tap note will appear in the editor.
 
    ![Margrete editor changes after quick start](assets/after-quick-start-margrete.png)
-
-## Handle multiple Margrete instances
-
-[`Margrete()`](/docs/reference/client/Margrete) with no arguments works when exactly one running plugin instance is discovered.
-
-When multiple Margrete instances are running, pass `endpoint` or `instance_id`.
-
-Use [`list_instances()`](/docs/reference/discovery) when you need to inspect available [`MargreteInstance`](/docs/reference/discovery/MargreteInstance) values first:
-
-```python
-from margrete_rpc import Margrete, list_instances
-
-# list all discovered instances
-for inst in list_instances():
-    print(inst.instance_id, inst.endpoint)
-
-# connect by explicit host:port (left Margrete)
-with Margrete(endpoint="127.0.0.1:1328") as m_left:
-    print(m_left.status())
-
-# connect by the instance_id (right Margrete)
-with Margrete(instance_id="47824-6a30f65d-b7f8afde84506008") as m_right:
-    print(m_right.status())
-```
-
-![Two Margrete instances with different endpoints](assets/2-margrete-instance.png)
