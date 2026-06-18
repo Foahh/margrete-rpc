@@ -230,5 +230,6 @@ publish/
 .claude/skills
 .codex/skills
 .agents/skills
+!.agents/skills/umiguri-charter
 skills-lock.json
 plans/
