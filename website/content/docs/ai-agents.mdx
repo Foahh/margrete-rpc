@@ -1,0 +1,60 @@
+---
+title: Using with AI Agents
+icon: Bot
+---
+
+Any AI agent that can write code (such as Claude Code, Codex, Cursor, etc.) can drive Margrete RPC directly. This page explains how to give your agent enough context to get more accurate code suggestions.
+
+## Providing API Context
+
+### Option 1: Use the Source Code
+
+Giving the agent the `margrete_rpc` source code yields the most accurate API information — typically more reliable and complete than the documentation.
+
+<Tabs items={["Installed Package", "Clone the Repo"]}>
+  <Tab value="Installed Package">
+    Ask your coding agent to run the following command to find the package path and read the installed source:
+
+    ```bash
+    python -c "import margrete_rpc, os; print(os.path.dirname(margrete_rpc.__file__))"
+    ```
+  </Tab>
+  <Tab value="Clone the Repo">
+    ```bash
+    git clone https://github.com/Foahh/margrete-rpc
+    ```
+
+    Add the `src/margrete_rpc/` directory to the agent's context.
+  </Tab>
+</Tabs>
+
+### Option 2: Use the Documentation
+
+Every page on this site provides a Markdown version, which is well-suited for asking AI questions on the web:
+
+- **Full-site index** — [`/llms.txt`](https://mg.foahh.com/llms.txt) lists all pages and their links, making it a good starting point.
+- **Individual pages** — Click the **Copy Markdown** or **Open** button at the top of a page, or append `.md` to the page URL.
+- **API reference** — All classes and methods are listed under [margrete_rpc](/docs/reference).
+
+<Callout type="info">
+  Provide `https://mg.foahh.com/llms.txt` to the agent; it can start from there and fetch whichever documentation pages it needs.
+</Callout>
+
+## Example Workflow
+
+Using Claude Code as an example:
+
+1. Launch Claude Code in your project directory.
+2. Ask Claude to locate the installed package path and read the source:
+
+   ```
+   Find the installation path of the margrete_rpc package and read its source code.
+   ```
+
+3. Describe what you want to accomplish, for example:
+
+   ```
+   Write a script that finds all Tap objects in the chart with a time value less than beat 100 and deletes them.
+   ```
+
+The agent will automatically figure out what needs to be done based on the source code.
