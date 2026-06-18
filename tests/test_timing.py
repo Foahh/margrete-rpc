@@ -3,6 +3,7 @@ import pytest
 from margrete_rpc.chart.events import TimelineSpeedEvent
 from margrete_rpc.chart.time import pos_to_tick
 from margrete_rpc.chart.util import timing_easing, timing_easing_by_disp, timing_glitch
+from margrete_rpc.chart.util.easing import resolve_easing
 
 
 def test_glitch_event_count_and_spike_pattern() -> None:
@@ -16,8 +17,23 @@ def test_glitch_event_count_and_spike_pattern() -> None:
     assert [s.speed for s in spikes] == [-1.0, 3.0, -1.0, 3.0]
     assert all(r.speed == 1.0 for r in resets)
     for spike, reset in zip(spikes, resets):
-        assert reset.t == spike.t + 1
+        assert reset.t == spike.t + 5
     assert all(0 <= e.t < 1920 for e in spikes)
+
+
+def test_glitch_spike_ticks_controls_reset_offset() -> None:
+    events = timing_glitch(
+        t0=0, t1=1920, count=4, speed_range=2.0, base_speed=1.0, spike_ticks=3
+    )
+    spikes = events[0::2]
+    resets = events[1::2]
+    for spike, reset in zip(spikes, resets):
+        assert reset.t == spike.t + 3
+
+
+def test_glitch_invalid_spike_ticks_raises() -> None:
+    with pytest.raises(ValueError):
+        timing_glitch(t0=0, t1=1920, count=4, speed_range=2.0, base_speed=1.0, spike_ticks=0)
 
 
 def test_easing_endpoints_and_linear_ramp() -> None:
@@ -62,6 +78,21 @@ def test_easing_by_disp_steeper_curve_accelerates() -> None:
     events = timing_easing_by_disp(t0=0, t1=1920, base_speed=2.0, count=8, easing="in_quad")
     # in_quad accelerates: slope near the end exceeds slope near the start
     assert events[-1].speed > events[0].speed
+
+
+def test_easing_by_disp_displacement_lands_on_easing_curve() -> None:
+    base_speed = 1.5
+    span = 1920
+    count = 12
+    ease = resolve_easing("out_cubic")
+    events = timing_easing_by_disp(
+        t0=0, t1=span, base_speed=base_speed, count=count, easing="out_cubic"
+    )
+    disp = 0.0
+    for i in range(count):
+        assert disp == pytest.approx(base_speed * span * ease.solve(i / count))
+        disp += events[i].speed * (events[i + 1].t - events[i].t)
+    assert disp == pytest.approx(base_speed * span * ease.solve(1.0))
 
 
 @pytest.mark.parametrize(
