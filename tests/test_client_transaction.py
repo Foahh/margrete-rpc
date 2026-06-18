@@ -16,6 +16,15 @@ class FakeTransport:
         return self.responses.pop(0)
 
 
+class ClosableFakeTransport(FakeTransport):
+    def __init__(self, responses):
+        super().__init__(responses)
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
 def test_open_edit_sends_snapshot_true_and_commits_apply_edit():
     transport = FakeTransport(
         [
@@ -56,6 +65,15 @@ def test_ping_sends_request():
 
     assert mg.ping() is None
     assert transport.requests[0].HasField("ping_request")
+
+
+def test_close_delegates_to_transport_close():
+    transport = ClosableFakeTransport([])
+    mg = Margrete(transport=transport)
+
+    mg.close()
+
+    assert transport.closed is True
 
 
 def test_undo_sends_request_and_returns_success():

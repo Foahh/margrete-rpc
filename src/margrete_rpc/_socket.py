@@ -3,7 +3,9 @@ from __future__ import annotations
 import itertools
 import socket
 import struct
+import threading
 from dataclasses import dataclass, field
+from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
@@ -50,12 +52,42 @@ class SocketRpcClient:
     endpoint: str
     timeout: float = 60.0
     tracer: Tracer = field(default_factory=NoopTracer)
+    _sock: socket.socket | None = field(default=None, init=False, repr=False)
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     def __post_init__(self) -> None:
         host, port_text = self.endpoint.rsplit(":", 1)
         self._host = host
         self._port = int(port_text)
         self._request_ids = itertools.count(1)
+
+    def __enter__(self) -> SocketRpcClient:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        with self._lock:
+            self._close_unlocked()
+
+    def _close_unlocked(self) -> None:
+        sock = self._sock
+        self._sock = None
+        if sock is not None:
+            sock.close()
+
+    def _connect_unlocked(self) -> socket.socket:
+        if self._sock is None:
+            sock = socket.create_connection((self._host, self._port), timeout=self.timeout)
+            sock.settimeout(self.timeout)
+            self._sock = sock
+        return self._sock
 
     def request(self, envelope: messages_pb2.Envelope) -> messages_pb2.Envelope:
         span_name = next(
@@ -76,19 +108,27 @@ class SocketRpcClient:
                 "rpc.endpoint": self.endpoint,
             },
         ):
-            with socket.create_connection((self._host, self._port), timeout=self.timeout) as sock:
-                sock.settimeout(self.timeout)
-                sock.sendall(encode_frame(envelope))
-                header = _recv_exact(sock, 4)
-                size = struct.unpack("<I", header)[0]
-                if size > MAX_FRAME_SIZE:
-                    raise MargreteProtocolError(f"frame too large: {size} bytes")
-                response = messages_pb2.Envelope()
-                response.ParseFromString(_recv_exact(sock, size))
-            if response.request_id != request_id:
-                raise MargreteProtocolError(
-                    f"response request_id {response.request_id} did not match {request_id}"
-                )
+            with self._lock:
+                try:
+                    sock = self._connect_unlocked()
+                    sock.sendall(encode_frame(envelope))
+                    header = _recv_exact(sock, 4)
+                    size = struct.unpack("<I", header)[0]
+                    if size > MAX_FRAME_SIZE:
+                        raise MargreteProtocolError(f"frame too large: {size} bytes")
+                    response = messages_pb2.Envelope()
+                    response.ParseFromString(_recv_exact(sock, size))
+                    if response.request_id != request_id:
+                        self._close_unlocked()
+                        raise MargreteProtocolError(
+                            f"response request_id {response.request_id} did not match {request_id}"
+                        )
+                except (OSError, MargreteProtocolError):
+                    self._close_unlocked()
+                    raise
+                except Exception:
+                    self._close_unlocked()
+                    raise
             if response.HasField("error_response"):
                 error = response.error_response
                 raise MargreteRemoteError(error.code, error.message)

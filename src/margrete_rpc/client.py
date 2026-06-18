@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import TracebackType
 from typing import TYPE_CHECKING
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
@@ -100,6 +101,23 @@ class Margrete:
         if check_version:
             status = self.status()
             ensure_compatible_api_version(status.api_version, server_version=status.server_version)
+
+    def __enter__(self) -> Margrete:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """Close the underlying transport when it owns a persistent connection."""
+        close = getattr(self._transport, "close", None)
+        if close is not None:
+            close()
 
     def ping(self) -> None:
         """Check connectivity by round-tripping an empty request to the server.

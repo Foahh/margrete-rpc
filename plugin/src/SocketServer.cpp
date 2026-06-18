@@ -229,17 +229,26 @@ void SocketServer::run()
 void SocketServer::handleClient(uintptr_t socketHandle)
 {
     SOCKET client = static_cast<SOCKET>(socketHandle);
-    auto recvExact = [client](char *buffer, int size) {
+    auto recvExact = [client](char *buffer, int size, bool allowCleanEof) {
         int received = 0;
         while (received < size)
         {
             const int n = recv(client, buffer + received, size - received, 0);
-            if (n <= 0)
+            if (n == 0)
+            {
+                if (allowCleanEof && received == 0)
+                {
+                    return false;
+                }
+                throw std::runtime_error("client disconnected before frame completed");
+            }
+            if (n < 0)
             {
                 throw std::runtime_error("client disconnected");
             }
             received += n;
         }
+        return true;
     };
 
     auto sendAll = [client](const char *buffer, int size) {
@@ -257,26 +266,32 @@ void SocketServer::handleClient(uintptr_t socketHandle)
 
     try
     {
-        std::array<char, 4> header{};
-        recvExact(header.data(), 4);
-        const auto size = static_cast<std::uint32_t>(static_cast<unsigned char>(header[0])) |
-                          (static_cast<std::uint32_t>(static_cast<unsigned char>(header[1])) << 8) |
-                          (static_cast<std::uint32_t>(static_cast<unsigned char>(header[2])) << 16) |
-                          (static_cast<std::uint32_t>(static_cast<unsigned char>(header[3])) << 24);
-        if (size > FrameProtocol::MaxFrameSize)
+        while (running_.load())
         {
-            throw std::runtime_error("frame payload is too large");
+            std::array<char, 4> header{};
+            if (!recvExact(header.data(), 4, true))
+            {
+                break;
+            }
+            const auto size = static_cast<std::uint32_t>(static_cast<unsigned char>(header[0])) |
+                              (static_cast<std::uint32_t>(static_cast<unsigned char>(header[1])) << 8) |
+                              (static_cast<std::uint32_t>(static_cast<unsigned char>(header[2])) << 16) |
+                              (static_cast<std::uint32_t>(static_cast<unsigned char>(header[3])) << 24);
+            if (size > FrameProtocol::MaxFrameSize)
+            {
+                throw std::runtime_error("frame payload is too large");
+            }
+            std::vector<std::byte> frame(4 + size);
+            for (int i = 0; i < 4; ++i)
+            {
+                frame[static_cast<std::size_t>(i)] = static_cast<std::byte>(header[static_cast<std::size_t>(i)]);
+            }
+            recvExact(reinterpret_cast<char *>(frame.data() + 4), static_cast<int>(size), false);
+            const auto request = FrameProtocol::Decode(frame);
+            const auto response = router_.route(request);
+            const auto outFrame = FrameProtocol::Encode(response);
+            sendAll(reinterpret_cast<const char *>(outFrame.data()), static_cast<int>(outFrame.size()));
         }
-        std::vector<std::byte> frame(4 + size);
-        for (int i = 0; i < 4; ++i)
-        {
-            frame[static_cast<std::size_t>(i)] = static_cast<std::byte>(header[static_cast<std::size_t>(i)]);
-        }
-        recvExact(reinterpret_cast<char *>(frame.data() + 4), static_cast<int>(size));
-        const auto request = FrameProtocol::Decode(frame);
-        const auto response = router_.route(request);
-        const auto outFrame = FrameProtocol::Encode(response);
-        sendAll(reinterpret_cast<const char *>(outFrame.data()), static_cast<int>(outFrame.size()));
     }
     catch (const std::exception &ex)
     {
