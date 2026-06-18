@@ -271,10 +271,13 @@ def _build_air_long(
             t=begin.t, x=begin.x, w=begin.w, h=h0, gap=gap if gap is not None else 0, color=color
         )
     else:
+        inverted = overrides.get(
+            "inverted", note.inverted if isinstance(note, (AirSlide, AirHold)) else False
+        )
         new_air: AirSlide | AirHold = (
-            AirSlide(t=begin.t, x=begin.x, w=begin.w, h=h0)
+            AirSlide(t=begin.t, x=begin.x, w=begin.w, h=h0, inverted=inverted)
             if issubclass(target, AirSlide)
-            else AirHold(t=begin.t, x=begin.x, w=begin.w, h=h0)
+            else AirHold(t=begin.t, x=begin.x, w=begin.w, h=h0, inverted=inverted)
         )
         new = new_air
     for point in joints:
@@ -450,7 +453,7 @@ def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
         new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color)
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
-        new = AirSlide(t=point.t, x=point.x, w=point.w, h=h)
+        new = AirSlide(t=point.t, x=point.x, w=point.w, h=h, inverted=note.inverted)
     else:
         raise TypeError(f"cannot rebuild {type(note).__name__}")
     new._info.til = note._info.til

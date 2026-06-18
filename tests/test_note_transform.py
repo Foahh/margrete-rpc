@@ -202,12 +202,13 @@ def test_converted_ground_preserves_attached_air_detached():
 
 def test_converted_slide_to_air_slide_and_back():
     slide = Slide(t=100, x=0, w=4).with_step(t=150, x=2, w=4).with_ctrl(t=200, x=4, w=4)
-    air = slide.converted(AirSlide, h=80)
+    air = slide.converted(AirSlide, h=80, inverted=True)
 
     assert isinstance(air, AirSlide)
     assert isinstance(slide, Slide)  # original unchanged
     assert (int(air.t), air.x, air.w) == (100, 0, 4)
     assert air.joints[-1].h == 80
+    assert air.inverted is True
     assert [(int(j.t), str(j.kind)) for j in air.joints] == [(150, "step"), (200, "control")]
 
     back = air.converted(Slide)
@@ -218,9 +219,10 @@ def test_converted_slide_to_air_slide_and_back():
 
 def test_converted_hold_to_air_hold():
     hold = Hold(t=0, x=1, w=3).with_step(t=120, x=1, w=3)
-    air = hold.converted(AirHold, h=70)
+    air = hold.converted(AirHold, h=70, inverted=True)
     assert isinstance(air, AirHold)
     assert air.joints[-1].h == 70
+    assert air.inverted is True
 
 
 def test_converted_hold_to_slide():
@@ -389,6 +391,21 @@ def test_split_then_merge_round_trips_air_crush():
         (int(j.t), j.x, j.w, j.h) for j in crush.joints
     ]
     merged.to_raw()
+
+
+def test_split_preserves_air_slide_inverted():
+    air = (
+        AirSlide(t=0, x=2, w=2, h=80, inverted=True)
+        .with_step(t=100, x=4, w=2, h=100)
+        .with_step(t=200, x=6, w=2, h=120)
+    )
+
+    first, second = split(air, 100)
+
+    assert first.inverted is True
+    assert second.inverted is True
+    assert first.to_raw().ex_attr.name == "INVERT"
+    assert second.to_raw().ex_attr.name == "INVERT"
 
 
 def test_split_errors():

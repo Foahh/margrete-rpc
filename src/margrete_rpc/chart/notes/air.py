@@ -105,7 +105,7 @@ class Air(_GeometryInfoMixin, _TransformMixin):
 
 
 class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _AirJointHost):
-    __slots__ = ("_info", "_id", "_joints")
+    __slots__ = ("_info", "_id", "_joints", "_inverted")
 
     _note_type: NoteType
     _joint_type = AirJoint
@@ -117,18 +117,29 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         x: int,
         w: int,
         h: int,
+        inverted: bool = False,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
         self._info = _copy_info(_info)
         self._id = _id
         self._joints: list[Joint] = []
+        self._inverted = bool(inverted)
         self._info.type = self._note_type
         self._info.long_attr = LongAttr.BEGIN
         self.t = resolve_tick(t)
         self.x = x
         self.w = w
         self.h = h
+
+    @property
+    def inverted(self) -> bool:
+        """Whether the long air note is inverted (downward)."""
+        return self._inverted
+
+    @inverted.setter
+    def inverted(self, value: bool) -> None:
+        self._inverted = bool(value)
 
     def _begin_info_for_defaults(self) -> NoteInfo:
         return self._info
@@ -156,6 +167,7 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
             type=NoteType.AIR,
             long_attr=LongAttr.NONE,
             direction=AirDirection.UP,
+            ex_attr=ExAttr.INVERT if self.inverted else ExAttr.NONE,
         )
         air = RawNote(info=air_info, _id=None)
         air.children.append(action)
@@ -177,6 +189,8 @@ class _AttachableAirLong(_GeometryInfoMixin, _HeightMixin, _TransformMixin, _Air
         parts = [f"t={int(self.t)}", f"x={self.x}", f"w={self.w}", f"h={self.h}"]
         if self._id is not None:
             parts.append(f"id={self._id}")
+        if self.inverted:
+            parts.append("inverted=True")
         head = ", ".join(parts)
         if not self._joints:
             return f"{self.__class__.__name__}({head})"

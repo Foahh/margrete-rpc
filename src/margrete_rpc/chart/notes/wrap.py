@@ -7,7 +7,7 @@ from .joint import _JointHostBase
 from .long import AirCrush, Hold, Slide
 from .raw import RawNote
 from .shared import Note, UnsupportedNoteTree
-from .types import LongAttr, NoteType
+from .types import ExAttr, LongAttr, NoteType
 
 
 def wrap_raw_note(note: RawNote) -> Note:
@@ -96,9 +96,21 @@ def _wrap_attached_air_note(note: RawNote) -> Air | AirSlide | AirHold:
             raise UnsupportedNoteTree("unsupported air direction") from exc
     action = note.children[0]
     if action.type is NoteType.AIRSLIDE:
-        return _wrap_air_slide(action, air_t=int(note.t), air_x=note.x, air_w=note.w)
+        return _wrap_air_slide(
+            action,
+            air_t=int(note.t),
+            air_x=note.x,
+            air_w=note.w,
+            air_inverted=note.ex_attr is ExAttr.INVERT,
+        )
     if action.type is NoteType.AIRHOLD:
-        return _wrap_air_hold(action, air_t=int(note.t), air_x=note.x, air_w=note.w)
+        return _wrap_air_hold(
+            action,
+            air_t=int(note.t),
+            air_x=note.x,
+            air_w=note.w,
+            air_inverted=note.ex_attr is ExAttr.INVERT,
+        )
     raise UnsupportedNoteTree("air child must be AIRSLIDE or AIRHOLD")
 
 
@@ -153,6 +165,7 @@ def _wrap_air_slide(
     air_t: int,
     air_x: int,
     air_w: int,
+    air_inverted: bool,
 ) -> AirSlide:
     _check_raw_root_begin(note, NoteType.AIRSLIDE)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
@@ -161,6 +174,7 @@ def _wrap_air_slide(
         x=air_x,
         w=air_w,
         h=note.h,
+        inverted=air_inverted,
         _info=note.info,
         _id=note._id,
     )
@@ -193,6 +207,7 @@ def _wrap_air_hold(
     air_t: int,
     air_x: int,
     air_w: int,
+    air_inverted: bool,
 ) -> AirHold:
     _check_raw_root_begin(note, NoteType.AIRHOLD)
     _require_final_end(note.children, {LongAttr.END, LongAttr.END_NOACT})
@@ -201,6 +216,7 @@ def _wrap_air_hold(
         x=air_x,
         w=air_w,
         h=note.h,
+        inverted=air_inverted,
         _info=note.info,
         _id=note._id,
     )

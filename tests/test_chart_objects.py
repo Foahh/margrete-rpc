@@ -1163,6 +1163,26 @@ def test_air_invert_maps_to_ex_attr_invert_on_ll():
     assert RawNote.t == 480
 
 
+def test_air_slide_and_air_hold_inverted_map_to_outer_air_ex_attr():
+    air_slide = AirSlide(t=0, x=4, w=2, h=80, inverted=True).with_step(
+        t=480, x=6, w=2, h=100
+    )
+    air_hold = AirHold(t=960, x=4, w=2, h=80).with_step(t=1440, x=4, w=2, h=80)
+    air_hold.inverted = True
+
+    slide_air = Tap(t=0, x=4, w=2).with_air(air_slide).to_raw().children[0]
+    hold_air = Tap(t=960, x=4, w=2).with_air(air_hold).to_raw().children[0]
+
+    assert air_slide.inverted is True
+    assert air_hold.inverted is True
+    assert slide_air.ex_attr is ExAttr.INVERT
+    assert hold_air.ex_attr is ExAttr.INVERT
+    assert slide_air.children[0].ex_attr is ExAttr.NONE
+    assert hold_air.children[0].ex_attr is ExAttr.NONE
+    assert "inverted=True" in str(air_slide)
+    assert "inverted=True" in str(air_hold)
+
+
 def test_air_note_owns_its_own_geometry_in_raw_output():
     # Air stores its own t/x/w — serialization uses the air's values, not the parent's.
     # skip_validation=True isolates the ownership assertion from the geometry-match rule.
@@ -1448,6 +1468,36 @@ def test_wrap_raw_note_preserves_transformed_flick_direction(direction):
     assert isinstance(wrapped, Flick)
     assert wrapped.dir == direction
     assert restored == RawNote
+
+
+def test_wrap_raw_note_preserves_inverted_air_slide_and_hold():
+    raw_slide = R.tap(t=0, x=4, w=2).child(
+        R.air(t=0, x=4, w=2, inverted=True).child(
+            R.air_slide_begin(t=0, x=4, w=2, h=80).child(
+                R.air_slide_end(t=480, x=6, w=2, h=100)
+            )
+        )
+    )
+    raw_hold = R.tap(t=960, x=4, w=2).child(
+        R.air(t=960, x=4, w=2, inverted=True).child(
+            R.air_hold_begin(t=960, x=4, w=2, h=80).child(
+                R.air_hold_end(t=1440, x=4, w=2, h=80)
+            )
+        )
+    )
+
+    wrapped_slide = wrap_raw_note(raw_slide)
+    wrapped_hold = wrap_raw_note(raw_hold)
+
+    assert isinstance(wrapped_slide, Tap)
+    assert isinstance(wrapped_slide.air, AirSlide)
+    assert wrapped_slide.air.inverted is True
+    assert wrapped_slide.to_raw() == raw_slide
+
+    assert isinstance(wrapped_hold, Tap)
+    assert isinstance(wrapped_hold.air, AirHold)
+    assert wrapped_hold.air.inverted is True
+    assert wrapped_hold.to_raw() == raw_hold
 
 
 def test_chart_from_begin_edit_response_preserves_ordered_typed_and_raw_notes():
