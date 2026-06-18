@@ -24,11 +24,19 @@ function stripLangPrefix(pathname: string): string {
   return pathname;
 }
 
+const globalRoutes = ["/llms.txt", "/llms-full.txt", docsContentRoute];
+
+function isGlobalRoute(pathname: string): boolean {
+  return globalRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 const proxy: NextProxy = (request, event) => {
   const stripped = stripLangPrefix(request.nextUrl.pathname);
 
-  if (stripped !== request.nextUrl.pathname && stripped.startsWith(`${docsContentRoute}/`)) {
-    return NextResponse.rewrite(new URL(stripped, request.nextUrl));
+  if (isGlobalRoute(stripped)) {
+    return stripped === request.nextUrl.pathname
+      ? NextResponse.next()
+      : NextResponse.rewrite(new URL(stripped, request.nextUrl));
   }
 
   const result = rewriteSuffix(stripped);
