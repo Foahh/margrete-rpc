@@ -1,6 +1,6 @@
 ---
-title: Getting Started
-description: Install Margrete RPC and write your first chart script.
+title: 快速开始
+description: 安装 Margrete RPC，并编写你的第一个谱面脚本。
 icon: Rocket
 ---
 
@@ -9,18 +9,18 @@ import EnableThePluginImage from "./assets/enable-the-plugin.png";
 import ActivateThePluginImage from "./assets/activate-the-plugin.png";
 import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png";
 
-**Margrete RPC** is a [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro) plugin that lets you script chart editing via Python.
+**Margrete RPC** 是 [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete/intro) 的插件。它可以让你通过 Python 脚本直接编辑谱面。
 
-## Prerequisites
+## 前置需求
 
 {/* prettier-ignore */}
-<Callout title="Requirements" type="info">
-  - Python 3.13 or later 
-  - Margrete 1.8.0 or later
+<Callout title="环境要求" type="info">
+  - Python 3.13 或更高版本 
+  - Margrete 1.8.0 或更高版本
 </Callout>
 
 
-### 1. Install the Python module
+### 1. 安装 Python 模块
 
 {/* prettier-ignore */}
 <Tabs items={["pip", "uv"]}>
@@ -36,11 +36,11 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
   </Tab>
 </Tabs>
 
-### 2. Install the Margrete plugin
+### 2. 安装 Margrete 插件
 
-1. Download the latest release from the [GitHub Releases](https://github.com/Foahh/margrete-rpc/releases).
+1. 从 [GitHub Releases](https://github.com/Foahh/margrete-rpc/releases) 下载最新版本。
 
-2. Open `margrete-rpc-vX.X.X.zip` and copy `margrete-rpc.dll` and `margrete-rpc.ini` to your Margrete `plugins` directory.
+2. 打开 `margrete-rpc-vX.X.X.zip`，将 `margrete-rpc.dll` 和 `margrete-rpc.ini` 复制到 Margrete 的 `plugins` 目录。
 
    <Files>
      <Folder name="Margrete" defaultOpen disabled>
@@ -58,13 +58,13 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
      </Folder>
    </Files>
 
-3. Restart Margrete. Then open **Extensions** → **Manage Extensions**, tick **margrete-rpc.dll**, and click **Confirm**.
+3. 重启 Margrete。然后打开 **Extensions** → **Manage Extensions**，勾选 **margrete-rpc.dll**，再点击 **Confirm**。
 
    <ImageZoom src={EnableThePluginImage} alt="Enable the plugin" width="500" />
 
-## Quick start
+## 快速上手
 
-1. In Margrete, open **Extensions** → **Margrete RPC** to start the plugin.
+1. 在 Margrete 中打开 **Extensions** → **Margrete RPC** 启动插件。
 
    <div className="flex items-center justify-start gap-1">
      <ImageZoom src={ExtensionToMargreteRpcImage} alt="Extension to Margrete RPC" width="300" />
@@ -72,30 +72,30 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
      <ImageZoom src={ActivateThePluginImage} alt="Start the plugin" width="400" />
    </div>
 
-   <Callout type="info">You need to start the plugin each time Margrete restarts.</Callout>
+   <Callout type="info">每次开启 Margrete 后，都需要重新启动插件。</Callout>
 
-2. Create a file called `example.py`:
+2. 创建一个名为 `example.py` 的文件：
 
    ```python
    from margrete_rpc import Margrete
    from margrete_rpc.chart.notes import Tap
 
-   with Margrete() as m:  # auto-detect the running plugin instance and transport
+   with Margrete() as m:  # 会自动检测正在运行的插件
        status = m.status()
        print(f"Plugin v{status.server_version} (pid {status.pid})")
        print(f"Log: {status.log_path}")
 
        with m.open_edit() as tx:
            tx.chart.notes.append(Tap(t=0, x=0, w=4))
-           # changes are applied when this block exits successfully
+           # 当这个代码块正常退出时，修改才会被应用
    ```
 
-3. Run the script and check the editor:
+3. 运行脚本并查看编辑器：
 
    ```bash
    python example.py
    ```
 
-   This connects to Margrete, prints the plugin status, opens an [edit transaction](/docs/basic/edit-transactions), and appends a Tap note to the chart.
+这段代码会连接到 Margrete 插件，打印服务器状态，打开一个 [编辑交易](/docs/basic/edit-transactions)，并向谱面中追加一个 Tap 物件。
 
-   ![Margrete editor changes after quick start](assets/after-quick-start-margrete.png)
+![Margrete editor changes after quick start](assets/after-quick-start-margrete.png)
