@@ -5,6 +5,7 @@
 #include <fstream>
 #include <random>
 #include <sstream>
+#include <vector>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -98,7 +99,7 @@ std::filesystem::path DiscoveryRegistry::RecordPath(const std::string &instanceI
     return Directory() / (instanceId + ".json");
 }
 
-void DiscoveryRegistry::Publish(const std::string &instanceId, const std::string &host, std::uint16_t port,
+void DiscoveryRegistry::Publish(const std::string &instanceId, const std::vector<DiscoveryTransport> &transports,
                                 const std::filesystem::path &logPath, const char *pluginVersion, Logger &logger)
 {
     try
@@ -106,13 +107,30 @@ void DiscoveryRegistry::Publish(const std::string &instanceId, const std::string
         const auto dir = Directory();
         std::filesystem::create_directories(dir);
         const auto recordPath = RecordPath(instanceId);
-        const std::string endpoint = host + ":" + std::to_string(port);
+        const std::string endpoint = transports.empty() ? "" : transports.front().endpoint;
 
         std::ofstream out(recordPath, std::ios::trunc);
         out << "{\n";
+        out << "  \"schema_version\": 2,\n";
         out << "  \"instance_id\": \"" << JsonEscape(instanceId) << "\",\n";
         out << "  \"pid\": " << CurrentProcessId() << ",\n";
         out << "  \"endpoint\": \"" << JsonEscape(endpoint) << "\",\n";
+        out << "  \"transports\": [\n";
+        for (std::size_t i = 0; i < transports.size(); ++i)
+        {
+            const auto &transport = transports[i];
+            out << "    {\"type\": \"" << JsonEscape(transport.type) << "\"";
+            if (!transport.endpoint.empty())
+            {
+                out << ", \"endpoint\": \"" << JsonEscape(transport.endpoint) << "\"";
+            }
+            if (!transport.path.empty())
+            {
+                out << ", \"path\": \"" << JsonEscape(transport.path) << "\"";
+            }
+            out << "}" << (i + 1 == transports.size() ? "" : ",") << "\n";
+        }
+        out << "  ],\n";
         out << "  \"started_at_unix\": " << UnixTimeSeconds() << ",\n";
         out << "  \"plugin_version\": \"" << JsonEscape(pluginVersion ? pluginVersion : "") << "\",\n";
         out << "  \"log\": \"" << JsonEscape(logPath.string()) << "\"\n";

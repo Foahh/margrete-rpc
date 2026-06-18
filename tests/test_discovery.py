@@ -29,6 +29,25 @@ def _write_record(base: Path, instance_id: str, endpoint: str) -> None:
     )
 
 
+def _write_transport_record(base: Path, instance_id: str, transports: list[dict[str, str]]) -> None:
+    directory = base / "MargreteRPC" / "instances"
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{instance_id}.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "instance_id": instance_id,
+                "pid": 123,
+                "endpoint": transports[0].get("endpoint", ""),
+                "transports": transports,
+                "plugin_version": "0.1.0",
+                "log": "margrete-rpc.log",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def _start_ping_server() -> str:
     port_holder: list[int] = []
 
@@ -72,6 +91,27 @@ def test_list_instances_loads_records_without_validation(monkeypatch, tmp_path):
     assert len(instances) == 1
     assert instances[0].instance_id == "one"
     assert instances[0].endpoint == "127.0.0.1:49000"
+
+
+def test_list_instances_loads_transport_records_without_validation(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    _write_transport_record(
+        tmp_path,
+        "one",
+        [
+            {"type": "tcp", "endpoint": "127.0.0.1:49000"},
+            {"type": "npipe", "path": "\\\\.\\pipe\\margrete-rpc-one"},
+        ],
+    )
+
+    instances = list_instances(validate=False)
+
+    assert len(instances) == 1
+    assert instances[0].endpoint == "127.0.0.1:49000"
+    assert [(item.type, item.endpoint) for item in instances[0].transports] == [
+        ("tcp", "127.0.0.1:49000"),
+        ("npipe", "npipe://./pipe/margrete-rpc-one"),
+    ]
 
 
 def test_list_instances_filters_stale_records(monkeypatch, tmp_path):

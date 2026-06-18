@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "DiscoveryRegistry.h"
 #include "Logger.h"
@@ -76,13 +77,23 @@ TEST_CASE("discovery publishes configured host")
         const std::filesystem::path logPath = base / "test.log";
         Logger logger(logPath);
 
-        DiscoveryRegistry::Publish(instanceId, "192.168.1.23", 49000, logPath, "test-version", logger);
+        DiscoveryRegistry::Publish(
+            instanceId,
+            std::vector<DiscoveryTransport>{
+                DiscoveryTransport{"tcp", "192.168.1.23:49000", ""},
+                DiscoveryTransport{"npipe", "", "\\\\.\\pipe\\margrete-rpc-test"},
+            },
+            logPath, "test-version", logger);
 
         const std::filesystem::path recordPath = base / "MargreteRPC" / "instances" / (instanceId + ".json");
         std::ifstream in(recordPath);
         REQUIRE(in);
         const std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         REQUIRE_THAT(content, ContainsSubstring("\"endpoint\": \"192.168.1.23:49000\""));
+        REQUIRE_THAT(content, ContainsSubstring("\"schema_version\": 2"));
+        REQUIRE_THAT(content, ContainsSubstring("\"type\": \"tcp\""));
+        REQUIRE_THAT(content, ContainsSubstring("\"type\": \"npipe\""));
+        REQUIRE_THAT(content, ContainsSubstring("\"path\": \"\\\\\\\\.\\\\pipe\\\\margrete-rpc-test\""));
     }
 
     std::filesystem::remove_all(base);

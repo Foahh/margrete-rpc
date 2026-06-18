@@ -9,7 +9,7 @@ class MargreteError(Exception):
 
 
 class MargreteProtocolError(MargreteError):
-    """Raised when a server response cannot be parsed (invalid TCP/protobuf framing)."""
+    """Raised when a server response cannot be parsed (invalid RPC/protobuf framing)."""
 
 
 class MargreteTimeoutError(MargreteError, TimeoutError):

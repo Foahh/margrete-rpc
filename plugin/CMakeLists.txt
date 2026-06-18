@@ -15,7 +15,7 @@ function(setup_metadata)
     set(REPO_URL "https://github.com/Foahh/margrete-rpc")
 
     set(TITLE "Margrete RPC" PARENT_SCOPE)
-    set(DESC "TCP/protobuf bridge for Margrete\\n${REPO_URL}" PARENT_SCOPE)
+    set(DESC "Local RPC/protobuf bridge for Margrete\\n${REPO_URL}" PARENT_SCOPE)
     set(DEVELOPER "Foahh" PARENT_SCOPE)
     set(DLL_NAME "margrete-rpc" PARENT_SCOPE)
 endfunction()
@@ -68,6 +68,7 @@ add_library(margrete_rpc SHARED
     src/DiscoveryRegistry.cpp
     src/FrameProtocol.cpp
     src/MargreteSession.cpp
+    src/NamedPipeServer.cpp
     src/RequestRouter.cpp
     src/RootNoteDeduper.cpp
     src/SocketServer.cpp

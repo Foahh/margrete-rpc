@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 import pytest
 
+from margrete_rpc._pipe import display_pipe_endpoint, normalize_pipe_endpoint
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
 from margrete_rpc._socket import SocketRpcClient, decode_frame, encode_frame
 from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError, MargreteTimeoutError
@@ -50,6 +51,15 @@ def test_decode_frame_rejects_truncated_payload():
 
     with pytest.raises(MargreteProtocolError, match="truncated"):
         decode_frame(frame)
+
+
+def test_pipe_endpoint_helpers_round_trip_windows_pipe_path():
+    path = "\\\\.\\pipe\\margrete-rpc-test"
+
+    endpoint = display_pipe_endpoint(path)
+
+    assert endpoint == "npipe://./pipe/margrete-rpc-test"
+    assert normalize_pipe_endpoint(endpoint) == path
 
 
 def test_client_maps_error_response_to_exception():

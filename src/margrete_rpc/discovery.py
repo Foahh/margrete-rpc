@@ -7,9 +7,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from margrete_rpc._endpoint import create_transport
+from margrete_rpc._pipe import display_pipe_endpoint
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc._socket import SocketRpcClient
 from margrete_rpc.errors import MargreteDiscoveryError, MargreteError
+from margrete_rpc.trace import NoopTracer
+
+
+@dataclass(frozen=True)
+class MargreteTransportEndpoint:
+    """A connection endpoint advertised by a Margrete RPC instance."""
+
+    type: str
+    endpoint: str
 
 
 @dataclass(frozen=True)
@@ -18,7 +28,9 @@ class MargreteInstance:
 
     Attributes:
         instance_id: Identifier used to select this instance.
-        endpoint: The ``host:port`` to connect to.
+        endpoint: Preferred endpoint to connect to. Legacy records use ``host:port``;
+            newer records may use ``npipe://./pipe/name``.
+        transports: All advertised endpoints, in discovery preference order.
         pid: Host process id, if recorded.
         plugin_version: Plugin version that wrote the record, if recorded.
         log: Path to the instance's log file, if recorded.
@@ -27,6 +39,7 @@ class MargreteInstance:
 
     instance_id: str
     endpoint: str
+    transports: tuple[MargreteTransportEndpoint, ...] = ()
     pid: int | None = None
     plugin_version: str | None = None
     log: str | None = None
@@ -73,7 +86,7 @@ def list_instances(*, validate: bool = True, timeout: float = 1.0) -> list[Margr
 
 
 def resolve_endpoint(instance_id: str | None = None, *, timeout: float = 1.0) -> str:
-    """Resolve a connectable ``host:port`` endpoint via discovery.
+    """Resolve a connectable endpoint via discovery.
 
     Args:
         instance_id: Select a specific instance by id; when ``None``, auto-detect the sole
@@ -81,7 +94,7 @@ def resolve_endpoint(instance_id: str | None = None, *, timeout: float = 1.0) ->
         timeout: Per-instance ping timeout in seconds.
 
     Returns:
-        The reachable instance's endpoint.
+        The reachable instance's preferred endpoint.
 
     Raises:
         MargreteDiscoveryError: If the named instance is missing or unreachable, or if zero
@@ -91,11 +104,12 @@ def resolve_endpoint(instance_id: str | None = None, *, timeout: float = 1.0) ->
         for instance in list_instances(validate=False):
             if instance.instance_id != instance_id:
                 continue
-            if _validated(instance, timeout) is None:
+            validated = _validated(instance, timeout)
+            if validated is None:
                 raise MargreteDiscoveryError(
                     f"Margrete RPC instance {instance_id!r} is not reachable"
                 )
-            return instance.endpoint
+            return validated.endpoint
         raise MargreteDiscoveryError(f"Margrete RPC instance {instance_id!r} was not found")
 
     instances = list_instances(validate=True, timeout=timeout)
@@ -120,13 +134,20 @@ def _load_instance(path: Path) -> MargreteInstance | None:
     data = cast(dict[str, object], raw_data)
 
     instance_id = _string(data.get("instance_id"))
-    endpoint = _string(data.get("endpoint"))
-    if not instance_id or not endpoint:
+    if not instance_id:
         return None
+    transports = _load_transports(data)
+    legacy_endpoint = _string(data.get("endpoint"))
+    if not transports and legacy_endpoint:
+        transports = (MargreteTransportEndpoint("tcp", legacy_endpoint),)
+    if not transports:
+        return None
+    endpoint = transports[0].endpoint
 
     return MargreteInstance(
         instance_id=instance_id,
         endpoint=endpoint,
+        transports=transports,
         pid=_int_or_none(data.get("pid")),
         plugin_version=_string(data.get("plugin_version")),
         log=_string(data.get("log")),
@@ -135,23 +156,56 @@ def _load_instance(path: Path) -> MargreteInstance | None:
 
 
 def _validated(instance: MargreteInstance, timeout: float) -> MargreteInstance | None:
-    try:
-        with SocketRpcClient(instance.endpoint, timeout=timeout) as client:
-            _response = client.request(
-                messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
-            )
-    except MargreteError:
+    reachable: list[MargreteTransportEndpoint] = []
+    for transport in instance.transports or (MargreteTransportEndpoint("tcp", instance.endpoint),):
+        if _can_ping(transport.endpoint, timeout):
+            reachable.append(transport)
+    if not reachable:
         return None
-    except OSError:
-        return None
+    endpoint = reachable[0].endpoint
     return MargreteInstance(
         instance_id=instance.instance_id,
-        endpoint=instance.endpoint,
+        endpoint=endpoint,
+        transports=tuple(reachable),
         pid=instance.pid,
         plugin_version=instance.plugin_version,
         log=instance.log,
         record_path=instance.record_path,
     )
+
+
+def _can_ping(endpoint: str, timeout: float) -> bool:
+    client = create_transport(endpoint, timeout, NoopTracer())
+    try:
+        _response = client.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
+    except MargreteError:
+        return False
+    except OSError:
+        return False
+    finally:
+        close = getattr(client, "close", None)
+        if close is not None:
+            close()
+    return True
+
+
+def _load_transports(data: dict[str, object]) -> tuple[MargreteTransportEndpoint, ...]:
+    raw = data.get("transports")
+    if not isinstance(raw, list):
+        return ()
+    transports: list[MargreteTransportEndpoint] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        transport = cast(dict[str, object], item)
+        transport_type = _string(transport.get("type"))
+        endpoint = _string(transport.get("endpoint"))
+        path = _string(transport.get("path"))
+        if transport_type == "tcp" and endpoint:
+            transports.append(MargreteTransportEndpoint("tcp", endpoint))
+        elif transport_type in {"npipe", "pipe"} and path:
+            transports.append(MargreteTransportEndpoint("npipe", display_pipe_endpoint(path)))
+    return tuple(transports)
 
 
 def _string(value: object) -> str | None:

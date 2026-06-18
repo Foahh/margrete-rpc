@@ -65,18 +65,43 @@ std::wstring EndpointText(const ServerControllerStatus &status)
     }
 
     const ServerConfig &effectiveConfig = status.hasActiveConfig ? status.activeConfig : status.loadedConfig;
+    std::vector<std::wstring> endpoints;
+    if (effectiveConfig.transport == ServerTransportMode::Tcp || effectiveConfig.transport == ServerTransportMode::Both)
+    {
+        std::wostringstream tcp;
+        tcp << L"tcp://" << WideFromUtf8(effectiveConfig.host) << L":";
+        tcp << (status.actualPort == 0 ? L"(starting)" : std::to_wstring(status.actualPort));
+        endpoints.push_back(tcp.str());
+    }
+    if (effectiveConfig.transport == ServerTransportMode::Pipe || effectiveConfig.transport == ServerTransportMode::Both)
+    {
+        endpoints.push_back(status.actualPipePath.empty() ? L"npipe://(starting)" : WideFromUtf8(status.actualPipePath));
+    }
+    if (endpoints.empty())
+    {
+        return L"(starting)";
+    }
+
     std::wostringstream out;
-    out << WideFromUtf8(effectiveConfig.host) << L":";
-    out << (status.actualPort == 0 ? L"(starting)" : std::to_wstring(status.actualPort));
+    for (std::size_t i = 0; i < endpoints.size(); ++i)
+    {
+        if (i != 0)
+        {
+            out << L" | ";
+        }
+        out << endpoints[i];
+    }
     return out.str();
 }
 
 bool ActiveConfigDiffers(const ServerControllerStatus &status)
 {
     return status.running && status.hasActiveConfig &&
-           (status.loadedConfig.host != status.activeConfig.host ||
+           (status.loadedConfig.transport != status.activeConfig.transport ||
+            status.loadedConfig.host != status.activeConfig.host ||
             status.loadedConfig.port != status.activeConfig.port ||
-            status.loadedConfig.autoPort != status.activeConfig.autoPort);
+            status.loadedConfig.autoPort != status.activeConfig.autoPort ||
+            status.loadedConfig.pipeName != status.activeConfig.pipeName);
 }
 
 std::wstring GetText(HWND hwnd)
@@ -297,7 +322,7 @@ struct ServerStatusWindow
         AddLabel(hwnd, L"Server", labelX, y, 90, kSectionHeight, boldFont);
         y += kSectionHeight + kRowGap;
 
-        AddLabel(hwnd, L"Endpoint", labelX, y, labelWidth, kControlHeight, font);
+        AddLabel(hwnd, L"Endpoints", labelX, y, labelWidth, kControlHeight, font);
         endpointValue = AddValue(hwnd, valueX, y, endpointWidth, kControlHeight, font);
         startStopButton = AddButton(hwnd, L"", kStartStopButtonId, actionX, y, buttonWidth, kControlHeight, font);
         y += kControlHeight + kSectionGap;

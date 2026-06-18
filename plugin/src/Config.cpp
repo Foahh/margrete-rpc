@@ -59,6 +59,32 @@ bool IsValidIpv4Address(std::string_view value)
     }
     return octetCount == 4;
 }
+
+ServerTransportMode ParseTransportMode(std::string_view value)
+{
+    if (value == "tcp")
+    {
+        return ServerTransportMode::Tcp;
+    }
+    if (value == "pipe" || value == "npipe")
+    {
+        return ServerTransportMode::Pipe;
+    }
+    if (value == "both")
+    {
+        return ServerTransportMode::Both;
+    }
+    throw std::runtime_error("server transport must be tcp, pipe, or both");
+}
+
+bool IsValidPipeName(std::string_view value)
+{
+    if (value.empty())
+    {
+        return false;
+    }
+    return value.find_first_of("\\/:*?\"<>|") == std::string_view::npos;
+}
 } // namespace
 
 ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
@@ -97,6 +123,10 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
         {
             config.host = value;
         }
+        else if (section == "server" && key == "transport")
+        {
+            config.transport = ParseTransportMode(value);
+        }
         else if (section == "server" && key == "port")
         {
             if (value == "auto")
@@ -113,11 +143,19 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
             config.port = static_cast<std::uint16_t>(port);
             config.autoPort = port == 0;
         }
+        else if (section == "server" && key == "pipe_name")
+        {
+            config.pipeName = value;
+        }
     }
 
     if (!IsValidIpv4Address(config.host))
     {
         throw std::runtime_error("server host must be an IPv4 address");
+    }
+    if (config.pipeName != "auto" && !IsValidPipeName(config.pipeName))
+    {
+        throw std::runtime_error("server pipe_name must be auto or a simple pipe name");
     }
     return config;
 }
@@ -125,4 +163,18 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
 bool IsLoopbackAddress(std::string_view host)
 {
     return host.starts_with("127.");
+}
+
+std::string_view TransportModeName(ServerTransportMode mode)
+{
+    switch (mode)
+    {
+    case ServerTransportMode::Tcp:
+        return "tcp";
+    case ServerTransportMode::Pipe:
+        return "pipe";
+    case ServerTransportMode::Both:
+        return "both";
+    }
+    return "both";
 }

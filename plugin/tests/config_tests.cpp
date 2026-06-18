@@ -13,9 +13,11 @@ TEST_CASE("config uses defaults when file is missing")
     const ServerConfig config = LoadServerConfig("missing-file.ini");
     REQUIRE(config.sourcePath.filename().string() == "missing-file.ini");
     REQUIRE(config.loadedFromFile == false);
+    REQUIRE(config.transport == ServerTransportMode::Both);
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 0);
     REQUIRE(config.autoPort == true);
+    REQUIRE(config.pipeName == "auto");
 }
 
 TEST_CASE("config reads server section")
@@ -24,17 +26,45 @@ TEST_CASE("config reads server section")
     {
         std::ofstream out(path);
         out << "[server]\n";
+        out << "transport = pipe\n";
         out << "host = 127.0.0.1\n";
         out << "port = 49000\n";
+        out << "pipe_name = margrete-rpc-test\n";
     }
 
     const ServerConfig config = LoadServerConfig(path);
 
     REQUIRE(config.sourcePath == path);
     REQUIRE(config.loadedFromFile == true);
+    REQUIRE(config.transport == ServerTransportMode::Pipe);
     REQUIRE(config.host == "127.0.0.1");
     REQUIRE(config.port == 49000);
     REQUIRE(config.autoPort == false);
+    REQUIRE(config.pipeName == "margrete-rpc-test");
+}
+
+TEST_CASE("config rejects invalid transport")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-bad-transport.ini";
+    {
+        std::ofstream out(path);
+        out << "[server]\n";
+        out << "transport = udp\n";
+    }
+
+    REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server transport must be tcp, pipe, or both"));
+}
+
+TEST_CASE("config rejects invalid pipe name")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-bad-pipe.ini";
+    {
+        std::ofstream out(path);
+        out << "[server]\n";
+        out << "pipe_name = bad/name\n";
+    }
+
+    REQUIRE_THROWS_WITH(LoadServerConfig(path), ContainsSubstring("server pipe_name must be auto"));
 }
 
 TEST_CASE("config supports automatic port")
@@ -84,4 +114,11 @@ TEST_CASE("loopback detection")
     REQUIRE(IsLoopbackAddress("127.5.6.7"));
     REQUIRE_FALSE(IsLoopbackAddress("0.0.0.0"));
     REQUIRE_FALSE(IsLoopbackAddress("192.168.1.10"));
+}
+
+TEST_CASE("transport mode names")
+{
+    REQUIRE(TransportModeName(ServerTransportMode::Tcp) == "tcp");
+    REQUIRE(TransportModeName(ServerTransportMode::Pipe) == "pipe");
+    REQUIRE(TransportModeName(ServerTransportMode::Both) == "both");
 }

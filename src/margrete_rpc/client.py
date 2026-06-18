@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import TYPE_CHECKING
 
+from margrete_rpc._endpoint import create_transport
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc._socket import SocketRpcClient
 from margrete_rpc._transport import RpcTransport
 from margrete_rpc._version import ensure_compatible_api_version
 from margrete_rpc.discovery import resolve_endpoint
@@ -66,8 +66,9 @@ class Margrete:
         With no arguments the single running instance is auto-detected via discovery.
 
         Args:
-            endpoint: Explicit ``host:port`` to connect to. Mutually exclusive with
-                ``instance_id`` and ``transport``.
+            endpoint: Explicit endpoint to connect to. ``host:port`` and
+                ``tcp://host:port`` use TCP; ``npipe://./pipe/name`` uses a Windows
+                named pipe. Mutually exclusive with ``instance_id`` and ``transport``.
             instance_id: Connect to the discovered instance with this id (see
                 :class:`ServerStatus.instance_id`). Mutually exclusive with ``endpoint``.
             timeout: Socket timeout in seconds for requests. Discovery uses at most
@@ -96,7 +97,7 @@ class Margrete:
                 raise ValueError("pass endpoint or instance_id, not both")
             if endpoint is None:
                 endpoint = resolve_endpoint(instance_id, timeout=min(timeout, 1.0))
-            self._transport = SocketRpcClient(endpoint, timeout, tracer=self._tracer)
+            self._transport = create_transport(endpoint, timeout, self._tracer)
 
         if check_version:
             status = self.status()

@@ -4,5 +4,7 @@ desc = @DESC@
 dev = @DEVELOPER@
 
 [server]
+transport = both
 host = 127.0.0.1
 port = auto
+pipe_name = auto
