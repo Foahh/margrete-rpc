@@ -57,7 +57,7 @@ std::wstring WideFromPath(const std::filesystem::path &path)
     return path.empty() ? L"(none)" : path.wstring();
 }
 
-std::wstring EndpointText(const ServerControllerStatus &status)
+std::wstring TcpEndpointText(const ServerControllerStatus &status)
 {
     if (!status.running)
     {
@@ -65,33 +65,30 @@ std::wstring EndpointText(const ServerControllerStatus &status)
     }
 
     const ServerConfig &effectiveConfig = status.hasActiveConfig ? status.activeConfig : status.loadedConfig;
-    std::vector<std::wstring> endpoints;
-    if (effectiveConfig.transport == ServerTransportMode::Tcp || effectiveConfig.transport == ServerTransportMode::Both)
+    if (effectiveConfig.transport != ServerTransportMode::Tcp && effectiveConfig.transport != ServerTransportMode::Both)
     {
-        std::wostringstream tcp;
-        tcp << L"tcp://" << WideFromUtf8(effectiveConfig.host) << L":";
-        tcp << (status.actualPort == 0 ? L"(starting)" : std::to_wstring(status.actualPort));
-        endpoints.push_back(tcp.str());
-    }
-    if (effectiveConfig.transport == ServerTransportMode::Pipe || effectiveConfig.transport == ServerTransportMode::Both)
-    {
-        endpoints.push_back(status.actualPipePath.empty() ? L"npipe://(starting)" : WideFromUtf8(status.actualPipePath));
-    }
-    if (endpoints.empty())
-    {
-        return L"(starting)";
+        return L"(disabled)";
     }
 
     std::wostringstream out;
-    for (std::size_t i = 0; i < endpoints.size(); ++i)
-    {
-        if (i != 0)
-        {
-            out << L" | ";
-        }
-        out << endpoints[i];
-    }
+    out << L"tcp://" << WideFromUtf8(effectiveConfig.host) << L":";
+    out << (status.actualPort == 0 ? L"(starting)" : std::to_wstring(status.actualPort));
     return out.str();
+}
+
+std::wstring PipeEndpointText(const ServerControllerStatus &status)
+{
+    if (!status.running)
+    {
+        return L"(stopped)";
+    }
+
+    const ServerConfig &effectiveConfig = status.hasActiveConfig ? status.activeConfig : status.loadedConfig;
+    if (effectiveConfig.transport != ServerTransportMode::Pipe && effectiveConfig.transport != ServerTransportMode::Both)
+    {
+        return L"(disabled)";
+    }
+    return status.actualPipePath.empty() ? L"npipe://(starting)" : WideFromUtf8(status.actualPipePath);
 }
 
 bool ActiveConfigDiffers(const ServerControllerStatus &status)
@@ -219,7 +216,8 @@ struct ServerStatusWindow
 
     HWND hwnd{};
     HWND parent{};
-    HWND endpointValue{};
+    HWND tcpEndpointValue{};
+    HWND pipeEndpointValue{};
     HWND loadedPathValue{};
     HWND instanceValue{};
     HWND logValue{};
@@ -235,7 +233,8 @@ struct ServerStatusWindow
     int normalClientHeight{};
     int messageClientHeight{};
     bool messageControlsVisible{true};
-    std::wstring endpointText;
+    std::wstring tcpEndpointText;
+    std::wstring pipeEndpointText;
     std::wstring configPathText;
     std::wstring logPathText;
 
@@ -322,9 +321,13 @@ struct ServerStatusWindow
         AddLabel(hwnd, L"Server", labelX, y, 90, kSectionHeight, boldFont);
         y += kSectionHeight + kRowGap;
 
-        AddLabel(hwnd, L"Endpoints", labelX, y, labelWidth, kControlHeight, font);
-        endpointValue = AddValue(hwnd, valueX, y, endpointWidth, kControlHeight, font);
+        AddLabel(hwnd, L"TCP", labelX, y, labelWidth, kControlHeight, font);
+        tcpEndpointValue = AddValue(hwnd, valueX, y, endpointWidth, kControlHeight, font);
         startStopButton = AddButton(hwnd, L"", kStartStopButtonId, actionX, y, buttonWidth, kControlHeight, font);
+        y += kControlHeight + kRowGap;
+
+        AddLabel(hwnd, L"Pipe", labelX, y, labelWidth, kControlHeight, font);
+        pipeEndpointValue = AddValue(hwnd, valueX, y, fullValueWidth, kControlHeight, font);
         y += kControlHeight + kSectionGap;
 
         AddLabel(hwnd, L"Runtime", labelX, y, 180, kSectionHeight, boldFont);
@@ -394,12 +397,14 @@ struct ServerStatusWindow
         }
 
         const ServerControllerStatus status = controller->status();
-        endpointText = EndpointText(status);
+        tcpEndpointText = TcpEndpointText(status);
+        pipeEndpointText = PipeEndpointText(status);
         configPathText = status.loadedConfig.loadedFromFile ? WideFromPath(status.loadedConfig.sourcePath) : L"(none)";
         logPathText = WideFromPath(status.logPath);
 
         SetText(startStopButton, status.running ? L"Stop" : L"Start");
-        SetText(endpointValue, endpointText);
+        SetText(tcpEndpointValue, tcpEndpointText);
+        SetText(pipeEndpointValue, pipeEndpointText);
 
         SetText(loadedPathValue, configPathText);
 
