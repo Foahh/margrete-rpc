@@ -119,7 +119,7 @@ class Note(Protocol):
         """
         ...
 
-    def clamped_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+    def clamped(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
         """Return a :meth:`clone` with the lane extent clamped, leaving ``self`` unchanged."""
         ...
 
@@ -300,8 +300,11 @@ class _TransformMixin:
 
         return cast(Self, _clamp(cast(Any, self), left, right))
 
-    def clamped_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+    def clamped(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
         return self.clone().clamp(left=left, right=right)
+
+    def clamped_w(self, *, left: int = 0, right: int = STANDARD_FIELD_WIDTH) -> Self:
+        return self.clamped(left=left, right=right)
 
     def clone(self) -> Self:
         from .transform import _clone

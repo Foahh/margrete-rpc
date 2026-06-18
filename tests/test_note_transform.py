@@ -458,9 +458,9 @@ def test_clamp_no_change_when_within_bounds():
     assert tap.w == 4
 
 
-def test_clamped_w_returns_copy_leaves_original():
+def test_clamped_returns_copy_leaves_original():
     tap = Tap(t=0, x=0, w=6)
-    result = tap.clamped_w(left=2)
+    result = tap.clamped(left=2)
     assert result is not tap
     assert result._id is None
     assert result.x == 2
