@@ -46,6 +46,18 @@ Use it to read and rewrite charts programmatically: place notes, edit events, an
 
    <ImageZoom src={EnableThePluginImage} alt="Enable the plugin" width="500" />
 
+The included `margrete-rpc.ini` starts both local transports by default:
+
+```ini
+[server]
+transport = both
+host = 127.0.0.1
+port = auto
+pipe_name = auto
+```
+
+`transport = both` publishes a TCP endpoint and a Windows named-pipe endpoint. Use `transport = tcp` or `transport = pipe` if you want to expose only one transport.
+
 ### 2. Install the Python package
 
 {/* prettier-ignore */}
@@ -80,7 +92,7 @@ Use it to read and rewrite charts programmatically: place notes, edit events, an
    from margrete_rpc import Margrete
    from margrete_rpc.chart.notes import Tap
 
-   with Margrete() as m:  # auto-detect the running plugin instance
+   with Margrete() as m:  # auto-detect the running plugin instance and transport
        status = m.status()
        print(f"Plugin v{status.server_version} (pid {status.pid})")
        print(f"Log: {status.log_path}")
