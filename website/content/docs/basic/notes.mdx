@@ -14,10 +14,9 @@ Most `Note` work follows the same pattern:
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-m = Margrete()
-
-with m.open_edit() as tx:
-    tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
 ```
 
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an

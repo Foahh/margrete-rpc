@@ -13,17 +13,16 @@ turning them into notes. The usual workflow is to draw a path as a curve, then m
 from margrete_rpc import Margrete
 from margrete_rpc.chart.util import Curve
 
-m = Margrete()
+with Margrete() as m:
+    with m.open_edit() as tx:
+        slide = (
+            Curve(t=(0, 0), x=0)
+            .to(t=(1, 0), x=12, ease_x="in_out_sine")
+            .to_slide(w=4)
+            .clamp()
+        )
 
-with m.open_edit() as tx:
-    slide = (
-        Curve(t=(0, 0), x=0)
-        .to(t=(1, 0), x=12, ease_x="in_out_sine")
-        .to_slide(w=4)
-        .clamp()
-    )
-
-    tx.chart.notes.append(slide)
+        tx.chart.notes.append(slide)
 ```
 
 ## Mental model

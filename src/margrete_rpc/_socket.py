@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from types import TracebackType
 
 from margrete_rpc._proto.margrete.rpc.v1 import messages_pb2
-from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
+from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError, MargreteTimeoutError
 from margrete_rpc.trace import NoopTracer, Tracer
 
 MAX_FRAME_SIZE = 16 * 1024 * 1024
@@ -123,7 +123,15 @@ class SocketRpcClient:
                         raise MargreteProtocolError(
                             f"response request_id {response.request_id} did not match {request_id}"
                         )
-                except (OSError, MargreteProtocolError):
+                except TimeoutError as exc:
+                    self._close_unlocked()
+                    raise MargreteTimeoutError(
+                        f"timed out while waiting for {span_name} response from {self.endpoint}"
+                    ) from exc
+                except OSError as exc:
+                    self._close_unlocked()
+                    raise MargreteProtocolError(f"socket error: {exc}") from exc
+                except MargreteProtocolError:
                     self._close_unlocked()
                     raise
                 except Exception:

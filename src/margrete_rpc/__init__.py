@@ -6,6 +6,7 @@ from margrete_rpc.errors import (
     MargreteError,
     MargreteProtocolError,
     MargreteRemoteError,
+    MargreteTimeoutError,
     MargreteVersionError,
 )
 from margrete_rpc.trace import CallbackTracer, NoopTracer, TraceEvent, Tracer
@@ -20,6 +21,7 @@ __all__ = [
     "MargreteInstance",
     "MargreteProtocolError",
     "MargreteRemoteError",
+    "MargreteTimeoutError",
     "MargreteVersionError",
     "NoopTracer",
     "ServerStatus",

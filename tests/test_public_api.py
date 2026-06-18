@@ -10,6 +10,7 @@ def test_root_package_exports_client_surface_only():
         "MargreteInstance",
         "MargreteProtocolError",
         "MargreteRemoteError",
+        "MargreteTimeoutError",
         "MargreteVersionError",
         "NoopTracer",
         "ServerStatus",

@@ -11,10 +11,9 @@ event edits are just list edits inside a [`Margrete.open_edit()`](/docs/referenc
 from margrete_rpc import Margrete
 from margrete_rpc.chart.events import BpmEvent
 
-m = Margrete()
-
-with m.open_edit() as tx:
-    tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.events.bpm.append(BpmEvent(t=0, bpm=180.0))
 ```
 
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an

@@ -137,7 +137,9 @@ def _load_instance(path: Path) -> MargreteInstance | None:
 def _validated(instance: MargreteInstance, timeout: float) -> MargreteInstance | None:
     try:
         with SocketRpcClient(instance.endpoint, timeout=timeout) as client:
-            _response = client.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
+            _response = client.request(
+                messages_pb2.Envelope(ping_request=messages_pb2.PingRequest())
+            )
     except MargreteError:
         return None
     except OSError:

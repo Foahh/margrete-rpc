@@ -8,11 +8,10 @@ Transforms are methods on [`Note`](/docs/reference/chart/notes/shared/Note) obje
 ```python
 from margrete_rpc import Margrete
 
-m = Margrete()
-
-with m.open_edit() as tx:
-    for note in tx.chart.notes:
-        note.shift(x=2)
+with Margrete() as m:
+    with m.open_edit() as tx:
+        for note in tx.chart.notes:
+            note.shift(x=2)
 ```
 
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an

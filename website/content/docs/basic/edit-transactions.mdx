@@ -12,14 +12,14 @@ Open a transaction, modify the chart, then exit the `with{:py}` block.
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-m = Margrete()
-
-with m.open_edit() as tx:
-    tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
 ```
 
 The edit is sent to Margrete when the `with{:py}` block exits normally. If the block raises an
 exception, no changes are applied.
+The outer `with Margrete() as m` closes the persistent RPC connection when your script is done.
 
 For the exact method signature, see [`Margrete.open_edit()`](/docs/reference/client/Margrete#functions) and the [`EditTransaction`](/docs/reference/transaction/EditTransaction) reference.
 
@@ -58,18 +58,17 @@ The [`EditTransaction`](/docs/reference/transaction/EditTransaction) object has 
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-m = Margrete()
+with Margrete() as m:
+    with m.open_edit() as tx:
+        for note in tx.chart.notes:
+            if isinstance(note, Tap):
+                print(f"Tap at tick {note.t}, lane {note.x}")
 
-with m.open_edit() as tx:
-    for note in tx.chart.notes:
-        if isinstance(note, Tap):
-            print(f"Tap at tick {note.t}, lane {note.x}")
+        for event in tx.chart.events.bpm:
+            print(f"BPM {event.bpm} at tick {event.t}")
 
-    for event in tx.chart.events.bpm:
-        print(f"BPM {event.bpm} at tick {event.t}")
-
-    for event in tx.chart.events.beat:
-        print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+        for event in tx.chart.events.beat:
+            print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
 ```
 
 ### Add a note at the current cursor
@@ -81,10 +80,9 @@ Margrete.
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-m = Margrete()
-
-with m.open_edit() as tx:
-    tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
+with Margrete() as m:
+    with m.open_edit() as tx:
+        tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
 ```
 
 ### Move every note right by two lanes

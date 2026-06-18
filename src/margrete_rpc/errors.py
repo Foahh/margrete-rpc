@@ -12,6 +12,10 @@ class MargreteProtocolError(MargreteError):
     """Raised when a server response cannot be parsed (invalid TCP/protobuf framing)."""
 
 
+class MargreteTimeoutError(MargreteError, TimeoutError):
+    """Raised when connecting to or waiting for the plugin exceeds the client timeout."""
+
+
 class MargreteDiscoveryError(MargreteError):
     """Raised when no single Margrete RPC instance can be resolved.
 
