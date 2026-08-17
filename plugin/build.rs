@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -95,28 +96,10 @@ fn build_time_utc() -> String {
 }
 
 fn format_unix(secs: u64) -> String {
-    // Keep a stable ISO-8601 UTC stamp without extra crates.
-    let days = secs / 86400;
-    let rem = secs % 86400;
-    let hour = rem / 3600;
-    let min = (rem % 3600) / 60;
-    let sec = rem % 60;
-    let (year, month, day) = civil_from_days(days as i64);
-    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z")
-}
-
-fn civil_from_days(z: i64) -> (i32, u32, u32) {
-    let z = z + 719468;
-    let era = if z >= 0 { z } else { z - 146096 } / 146097;
-    let doe = (z - era * 146097) as u64;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe as i32 + era as i32 * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m as u32, d as u32)
+    DateTime::<Utc>::from_timestamp(secs as i64, 0)
+        .unwrap_or(DateTime::<Utc>::UNIX_EPOCH)
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string()
 }
 
 fn embed_version_resource(version: &str, major: u16, minor: u16, patch: u16, desc: &str) {
