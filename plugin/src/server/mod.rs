@@ -7,7 +7,7 @@ use crate::abi::Context;
 use crate::rpc::router::{RequestRouter, RouterStatusSnapshot};
 use config::ServerConfig;
 use instance::AllocatedInstance;
-use logger::{path_utf8, Logger};
+use logger::{Logger, path_utf8};
 use pipe::NamedPipeServer;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};

@@ -82,10 +82,10 @@ fn env_u16(key: &str) -> u16 {
 }
 
 fn build_time_utc() -> String {
-    if let Ok(value) = env::var("SOURCE_DATE_EPOCH") {
-        if let Ok(secs) = value.parse::<u64>() {
-            return format_unix(secs);
-        }
+    if let Ok(value) = env::var("SOURCE_DATE_EPOCH")
+        && let Ok(secs) = value.parse::<u64>()
+    {
+        return format_unix(secs);
     }
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)

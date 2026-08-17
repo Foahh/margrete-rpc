@@ -1,6 +1,6 @@
 mod common;
 
-use common::fake::{FakeBpmEvent, FakeContext, FakeNote, APPEND_CHILD_RESULT};
+use common::fake::{APPEND_CHILD_RESULT, FakeBpmEvent, FakeContext, FakeNote};
 use margrete_rpc::abi::{Event, MP_FALSE, MP_NOTETYPE_HOLD, MP_NOTETYPE_TAP, MP_TRUE};
 use margrete_rpc::chart::session::MargreteSession;
 use margrete_rpc::chart::transaction::apply_edit;

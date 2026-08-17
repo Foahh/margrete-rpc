@@ -1,10 +1,10 @@
-use crate::abi::{ComPtr, Context, Unknown, MP_TRUE};
+use crate::abi::{ComPtr, Context, MP_TRUE, Unknown};
 use crate::chart::deduper::deduplicate;
 use crate::chart::mapper::snapshot_for_edit;
 use crate::chart::session::MargreteSession;
 use crate::chart::transaction::apply_edit;
 use crate::meta;
-use crate::rpc::proto::{envelope, Envelope, ErrorCode, ErrorResponse, StatusResponse};
+use crate::rpc::proto::{Envelope, ErrorCode, ErrorResponse, StatusResponse, envelope};
 use crate::server::config::ServerConfig;
 use crate::server::logger::Logger;
 use std::sync::Mutex;

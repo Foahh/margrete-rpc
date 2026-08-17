@@ -3,34 +3,34 @@ use crate::meta;
 use crate::server::logger::path_utf8;
 use crate::server::{ServerController, ServerControllerStatus};
 use std::ffi::c_void;
-use windows::core::{w, PCWSTR};
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, SIZE, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    CreateFontIndirectW, CreateSolidBrush, DeleteObject, FillRect, GetDC, GetDeviceCaps,
-    GetTextExtentPoint32W, InvalidateRect, ReleaseDC, SelectObject, SetBkColor, SetTextColor,
-    UpdateWindow, FW_NORMAL, FW_SEMIBOLD, HBRUSH, HDC, HFONT, LOGFONTW, LOGPIXELSY,
+    CreateFontIndirectW, CreateSolidBrush, DeleteObject, FW_NORMAL, FW_SEMIBOLD, FillRect, GetDC,
+    GetDeviceCaps, GetTextExtentPoint32W, HBRUSH, HDC, HFONT, InvalidateRect, LOGFONTW, LOGPIXELSY,
+    ReleaseDC, SelectObject, SetBkColor, SetTextColor, UpdateWindow,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::SystemServices::{SS_CENTERIMAGE, SS_LEFT, SS_NOPREFIX};
 use windows::Win32::UI::Controls::{
-    InitCommonControlsEx, ICC_STANDARD_CLASSES, INITCOMMONCONTROLSEX,
+    ICC_STANDARD_CLASSES, INITCOMMONCONTROLSEX, InitCommonControlsEx,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{EnableWindow, SetActiveWindow};
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    AdjustWindowRectEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    GetClientRect, GetMessageW, GetSystemMetrics, GetWindowLongPtrW, GetWindowTextLengthW,
-    GetWindowTextW, IsDialogMessageW, IsWindow, KillTimer, LoadCursorW, RegisterClassExW,
+    AdjustWindowRectEx, BS_PUSHBUTTON, CREATESTRUCTW, CW_USEDEFAULT, CreateWindowExW,
+    DefWindowProcW, DestroyWindow, DispatchMessageW, ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE,
+    ES_NOHIDESEL, ES_READONLY, GWL_EXSTYLE, GWL_STYLE, GWLP_USERDATA, GetClientRect, GetMessageW,
+    GetSystemMetrics, GetWindowLongPtrW, GetWindowTextLengthW, GetWindowTextW, HMENU, IDC_ARROW,
+    IsDialogMessageW, IsWindow, KillTimer, LoadCursorW, MSG, NONCLIENTMETRICSW, RegisterClassExW,
+    SM_CXPADDEDBORDER, SM_CXSIZE, SM_CXSMICON, SPI_GETNONCLIENTMETRICS, SW_HIDE, SW_SHOW,
+    SW_SHOWNORMAL, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
     SendMessageW, SetTimer, SetWindowLongPtrW, SetWindowPos, SetWindowTextW, ShowWindow,
-    SystemParametersInfoW, TranslateMessage, BS_PUSHBUTTON, CREATESTRUCTW, CW_USEDEFAULT,
-    ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, ES_NOHIDESEL, ES_READONLY, GWLP_USERDATA,
-    GWL_EXSTYLE, GWL_STYLE, HMENU, IDC_ARROW, MSG, NONCLIENTMETRICSW, SM_CXPADDEDBORDER, SM_CXSIZE,
-    SM_CXSMICON, SPI_GETNONCLIENTMETRICS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER, SW_HIDE,
-    SW_SHOW, SW_SHOWNORMAL, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WINDOW_EX_STYLE, WINDOW_STYLE,
-    WM_CLOSE, WM_COMMAND, WM_CREATE, WM_CTLCOLORSTATIC, WM_DESTROY, WM_ERASEBKGND, WM_NCCREATE,
-    WM_SETFONT, WM_TIMER, WNDCLASSEXW, WS_CAPTION, WS_CHILD, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
-    WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
+    SystemParametersInfoW, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLOSE, WM_COMMAND,
+    WM_CREATE, WM_CTLCOLORSTATIC, WM_DESTROY, WM_ERASEBKGND, WM_NCCREATE, WM_SETFONT, WM_TIMER,
+    WNDCLASSEXW, WS_CAPTION, WS_CHILD, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME, WS_SYSMENU,
+    WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
+use windows::core::{PCWSTR, w};
 
 const CLASS_NAME: PCWSTR = w!("MargreteRpcServerStatusWindow");
 const REFRESH_TIMER_ID: usize = 1;
@@ -137,9 +137,9 @@ impl ServerStatusWindow {
                 CW_USEDEFAULT,
                 width,
                 height,
-                self.parent,
-                HMENU::default(),
-                GetModuleHandleW(None).unwrap_or_default(),
+                Some(self.parent),
+                Some(HMENU::default()),
+                Some(GetModuleHandleW(None).unwrap_or_default().into()),
                 Some(self as *mut Self as *const c_void),
             )
             .unwrap_or_default();
@@ -152,7 +152,7 @@ impl ServerStatusWindow {
             let _ = ShowWindow(hwnd, SW_SHOW);
             let _ = UpdateWindow(hwnd);
             let mut msg = MSG::default();
-            while IsWindow(hwnd).as_bool() && GetMessageW(&mut msg, None, 0, 0).0 > 0 {
+            while IsWindow(Some(hwnd)).as_bool() && GetMessageW(&mut msg, None, 0, 0).0 > 0 {
                 if !IsDialogMessageW(hwnd, &msg).as_bool() {
                     let _ = TranslateMessage(&msg);
                     let _ = DispatchMessageW(&msg);
@@ -302,7 +302,7 @@ impl ServerStatusWindow {
             set_text_if_changed(self.error_value, w!(""));
         }
         unsafe {
-            let _ = InvalidateRect(self.error_label, None, true);
+            let _ = InvalidateRect(Some(self.error_label), None, true);
         }
     }
 
@@ -411,7 +411,7 @@ impl ServerStatusWindow {
         }
         unsafe {
             let _ = ShellExecuteW(
-                self.hwnd,
+                Some(self.hwnd),
                 w!("open"),
                 PCWSTR(path.as_ptr()),
                 None,
@@ -434,7 +434,7 @@ impl ServerStatusWindow {
             WM_CREATE => {
                 self.create_controls();
                 unsafe {
-                    let _ = SetTimer(self.hwnd, REFRESH_TIMER_ID, REFRESH_INTERVAL_MS, None);
+                    let _ = SetTimer(Some(self.hwnd), REFRESH_TIMER_ID, REFRESH_INTERVAL_MS, None);
                 }
                 self.refresh();
                 LRESULT(0)
@@ -473,7 +473,7 @@ impl ServerStatusWindow {
             }
             WM_DESTROY => {
                 unsafe {
-                    let _ = KillTimer(self.hwnd, REFRESH_TIMER_ID);
+                    let _ = KillTimer(Some(self.hwnd), REFRESH_TIMER_ID);
                 }
                 self.hwnd = HWND::default();
                 LRESULT(0)
@@ -487,13 +487,13 @@ impl Drop for ServerStatusWindow {
     fn drop(&mut self) {
         unsafe {
             if !self.background.is_invalid() {
-                let _ = DeleteObject(self.background);
+                let _ = DeleteObject(self.background.into());
             }
             if !self.bold_font.is_invalid() {
-                let _ = DeleteObject(self.bold_font);
+                let _ = DeleteObject(self.bold_font.into());
             }
             if !self.font.is_invalid() {
-                let _ = DeleteObject(self.font);
+                let _ = DeleteObject(self.font.into());
             }
         }
     }
@@ -505,19 +505,21 @@ unsafe extern "system" fn window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    let window = if message == WM_NCCREATE {
-        let create = &*(lparam.0 as *const CREATESTRUCTW);
-        let window = create.lpCreateParams as *mut ServerStatusWindow;
-        (*window).hwnd = hwnd;
-        let _ = SetWindowLongPtrW(hwnd, GWLP_USERDATA, window as isize);
-        window
-    } else {
-        GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut ServerStatusWindow
-    };
-    if window.is_null() {
-        return DefWindowProcW(hwnd, message, wparam, lparam);
+    unsafe {
+        let window = if message == WM_NCCREATE {
+            let create = &*(lparam.0 as *const CREATESTRUCTW);
+            let window = create.lpCreateParams as *mut ServerStatusWindow;
+            (*window).hwnd = hwnd;
+            let _ = SetWindowLongPtrW(hwnd, GWLP_USERDATA, window as isize);
+            window
+        } else {
+            GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut ServerStatusWindow
+        };
+        if window.is_null() {
+            return DefWindowProcW(hwnd, message, wparam, lparam);
+        }
+        (*window).handle_message(message, wparam, lparam)
     }
-    (*window).handle_message(message, wparam, lparam)
 }
 
 fn ensure_window_class() {
@@ -558,7 +560,7 @@ fn create_message_font(point_delta: i32, weight: i32) -> HFONT {
         if point_delta != 0 {
             let dc = GetDC(None);
             let dpi = if !dc.0.is_null() {
-                GetDeviceCaps(dc, LOGPIXELSY)
+                GetDeviceCaps(Some(dc), LOGPIXELSY)
             } else {
                 96
             };
@@ -603,14 +605,19 @@ fn add_control(
             y,
             width,
             height,
-            parent,
-            HMENU(id as isize as *mut c_void),
-            GetModuleHandleW(None).unwrap_or_default(),
+            Some(parent),
+            Some(HMENU(id as isize as *mut c_void)),
+            Some(GetModuleHandleW(None).unwrap_or_default().into()),
             None,
         )
         .unwrap_or_default();
         if !font.is_invalid() {
-            SendMessageW(hwnd, WM_SETFONT, WPARAM(font.0 as usize), LPARAM(1));
+            SendMessageW(
+                hwnd,
+                WM_SETFONT,
+                Some(WPARAM(font.0 as usize)),
+                Some(LPARAM(1)),
+            );
         }
         hwnd
     }
@@ -712,16 +719,16 @@ fn title_text_width() -> i32 {
         }
         let dc = GetDC(None);
         if dc.0.is_null() {
-            let _ = DeleteObject(font);
+            let _ = DeleteObject(font.into());
             return 0;
         }
-        let old = SelectObject(dc, font);
+        let old = SelectObject(dc, font.into());
         let title: Vec<u16> = meta::DIALOG_TITLE.encode_utf16().collect();
         let mut size = SIZE::default();
         let _ = GetTextExtentPoint32W(dc, &title, &mut size);
         let _ = SelectObject(dc, old);
         let _ = ReleaseDC(None, dc);
-        let _ = DeleteObject(font);
+        let _ = DeleteObject(font.into());
         size.cx
     }
 }

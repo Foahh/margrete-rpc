@@ -1,7 +1,7 @@
 [package]
 name = "margrete_rpc"
 version = "1.0.3"
-edition = "2021"
+edition = "2024"
 description = "Local RPC/protobuf bridge for Margrete"
 publish = false
 
@@ -10,9 +10,9 @@ name = "margrete_rpc"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-prost = "0.13"
+prost = "0.14"
 thiserror = "2"
-windows = { version = "0.58", features = [
+windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_Security",
@@ -31,7 +31,7 @@ windows = { version = "0.58", features = [
 ] }
 
 [build-dependencies]
-prost-build = "0.13"
+prost-build = "0.14"
 winres = "0.1"
 
 [profile.release]

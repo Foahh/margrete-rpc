@@ -1,5 +1,5 @@
 use margrete_rpc::rpc::framing::{self, MAX_FRAME_SIZE};
-use margrete_rpc::rpc::proto::{envelope, Envelope, PingRequest};
+use margrete_rpc::rpc::proto::{Envelope, PingRequest, envelope};
 
 #[test]
 fn frame_protocol_round_trips_envelope() {

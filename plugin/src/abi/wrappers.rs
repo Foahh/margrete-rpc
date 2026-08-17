@@ -1,14 +1,14 @@
 use super::com::ComPtr;
 use super::types::{
-    EventBcInfo, EventBpmInfo, EventNsmInfo, EventTlsInfo, MpBoolean, MpGuid, MpInteger, NoteInfo,
-    MP_FALSE, MP_TRUE,
+    EventBcInfo, EventBpmInfo, EventNsmInfo, EventTlsInfo, MP_FALSE, MP_TRUE, MpBoolean, MpGuid,
+    MpInteger, NoteInfo,
 };
 use super::vtables::*;
-use crate::error::{check, PluginError, Result};
+use crate::error::{PluginError, Result, check};
 use std::ffi::c_void;
 
 macro_rules! call {
-    ($this:expr, $field:ident $(, $arg:expr)* $(,)?) => {{
+    ($this:expr_2021, $field:ident $(, $arg:expr_2021)* $(,)?) => {{
         let vtable = (*$this).vtable;
         ((*vtable).$field)($this $(, $arg)*)
     }};

@@ -11,18 +11,22 @@ macro_rules! impl_unknown {
     ($ty:ty) => {
         impl Unknown for $ty {
             unsafe fn add_ref(this: *mut Self) -> i32 {
-                if this.is_null() {
-                    return 0;
+                unsafe {
+                    if this.is_null() {
+                        return 0;
+                    }
+                    let vtable = (*this).vtable;
+                    ((*vtable).add_ref)(this)
                 }
-                let vtable = (*this).vtable;
-                ((*vtable).add_ref)(this)
             }
             unsafe fn release(this: *mut Self) -> i32 {
-                if this.is_null() {
-                    return 0;
+                unsafe {
+                    if this.is_null() {
+                        return 0;
+                    }
+                    let vtable = (*this).vtable;
+                    ((*vtable).release)(this)
                 }
-                let vtable = (*this).vtable;
-                ((*vtable).release)(this)
             }
         }
     };
@@ -62,10 +66,12 @@ impl<T: Unknown> ComPtr<T> {
     }
 
     pub unsafe fn retain(ptr: *mut T) -> Self {
-        if !ptr.is_null() {
-            T::add_ref(ptr);
+        unsafe {
+            if !ptr.is_null() {
+                T::add_ref(ptr);
+            }
+            Self::from_raw(ptr)
         }
-        Self::from_raw(ptr)
     }
 
     pub fn as_ptr(&self) -> *mut T {

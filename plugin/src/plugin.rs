@@ -1,10 +1,10 @@
 use crate::abi::{
-    copy_wide, Command, CommandVTable, Context, MpBoolean, MpGuid, MpInteger, MpPluginInfo,
-    IID_BASE, IID_COMMAND, MP_FALSE, MP_SDK_VERSION, MP_TRUE,
+    Command, CommandVTable, Context, IID_BASE, IID_COMMAND, MP_FALSE, MP_SDK_VERSION, MP_TRUE,
+    MpBoolean, MpGuid, MpInteger, MpPluginInfo, copy_wide,
 };
 use crate::meta;
-use crate::server::config::{load_server_config, ServerConfig};
 use crate::server::ServerController;
+use crate::server::config::{ServerConfig, load_server_config};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -46,28 +46,32 @@ impl Plugin {
 }
 
 pub unsafe fn margrete_plugin_get_info(info: *mut MpPluginInfo) {
-    if info.is_null() {
-        return;
+    unsafe {
+        if info.is_null() {
+            return;
+        }
+        (*info).sdk_version = MP_SDK_VERSION;
+        copy_wide((*info).name_buffer, (*info).name_buffer_length, meta::TITLE);
+        copy_wide((*info).desc_buffer, (*info).desc_buffer_length, meta::DESC);
+        copy_wide(
+            (*info).developer_buffer,
+            (*info).developer_buffer_length,
+            meta::DEVELOPER,
+        );
     }
-    (*info).sdk_version = MP_SDK_VERSION;
-    copy_wide((*info).name_buffer, (*info).name_buffer_length, meta::TITLE);
-    copy_wide((*info).desc_buffer, (*info).desc_buffer_length, meta::DESC);
-    copy_wide(
-        (*info).developer_buffer,
-        (*info).developer_buffer_length,
-        meta::DEVELOPER,
-    );
 }
 
 pub unsafe fn margrete_plugin_command_create(ppobj: *mut *mut Command) -> MpBoolean {
-    if ppobj.is_null() {
-        return MP_FALSE;
+    unsafe {
+        if ppobj.is_null() {
+            return MP_FALSE;
+        }
+        let plugin = Plugin::new();
+        let ptr = Box::into_raw(plugin) as *mut Command;
+        plugin_add_ref(ptr);
+        *ppobj = ptr;
+        MP_TRUE
     }
-    let plugin = Plugin::new();
-    let ptr = Box::into_raw(plugin) as *mut Command;
-    plugin_add_ref(ptr);
-    *ppobj = ptr;
-    MP_TRUE
 }
 
 unsafe extern "C" fn plugin_add_ref(this: *mut Command) -> MpInteger {
@@ -78,15 +82,17 @@ unsafe extern "C" fn plugin_add_ref(this: *mut Command) -> MpInteger {
 }
 
 unsafe extern "C" fn plugin_release(this: *mut Command) -> MpInteger {
-    let value = Plugin::from_ptr(this)
-        .ref_count
-        .fetch_sub(1, Ordering::SeqCst)
-        - 1;
-    if value == 0 {
-        Plugin::from_ptr(this).controller.stop();
-        drop(Box::from_raw(this as *mut Plugin));
+    unsafe {
+        let value = Plugin::from_ptr(this)
+            .ref_count
+            .fetch_sub(1, Ordering::SeqCst)
+            - 1;
+        if value == 0 {
+            Plugin::from_ptr(this).controller.stop();
+            drop(Box::from_raw(this as *mut Plugin));
+        }
+        value
     }
-    value
 }
 
 unsafe extern "C" fn plugin_query_interface(
@@ -94,17 +100,19 @@ unsafe extern "C" fn plugin_query_interface(
     iid: *const MpGuid,
     ppobj: *mut *mut std::ffi::c_void,
 ) -> MpBoolean {
-    if ppobj.is_null() || iid.is_null() {
-        return MP_FALSE;
-    }
-    let iid = &*iid;
-    if iid.eq_guid(&IID_BASE) || iid.eq_guid(&IID_COMMAND) {
-        *ppobj = this as *mut std::ffi::c_void;
-        plugin_add_ref(this);
-        MP_TRUE
-    } else {
-        *ppobj = std::ptr::null_mut();
-        MP_FALSE
+    unsafe {
+        if ppobj.is_null() || iid.is_null() {
+            return MP_FALSE;
+        }
+        let iid = &*iid;
+        if iid.eq_guid(&IID_BASE) || iid.eq_guid(&IID_COMMAND) {
+            *ppobj = this as *mut std::ffi::c_void;
+            plugin_add_ref(this);
+            MP_TRUE
+        } else {
+            *ppobj = std::ptr::null_mut();
+            MP_FALSE
+        }
     }
 }
 
@@ -144,10 +152,10 @@ fn try_reload_config(controller: &ServerController) -> String {
 }
 
 fn resolve_config_path() -> PathBuf {
-    if let Some(env_path) = environment_path("MARGRETE_RPC_CONFIG") {
-        if env_path.exists() {
-            return env_path;
-        }
+    if let Some(env_path) = environment_path("MARGRETE_RPC_CONFIG")
+        && env_path.exists()
+    {
+        return env_path;
     }
     if let Some(dll_dir) = dll_directory() {
         let near_dll = dll_dir.join(meta::CONFIG_FILE_NAME);
@@ -167,12 +175,12 @@ fn environment_path(name: &str) -> Option<PathBuf> {
 }
 
 fn dll_directory() -> Option<PathBuf> {
-    use windows::core::PCWSTR;
     use windows::Win32::Foundation::HMODULE;
     use windows::Win32::System::LibraryLoader::{
-        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        GetModuleFileNameW, GetModuleHandleExW,
     };
+    use windows::core::PCWSTR;
     unsafe {
         let mut module = HMODULE::default();
         let addr = dll_directory as *const ();
@@ -188,7 +196,7 @@ fn dll_directory() -> Option<PathBuf> {
         }
         let mut buf = vec![0u16; 260];
         loop {
-            let n = GetModuleFileNameW(module, &mut buf);
+            let n = GetModuleFileNameW(Some(module), &mut buf);
             if n == 0 {
                 return None;
             }

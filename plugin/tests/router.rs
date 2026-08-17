@@ -3,8 +3,8 @@ mod common;
 use common::fake::FakeContext;
 use margrete_rpc::meta;
 use margrete_rpc::rpc::proto::{
-    envelope, ApplyEditRequest, BeginEditRequest, Envelope, ErrorCode, Note, NoteType,
-    StatusRequest,
+    ApplyEditRequest, BeginEditRequest, Envelope, ErrorCode, Note, NoteType, StatusRequest,
+    envelope,
 };
 use margrete_rpc::rpc::router::{RequestRouter, RouterStatusSnapshot};
 

@@ -16,14 +16,16 @@ pub mod meta {
 
 pub use plugin::{margrete_plugin_command_create, margrete_plugin_get_info};
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn MargretePluginGetInfo(info: *mut abi::MpPluginInfo) {
-    margrete_plugin_get_info(info);
+    unsafe {
+        margrete_plugin_get_info(info);
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn MargretePluginCommandCreate(
     ppobj: *mut *mut abi::Command,
 ) -> abi::MpBoolean {
-    margrete_plugin_command_create(ppobj)
+    unsafe { margrete_plugin_command_create(ppobj) }
 }

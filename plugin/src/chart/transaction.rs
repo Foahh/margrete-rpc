@@ -1,6 +1,6 @@
 use crate::abi::{
-    Chart, ComPtr, EventBcInfo, EventBpmInfo, EventNsmInfo, EventTlsInfo, Note, IID_EVENT_BEAT,
-    IID_EVENT_BPM, IID_EVENT_NSM, IID_EVENT_TLS,
+    Chart, ComPtr, EventBcInfo, EventBpmInfo, EventNsmInfo, EventTlsInfo, IID_EVENT_BEAT,
+    IID_EVENT_BPM, IID_EVENT_NSM, IID_EVENT_TLS, Note,
 };
 use crate::chart::mapper::proto_to_note_info;
 use crate::chart::session::MargreteSession;

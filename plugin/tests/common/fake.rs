@@ -469,13 +469,17 @@ unsafe extern "C" fn note_get_id(this: *mut Note) -> MpInteger {
     FakeNote::from_ptr(this).id
 }
 unsafe extern "C" fn note_get_info(this: *mut Note, info: *mut NoteInfo) {
-    if !info.is_null() {
-        *info = FakeNote::from_ptr(this).info;
+    unsafe {
+        if !info.is_null() {
+            *info = FakeNote::from_ptr(this).info;
+        }
     }
 }
 unsafe extern "C" fn note_set_info(this: *mut Note, info: *const NoteInfo) {
-    if !info.is_null() {
-        FakeNote::from_ptr(this).info = *info;
+    unsafe {
+        if !info.is_null() {
+            FakeNote::from_ptr(this).info = *info;
+        }
     }
 }
 unsafe extern "C" fn note_children_count(this: *mut Note) -> MpInteger {
@@ -486,14 +490,16 @@ unsafe extern "C" fn note_get_child(
     index: MpInteger,
     ppobj: *mut *mut Note,
 ) -> MpBoolean {
-    let note = FakeNote::from_ptr(this);
-    if index < 0 || index as usize >= note.children.len() {
-        return MP_FALSE;
+    unsafe {
+        let note = FakeNote::from_ptr(this);
+        if index < 0 || index as usize >= note.children.len() {
+            return MP_FALSE;
+        }
+        let child = note.children[index as usize];
+        bump(&(*child).ref_count);
+        *ppobj = child as *mut Note;
+        MP_TRUE
     }
-    let child = note.children[index as usize];
-    bump(&(*child).ref_count);
-    *ppobj = child as *mut Note;
-    MP_TRUE
 }
 unsafe extern "C" fn note_get_parent(_this: *mut Note, _pp: *mut *mut Note) -> MpBoolean {
     MP_FALSE
@@ -525,10 +531,10 @@ unsafe extern "C" fn note_flip_h(_this: *mut Note, _recursive: MpBoolean) {}
 macro_rules! event_vt {
     ($add:ident, $rel:ident, $ty:ty, $iface:ty, $field:ident) => {
         unsafe extern "C" fn $add(this: *mut $iface) -> MpInteger {
-            bump(&(*(this as *mut $ty)).ref_count)
+            unsafe { bump(&(*(this as *mut $ty)).ref_count) }
         }
         unsafe extern "C" fn $rel(this: *mut $iface) -> MpInteger {
-            drop_ref(&(*(this as *mut $ty)).ref_count)
+            unsafe { drop_ref(&(*(this as *mut $ty)).ref_count) }
         }
     };
 }
@@ -549,10 +555,14 @@ unsafe extern "C" fn bpm_id(_t: *mut EventBpm) -> MpInteger {
     1
 }
 unsafe extern "C" fn bpm_get(this: *mut EventBpm, info: *mut EventBpmInfo) {
-    *info = (*(this as *mut FakeBpmEvent)).info;
+    unsafe {
+        *info = (*(this as *mut FakeBpmEvent)).info;
+    }
 }
 unsafe extern "C" fn bpm_set(this: *mut EventBpm, info: *const EventBpmInfo) {
-    (*(this as *mut FakeBpmEvent)).info = *info;
+    unsafe {
+        (*(this as *mut FakeBpmEvent)).info = *info;
+    }
 }
 unsafe extern "C" fn bpm_replace(_t: *mut EventBpm, _s: *const EventBpm) {}
 unsafe extern "C" fn bpm_copy(_t: *mut EventBpm, _d: *mut EventBpm) {}
@@ -568,10 +578,14 @@ unsafe extern "C" fn beat_id(_t: *mut EventBeat) -> MpInteger {
     1
 }
 unsafe extern "C" fn beat_get(this: *mut EventBeat, info: *mut EventBcInfo) {
-    *info = (*(this as *mut FakeBeatEvent)).info;
+    unsafe {
+        *info = (*(this as *mut FakeBeatEvent)).info;
+    }
 }
 unsafe extern "C" fn beat_set(this: *mut EventBeat, info: *const EventBcInfo) {
-    (*(this as *mut FakeBeatEvent)).info = *info;
+    unsafe {
+        (*(this as *mut FakeBeatEvent)).info = *info;
+    }
 }
 unsafe extern "C" fn beat_replace(_t: *mut EventBeat, _s: *const EventBeat) {}
 unsafe extern "C" fn beat_copy(_t: *mut EventBeat, _d: *mut EventBeat) {}
@@ -587,10 +601,14 @@ unsafe extern "C" fn tls_id(_t: *mut EventTls) -> MpInteger {
     1
 }
 unsafe extern "C" fn tls_get(this: *mut EventTls, info: *mut EventTlsInfo) {
-    *info = (*(this as *mut FakeTlsEvent)).info;
+    unsafe {
+        *info = (*(this as *mut FakeTlsEvent)).info;
+    }
 }
 unsafe extern "C" fn tls_set(this: *mut EventTls, info: *const EventTlsInfo) {
-    (*(this as *mut FakeTlsEvent)).info = *info;
+    unsafe {
+        (*(this as *mut FakeTlsEvent)).info = *info;
+    }
 }
 unsafe extern "C" fn tls_replace(_t: *mut EventTls, _s: *const EventTls) {}
 unsafe extern "C" fn tls_copy(_t: *mut EventTls, _d: *mut EventTls) {}
@@ -606,10 +624,14 @@ unsafe extern "C" fn nsm_id(_t: *mut EventNsm) -> MpInteger {
     1
 }
 unsafe extern "C" fn nsm_get(this: *mut EventNsm, info: *mut EventNsmInfo) {
-    *info = (*(this as *mut FakeNsmEvent)).info;
+    unsafe {
+        *info = (*(this as *mut FakeNsmEvent)).info;
+    }
 }
 unsafe extern "C" fn nsm_set(this: *mut EventNsm, info: *const EventNsmInfo) {
-    (*(this as *mut FakeNsmEvent)).info = *info;
+    unsafe {
+        (*(this as *mut FakeNsmEvent)).info = *info;
+    }
 }
 unsafe extern "C" fn nsm_replace(_t: *mut EventNsm, _s: *const EventNsm) {}
 unsafe extern "C" fn nsm_copy(_t: *mut EventNsm, _d: *mut EventNsm) {}
@@ -688,12 +710,14 @@ unsafe extern "C" fn chart_qi(
     MP_FALSE
 }
 unsafe extern "C" fn chart_create_note(this: *mut Chart, ppobj: *mut *mut Note) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    let note = Box::into_raw(FakeNote::new());
-    chart.allocated_notes.push(note);
-    chart.created_notes.push(note);
-    *ppobj = note as *mut Note;
-    MP_TRUE
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        let note = Box::into_raw(FakeNote::new());
+        chart.allocated_notes.push(note);
+        chart.created_notes.push(note);
+        *ppobj = note as *mut Note;
+        MP_TRUE
+    }
 }
 unsafe extern "C" fn chart_notes_count(this: *mut Chart) -> MpInteger {
     FakeChart::from_ptr(this).notes.len() as MpInteger
@@ -703,14 +727,16 @@ unsafe extern "C" fn chart_get_note(
     index: MpInteger,
     ppobj: *mut *mut Note,
 ) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    if index < 0 || index as usize >= chart.notes.len() {
-        return MP_FALSE;
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        if index < 0 || index as usize >= chart.notes.len() {
+            return MP_FALSE;
+        }
+        let note = chart.notes[index as usize];
+        bump(&(*note).ref_count);
+        *ppobj = note as *mut Note;
+        MP_TRUE
     }
-    let note = chart.notes[index as usize];
-    bump(&(*note).ref_count);
-    *ppobj = note as *mut Note;
-    MP_TRUE
 }
 unsafe extern "C" fn chart_append_note(this: *mut Chart, note: *mut Note) -> MpBoolean {
     let chart = FakeChart::from_ptr(this);
@@ -722,15 +748,17 @@ unsafe extern "C" fn chart_append_note(this: *mut Chart, note: *mut Note) -> MpB
     MP_TRUE
 }
 unsafe extern "C" fn chart_delete_note(this: *mut Chart, note: *mut Note) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    chart.deleted_notes += 1;
-    let fake = note as *mut FakeNote;
-    let old = chart.notes.len();
-    chart.notes.retain(|n| *n != fake);
-    if chart.notes.len() != old {
-        drop_ref(&(*fake).ref_count);
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        chart.deleted_notes += 1;
+        let fake = note as *mut FakeNote;
+        let old = chart.notes.len();
+        chart.notes.retain(|n| *n != fake);
+        if chart.notes.len() != old {
+            drop_ref(&(*fake).ref_count);
+        }
+        MP_TRUE
     }
-    MP_TRUE
 }
 unsafe extern "C" fn chart_offset_notes(_this: *mut Chart, _tick: MpInteger) {}
 unsafe extern "C" fn chart_create_event(
@@ -738,40 +766,42 @@ unsafe extern "C" fn chart_create_event(
     iid: *const MpGuid,
     ppobj: *mut *mut c_void,
 ) -> MpBoolean {
-    if ppobj.is_null() || iid.is_null() {
-        return MP_FALSE;
+    unsafe {
+        if ppobj.is_null() || iid.is_null() {
+            return MP_FALSE;
+        }
+        let chart = FakeChart::from_ptr(this);
+        let iid = &*iid;
+        if iid.eq_guid(&IID_EVENT_BPM) {
+            let event = Box::into_raw(FakeBpmEvent::new());
+            chart.allocated_bpm.push(event);
+            chart.created_bpm.push(event);
+            *ppobj = event as *mut c_void;
+            return MP_TRUE;
+        }
+        if iid.eq_guid(&IID_EVENT_BEAT) {
+            let event = Box::into_raw(FakeBeatEvent::new());
+            chart.allocated_beat.push(event);
+            chart.created_beat.push(event);
+            *ppobj = event as *mut c_void;
+            return MP_TRUE;
+        }
+        if iid.eq_guid(&IID_EVENT_TLS) {
+            let event = Box::into_raw(FakeTlsEvent::new());
+            chart.allocated_tls.push(event);
+            chart.created_tls.push(event);
+            *ppobj = event as *mut c_void;
+            return MP_TRUE;
+        }
+        if iid.eq_guid(&IID_EVENT_NSM) {
+            let event = Box::into_raw(FakeNsmEvent::new());
+            chart.allocated_nsm.push(event);
+            chart.created_nsm.push(event);
+            *ppobj = event as *mut c_void;
+            return MP_TRUE;
+        }
+        MP_FALSE
     }
-    let chart = FakeChart::from_ptr(this);
-    let iid = &*iid;
-    if iid.eq_guid(&IID_EVENT_BPM) {
-        let event = Box::into_raw(FakeBpmEvent::new());
-        chart.allocated_bpm.push(event);
-        chart.created_bpm.push(event);
-        *ppobj = event as *mut c_void;
-        return MP_TRUE;
-    }
-    if iid.eq_guid(&IID_EVENT_BEAT) {
-        let event = Box::into_raw(FakeBeatEvent::new());
-        chart.allocated_beat.push(event);
-        chart.created_beat.push(event);
-        *ppobj = event as *mut c_void;
-        return MP_TRUE;
-    }
-    if iid.eq_guid(&IID_EVENT_TLS) {
-        let event = Box::into_raw(FakeTlsEvent::new());
-        chart.allocated_tls.push(event);
-        chart.created_tls.push(event);
-        *ppobj = event as *mut c_void;
-        return MP_TRUE;
-    }
-    if iid.eq_guid(&IID_EVENT_NSM) {
-        let event = Box::into_raw(FakeNsmEvent::new());
-        chart.allocated_nsm.push(event);
-        chart.created_nsm.push(event);
-        *ppobj = event as *mut c_void;
-        return MP_TRUE;
-    }
-    MP_FALSE
 }
 unsafe extern "C" fn chart_append_event(this: *mut Chart, event: *mut Event) -> MpBoolean {
     let chart = FakeChart::from_ptr(this);
@@ -807,26 +837,28 @@ unsafe extern "C" fn chart_append_event(this: *mut Chart, event: *mut Event) -> 
     MP_TRUE
 }
 unsafe extern "C" fn chart_delete_event(this: *mut Chart, event: *mut Event) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    chart.deleted_events += 1;
-    chart.deleted_event_pointers.push(event);
-    let mut removed = false;
-    let old = chart.existing_bpm.len();
-    chart.existing_bpm.retain(|p| *p as *mut Event != event);
-    removed |= chart.existing_bpm.len() != old;
-    let old = chart.existing_beat.len();
-    chart.existing_beat.retain(|p| *p as *mut Event != event);
-    removed |= chart.existing_beat.len() != old;
-    let old = chart.existing_tls.len();
-    chart.existing_tls.retain(|p| *p as *mut Event != event);
-    removed |= chart.existing_tls.len() != old;
-    let old = chart.existing_nsm.len();
-    chart.existing_nsm.retain(|p| *p as *mut Event != event);
-    removed |= chart.existing_nsm.len() != old;
-    if removed {
-        let _ = Event::release(event);
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        chart.deleted_events += 1;
+        chart.deleted_event_pointers.push(event);
+        let mut removed = false;
+        let old = chart.existing_bpm.len();
+        chart.existing_bpm.retain(|p| *p as *mut Event != event);
+        removed |= chart.existing_bpm.len() != old;
+        let old = chart.existing_beat.len();
+        chart.existing_beat.retain(|p| *p as *mut Event != event);
+        removed |= chart.existing_beat.len() != old;
+        let old = chart.existing_tls.len();
+        chart.existing_tls.retain(|p| *p as *mut Event != event);
+        removed |= chart.existing_tls.len() != old;
+        let old = chart.existing_nsm.len();
+        chart.existing_nsm.retain(|p| *p as *mut Event != event);
+        removed |= chart.existing_nsm.len() != old;
+        if removed {
+            let _ = Event::release(event);
+        }
+        MP_TRUE
     }
-    MP_TRUE
 }
 unsafe extern "C" fn chart_find_tls(
     this: *mut Chart,
@@ -834,60 +866,68 @@ unsafe extern "C" fn chart_find_tls(
     timeline_id: MpInteger,
     ppobj: *mut *mut c_void,
 ) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    for event in &chart.existing_tls {
-        if (**event).info.tick == tick && (**event).info.timeline_id == timeline_id {
-            bump(&(**event).ref_count);
-            *ppobj = *event as *mut c_void;
-            return MP_TRUE;
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        for event in &chart.existing_tls {
+            if (**event).info.tick == tick && (**event).info.timeline_id == timeline_id {
+                bump(&(**event).ref_count);
+                *ppobj = *event as *mut c_void;
+                return MP_TRUE;
+            }
         }
+        MP_FALSE
     }
-    MP_FALSE
 }
 unsafe extern "C" fn chart_find_nsm(
     this: *mut Chart,
     tick: MpInteger,
     ppobj: *mut *mut c_void,
 ) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    for event in &chart.existing_nsm {
-        if (**event).info.tick == tick {
-            bump(&(**event).ref_count);
-            *ppobj = *event as *mut c_void;
-            return MP_TRUE;
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        for event in &chart.existing_nsm {
+            if (**event).info.tick == tick {
+                bump(&(**event).ref_count);
+                *ppobj = *event as *mut c_void;
+                return MP_TRUE;
+            }
         }
+        MP_FALSE
     }
-    MP_FALSE
 }
 unsafe extern "C" fn chart_find_bpm(
     this: *mut Chart,
     tick: MpInteger,
     ppobj: *mut *mut c_void,
 ) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    for event in &chart.existing_bpm {
-        if (**event).info.tick == tick {
-            bump(&(**event).ref_count);
-            *ppobj = *event as *mut c_void;
-            return MP_TRUE;
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        for event in &chart.existing_bpm {
+            if (**event).info.tick == tick {
+                bump(&(**event).ref_count);
+                *ppobj = *event as *mut c_void;
+                return MP_TRUE;
+            }
         }
+        MP_FALSE
     }
-    MP_FALSE
 }
 unsafe extern "C" fn chart_find_beat(
     this: *mut Chart,
     bar: MpInteger,
     ppobj: *mut *mut c_void,
 ) -> MpBoolean {
-    let chart = FakeChart::from_ptr(this);
-    for event in &chart.existing_beat {
-        if (**event).info.bar == bar {
-            bump(&(**event).ref_count);
-            *ppobj = *event as *mut c_void;
-            return MP_TRUE;
+    unsafe {
+        let chart = FakeChart::from_ptr(this);
+        for event in &chart.existing_beat {
+            if (**event).info.bar == bar {
+                bump(&(**event).ref_count);
+                *ppobj = *event as *mut c_void;
+                return MP_TRUE;
+            }
         }
+        MP_FALSE
     }
-    MP_FALSE
 }
 
 static UNDO_VT: UndoVTable = UndoVTable {
@@ -976,16 +1016,20 @@ unsafe extern "C" fn doc_qi(
     MP_FALSE
 }
 unsafe extern "C" fn doc_get_chart(this: *mut Document, ppobj: *mut *mut Chart) -> MpBoolean {
-    let doc = FakeDocument::from_ptr(this);
-    bump(&(*doc.chart).ref_count);
-    *ppobj = doc.chart as *mut Chart;
-    MP_TRUE
+    unsafe {
+        let doc = FakeDocument::from_ptr(this);
+        bump(&(*doc.chart).ref_count);
+        *ppobj = doc.chart as *mut Chart;
+        MP_TRUE
+    }
 }
 unsafe extern "C" fn doc_get_undo(this: *mut Document, ppobj: *mut *mut UndoBuffer) -> MpBoolean {
-    let doc = FakeDocument::from_ptr(this);
-    bump(&(*doc.undo).ref_count);
-    *ppobj = doc.undo as *mut UndoBuffer;
-    MP_TRUE
+    unsafe {
+        let doc = FakeDocument::from_ptr(this);
+        bump(&(*doc.undo).ref_count);
+        *ppobj = doc.undo as *mut UndoBuffer;
+        MP_TRUE
+    }
 }
 
 static CONTEXT_VT: ContextVTable = ContextVTable {
@@ -1012,10 +1056,12 @@ unsafe extern "C" fn ctx_qi(
     MP_FALSE
 }
 unsafe extern "C" fn ctx_get_document(this: *mut Context, ppobj: *mut *mut Document) -> MpBoolean {
-    let inner = inner_from_ctx(this);
-    bump(&(*inner.document).ref_count);
-    *ppobj = inner.document as *mut Document;
-    MP_TRUE
+    unsafe {
+        let inner = inner_from_ctx(this);
+        bump(&(*inner.document).ref_count);
+        *ppobj = inner.document as *mut Document;
+        MP_TRUE
+    }
 }
 unsafe extern "C" fn ctx_hwnd(_this: *mut Context) -> *mut c_void {
     std::ptr::null_mut()
