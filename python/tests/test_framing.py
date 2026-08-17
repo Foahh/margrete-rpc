@@ -1,4 +1,5 @@
 import struct
+import sys
 
 import pytest
 from margrete_rpc._proto import messages_pb2
@@ -168,6 +169,7 @@ def test_generated_chart_transaction_messages_exist():
     assert apply_edit.apply_edit_request.bpm_upsert[0].bpm == 180.0
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="named pipe client requires pywin32")
 def test_pipe_client_retries_file_not_found(monkeypatch):
     import pywintypes
     import win32file

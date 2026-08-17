@@ -47,6 +47,9 @@ jobs:
           toolchain: stable
           targets: x86_64-pc-windows-msvc
           components: rustfmt, clippy
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Format and lint
         working-directory: plugin
         run: |
