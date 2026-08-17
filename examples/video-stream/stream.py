@@ -39,7 +39,6 @@ import _video
 import numpy as np
 import psutil
 import sounddevice as sd
-
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import RawNote
 

@@ -25,7 +25,6 @@ from _common import (
     make_arg_parser,
     push_gallery,
 )
-
 from margrete_rpc.chart import ChartNote
 from margrete_rpc.chart.events import TimelineSpeedEvent
 from margrete_rpc.chart.notes import Tap
