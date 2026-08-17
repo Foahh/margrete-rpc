@@ -36,4 +36,4 @@ winres = "0.1"
 
 [profile.release]
 panic = "abort"
-lto = false
+lto = "thin"
