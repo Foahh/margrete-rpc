@@ -7,7 +7,7 @@ use crate::abi::Context;
 use crate::rpc::router::{RequestRouter, RouterStatusSnapshot};
 use config::ServerConfig;
 use instance::AllocatedInstance;
-use logger::{Logger, path_utf8};
+use logger::path_utf8;
 use pipe::NamedPipeServer;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -27,7 +27,6 @@ pub struct ServerControllerStatus {
 struct Shared {
     instance_id: String,
     pipe_name: String,
-    logger: Arc<Logger>,
     plugin_dir: Option<PathBuf>,
 }
 
@@ -47,12 +46,10 @@ impl ServerController {
         let instance = instance::allocate().expect("allocate margrete-XXXX");
         let instance_id = instance.code.clone();
         let pipe_name = instance.pipe_name();
-        let logger = Arc::new(Logger::new());
         let router = Arc::new(RequestRouter::with_config(
             std::ptr::null_mut(),
             config.clone(),
         ));
-        router.set_logger(Some(logger.as_ref()));
         router.set_instance_id(instance_id.clone());
 
         let controller = Self {
@@ -61,7 +58,6 @@ impl ServerController {
             shared: Arc::new(Shared {
                 instance_id,
                 pipe_name,
-                logger,
                 plugin_dir,
             }),
             process_id: std::process::id(),
@@ -72,16 +68,12 @@ impl ServerController {
         };
         controller.apply_logger();
         let config = controller.config.lock().expect("config").clone();
-        log_config(
-            &controller.shared.logger,
-            &config,
-            "config initialized",
-            &controller.shared.logger.path(),
-        );
-        controller.shared.logger.info(format!(
+        log_config(&config, "config initialized", &logger::path());
+        log::info!(
             "instance id={} pipe={}",
-            controller.shared.instance_id, controller.shared.pipe_name
-        ));
+            controller.shared.instance_id,
+            controller.shared.pipe_name
+        );
         controller
     }
 
@@ -103,7 +95,7 @@ impl ServerController {
             active_config: active.unwrap_or_default(),
             instance_id: self.shared.instance_id.clone(),
             pipe_name: self.shared.pipe_name.clone(),
-            log_path: self.shared.logger.path(),
+            log_path: logger::path(),
         }
     }
 
@@ -115,12 +107,7 @@ impl ServerController {
             self.apply_logger();
         }
         let config = self.config.lock().expect("config").clone();
-        log_config(
-            &self.shared.logger,
-            &config,
-            "config reloaded",
-            &self.shared.logger.path(),
-        );
+        log_config(&config, "config reloaded", &logger::path());
     }
 
     pub fn start(&self, context: *mut Context) {
@@ -131,13 +118,12 @@ impl ServerController {
         *self.active_config.lock().expect("active") = Some(config.clone());
         self.apply_logger();
         self.router.set_context(context);
-        self.router.set_logger(Some(self.shared.logger.as_ref()));
         self.router.set_config(config.clone());
 
         let start = Instant::now();
         *self.server_start.lock().expect("start") = Some(start);
         let pid = self.process_id;
-        let log_path = path_utf8(&self.shared.logger.path());
+        let log_path = path_utf8(&logger::path());
         let config_path = path_utf8(&config.source_path);
         self.router
             .set_status_snapshot_provider(move || RouterStatusSnapshot {
@@ -146,26 +132,20 @@ impl ServerController {
                 config_path: config_path.clone(),
                 uptime: start.elapsed().as_secs(),
             });
-        self.shared
-            .logger
-            .info(format!("server starting pipe={}", self.shared.pipe_name));
+        log::info!("server starting pipe={}", self.shared.pipe_name);
 
-        let mut server = NamedPipeServer::new(
-            self.shared.pipe_name.clone(),
-            Arc::clone(&self.router),
-            Arc::clone(&self.shared.logger),
-        );
+        let mut server =
+            NamedPipeServer::new(self.shared.pipe_name.clone(), Arc::clone(&self.router));
         server.start();
         *self.pipe_server.lock().expect("pipe") = Some(server);
     }
 
     pub fn stop(&self) {
         if let Some(server) = self.pipe_server.lock().expect("pipe").take() {
-            self.shared.logger.info("pipe server stopping");
+            log::info!("pipe server stopping");
             server.stop();
         }
         self.router.set_context(std::ptr::null_mut());
-        self.router.set_logger(None);
         *self.active_config.lock().expect("active") = None;
     }
 
@@ -184,7 +164,7 @@ impl ServerController {
         } else {
             None
         };
-        self.shared.logger.configure(path.as_deref());
+        logger::configure(path.as_deref());
     }
 }
 
@@ -203,9 +183,9 @@ fn log_file_path(plugin_dir: Option<&Path>, code: &str) -> Option<PathBuf> {
     )
 }
 
-fn log_config(logger: &Logger, config: &ServerConfig, label: &str, log_path: &Path) {
+fn log_config(config: &ServerConfig, label: &str, log_path: &Path) {
     if !config.source_path.as_os_str().is_empty() {
-        logger.info(format!(
+        log::info!(
             "{label} path={}{}",
             path_utf8(&config.source_path),
             if config.loaded_from_file {
@@ -213,9 +193,9 @@ fn log_config(logger: &Logger, config: &ServerConfig, label: &str, log_path: &Pa
             } else {
                 " (not found; using defaults)"
             }
-        ));
+        );
     }
-    logger.info(format!(
+    log::info!(
         "{label} logging={} resolved_log={}",
         if config.logging { "on" } else { "off" },
         if log_path.as_os_str().is_empty() {
@@ -223,5 +203,5 @@ fn log_config(logger: &Logger, config: &ServerConfig, label: &str, log_path: &Pa
         } else {
             path_utf8(log_path)
         }
-    ));
+    );
 }

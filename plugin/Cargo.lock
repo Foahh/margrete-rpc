@@ -147,6 +147,7 @@ name = "margrete_rpc"
 version = "1.0.3"
 dependencies = [
  "chrono",
+ "log",
  "prost",
  "prost-build",
  "thiserror",

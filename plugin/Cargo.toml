@@ -10,6 +10,7 @@ name = "margrete_rpc"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+log = "0.4"
 prost = "0.14"
 thiserror = "2"
 windows = { version = "0.62", features = [

@@ -1,4 +1,3 @@
-use super::logger::Logger;
 use crate::error::PluginError;
 use crate::rpc::framing::{self, MAX_FRAME_SIZE};
 use crate::rpc::router::RequestRouter;
@@ -30,17 +29,15 @@ const CONNECT_RETRY_DELAY: Duration = Duration::from_millis(50);
 pub struct NamedPipeServer {
     pipe_name: String,
     router: Arc<RequestRouter>,
-    logger: Arc<Logger>,
     running: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl NamedPipeServer {
-    pub fn new(pipe_name: String, router: Arc<RequestRouter>, logger: Arc<Logger>) -> Self {
+    pub fn new(pipe_name: String, router: Arc<RequestRouter>) -> Self {
         Self {
             pipe_name,
             router,
-            logger,
             running: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
         }
@@ -52,9 +49,8 @@ impl NamedPipeServer {
         }
         let pipe_name = self.pipe_name.clone();
         let router = Arc::clone(&self.router);
-        let logger = Arc::clone(&self.logger);
         let running = Arc::clone(&self.running);
-        let thread = thread::spawn(move || run(pipe_name, router, logger, running));
+        let thread = thread::spawn(move || run(pipe_name, router, running));
         *self.thread.lock().expect("thread") = Some(thread);
     }
 
@@ -85,18 +81,13 @@ impl Drop for NamedPipeServer {
     }
 }
 
-fn run(
-    pipe_name: String,
-    router: Arc<RequestRouter>,
-    logger: Arc<Logger>,
-    running: Arc<AtomicBool>,
-) {
+fn run(pipe_name: String, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
     let pipe_path = format!(r"\\.\pipe\{pipe_name}");
-    logger.info(format!("pipe server starting path={pipe_path}"));
+    log::info!("pipe server starting path={pipe_path}");
     let wide: Vec<u16> = pipe_path.encode_utf16().chain(std::iter::once(0)).collect();
     let mut clients: Vec<JoinHandle<()>> = Vec::new();
 
-    let Some(mut listener) = create_listening_pipe(&wide, &logger) else {
+    let Some(mut listener) = create_listening_pipe(&wide) else {
         return;
     };
     let mut connect_failures = 0u32;
@@ -115,16 +106,16 @@ fn run(
             close_pipe(listener, false);
             connect_failures += 1;
             if connect_failures >= CONNECT_RETRY_LIMIT {
-                logger.error(format!(
+                log::error!(
                     "ConnectNamedPipe failed error={code}; giving up after {connect_failures} attempts"
-                ));
+                );
                 break;
             }
-            logger.error(format!(
+            log::error!(
                 "ConnectNamedPipe failed error={code}; retrying ({connect_failures}/{CONNECT_RETRY_LIMIT})"
-            ));
+            );
             thread::sleep(CONNECT_RETRY_DELAY);
-            match create_listening_pipe(&wide, &logger) {
+            match create_listening_pipe(&wide) {
                 Some(pipe) => listener = pipe,
                 None => break,
             }
@@ -132,11 +123,10 @@ fn run(
         }
 
         connect_failures = 0;
-        let next = create_listening_pipe(&wide, &logger);
+        let next = create_listening_pipe(&wide);
         spawn_client(
             listener,
             Arc::clone(&router),
-            Arc::clone(&logger),
             Arc::clone(&running),
             &mut clients,
         );
@@ -150,10 +140,10 @@ fn run(
     for handle in clients {
         let _ = handle.join();
     }
-    logger.info("pipe server stopped");
+    log::info!("pipe server stopped");
 }
 
-fn create_listening_pipe(wide: &[u16], logger: &Logger) -> Option<HANDLE> {
+fn create_listening_pipe(wide: &[u16]) -> Option<HANDLE> {
     let pipe = unsafe {
         CreateNamedPipeW(
             PCWSTR(wide.as_ptr()),
@@ -167,10 +157,10 @@ fn create_listening_pipe(wide: &[u16], logger: &Logger) -> Option<HANDLE> {
         )
     };
     if pipe.is_invalid() {
-        logger.error(format!(
+        log::error!(
             "CreateNamedPipeW failed error={}",
             std::io::Error::last_os_error()
-        ));
+        );
         None
     } else {
         Some(pipe)
@@ -188,23 +178,16 @@ fn connect_pipe(pipe: HANDLE) -> windows::core::Result<()> {
 fn spawn_client(
     pipe: HANDLE,
     router: Arc<RequestRouter>,
-    logger: Arc<Logger>,
     running: Arc<AtomicBool>,
     clients: &mut Vec<JoinHandle<()>>,
 ) {
     let raw = pipe.0 as isize;
-    let on_spawn_err = Arc::clone(&logger);
-    match thread::Builder::new().spawn(move || {
-        handle_client(
-            HANDLE(raw as *mut std::ffi::c_void),
-            router,
-            logger,
-            running,
-        )
-    }) {
+    match thread::Builder::new()
+        .spawn(move || handle_client(HANDLE(raw as *mut std::ffi::c_void), router, running))
+    {
         Ok(handle) => clients.push(handle),
         Err(err) => {
-            on_spawn_err.error(format!("pipe client thread creation failed: {err}"));
+            log::error!("pipe client thread creation failed: {err}");
             close_pipe(pipe, true);
         }
     }
@@ -244,14 +227,9 @@ fn win32_code(err: &windows::core::Error) -> u32 {
         .unwrap_or(err.code().0 as u32)
 }
 
-fn handle_client(
-    pipe: HANDLE,
-    router: Arc<RequestRouter>,
-    logger: Arc<Logger>,
-    running: Arc<AtomicBool>,
-) {
+fn handle_client(pipe: HANDLE, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
     if let Err(err) = client_loop(pipe, &router, &running) {
-        logger.error(err.to_string());
+        log::error!("{err}");
     }
     close_pipe(pipe, true);
 }
@@ -385,8 +363,7 @@ mod tests {
     fn start_test_server() -> (AllocatedGuard, NamedPipeServer) {
         let instance = instance::allocate().expect("allocate");
         let router = Arc::new(RequestRouter::new(std::ptr::null_mut()));
-        let logger = Arc::new(Logger::new());
-        let mut server = NamedPipeServer::new(instance.pipe_name(), router, logger);
+        let mut server = NamedPipeServer::new(instance.pipe_name(), router);
         server.start();
         (AllocatedGuard(instance), server)
     }

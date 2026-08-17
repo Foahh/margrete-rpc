@@ -6,7 +6,6 @@ use crate::chart::transaction::apply_edit;
 use crate::meta;
 use crate::rpc::proto::{Envelope, ErrorCode, ErrorResponse, StatusResponse, envelope};
 use crate::server::config::ServerConfig;
-use crate::server::logger::Logger;
 use std::sync::Mutex;
 
 const DEFAULT_EVENT_SCAN_LOOKAHEAD_TICKS: i32 = 19200;
@@ -25,7 +24,6 @@ pub struct RequestRouter {
 
 struct RouterInner {
     context: *mut Context,
-    logger: Option<*const Logger>,
     config: ServerConfig,
     instance_id: String,
     status_snapshot: Option<Box<dyn Fn() -> RouterStatusSnapshot + Send + Sync>>,
@@ -43,7 +41,6 @@ impl RequestRouter {
         let router = Self {
             inner: Mutex::new(RouterInner {
                 context: std::ptr::null_mut(),
-                logger: None,
                 config,
                 instance_id: String::new(),
                 status_snapshot: None,
@@ -83,32 +80,28 @@ impl RequestRouter {
         self.inner.lock().expect("router").status_snapshot = Some(Box::new(provider));
     }
 
-    pub fn set_logger(&self, logger: Option<&Logger>) {
-        self.inner.lock().expect("router").logger = logger.map(|l| l as *const Logger);
-    }
-
     pub fn route(&self, request: &Envelope) -> Envelope {
         match self.route_inner(request) {
             Ok(response) => response,
             Err(err) => {
                 let code = err.code();
-                self.log_error(&format!(
+                log::error!(
                     "request exception id={} kind={} msg=\"{}\"",
                     request.request_id,
                     request_kind(request),
                     err
-                ));
+                );
                 error_envelope(request.request_id, code, err.to_string())
             }
         }
     }
 
     fn route_inner(&self, request: &Envelope) -> crate::error::Result<Envelope> {
-        self.log_info(&format!(
+        log::info!(
             "request received id={} kind={}",
             request.request_id,
             request_kind(request)
-        ));
+        );
         match &request.body {
             Some(envelope::Body::PingRequest(_)) => {
                 return Ok(Envelope {
@@ -136,10 +129,7 @@ impl RequestRouter {
                     log_path: snapshot.log_path,
                     config_path: snapshot.config_path,
                 };
-                self.log_info(&format!(
-                    "request handled id={} kind=status ok",
-                    request.request_id
-                ));
+                log::info!("request handled id={} kind=status ok", request.request_id);
                 return Ok(Envelope {
                     request_id: request.request_id,
                     body: Some(envelope::Body::StatusResponse(status)),
@@ -149,11 +139,11 @@ impl RequestRouter {
         }
 
         let Some(context) = self.retain_context() else {
-            self.log_error(&format!(
+            log::error!(
                 "request failed id={} kind={} code=UNAVAILABLE msg=\"Margrete context is unavailable\"",
                 request.request_id,
                 request_kind(request)
-            ));
+            );
             return Ok(error_envelope(
                 request.request_id,
                 ErrorCode::Unavailable,
@@ -190,7 +180,7 @@ impl RequestRouter {
                     begin.event_scan_lookahead_ticks = scan_lookahead;
                     begin.event_scan_til_ids = scan_til_ids;
                 }
-                self.log_info(&format!(
+                log::info!(
                     "begin_edit ok id={} current_tick={} notes={} bpm_events={} beat_change_events={} timeline_speed_events={} note_speed_events={} event_scan_lookahead_ticks={} event_scan_til_ids_count={} snapshot={} note_til_only={}",
                     request.request_id,
                     begin.current_tick,
@@ -203,7 +193,7 @@ impl RequestRouter {
                     begin.event_scan_til_ids.len(),
                     u8::from(begin.snapshot),
                     u8::from(note_til_only)
-                ));
+                );
                 Ok(Envelope {
                     request_id: request.request_id,
                     body: Some(envelope::Body::BeginEditResponse(begin)),
@@ -212,7 +202,7 @@ impl RequestRouter {
             Some(envelope::Body::ApplyEditRequest(req)) => {
                 let session = MargreteSession::new(context.as_ptr())?;
                 apply_edit(&session, req)?;
-                self.log_info(&format!("apply_edit ok id={}", request.request_id));
+                log::info!("apply_edit ok id={}", request.request_id);
                 Ok(Envelope {
                     request_id: request.request_id,
                     body: Some(envelope::Body::ApplyEditResponse(Default::default())),
@@ -226,11 +216,11 @@ impl RequestRouter {
                     let _ = deduplicate(session.chart());
                     session.update();
                 }
-                self.log_info(&format!(
+                log::info!(
                     "undo ok id={} success={}",
                     request.request_id,
                     u8::from(success)
-                ));
+                );
                 Ok(Envelope {
                     request_id: request.request_id,
                     body: Some(envelope::Body::UndoResponse(
@@ -246,11 +236,11 @@ impl RequestRouter {
                     let _ = deduplicate(session.chart());
                     session.update();
                 }
-                self.log_info(&format!(
+                log::info!(
                     "redo ok id={} success={}",
                     request.request_id,
                     u8::from(success)
-                ));
+                );
                 Ok(Envelope {
                     request_id: request.request_id,
                     body: Some(envelope::Body::RedoResponse(
@@ -260,10 +250,10 @@ impl RequestRouter {
             }
             Some(envelope::Body::CurrentTickRequest(_)) => {
                 let tick = context.context().current_tick();
-                self.log_info(&format!(
+                log::info!(
                     "current_tick ok id={} current_tick={tick}",
                     request.request_id
-                ));
+                );
                 Ok(Envelope {
                     request_id: request.request_id,
                     body: Some(envelope::Body::CurrentTickResponse(
@@ -272,11 +262,11 @@ impl RequestRouter {
                 })
             }
             _ => {
-                self.log_error(&format!(
+                log::error!(
                     "request failed id={} kind={} code=INVALID_ARGUMENT msg=\"unsupported request\"",
                     request.request_id,
                     request_kind(request)
-                ));
+                );
                 Ok(error_envelope(
                     request.request_id,
                     ErrorCode::InvalidArgument,
@@ -292,24 +282,6 @@ impl RequestRouter {
             None
         } else {
             Some(unsafe { ComPtr::retain(inner.context) })
-        }
-    }
-
-    fn log_info(&self, message: &str) {
-        let inner = self.inner.lock().expect("router");
-        if let Some(logger) = inner.logger {
-            unsafe {
-                (*logger).info(message);
-            }
-        }
-    }
-
-    fn log_error(&self, message: &str) {
-        let inner = self.inner.lock().expect("router");
-        if let Some(logger) = inner.logger {
-            unsafe {
-                (*logger).error(message);
-            }
         }
     }
 }
