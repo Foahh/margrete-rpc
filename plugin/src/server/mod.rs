@@ -148,7 +148,14 @@ impl ServerController {
 
         let mut server =
             NamedPipeServer::new(self.shared.pipe_name.clone(), Arc::clone(&self.router));
-        server.start();
+        if let Err(err) = server.start() {
+            log::error!("pipe server failed to start: {err}");
+            ui.shutdown();
+            self.router.set_ui_dispatcher(None);
+            self.router.set_context(std::ptr::null_mut());
+            *self.active_config.lock().expect("active") = None;
+            return;
+        }
         *self.pipe_server.lock().expect("pipe") = Some(server);
         *self.ui.lock().expect("ui") = Some(ui);
     }
@@ -222,4 +229,28 @@ fn log_config(config: &ServerConfig, label: &str, log_path: &Path) {
             path_utf8(log_path)
         }
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rpc::router::RequestRouter;
+    use std::ptr;
+    use std::time::Duration;
+
+    #[test]
+    fn start_does_not_stay_running_if_listen_fails() {
+        let controller = ServerController::new(ServerConfig::default(), None).expect("controller");
+        let mut occupying = NamedPipeServer::new(
+            controller.status().pipe_name,
+            Arc::new(RequestRouter::new(ptr::null_mut())),
+        );
+        occupying.start().expect("occupy");
+        controller.start(ptr::null_mut());
+        assert!(!controller.running());
+        let started = Instant::now();
+        controller.stop();
+        assert!(started.elapsed() < Duration::from_secs(1));
+        occupying.stop();
+    }
 }

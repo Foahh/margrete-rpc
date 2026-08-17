@@ -9,6 +9,7 @@ use crate::rpc::proto::{ApplyEditRequest, Note as ProtoNote};
 use std::collections::{HashMap, HashSet};
 
 pub fn apply_edit(session: &MargreteSession, request: &ApplyEditRequest) -> Result<()> {
+    validate_note_edit(session.chart(), request)?;
     with_undo(session, || {
         apply_edit_notes(session.chart(), request)?;
         apply_edit_events(session.chart(), request)
@@ -159,15 +160,80 @@ fn delete_all_root_notes(chart: &Chart) -> Result<()> {
     Ok(())
 }
 
+fn validate_note_edit(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
+    if request.replace_all_notes {
+        for note_proto in &request.notes_upsert {
+            reject_existing_ids(note_proto)?;
+        }
+        return Ok(());
+    }
+
+    let roots = current_root_notes(chart)?;
+    let mut existing_by_id = HashMap::new();
+    for note in &roots {
+        existing_by_id.insert(note.note().id(), note.as_ptr());
+    }
+    let delete_ids: HashSet<i32> = request.note_ids_delete.iter().copied().collect();
+    for proto in &request.notes_upsert {
+        let Some(id) = proto.id else {
+            continue;
+        };
+        if delete_ids.contains(&id) {
+            return Err(PluginError::invalid(
+                "note upsert references a note id that is also deleted",
+            ));
+        }
+        let Some(found) = existing_by_id.get(&id) else {
+            return Err(PluginError::invalid(
+                "note upsert references unknown note id",
+            ));
+        };
+        validate_upsert_tree(unsafe { &**found }, proto)?;
+    }
+    Ok(())
+}
+
+fn reject_existing_ids(note: &ProtoNote) -> Result<()> {
+    if note.id.is_some() {
+        return Err(PluginError::invalid(
+            "replace_all_notes cannot contain existing note ids",
+        ));
+    }
+    for child in &note.children {
+        reject_existing_ids(child)?;
+    }
+    Ok(())
+}
+
+fn validate_upsert_tree(existing: &Note, proto: &ProtoNote) -> Result<()> {
+    let child_count = existing.children_count();
+    let mut children = Vec::with_capacity(child_count.max(0) as usize);
+    let mut child_by_id = HashMap::new();
+    for index in 0..child_count {
+        let owned = existing.get_child(index)?;
+        child_by_id.insert(owned.note().id(), owned.as_ptr());
+        children.push(owned);
+    }
+    for child_proto in &proto.children {
+        let Some(id) = child_proto.id else {
+            return Err(PluginError::invalid(
+                "in-place note upsert requires child ids",
+            ));
+        };
+        let Some(found) = child_by_id.get(&id) else {
+            return Err(PluginError::invalid(
+                "note upsert references unknown child id",
+            ));
+        };
+        validate_upsert_tree(unsafe { &**found }, child_proto)?;
+    }
+    Ok(())
+}
+
 fn apply_edit_notes(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
     if request.replace_all_notes {
         delete_all_root_notes(chart)?;
         for note_proto in &request.notes_upsert {
-            if note_proto.id.is_some() {
-                return Err(PluginError::invalid(
-                    "replace_all_notes cannot contain existing note ids",
-                ));
-            }
             let note = create_note_tree(chart, note_proto)?;
             match chart.append_note(note.as_ptr()) {
                 Ok(()) => {

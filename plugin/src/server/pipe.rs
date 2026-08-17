@@ -8,10 +8,12 @@ use std::io::{self, Read, Write};
 use std::os::windows::io::AsRawHandle;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use windows::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
+use windows::Win32::System::Pipes::PeekNamedPipe;
 use windows::Win32::System::Threading::WaitForSingleObject;
 
 type BytePipe = DuplexPipeStream<pipe_mode::Bytes>;
@@ -20,11 +22,17 @@ type BytePipeListener = PipeListener<pipe_mode::Bytes, pipe_mode::Bytes>;
 const IO_POLL_INTERVAL: Duration = Duration::from_millis(10);
 const ACCEPT_RETRY_LIMIT: u32 = 3;
 const ACCEPT_RETRY_DELAY: Duration = Duration::from_millis(50);
+const LISTEN_READY_TIMEOUT: Duration = Duration::from_secs(2);
+#[cfg(not(test))]
+const MAX_CLIENTS: usize = 32;
+#[cfg(test)]
+const MAX_CLIENTS: usize = 4;
 
 pub struct NamedPipeServer {
     pipe_name: String,
     router: Arc<RequestRouter>,
     running: Arc<AtomicBool>,
+    stop: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -34,22 +42,42 @@ impl NamedPipeServer {
             pipe_name,
             router,
             running: Arc::new(AtomicBool::new(false)),
+            stop: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
         }
     }
 
-    pub fn start(&mut self) {
-        if self.running.swap(true, Ordering::SeqCst) {
-            return;
+    pub fn start(&mut self) -> io::Result<()> {
+        if self.running() {
+            return Ok(());
         }
+        self.stop.store(false, Ordering::SeqCst);
         if let Some(previous) = self.thread.lock().expect("thread").take() {
             let _ = previous.join();
         }
         let pipe_name = self.pipe_name.clone();
         let router = Arc::clone(&self.router);
         let running = Arc::clone(&self.running);
-        let thread = thread::spawn(move || run(pipe_name, router, running));
+        let stop = Arc::clone(&self.stop);
+        let (ready_tx, ready_rx) = mpsc::sync_channel(1);
+        let thread = thread::spawn(move || run(pipe_name, router, running, stop, ready_tx));
         *self.thread.lock().expect("thread") = Some(thread);
+        match ready_rx.recv_timeout(LISTEN_READY_TIMEOUT) {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(err)) => {
+                self.join_listener();
+                Err(err)
+            }
+            Err(_) => {
+                self.stop.store(true, Ordering::SeqCst);
+                self.running.store(false, Ordering::SeqCst);
+                self.join_listener();
+                Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "named pipe listener did not become ready",
+                ))
+            }
+        }
     }
 
     pub fn stop(&self) {
@@ -57,7 +85,20 @@ impl NamedPipeServer {
     }
 
     pub fn stop_while(&self, mut pump: impl FnMut()) {
+        self.stop.store(true, Ordering::SeqCst);
         self.running.store(false, Ordering::SeqCst);
+        self.join_listener_while(&mut pump);
+    }
+
+    pub fn running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
+
+    fn join_listener(&self) {
+        self.join_listener_while(&mut || {});
+    }
+
+    fn join_listener_while(&self, pump: &mut impl FnMut()) {
         let Some(thread) = self.thread.lock().expect("thread").take() else {
             return;
         };
@@ -70,10 +111,6 @@ impl NamedPipeServer {
         }
         let _ = thread.join();
     }
-
-    pub fn running(&self) -> bool {
-        self.running.load(Ordering::SeqCst)
-    }
 }
 
 impl Drop for NamedPipeServer {
@@ -82,32 +119,54 @@ impl Drop for NamedPipeServer {
     }
 }
 
-fn run(pipe_name: String, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
+fn run(
+    pipe_name: String,
+    router: Arc<RequestRouter>,
+    running: Arc<AtomicBool>,
+    stop: Arc<AtomicBool>,
+    ready: mpsc::SyncSender<io::Result<()>>,
+) {
     let pipe_path = format!(r"\\.\pipe\{pipe_name}");
     log::info!("pipe server starting path={pipe_path}");
     let mut clients: Vec<JoinHandle<()>> = Vec::new();
 
     let listener = match create_listener(&pipe_path) {
-        Ok(listener) => listener,
+        Ok(listener) => {
+            running.store(true, Ordering::SeqCst);
+            let _ = ready.send(Ok(()));
+            listener
+        }
         Err(err) => {
-            log::error!("named pipe listener creation failed: {err}");
             running.store(false, Ordering::SeqCst);
+            log::error!("named pipe listener creation failed: {err}");
+            let _ = ready.send(Err(err));
             return;
         }
     };
     let mut accept_failures = 0u32;
 
-    while running.load(Ordering::SeqCst) {
+    while !stop.load(Ordering::SeqCst) {
         reap_clients(&mut clients);
+        if clients.len() >= MAX_CLIENTS {
+            match listener.accept() {
+                Ok(_) => {
+                    log::warn!("rejected named pipe client: at capacity ({MAX_CLIENTS})");
+                }
+                Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
+                    thread::sleep(IO_POLL_INTERVAL);
+                }
+                Err(err) if err.kind() == io::ErrorKind::Interrupted => {}
+                Err(err) => {
+                    log::error!("named pipe accept failed at capacity: {err}");
+                    thread::sleep(ACCEPT_RETRY_DELAY);
+                }
+            }
+            continue;
+        }
         match listener.accept() {
             Ok(pipe) => {
                 accept_failures = 0;
-                spawn_client(
-                    pipe,
-                    Arc::clone(&router),
-                    Arc::clone(&running),
-                    &mut clients,
-                );
+                spawn_client(pipe, Arc::clone(&router), Arc::clone(&stop), &mut clients);
             }
             Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
                 thread::sleep(IO_POLL_INTERVAL);
@@ -130,6 +189,8 @@ fn run(pipe_name: String, router: Arc<RequestRouter>, running: Arc<AtomicBool>) 
     }
 
     running.store(false, Ordering::SeqCst);
+    stop.store(true, Ordering::SeqCst);
+    reap_clients(&mut clients);
     for handle in clients {
         let _ = handle.join();
     }
@@ -152,12 +213,12 @@ fn create_listener(pipe_path: &str) -> io::Result<BytePipeListener> {
 fn spawn_client(
     pipe: BytePipe,
     router: Arc<RequestRouter>,
-    running: Arc<AtomicBool>,
+    stop: Arc<AtomicBool>,
     clients: &mut Vec<JoinHandle<()>>,
 ) {
     match thread::Builder::new()
         .name("margrete-rpc-pipe-client".into())
-        .spawn(move || handle_client(pipe, router, running))
+        .spawn(move || handle_client(pipe, router, stop))
     {
         Ok(handle) => clients.push(handle),
         Err(err) => {
@@ -178,9 +239,9 @@ fn reap_clients(clients: &mut Vec<JoinHandle<()>>) {
     }
 }
 
-fn handle_client(mut pipe: BytePipe, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
-    if let Err(err) = client_loop(&mut pipe, &router, &running)
-        && running.load(Ordering::SeqCst)
+fn handle_client(mut pipe: BytePipe, router: Arc<RequestRouter>, stop: Arc<AtomicBool>) {
+    if let Err(err) = client_loop(&mut pipe, &router, &stop)
+        && !stop.load(Ordering::SeqCst)
     {
         log::error!("{err}");
     }
@@ -190,23 +251,26 @@ fn handle_client(mut pipe: BytePipe, router: Arc<RequestRouter>, running: Arc<At
 fn client_loop(
     pipe: &mut BytePipe,
     router: &RequestRouter,
-    running: &AtomicBool,
+    stop: &AtomicBool,
 ) -> Result<(), PluginError> {
-    while running.load(Ordering::SeqCst) {
+    while !stop.load(Ordering::SeqCst) {
         let mut header = [0u8; 4];
-        if !read_exact_cooperative(pipe, &mut header, true, running)? {
+        if !read_exact_cooperative(pipe, &mut header, true, stop)? {
             break;
         }
         let size = framing::payload_size_from_header(&header)?;
         let mut frame = vec![0u8; 4 + size as usize];
         frame[..4].copy_from_slice(&header);
-        if !read_exact_cooperative(pipe, &mut frame[4..], false, running)? {
+        if !read_exact_cooperative(pipe, &mut frame[4..], false, stop)? {
+            break;
+        }
+        if stop.load(Ordering::SeqCst) {
             break;
         }
         let request = framing::decode(&frame)?;
         let response = router.route(&request);
         let out = framing::encode(&response)?;
-        if !write_all_cooperative(pipe, &out, running)? {
+        if !write_all_cooperative(pipe, &out, stop)? {
             break;
         }
     }
@@ -217,16 +281,16 @@ fn read_exact_cooperative(
     pipe: &mut BytePipe,
     buf: &mut [u8],
     allow_clean_eof: bool,
-    running: &AtomicBool,
+    stop: &AtomicBool,
 ) -> Result<bool, PluginError> {
     let mut received = 0usize;
     while received < buf.len() {
-        if !running.load(Ordering::SeqCst) {
+        if stop.load(Ordering::SeqCst) {
             return Ok(false);
         }
         match pipe.read(&mut buf[received..]) {
             Ok(0) => {
-                if pipe.client_process_id().is_ok() {
+                if client_connected(pipe) {
                     thread::sleep(IO_POLL_INTERVAL);
                     continue;
                 }
@@ -256,15 +320,15 @@ fn read_exact_cooperative(
 fn write_all_cooperative(
     pipe: &mut BytePipe,
     buf: &[u8],
-    running: &AtomicBool,
+    stop: &AtomicBool,
 ) -> Result<bool, PluginError> {
     let mut sent = 0usize;
     while sent < buf.len() {
-        if !running.load(Ordering::SeqCst) {
+        if stop.load(Ordering::SeqCst) {
             return Ok(false);
         }
         match pipe.write(&buf[sent..]) {
-            Ok(0) if pipe.client_process_id().is_ok() => {
+            Ok(0) if client_connected(pipe) => {
                 thread::sleep(IO_POLL_INTERVAL);
             }
             Ok(0) => {
@@ -285,6 +349,21 @@ fn write_all_cooperative(
     Ok(true)
 }
 
+fn client_connected(pipe: &BytePipe) -> bool {
+    let mut available = 0u32;
+    unsafe {
+        PeekNamedPipe(
+            HANDLE(pipe.as_raw_handle()),
+            None,
+            0,
+            None,
+            Some(&mut available),
+            None,
+        )
+        .is_ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,6 +372,7 @@ mod tests {
     use std::fs::File;
     use std::fs::OpenOptions;
     use std::io::{Read, Write};
+    use std::sync::mpsc;
     use std::time::Instant;
 
     fn connect(pipe_name: &str) -> io::Result<File> {
@@ -385,7 +465,7 @@ mod tests {
         let instance = instance::allocate().expect("allocate");
         let router = Arc::new(RequestRouter::new(std::ptr::null_mut()));
         let mut server = NamedPipeServer::new(instance.pipe_name(), router);
-        server.start();
+        server.start().expect("start");
         (AllocatedGuard(instance), server)
     }
 
@@ -401,7 +481,7 @@ mod tests {
     fn lifecycle_is_idempotent_and_restartable() {
         let (instance, mut server) = start_test_server();
         let pipe_name = instance.pipe_name();
-        server.start();
+        server.start().expect("start");
         ping_until(&pipe_name, Duration::from_secs(2));
         for _ in 0..64 {
             ping(&pipe_name).expect("ping");
@@ -412,7 +492,7 @@ mod tests {
         assert!(!server.running());
         server.stop();
 
-        server.start();
+        server.start().expect("restart");
         ping_until(&pipe_name, Duration::from_secs(2));
         server.stop();
         assert!(!server.running());
@@ -424,7 +504,7 @@ mod tests {
         let pipe_name = instance.pipe_name();
         ping_until(&pipe_name, Duration::from_secs(2));
         thread::scope(|scope| {
-            for _ in 0..8 {
+            for _ in 0..3 {
                 let name = pipe_name.clone();
                 scope.spawn(move || {
                     for _ in 0..16 {
@@ -453,6 +533,72 @@ mod tests {
         let mut partial = connect(&pipe_name).expect("partial client");
         partial.write_all(&[8, 0]).expect("partial header");
         thread::sleep(Duration::from_millis(20));
+
+        let started = Instant::now();
+        server.stop();
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(!server.running());
+    }
+
+    fn connect_timeout(pipe_name: &str, timeout: Duration) -> io::Result<File> {
+        let (tx, rx) = mpsc::channel();
+        let name = pipe_name.to_string();
+        thread::spawn(move || {
+            let _ = tx.send(connect(&name));
+        });
+        rx.recv_timeout(timeout)
+            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "connect timed out"))?
+    }
+
+    #[test]
+    fn listen_failure_does_not_leave_server_running() {
+        let (instance, occupying) = start_test_server();
+        let router = Arc::new(RequestRouter::new(std::ptr::null_mut()));
+        let mut server = NamedPipeServer::new(instance.pipe_name(), router);
+        assert!(server.start().is_err());
+        assert!(!server.running());
+        assert!(server.start().is_err());
+        assert!(!server.running());
+        let started = Instant::now();
+        server.stop();
+        assert!(started.elapsed() < Duration::from_secs(1));
+        occupying.stop();
+    }
+
+    #[test]
+    fn reaps_finished_clients_and_rejects_overflow() {
+        let (instance, server) = start_test_server();
+        let pipe_name = instance.pipe_name();
+        ping_until(&pipe_name, Duration::from_secs(2));
+
+        let mut idle = Vec::new();
+        for _ in 0..MAX_CLIENTS {
+            idle.push(connect(&pipe_name).expect("idle client"));
+        }
+        thread::sleep(Duration::from_millis(50));
+
+        match connect_timeout(&pipe_name, Duration::from_millis(400)) {
+            Err(_) => {}
+            Ok(mut file) => {
+                let request = Envelope {
+                    request_id: 2,
+                    body: Some(envelope::Body::PingRequest(Default::default())),
+                };
+                let encoded = framing::encode(&request).expect("encode");
+                let overflow = file.write_all(&encoded).and_then(|_| {
+                    let mut header = [0u8; 4];
+                    file.read_exact(&mut header)
+                });
+                assert!(
+                    overflow.is_err(),
+                    "server should reject clients above {MAX_CLIENTS}"
+                );
+            }
+        }
+
+        idle.pop();
+        thread::sleep(Duration::from_millis(50));
+        ping_until(&pipe_name, Duration::from_secs(2));
 
         let started = Instant::now();
         server.stop();

@@ -271,7 +271,7 @@ fn apply_edit_updates_child_notes_in_place_without_rebuilding_the_tree() {
 }
 
 #[test]
-fn apply_edit_discards_recording_when_an_in_place_child_id_is_unknown() {
+fn apply_edit_rejects_unknown_child_id_before_recording() {
     let mut context = FakeContext::new();
     context.chart.add_existing_note(10);
     let child_ptr = context.chart.add_detached_note(11) as *mut _;
@@ -289,8 +289,9 @@ fn apply_edit_discards_recording_when_an_in_place_child_id_is_unknown() {
         ..Default::default()
     });
     assert!(apply_edit(&session, &request).is_err());
+    assert_eq!(context.undo.begin_count, 0);
     assert_eq!(context.undo.commit_count, 0);
-    assert_eq!(context.undo.discard_count, 1);
+    assert_eq!(context.undo.discard_count, 0);
 }
 
 #[test]
@@ -334,8 +335,31 @@ fn apply_edit_rejects_replace_all_notes_with_note_ids() {
         ..Default::default()
     });
     assert!(apply_edit(&session, &request).is_err());
+    assert_eq!(context.undo.begin_count, 0);
     assert_eq!(context.undo.commit_count, 0);
-    assert_eq!(context.undo.discard_count, 1);
+    assert_eq!(context.undo.discard_count, 0);
+}
+
+#[test]
+fn apply_edit_rejects_replace_all_notes_without_wiping_existing_notes() {
+    let mut context = FakeContext::new();
+    context.chart.add_existing_note(10);
+    context.chart.add_existing_note(11);
+    let session = MargreteSession::new(context.as_ptr()).unwrap();
+    let mut request = ApplyEditRequest {
+        replace_all_notes: true,
+        ..Default::default()
+    };
+    request.notes_upsert.push(Note {
+        id: Some(1),
+        r#type: NoteType::Tap as i32,
+        ..Default::default()
+    });
+    assert!(apply_edit(&session, &request).is_err());
+    assert_eq!(context.chart.notes.len(), 2);
+    assert_eq!(context.chart.deleted_notes, 0);
+    assert_eq!(context.undo.begin_count, 0);
+    assert_eq!(context.undo.discard_count, 0);
 }
 
 #[test]
@@ -349,7 +373,28 @@ fn apply_edit_rejects_upsert_of_unknown_note_id() {
         ..Default::default()
     });
     assert!(apply_edit(&session, &request).is_err());
-    assert_eq!(context.undo.discard_count, 1);
+    assert_eq!(context.undo.begin_count, 0);
+    assert_eq!(context.undo.discard_count, 0);
+}
+
+#[test]
+fn apply_edit_does_not_delete_notes_before_unknown_upsert_fails() {
+    let mut context = FakeContext::new();
+    context.chart.add_existing_note(10);
+    context.chart.add_existing_note(11);
+    let session = MargreteSession::new(context.as_ptr()).unwrap();
+    let mut request = ApplyEditRequest::default();
+    request.note_ids_delete.push(10);
+    request.notes_upsert.push(Note {
+        id: Some(99),
+        r#type: NoteType::Tap as i32,
+        ..Default::default()
+    });
+    assert!(apply_edit(&session, &request).is_err());
+    assert_eq!(context.chart.notes.len(), 2);
+    assert_eq!(context.chart.deleted_notes, 0);
+    assert_eq!(context.undo.begin_count, 0);
+    assert_eq!(context.undo.discard_count, 0);
 }
 
 #[test]
@@ -368,7 +413,8 @@ fn apply_edit_rejects_in_place_child_upsert_without_child_id() {
         ..Default::default()
     });
     assert!(apply_edit(&session, &request).is_err());
-    assert_eq!(context.undo.discard_count, 1);
+    assert_eq!(context.undo.begin_count, 0);
+    assert_eq!(context.undo.discard_count, 0);
 }
 
 #[test]
