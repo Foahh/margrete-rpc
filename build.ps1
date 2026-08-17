@@ -5,9 +5,6 @@
 .PARAMETER Configuration
   Debug or Release (maps to Cargo's dev / release profiles).
 
-.PARAMETER SkipVcVars
-  Skip vcvars64 import when you already opened a "x64 Native Tools" or VS dev shell.
-
 .PARAMETER Test
   Run `cargo test` after a successful build.
 
@@ -26,7 +23,6 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string] $Configuration = 'Release',
 
-    [switch] $SkipVcVars,
     [switch] $Test,
     [switch] $Publish,
     [switch] $InitSubmodules
@@ -50,46 +46,7 @@ function Invoke-Checked {
     }
 }
 
-function Import-VcVars64 {
-    Write-Host "`n==> Importing vcvars64 environment ..."
-
-    $vswhere = Join-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer" 'vswhere.exe'
-    if (-not (Test-Path $vswhere)) {
-        Write-Host "    vswhere.exe not found - install Visual Studio or open a VS dev shell and use -SkipVcVars."
-        return
-    }
-
-    $vsPath = & $vswhere -latest -products * -property installationPath -nologo
-    if (-not $vsPath) {
-        Write-Host "    Visual Studio installation not found."
-        return
-    }
-
-    $vcvars = Join-Path $vsPath 'VC\Auxiliary\Build\vcvars64.bat'
-    if (-not (Test-Path $vcvars)) {
-        Write-Host "    vcvars64.bat not found in $vsPath."
-        return
-    }
-
-    try {
-        $output = cmd /c "`"$vcvars`" 2>&1 && set" | Out-String
-        $output -split "`r`n" | ForEach-Object {
-            if ($_ -match '^([^=]+)=(.*)') {
-                [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-            }
-        }
-        Write-Host "    VCVARS64 environment loaded."
-    }
-    catch {
-        Write-Host "Failed to load VCVARS64: $_" -ForegroundColor Red
-    }
-}
-
 try {
-    if (-not $SkipVcVars) {
-        Import-VcVars64
-    }
-
     $RepoRoot = $PSScriptRoot
     $PluginDir = Join-Path $RepoRoot 'plugin'
     $CargoProfile = if ($Configuration -eq 'Release') { 'release' } else { 'debug' }
