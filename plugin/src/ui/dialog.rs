@@ -4,11 +4,11 @@ use crate::server::logger::path_utf8;
 use crate::server::{ServerController, ServerControllerStatus};
 use std::ffi::c_void;
 use windows::core::{w, PCWSTR};
-use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, SIZE, WPARAM};
 use windows::Win32::Graphics::Gdi::{
     CreateFontIndirectW, CreateSolidBrush, DeleteObject, FillRect, GetDC, GetDeviceCaps,
-    InvalidateRect, ReleaseDC, SetBkColor, SetTextColor, UpdateWindow, FW_NORMAL, FW_SEMIBOLD,
-    HBRUSH, HDC, HFONT, LOGFONTW, LOGPIXELSY,
+    GetTextExtentPoint32W, InvalidateRect, ReleaseDC, SelectObject, SetBkColor, SetTextColor,
+    UpdateWindow, FW_NORMAL, FW_SEMIBOLD, HBRUSH, HDC, HFONT, LOGFONTW, LOGPIXELSY,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::SystemServices::{SS_CENTERIMAGE, SS_LEFT, SS_NOPREFIX};
@@ -19,23 +19,23 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{EnableWindow, SetActiveWindow}
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
     AdjustWindowRectEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    GetClientRect, GetMessageW, GetWindowLongPtrW, IsDialogMessageW, IsWindow, KillTimer,
-    LoadCursorW, RegisterClassExW, SendMessageW, SetTimer, SetWindowLongPtrW, SetWindowPos,
-    SetWindowTextW, ShowWindow, SystemParametersInfoW, TranslateMessage, BS_PUSHBUTTON,
-    CREATESTRUCTW, CW_USEDEFAULT, ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, ES_READONLY,
-    GWLP_USERDATA, GWL_EXSTYLE, GWL_STYLE, HMENU, IDC_ARROW, MSG, NONCLIENTMETRICSW,
-    SPI_GETNONCLIENTMETRICS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER, SW_HIDE, SW_SHOW,
-    SW_SHOWNORMAL, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLOSE,
-    WM_COMMAND, WM_CREATE, WM_CTLCOLORSTATIC, WM_DESTROY, WM_ERASEBKGND, WM_NCCREATE, WM_SETFONT,
-    WM_TIMER, WNDCLASSEXW, WS_CAPTION, WS_CHILD, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME, WS_SYSMENU,
-    WS_VISIBLE, WS_VSCROLL,
+    GetClientRect, GetMessageW, GetSystemMetrics, GetWindowLongPtrW, GetWindowTextLengthW,
+    GetWindowTextW, IsDialogMessageW, IsWindow, KillTimer, LoadCursorW, RegisterClassExW,
+    SendMessageW, SetTimer, SetWindowLongPtrW, SetWindowPos, SetWindowTextW, ShowWindow,
+    SystemParametersInfoW, TranslateMessage, BS_PUSHBUTTON, CREATESTRUCTW, CW_USEDEFAULT,
+    ES_AUTOHSCROLL, ES_AUTOVSCROLL, ES_MULTILINE, ES_NOHIDESEL, ES_READONLY, GWLP_USERDATA,
+    GWL_EXSTYLE, GWL_STYLE, HMENU, IDC_ARROW, MSG, NONCLIENTMETRICSW, SM_CXPADDEDBORDER, SM_CXSIZE,
+    SM_CXSMICON, SPI_GETNONCLIENTMETRICS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER, SW_HIDE,
+    SW_SHOW, SW_SHOWNORMAL, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WINDOW_EX_STYLE, WINDOW_STYLE,
+    WM_CLOSE, WM_COMMAND, WM_CREATE, WM_CTLCOLORSTATIC, WM_DESTROY, WM_ERASEBKGND, WM_NCCREATE,
+    WM_SETFONT, WM_TIMER, WNDCLASSEXW, WS_CAPTION, WS_CHILD, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
+    WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
 
 const CLASS_NAME: PCWSTR = w!("MargreteRpcServerStatusWindow");
 const REFRESH_TIMER_ID: usize = 1;
 const REFRESH_INTERVAL_MS: u32 = 1000;
 const START_STOP_ID: i32 = 1001;
-const OPEN_CONFIG_ID: i32 = 1002;
 const OPEN_LOG_ID: i32 = 1004;
 const CONTROL_HEIGHT: i32 = 30;
 const SECTION_HEIGHT: i32 = 28;
@@ -44,6 +44,9 @@ const PADDING: i32 = 20;
 const TOP_PADDING: i32 = 12;
 const ROW_GAP: i32 = 8;
 const SECTION_GAP: i32 = 14;
+const LABEL_WIDTH: i32 = 36;
+const ID_VALUE_WIDTH: i32 = 64;
+const BUTTON_WIDTH: i32 = 95;
 
 struct ServerStatusWindow {
     context: *mut Context,
@@ -51,14 +54,12 @@ struct ServerStatusWindow {
     config_error: String,
     hwnd: HWND,
     parent: HWND,
-    pipe_value: HWND,
-    loaded_path_value: HWND,
     instance_value: HWND,
+    log_label: HWND,
     log_value: HWND,
     error_label: HWND,
     error_value: HWND,
     start_stop: HWND,
-    open_config: HWND,
     open_log: HWND,
     font: HFONT,
     bold_font: HFONT,
@@ -66,7 +67,7 @@ struct ServerStatusWindow {
     normal_height: i32,
     message_height: i32,
     message_visible: bool,
-    config_path_text: Vec<u16>,
+    log_visible: bool,
     log_path_text: Vec<u16>,
 }
 
@@ -99,14 +100,12 @@ impl ServerStatusWindow {
             config_error,
             hwnd: HWND::default(),
             parent,
-            pipe_value: HWND::default(),
-            loaded_path_value: HWND::default(),
             instance_value: HWND::default(),
+            log_label: HWND::default(),
             log_value: HWND::default(),
             error_label: HWND::default(),
             error_value: HWND::default(),
             start_stop: HWND::default(),
-            open_config: HWND::default(),
             open_log: HWND::default(),
             font: create_message_font(0, FW_NORMAL.0 as i32),
             bold_font: create_message_font(0, FW_SEMIBOLD.0 as i32),
@@ -114,7 +113,7 @@ impl ServerStatusWindow {
             normal_height: 0,
             message_height: 0,
             message_visible: true,
-            config_path_text: Vec::new(),
+            log_visible: true,
             log_path_text: Vec::new(),
         }
     }
@@ -126,15 +125,18 @@ impl ServerStatusWindow {
                 .encode_utf16()
                 .chain(std::iter::once(0))
                 .collect();
+            let style = WS_CAPTION | WS_SYSMENU;
+            let ex = WS_EX_DLGMODALFRAME;
+            let (width, height) = outer_size_for_client(client_width(), 80, style, ex);
             let hwnd = CreateWindowExW(
-                WS_EX_DLGMODALFRAME,
+                ex,
                 CLASS_NAME,
                 PCWSTR(title.as_ptr()),
-                WS_CAPTION | WS_SYSMENU,
+                style,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
-                620,
-                350,
+                width,
+                height,
                 self.parent,
                 HMENU::default(),
                 GetModuleHandleW(None).unwrap_or_default(),
@@ -164,70 +166,16 @@ impl ServerStatusWindow {
     }
 
     fn create_controls(&mut self) {
-        let mut client = RECT::default();
-        unsafe {
-            let _ = GetClientRect(self.hwnd, &mut client);
-        }
         let label_x = PADDING;
-        let label_width = 78;
-        let value_x = 106;
-        let button_width = 95;
-        let right_edge = client.right - PADDING;
-        let action_x = right_edge - button_width;
-        let endpoint_width = action_x - ROW_GAP - value_x;
-        let full_value_width = right_edge - value_x;
+        let label_width = LABEL_WIDTH;
+        let value_x = label_x + label_width + ROW_GAP;
+        let button_width = BUTTON_WIDTH;
+        let action_x = client_width() - PADDING - button_width;
+        let log_value_width = action_x - ROW_GAP - value_x;
         let mut y = TOP_PADDING;
         add_label(
             self.hwnd,
-            w!("Server"),
-            label_x,
-            y,
-            90,
-            SECTION_HEIGHT,
-            self.bold_font,
-        );
-        y += SECTION_HEIGHT + ROW_GAP;
-        add_label(
-            self.hwnd,
-            w!("Pipe"),
-            label_x,
-            y,
-            label_width,
-            CONTROL_HEIGHT,
-            self.font,
-        );
-        self.pipe_value = add_value(
-            self.hwnd,
-            value_x,
-            y,
-            endpoint_width,
-            CONTROL_HEIGHT,
-            self.font,
-        );
-        self.start_stop = add_button(
-            self.hwnd,
-            w!(""),
-            START_STOP_ID,
-            action_x,
-            y,
-            button_width,
-            CONTROL_HEIGHT,
-            self.font,
-        );
-        y += CONTROL_HEIGHT + SECTION_GAP;
-        add_label(
-            self.hwnd,
-            w!("Runtime"),
-            label_x,
-            y,
-            180,
-            SECTION_HEIGHT,
-            self.bold_font,
-        );
-        y += SECTION_HEIGHT + ROW_GAP;
-        add_label(
-            self.hwnd,
-            w!("Instance"),
+            w!("ID"),
             label_x,
             y,
             label_width,
@@ -238,40 +186,22 @@ impl ServerStatusWindow {
             self.hwnd,
             value_x,
             y,
-            full_value_width,
+            ID_VALUE_WIDTH,
             CONTROL_HEIGHT,
             self.font,
         );
-        y += CONTROL_HEIGHT + ROW_GAP;
-        add_label(
+        self.start_stop = add_button(
             self.hwnd,
-            w!("Config"),
-            label_x,
-            y,
-            label_width,
-            CONTROL_HEIGHT,
-            self.font,
-        );
-        self.loaded_path_value = add_value(
-            self.hwnd,
-            value_x,
-            y,
-            action_x - ROW_GAP - value_x,
-            CONTROL_HEIGHT,
-            self.font,
-        );
-        self.open_config = add_button(
-            self.hwnd,
-            w!("Open"),
-            OPEN_CONFIG_ID,
-            action_x,
+            w!(""),
+            START_STOP_ID,
+            value_x + ID_VALUE_WIDTH + ROW_GAP,
             y,
             button_width,
             CONTROL_HEIGHT,
             self.font,
         );
         y += CONTROL_HEIGHT + ROW_GAP;
-        add_label(
+        self.log_label = add_label(
             self.hwnd,
             w!("Log"),
             label_x,
@@ -284,7 +214,7 @@ impl ServerStatusWindow {
             self.hwnd,
             value_x,
             y,
-            action_x - ROW_GAP - value_x,
+            log_value_width,
             CONTROL_HEIGHT,
             self.font,
         );
@@ -320,7 +250,7 @@ impl ServerStatusWindow {
             0,
             label_x,
             y,
-            right_edge - label_x,
+            client_width() - PADDING * 2,
             ERROR_HEIGHT,
             self.font,
         );
@@ -332,14 +262,12 @@ impl ServerStatusWindow {
             return;
         };
         let status = controller.status();
-        let pipe = wide(&status.pipe_name);
-        let config_path = if status.loaded_config.loaded_from_file {
-            wide_from_path(&status.loaded_config.source_path)
+        let log_path = if status.loaded_config.logging && !status.log_path.as_os_str().is_empty() {
+            Some(wide_from_path(&status.log_path))
         } else {
-            wide("(none)")
+            None
         };
-        let log_path = log_path_text(&status);
-        set_text(
+        set_text_if_changed(
             self.start_stop,
             if status.running {
                 w!("Stop")
@@ -347,41 +275,73 @@ impl ServerStatusWindow {
                 w!("Start")
             },
         );
-        set_text_wide(self.pipe_value, &pipe);
-        set_text_wide(self.loaded_path_value, &config_path);
-        set_text_wide(self.instance_value, &wide(&status.instance_id));
-        set_text_wide(self.log_value, &log_path);
-        self.config_path_text = config_path;
-        self.log_path_text = log_path;
+        set_text_wide_if_changed(self.instance_value, &wide(&status.instance_id));
+        self.update_log_visibility(log_path.is_some());
+        if let Some(log_path) = log_path {
+            set_text_wide_if_changed(self.log_value, &log_path);
+            self.log_path_text = log_path;
+        } else {
+            self.log_path_text = Vec::new();
+        }
         unsafe {
-            let _ = EnableWindow(
-                self.open_config,
-                status.loaded_config.loaded_from_file
-                    && !status.loaded_config.source_path.as_os_str().is_empty(),
-            );
-            let _ = EnableWindow(
-                self.open_log,
-                status.loaded_config.logging && !status.log_path.as_os_str().is_empty(),
-            );
+            let _ = EnableWindow(self.open_log, self.log_visible);
         }
         let pending = active_config_differs(&status);
         let has_message = !self.config_error.is_empty() || pending;
         self.update_message_visibility(has_message);
         if !self.config_error.is_empty() {
-            set_text(self.error_label, w!("Config reload failed"));
-            set_text_wide(self.error_value, &wide(&self.config_error));
+            set_text_if_changed(self.error_label, w!("Config reload failed"));
+            set_text_wide_if_changed(self.error_value, &wide(&self.config_error));
         } else if pending {
-            set_text(self.error_label, w!("Config changes pending"));
-            set_text(
+            set_text_if_changed(self.error_label, w!("Config changes pending"));
+            set_text_if_changed(
                 self.error_value,
                 w!("Loaded config differs from the running server. Restart to apply."),
             );
         } else {
-            set_text(self.error_value, w!(""));
+            set_text_if_changed(self.error_value, w!(""));
         }
         unsafe {
             let _ = InvalidateRect(self.error_label, None, true);
         }
+    }
+
+    fn update_log_visibility(&mut self, visible: bool) {
+        if self.log_visible == visible {
+            return;
+        }
+        self.log_visible = visible;
+        unsafe {
+            let cmd = if visible { SW_SHOW } else { SW_HIDE };
+            let _ = ShowWindow(self.log_label, cmd);
+            let _ = ShowWindow(self.log_value, cmd);
+            let _ = ShowWindow(self.open_log, cmd);
+        }
+        self.relayout_below_rows();
+    }
+
+    fn content_bottom(&self) -> i32 {
+        let mut y = TOP_PADDING + CONTROL_HEIGHT;
+        if self.log_visible {
+            y += ROW_GAP + CONTROL_HEIGHT;
+        }
+        y
+    }
+
+    fn relayout_below_rows(&mut self) {
+        let mut y = self.content_bottom();
+        self.normal_height = y + PADDING;
+        y += SECTION_GAP;
+        move_control(self.error_label, PADDING, y, 180, SECTION_HEIGHT);
+        y += SECTION_HEIGHT + ROW_GAP;
+        move_control(
+            self.error_value,
+            PADDING,
+            y,
+            client_width() - PADDING * 2,
+            ERROR_HEIGHT,
+        );
+        self.message_height = y + ERROR_HEIGHT + PADDING;
     }
 
     fn update_message_visibility(&mut self, visible: bool) {
@@ -404,26 +364,20 @@ impl ServerStatusWindow {
         unsafe {
             let _ = GetClientRect(self.hwnd, &mut client);
         }
-        if client.bottom == client_height {
+        if client.right == client_width() && client.bottom == client_height {
             return;
         }
-        let mut target = RECT {
-            left: 0,
-            top: 0,
-            right: client.right,
-            bottom: client_height,
-        };
         unsafe {
             let style = WINDOW_STYLE(GetWindowLongPtrW(self.hwnd, GWL_STYLE) as u32);
             let ex = WINDOW_EX_STYLE(GetWindowLongPtrW(self.hwnd, GWL_EXSTYLE) as u32);
-            let _ = AdjustWindowRectEx(&mut target, style, false, ex);
+            let (width, height) = outer_size_for_client(client_width(), client_height, style, ex);
             let _ = SetWindowPos(
                 self.hwnd,
                 None,
                 0,
                 0,
-                target.right - target.left,
-                target.bottom - target.top,
+                width,
+                height,
                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE,
             );
         }
@@ -452,7 +406,7 @@ impl ServerStatusWindow {
     }
 
     fn open_path(&self, path: &[u16]) {
-        if path.is_empty() || path == wide("(none)") || path == wide("(disabled)") {
+        if path.is_empty() {
             return;
         }
         unsafe {
@@ -470,7 +424,6 @@ impl ServerStatusWindow {
     fn handle_command(&mut self, wparam: WPARAM) {
         match (wparam.0 & 0xffff) as i32 {
             START_STOP_ID => self.toggle_server(),
-            OPEN_CONFIG_ID => self.open_path(&self.config_path_text),
             OPEN_LOG_ID => self.open_path(&self.log_path_text),
             _ => {}
         }
@@ -692,7 +645,7 @@ fn add_value(parent: HWND, x: i32, y: i32, width: i32, height: i32, font: HFONT)
         parent,
         w!("EDIT"),
         w!(""),
-        ES_READONLY as u32 | ES_AUTOHSCROLL as u32,
+        ES_READONLY as u32 | ES_AUTOHSCROLL as u32 | ES_NOHIDESEL as u32 | WS_TABSTOP.0,
         WS_EX_CLIENTEDGE,
         0,
         x,
@@ -728,15 +681,134 @@ fn add_button(
     )
 }
 
-fn set_text(hwnd: HWND, text: PCWSTR) {
+fn client_width() -> i32 {
+    static WIDTH: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
+    *WIDTH.get_or_init(|| {
+        let content =
+            PADDING + LABEL_WIDTH + ROW_GAP + ID_VALUE_WIDTH + ROW_GAP + BUTTON_WIDTH + PADDING;
+        content.max(title_text_width() + caption_extra_width())
+    })
+}
+
+fn title_text_width() -> i32 {
     unsafe {
-        let _ = SetWindowTextW(hwnd, text);
+        let mut metrics = NONCLIENTMETRICSW {
+            cbSize: std::mem::size_of::<NONCLIENTMETRICSW>() as u32,
+            ..Default::default()
+        };
+        if SystemParametersInfoW(
+            SPI_GETNONCLIENTMETRICS,
+            metrics.cbSize,
+            Some(&mut metrics as *mut _ as *mut c_void),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+        .is_err()
+        {
+            return 0;
+        }
+        let font = CreateFontIndirectW(&metrics.lfCaptionFont);
+        if font.is_invalid() {
+            return 0;
+        }
+        let dc = GetDC(None);
+        if dc.0.is_null() {
+            let _ = DeleteObject(font);
+            return 0;
+        }
+        let old = SelectObject(dc, font);
+        let title: Vec<u16> = meta::DIALOG_TITLE.encode_utf16().collect();
+        let mut size = SIZE::default();
+        let _ = GetTextExtentPoint32W(dc, &title, &mut size);
+        let _ = SelectObject(dc, old);
+        let _ = ReleaseDC(None, dc);
+        let _ = DeleteObject(font);
+        size.cx
     }
+}
+
+fn caption_extra_width() -> i32 {
+    unsafe {
+        GetSystemMetrics(SM_CXSMICON)
+            + GetSystemMetrics(SM_CXSIZE) * 2
+            + GetSystemMetrics(SM_CXPADDEDBORDER) * 2
+            + 16
+    }
+}
+
+fn outer_size_for_client(
+    client_width: i32,
+    client_height: i32,
+    style: WINDOW_STYLE,
+    ex: WINDOW_EX_STYLE,
+) -> (i32, i32) {
+    let mut target = RECT {
+        left: 0,
+        top: 0,
+        right: client_width,
+        bottom: client_height,
+    };
+    unsafe {
+        let _ = AdjustWindowRectEx(&mut target, style, false, ex);
+    }
+    (target.right - target.left, target.bottom - target.top)
+}
+
+fn move_control(hwnd: HWND, x: i32, y: i32, width: i32, height: i32) {
+    unsafe {
+        let _ = SetWindowPos(
+            hwnd,
+            None,
+            x,
+            y,
+            width,
+            height,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
+
+fn set_text_if_changed(hwnd: HWND, text: PCWSTR) {
+    set_text_wide_if_changed(hwnd, &pcwstr_to_wide(text));
 }
 
 fn set_text_wide(hwnd: HWND, text: &[u16]) {
     unsafe {
         let _ = SetWindowTextW(hwnd, PCWSTR(text.as_ptr()));
+    }
+}
+
+fn set_text_wide_if_changed(hwnd: HWND, text: &[u16]) {
+    if window_text(hwnd) != text {
+        set_text_wide(hwnd, text);
+    }
+}
+
+fn window_text(hwnd: HWND) -> Vec<u16> {
+    unsafe {
+        let len = GetWindowTextLengthW(hwnd);
+        if len <= 0 {
+            return vec![0];
+        }
+        let mut buf = vec![0u16; len as usize + 1];
+        let written = GetWindowTextW(hwnd, &mut buf);
+        buf.truncate(written as usize + 1);
+        if buf.last() != Some(&0) {
+            buf.push(0);
+        }
+        buf
+    }
+}
+
+fn pcwstr_to_wide(text: PCWSTR) -> Vec<u16> {
+    unsafe {
+        if text.0.is_null() {
+            return vec![0];
+        }
+        let mut len = 0usize;
+        while *text.0.add(len) != 0 {
+            len += 1;
+        }
+        std::slice::from_raw_parts(text.0, len + 1).to_vec()
     }
 }
 
@@ -749,14 +821,6 @@ fn wide_from_path(path: &std::path::Path) -> Vec<u16> {
         wide("(none)")
     } else {
         wide(&path_utf8(path))
-    }
-}
-
-fn log_path_text(status: &ServerControllerStatus) -> Vec<u16> {
-    if !status.loaded_config.logging || status.log_path.as_os_str().is_empty() {
-        wide("(disabled)")
-    } else {
-        wide_from_path(&status.log_path)
     }
 }
 
