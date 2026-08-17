@@ -113,6 +113,3 @@ impl<T: Unknown> Drop for ComPtr<T> {
         }
     }
 }
-
-unsafe impl<T: Unknown> Send for ComPtr<T> {}
-unsafe impl<T: Unknown> Sync for ComPtr<T> {}

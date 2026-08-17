@@ -4,6 +4,7 @@ use crate::chart::mapper::snapshot_for_edit;
 use crate::chart::session::MargreteSession;
 use crate::chart::transaction::apply_edit;
 use crate::meta;
+use crate::rpc::marshal::UiDispatcher;
 use crate::rpc::proto::{Envelope, ErrorCode, ErrorResponse, StatusResponse, envelope};
 use crate::server::config::ServerConfig;
 use std::sync::Mutex;
@@ -27,6 +28,7 @@ struct RouterInner {
     config: ServerConfig,
     instance_id: String,
     status_snapshot: Option<Box<dyn Fn() -> RouterStatusSnapshot + Send + Sync>>,
+    ui: Option<UiDispatcher>,
 }
 
 unsafe impl Send for RouterInner {}
@@ -44,6 +46,7 @@ impl RequestRouter {
                 config,
                 instance_id: String::new(),
                 status_snapshot: None,
+                ui: None,
             }),
         };
         router.set_context(context);
@@ -71,6 +74,10 @@ impl RequestRouter {
 
     pub fn set_instance_id(&self, instance_id: impl Into<String>) {
         self.inner.lock().expect("router").instance_id = instance_id.into();
+    }
+
+    pub fn set_ui_dispatcher(&self, ui: Option<UiDispatcher>) {
+        self.inner.lock().expect("router").ui = ui;
     }
 
     pub fn set_status_snapshot_provider<F>(&self, provider: F)
@@ -138,6 +145,15 @@ impl RequestRouter {
             _ => {}
         }
 
+        let ui = self.inner.lock().expect("router").ui.clone();
+        if let Some(ui) = ui {
+            ui.call(|| self.dispatch_margrete(request))?
+        } else {
+            self.dispatch_margrete(request)
+        }
+    }
+
+    fn dispatch_margrete(&self, request: &Envelope) -> crate::error::Result<Envelope> {
         let Some(context) = self.retain_context() else {
             log::error!(
                 "request failed id={} kind={} code=UNAVAILABLE msg=\"Margrete context is unavailable\"",

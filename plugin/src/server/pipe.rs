@@ -5,11 +5,14 @@ use interprocess::os::windows::named_pipe::{
     DuplexPipeStream, PipeListener, PipeListenerOptions, PipeMode, WaitTimeout, pipe_mode,
 };
 use std::io::{self, Read, Write};
+use std::os::windows::io::AsRawHandle;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use windows::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
+use windows::Win32::System::Threading::WaitForSingleObject;
 
 type BytePipe = DuplexPipeStream<pipe_mode::Bytes>;
 type BytePipeListener = PipeListener<pipe_mode::Bytes, pipe_mode::Bytes>;
@@ -50,10 +53,21 @@ impl NamedPipeServer {
     }
 
     pub fn stop(&self) {
+        self.stop_while(|| {});
+    }
+
+    pub fn stop_while(&self, mut pump: impl FnMut()) {
         self.running.store(false, Ordering::SeqCst);
         let Some(thread) = self.thread.lock().expect("thread").take() else {
             return;
         };
+        loop {
+            pump();
+            let wait = unsafe { WaitForSingleObject(HANDLE(thread.as_raw_handle()), 50) };
+            if wait == WAIT_OBJECT_0 {
+                break;
+            }
+        }
         let _ = thread.join();
     }
 

@@ -2,11 +2,14 @@ mod common;
 
 use common::fake::FakeContext;
 use margrete_rpc::meta;
+use margrete_rpc::rpc::marshal::UiDispatcher;
 use margrete_rpc::rpc::proto::{
     ApplyEditRequest, BeginEditRequest, Envelope, ErrorCode, Note, NoteType, StatusRequest,
     envelope,
 };
 use margrete_rpc::rpc::router::{RequestRouter, RouterStatusSnapshot};
+use std::sync::mpsc;
+use std::thread;
 
 fn ping(id: u64) -> Envelope {
     Envelope {
@@ -272,4 +275,38 @@ fn router_returns_current_tick() {
         panic!("expected tick");
     };
     assert_eq!(tick.current_tick, 1234);
+}
+
+#[test]
+fn router_runs_host_requests_on_the_ui_dispatcher_thread() {
+    thread::scope(|scope| {
+        let (tx, rx) = mpsc::channel();
+        scope.spawn(move || {
+            let dispatcher = UiDispatcher::create().expect("create marshal");
+            tx.send(dispatcher.clone()).expect("send dispatcher");
+            dispatcher.run_message_loop();
+        });
+        let dispatcher = rx.recv().expect("dispatcher");
+        let mut context = FakeContext::new();
+        context.set_current_tick(4242);
+        let router = RequestRouter::new(context.as_ptr());
+        router.set_ui_dispatcher(Some(dispatcher.clone()));
+
+        let response = scope
+            .spawn(move || {
+                router.route(&Envelope {
+                    request_id: 40,
+                    body: Some(envelope::Body::CurrentTickRequest(Default::default())),
+                })
+            })
+            .join()
+            .expect("worker");
+        let Some(envelope::Body::CurrentTickResponse(tick)) = response.body else {
+            panic!("expected tick");
+        };
+        assert_eq!(tick.current_tick, 4242);
+
+        dispatcher.shutdown();
+        dispatcher.quit_message_loop();
+    });
 }

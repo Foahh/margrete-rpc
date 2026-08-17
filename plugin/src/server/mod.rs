@@ -5,6 +5,7 @@ mod pipe;
 
 use crate::abi::Context;
 use crate::error::Result;
+use crate::rpc::marshal::UiDispatcher;
 use crate::rpc::router::{RequestRouter, RouterStatusSnapshot};
 use config::ServerConfig;
 use instance::AllocatedInstance;
@@ -39,6 +40,7 @@ pub struct ServerController {
     server_start: Mutex<Option<Instant>>,
     router: Arc<RequestRouter>,
     pipe_server: Mutex<Option<NamedPipeServer>>,
+    ui: Mutex<Option<UiDispatcher>>,
     _instance: AllocatedInstance,
 }
 
@@ -65,6 +67,7 @@ impl ServerController {
             server_start: Mutex::new(None),
             router,
             pipe_server: Mutex::new(None),
+            ui: Mutex::new(None),
             _instance: instance,
         };
         controller.apply_logger();
@@ -115,9 +118,17 @@ impl ServerController {
         if self.running() {
             return;
         }
+        let ui = match UiDispatcher::create() {
+            Ok(ui) => ui,
+            Err(err) => {
+                log::error!("failed to create UI marshal: {err}");
+                return;
+            }
+        };
         let config = self.config.lock().expect("config").clone();
         *self.active_config.lock().expect("active") = Some(config.clone());
         self.apply_logger();
+        self.router.set_ui_dispatcher(Some(ui.clone()));
         self.router.set_context(context);
         self.router.set_config(config.clone());
 
@@ -139,13 +150,23 @@ impl ServerController {
             NamedPipeServer::new(self.shared.pipe_name.clone(), Arc::clone(&self.router));
         server.start();
         *self.pipe_server.lock().expect("pipe") = Some(server);
+        *self.ui.lock().expect("ui") = Some(ui);
     }
 
     pub fn stop(&self) {
+        let ui = self.ui.lock().expect("ui").take();
         if let Some(server) = self.pipe_server.lock().expect("pipe").take() {
             log::info!("pipe server stopping");
-            server.stop();
+            server.stop_while(|| {
+                if let Some(ui) = &ui {
+                    ui.pump();
+                }
+            });
         }
+        if let Some(ui) = ui {
+            ui.shutdown();
+        }
+        self.router.set_ui_dispatcher(None);
         self.router.set_context(std::ptr::null_mut());
         *self.active_config.lock().expect("active") = None;
     }

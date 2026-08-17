@@ -5,12 +5,18 @@ pub enum PluginError {
     #[error("{0}")]
     InvalidArgument(String),
     #[error("{0}")]
+    Unavailable(String),
+    #[error("{0}")]
     Internal(String),
 }
 
 impl PluginError {
     pub fn invalid(message: impl Into<String>) -> Self {
         Self::InvalidArgument(message.into())
+    }
+
+    pub fn unavailable(message: impl Into<String>) -> Self {
+        Self::Unavailable(message.into())
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
@@ -20,6 +26,7 @@ impl PluginError {
     pub fn code(&self) -> ErrorCode {
         match self {
             Self::InvalidArgument(_) => ErrorCode::InvalidArgument,
+            Self::Unavailable(_) => ErrorCode::Unavailable,
             Self::Internal(_) => ErrorCode::Internal,
         }
     }
