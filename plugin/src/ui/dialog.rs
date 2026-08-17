@@ -171,7 +171,7 @@ impl ServerStatusWindow {
         let value_x = label_x + label_width + ROW_GAP;
         let button_width = BUTTON_WIDTH;
         let action_x = client_width() - PADDING - button_width;
-        let log_value_width = action_x - ROW_GAP - value_x;
+        let value_width = action_x - ROW_GAP - value_x;
         let mut y = TOP_PADDING;
         add_label(
             self.hwnd,
@@ -186,7 +186,7 @@ impl ServerStatusWindow {
             self.hwnd,
             value_x,
             y,
-            ID_VALUE_WIDTH,
+            value_width,
             CONTROL_HEIGHT,
             self.font,
         );
@@ -194,7 +194,7 @@ impl ServerStatusWindow {
             self.hwnd,
             w!(""),
             START_STOP_ID,
-            value_x + ID_VALUE_WIDTH + ROW_GAP,
+            action_x,
             y,
             button_width,
             CONTROL_HEIGHT,
@@ -214,7 +214,7 @@ impl ServerStatusWindow {
             self.hwnd,
             value_x,
             y,
-            log_value_width,
+            value_width,
             CONTROL_HEIGHT,
             self.font,
         );
