@@ -5,20 +5,20 @@ description = "Python client package for the Margrete RPC plugin"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "protobuf>=7.35.0,<8",
-    "pywin32>=311; sys_platform == 'win32'",
+    "protobuf>=7.35.1,<8",
+    "pywin32>=312; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "grpcio-tools>=1.70.0",
-    "pyright>=1.1.0,<2",
-    "pytest>=9.0.3,<10",
-    "ruff>=0.15.16,<1",
+    "grpcio-tools>=1.83.0",
+    "pyright>=1.1.411,<2",
+    "pytest>=9.1.1,<10",
+    "ruff>=0.16.3,<1",
 ]
 
 [build-system]
-requires = ["hatchling>=1.30.1", "grpcio-tools>=1.70.0"]
+requires = ["hatchling>=1.32.0", "grpcio-tools>=1.83.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.hooks.custom]
