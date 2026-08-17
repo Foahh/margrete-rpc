@@ -29,7 +29,6 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
        m.ping()
        status = m.status()
        print(status.server_version)
-       print(status.server_name)
        print(status.instance_id)
 
        with m.open_edit() as tx:

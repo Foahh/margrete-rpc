@@ -18,7 +18,6 @@ class FakeTransport:
         if envelope.HasField("status_request"):
             return messages_pb2.Envelope(
                 status_response=messages_pb2.StatusResponse(
-                    server_name="Margrete RPC",
                     server_version="0.1.0",
                     api_version=self.api_version,
                 )

@@ -127,7 +127,6 @@ impl RequestRouter {
                     (inner.instance_id.clone(), snapshot)
                 };
                 let status = StatusResponse {
-                    server_name: "Margrete RPC".into(),
                     server_version: meta::PRODUCT_VERSION.into(),
                     server_build_time: meta::BUILD_TIME.into(),
                     instance_id,

@@ -128,7 +128,7 @@ def test_remote_error_response_keeps_connection_usable():
     ok = encode_frame(
         messages_pb2.Envelope(
             request_id=2,
-            status_response=messages_pb2.StatusResponse(server_name="still-open"),
+            status_response=messages_pb2.StatusResponse(server_version="still-open"),
         )
     )
     stream = _ScriptedStream([error, ok])
@@ -138,7 +138,7 @@ def test_remote_error_response_keeps_connection_usable():
         client.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
 
     response = client.request(messages_pb2.Envelope(status_request=messages_pb2.StatusRequest()))
-    assert response.status_response.server_name == "still-open"
+    assert response.status_response.server_version == "still-open"
     assert stream.closed is False
 
 

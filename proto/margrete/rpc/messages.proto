@@ -109,15 +109,14 @@ message PingResponse {}
 message StatusRequest {}
 
 message StatusResponse {
-  string server_name = 1;
-  string server_version = 2;
-  string server_build_time = 3;
-  string instance_id = 4;
-  uint64 uptime = 5;
-  uint32 pid = 6;
-  string log_path = 7;
-  string config_path = 8;
-  uint32 api_version = 9;
+  string server_version = 1;
+  string server_build_time = 2;
+  string instance_id = 3;
+  uint64 uptime = 4;
+  uint32 pid = 5;
+  string log_path = 6;
+  string config_path = 7;
+  uint32 api_version = 8;
 }
 
 message Note {

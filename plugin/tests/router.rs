@@ -46,7 +46,6 @@ fn router_responds_to_status() {
     let Some(envelope::Body::StatusResponse(status)) = response.body else {
         panic!("expected status");
     };
-    assert_eq!(status.server_name, "Margrete RPC");
     assert_eq!(status.server_version, meta::PRODUCT_VERSION);
     assert_eq!(status.server_build_time, meta::BUILD_TIME);
     assert!(!status.server_build_time.is_empty());

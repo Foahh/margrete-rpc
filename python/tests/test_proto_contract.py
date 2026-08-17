@@ -48,11 +48,21 @@ def test_begin_edit_request_and_response_have_snapshot_field():
     assert response.snapshot is False
 
 
-def test_status_response_has_api_version_field():
+def test_status_response_fields_are_sequential():
+    fields = messages_pb2.StatusResponse.DESCRIPTOR.fields
+    assert [field.name for field in fields] == [
+        "server_version",
+        "server_build_time",
+        "instance_id",
+        "uptime",
+        "pid",
+        "log_path",
+        "config_path",
+        "api_version",
+    ]
+    assert [field.number for field in fields] == list(range(1, 9))
     response = messages_pb2.StatusResponse(api_version=1)
-
     assert response.api_version == 1
-    assert messages_pb2.StatusResponse.DESCRIPTOR.fields_by_name["api_version"].number == 9
 
 
 def test_begin_edit_snapshot_fields_use_expected_numbers():

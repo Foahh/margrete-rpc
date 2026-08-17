@@ -20,7 +20,6 @@ class ServerStatus:
     """Snapshot of a running Margrete RPC server, returned by :meth:`Margrete.status`.
 
     Attributes:
-        server_name: Human-readable name reported by the plugin.
         server_version: Plugin version string.
         server_build_time: Build timestamp of the plugin.
         instance_id: Four-digit instance code (``0421``), used to target this
@@ -32,7 +31,6 @@ class ServerStatus:
         api_version: RPC API compatibility version reported by the plugin.
     """
 
-    server_name: str
     server_version: str
     server_build_time: str
     instance_id: str
@@ -132,7 +130,6 @@ class Margrete:
             )
         status = response.status_response
         return ServerStatus(
-            server_name=status.server_name,
             server_version=status.server_version,
             server_build_time=status.server_build_time,
             instance_id=status.instance_id,
