@@ -1,4 +1,4 @@
-use crate::proto::v1::ErrorCode;
+use crate::rpc::proto::ErrorCode;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PluginError {

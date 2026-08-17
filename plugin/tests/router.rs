@@ -1,10 +1,12 @@
-use margrete_rpc::fake::FakeContext;
+mod common;
+
+use common::fake::FakeContext;
 use margrete_rpc::meta;
-use margrete_rpc::proto::v1::{
+use margrete_rpc::rpc::proto::{
     envelope, ApplyEditRequest, BeginEditRequest, Envelope, ErrorCode, Note, NoteType,
     StatusRequest,
 };
-use margrete_rpc::router::{RequestRouter, RouterStatusSnapshot};
+use margrete_rpc::rpc::router::{RequestRouter, RouterStatusSnapshot};
 
 fn ping(id: u64) -> Envelope {
     Envelope {
@@ -157,7 +159,7 @@ fn router_applies_edit_request() {
         ..Default::default()
     });
     edit.bpm_ticks_delete.push(200);
-    edit.bpm_upsert.push(margrete_rpc::proto::v1::BpmEvent {
+    edit.bpm_upsert.push(margrete_rpc::rpc::proto::BpmEvent {
         tick: 240,
         bpm: 0.0,
     });

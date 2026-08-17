@@ -4,8 +4,9 @@ This file provides guidance to agents when working with code in this repository.
 
 ## What this is
 
-- **`plugin/`** — Rust Margrete plugin that runs a TCP/protobuf RPC **server** inside Margrete
-- **`src/margrete_rpc/`** — Python **client** package that connects to the plugin
+- **`plugin/`** — Rust Margrete plugin that runs a named-pipe/protobuf RPC **server** inside Margrete
+- **`python/margrete_rpc/`** — Python **client** package that connects to the plugin
+- **`python/tests/`** — Python client tests
 - **`proto/`** — protobuf definitions shared by both
 - **`website/`** — Fumadocs documentation site; auto-generates API reference from the Python package
 
@@ -14,15 +15,15 @@ This file provides guidance to agents when working with code in this repository.
 All commands use `uv` as the project tool (the `.venv` does not have pip/pytest directly):
 
 ```bash
-uv run --extra dev pytest                          # run all tests
-uv run --extra dev pytest tests/test_chart_time.py # run a single test file
-uv run --extra dev pytest tests/test_foo.py::test_bar  # run a single test
-uv run --extra dev pyright                         # type checking
-uv run --extra dev ruff check src/                 # lint
-uv run --extra dev ruff format src/                # format
+uv run --extra dev pytest                                  # run all tests
+uv run --extra dev pytest python/tests/test_chart_time.py  # run a single test file
+uv run --extra dev pytest python/tests/test_foo.py::test_bar  # run a single test
+uv run --extra dev pyright                                 # type checking
+uv run --extra dev ruff check python/                      # lint
+uv run --extra dev ruff format python/                     # format
 ```
 
-The `proto/` generated files (`src/margrete_rpc/_proto/`) are excluded from ruff and pyright — don't edit them.
+Protobuf Python stubs are generated into `python/margrete_rpc/_proto/` (gitignored) by the hatch build hook and `scripts/generate_proto.py`. Do not edit them.
 
 ## Plugin (Rust) commands
 

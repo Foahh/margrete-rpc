@@ -1,56 +1,36 @@
+use super::logger::Logger;
 use crate::error::PluginError;
-use crate::framing::{self, MAX_FRAME_SIZE};
-use crate::logger::Logger;
-use crate::router::RequestRouter;
+use crate::rpc::framing::{self, MAX_FRAME_SIZE};
+use crate::rpc::router::RequestRouter;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-
-#[cfg(windows)]
 use windows::core::PCWSTR;
-#[cfg(windows)]
 use windows::Win32::Foundation::{CloseHandle, ERROR_PIPE_CONNECTED, ERROR_PIPE_LISTENING, HANDLE};
-#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{ReadFile, WriteFile, PIPE_ACCESS_DUPLEX};
-#[cfg(windows)]
 use windows::Win32::System::Pipes::{
     ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, SetNamedPipeHandleState, PIPE_NOWAIT,
     PIPE_READMODE_BYTE, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
 };
-#[cfg(windows)]
 use windows::Win32::System::Threading::Sleep;
-
-type OnPipeStarted = Box<dyn Fn(String) + Send>;
 
 pub struct NamedPipeServer {
     pipe_name: String,
     router: Arc<RequestRouter>,
     logger: Arc<Logger>,
-    on_started: Mutex<Option<OnPipeStarted>>,
     running: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl NamedPipeServer {
-    pub fn new(
-        pipe_name: String,
-        router: Arc<RequestRouter>,
-        logger: Arc<Logger>,
-        on_started: impl Fn(String) + Send + 'static,
-    ) -> Self {
+    pub fn new(pipe_name: String, router: Arc<RequestRouter>, logger: Arc<Logger>) -> Self {
         Self {
             pipe_name,
             router,
             logger,
-            on_started: Mutex::new(Some(Box::new(on_started))),
             running: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn pipe_path(&self) -> String {
-        format!(r"\\.\pipe\{}", self.pipe_name)
     }
 
     pub fn start(&mut self) {
@@ -61,8 +41,7 @@ impl NamedPipeServer {
         let router = Arc::clone(&self.router);
         let logger = Arc::clone(&self.logger);
         let running = Arc::clone(&self.running);
-        let on_started = self.on_started.lock().expect("cb").take();
-        let thread = thread::spawn(move || run(pipe_name, router, logger, running, on_started));
+        let thread = thread::spawn(move || run(pipe_name, router, logger, running));
         *self.thread.lock().expect("thread") = Some(thread);
     }
 
@@ -84,18 +63,15 @@ impl Drop for NamedPipeServer {
     }
 }
 
-#[cfg(windows)]
 fn run(
     pipe_name: String,
     router: Arc<RequestRouter>,
     logger: Arc<Logger>,
     running: Arc<AtomicBool>,
-    on_started: Option<Box<dyn Fn(String) + Send>>,
 ) {
     let pipe_path = format!(r"\\.\pipe\{pipe_name}");
     logger.info(format!("pipe server starting path={pipe_path}"));
     let wide: Vec<u16> = pipe_path.encode_utf16().chain(std::iter::once(0)).collect();
-    let mut announced = false;
     let mut clients: Vec<JoinHandle<()>> = Vec::new();
 
     while running.load(Ordering::SeqCst) {
@@ -117,12 +93,6 @@ fn run(
                 std::io::Error::last_os_error()
             ));
             break;
-        }
-        if !announced {
-            if let Some(cb) = on_started.as_ref() {
-                cb(pipe_path.clone());
-            }
-            announced = true;
         }
 
         let mut connected = false;
@@ -200,7 +170,6 @@ fn run(
     logger.info("pipe server stopped");
 }
 
-#[cfg(windows)]
 fn handle_client(
     pipe: HANDLE,
     router: Arc<RequestRouter>,
@@ -216,7 +185,6 @@ fn handle_client(
     }
 }
 
-#[cfg(windows)]
 fn client_loop(
     pipe: HANDLE,
     router: &RequestRouter,
@@ -239,7 +207,6 @@ fn client_loop(
     Ok(())
 }
 
-#[cfg(windows)]
 fn read_exact(pipe: HANDLE, buf: &mut [u8], allow_clean_eof: bool) -> Result<bool, PluginError> {
     let mut received = 0usize;
     while received < buf.len() {
@@ -271,7 +238,6 @@ fn read_exact(pipe: HANDLE, buf: &mut [u8], allow_clean_eof: bool) -> Result<boo
     Ok(true)
 }
 
-#[cfg(windows)]
 fn write_all(pipe: HANDLE, buf: &[u8]) -> Result<(), PluginError> {
     let mut sent = 0usize;
     while sent < buf.len() {
@@ -286,16 +252,4 @@ fn write_all(pipe: HANDLE, buf: &[u8]) -> Result<(), PluginError> {
         sent += n as usize;
     }
     Ok(())
-}
-
-#[cfg(not(windows))]
-fn run(
-    _pipe_name: String,
-    _router: Arc<RequestRouter>,
-    logger: Arc<Logger>,
-    running: Arc<AtomicBool>,
-    _on_started: Option<Box<dyn Fn(String) + Send>>,
-) {
-    logger.error("named pipes are only supported on Windows");
-    running.store(false, Ordering::SeqCst);
 }

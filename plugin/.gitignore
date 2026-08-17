@@ -1,13 +1,6 @@
 # Cargo
 /target/
 
-# Leftover CMake output from the previous plugin toolchain
-/build/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-compile_commands.json
-
 # MSVC leftovers
 *.pdb
 *.ilk

@@ -3,23 +3,12 @@
 #![allow(clippy::too_many_arguments)]
 
 pub mod abi;
-pub mod chart_mapper;
-pub mod config;
-pub mod deduper;
-pub mod discovery;
+pub mod chart;
 pub mod error;
-pub mod fake;
-pub mod framing;
-pub mod logger;
 pub mod plugin;
-pub mod proto;
-pub mod router;
+pub mod rpc;
 pub mod server;
-pub mod session;
-pub mod transaction;
-
-#[cfg(windows)]
-pub mod dialog;
+pub mod ui;
 
 pub mod meta {
     include!(concat!(env!("OUT_DIR"), "/meta.rs"));

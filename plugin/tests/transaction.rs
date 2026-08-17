@@ -1,8 +1,10 @@
+mod common;
+
+use common::fake::{FakeBpmEvent, FakeContext, FakeNote, APPEND_CHILD_RESULT};
 use margrete_rpc::abi::{Event, MP_FALSE, MP_NOTETYPE_HOLD, MP_NOTETYPE_TAP, MP_TRUE};
-use margrete_rpc::fake::{FakeBpmEvent, FakeContext, FakeNote, APPEND_CHILD_RESULT};
-use margrete_rpc::proto::v1::{ApplyEditRequest, Note, NoteType};
-use margrete_rpc::session::MargreteSession;
-use margrete_rpc::transaction::apply_edit;
+use margrete_rpc::chart::session::MargreteSession;
+use margrete_rpc::chart::transaction::apply_edit;
+use margrete_rpc::rpc::proto::{ApplyEditRequest, Note, NoteType};
 use std::sync::atomic::Ordering;
 
 #[test]
@@ -98,7 +100,7 @@ fn event_operation_creates_bpm_event_when_key_is_empty() {
     let context = FakeContext::new();
     let session = MargreteSession::new(context.as_ptr()).unwrap();
     let mut request = ApplyEditRequest::default();
-    request.bpm_upsert.push(margrete_rpc::proto::v1::BpmEvent {
+    request.bpm_upsert.push(margrete_rpc::rpc::proto::BpmEvent {
         tick: 0,
         bpm: 180.0,
     });
@@ -117,7 +119,7 @@ fn event_operation_releases_created_event_when_append_fails() {
     context.chart.append_event_result = MP_FALSE;
     let session = MargreteSession::new(context.as_ptr()).unwrap();
     let mut request = ApplyEditRequest::default();
-    request.bpm_upsert.push(margrete_rpc::proto::v1::BpmEvent {
+    request.bpm_upsert.push(margrete_rpc::rpc::proto::BpmEvent {
         tick: 0,
         bpm: 180.0,
     });
@@ -136,7 +138,7 @@ fn event_operation_replaces_bpm_event_when_key_overlaps() {
     let existing = context.chart.add_existing_bpm(0, 120.0) as *mut FakeBpmEvent;
     let session = MargreteSession::new(context.as_ptr()).unwrap();
     let mut request = ApplyEditRequest::default();
-    request.bpm_upsert.push(margrete_rpc::proto::v1::BpmEvent {
+    request.bpm_upsert.push(margrete_rpc::rpc::proto::BpmEvent {
         tick: 0,
         bpm: 185.0,
     });
@@ -155,7 +157,7 @@ fn event_operation_creates_timeline_speed_by_tick_and_timeline_id() {
     let mut request = ApplyEditRequest::default();
     request
         .til_upsert
-        .push(margrete_rpc::proto::v1::TimelineSpeedEvent {
+        .push(margrete_rpc::rpc::proto::TimelineSpeedEvent {
             tick: 960,
             timeline_id: 2,
             speed: 0.75,
@@ -176,14 +178,14 @@ fn event_operation_creates_beat_change_and_note_speed_events() {
     let mut request = ApplyEditRequest::default();
     request
         .beat_upsert
-        .push(margrete_rpc::proto::v1::BeatChangeEvent {
+        .push(margrete_rpc::rpc::proto::BeatChangeEvent {
             bar: 4,
             beats_per_bar: 3,
             beat_unit: 8,
         });
     request
         .note_speed_upsert
-        .push(margrete_rpc::proto::v1::NoteSpeedEvent {
+        .push(margrete_rpc::rpc::proto::NoteSpeedEvent {
             tick: 1200,
             speed: 1.25,
         });

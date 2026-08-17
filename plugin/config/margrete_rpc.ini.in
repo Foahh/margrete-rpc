@@ -4,7 +4,4 @@ desc = @DESC@
 dev = @DEVELOPER@
 
 [server]
-transport = pipe
-host = 127.0.0.1
-port = auto
-pipe_name = auto
+logging = off

@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package margrete.rpc;
+
+option optimize_for = LITE_RUNTIME;
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_UNAVAILABLE = 1;
+  ERROR_CODE_INVALID_ARGUMENT = 2;
+  ERROR_CODE_FAILED_PRECONDITION = 3;
+  ERROR_CODE_INTERNAL = 4;
+}
+
+enum NoteType {
+  NOTE_TYPE_UNKNOWN = 0;
+  NOTE_TYPE_TAP = 1;
+  NOTE_TYPE_EXTAP = 2;
+  NOTE_TYPE_FLICK = 3;
+  NOTE_TYPE_DAMAGE = 4;
+  NOTE_TYPE_HOLD = 5;
+  NOTE_TYPE_SLIDE = 6;
+  NOTE_TYPE_AIR = 7;
+  NOTE_TYPE_AIRHOLD = 8;
+  NOTE_TYPE_AIRSLIDE = 9;
+  NOTE_TYPE_AIRCRUSH = 10;
+  NOTE_TYPE_CLICK = 11;
+}
+
+enum LongAttr {
+  LONG_ATTR_NONE = 0;
+  LONG_ATTR_BEGIN = 1;
+  LONG_ATTR_STEP = 2;
+  LONG_ATTR_CONTROL = 3;
+  LONG_ATTR_CURVE_CONTROL = 4;
+  LONG_ATTR_END = 5;
+  LONG_ATTR_END_NOACT = 6;
+}
+
+enum Direction {
+  DIRECTION_NONE = 0;
+  DIRECTION_AUTO = 1;
+  DIRECTION_UP = 2;
+  DIRECTION_DOWN = 3;
+  DIRECTION_CENTER = 4;
+  DIRECTION_LEFT = 5;
+  DIRECTION_RIGHT = 6;
+  DIRECTION_UPLEFT = 7;
+  DIRECTION_UPRIGHT = 8;
+  DIRECTION_DOWNLEFT = 9;
+  DIRECTION_DOWNRIGHT = 10;
+  DIRECTION_ROTATE_LEFT = 11;
+  DIRECTION_ROTATE_RIGHT = 12;
+  DIRECTION_INOUT = 13;
+  DIRECTION_OUTIN = 14;
+}
+
+enum ExAttr {
+  EX_ATTR_NONE = 0;
+  EX_ATTR_INVERT = 1;
+  EX_ATTR_HAS_NOTE = 2;
+  EX_ATTR_EXJDG = 3;
+}
+
+enum Color {
+  COLOR_DEFAULT = 0;
+  COLOR_RED = 1;
+  COLOR_ORANGE = 2;
+  COLOR_YELLOW = 3;
+  COLOR_GREEN = 4;
+  COLOR_SKY = 5;
+  COLOR_BLUE = 6;
+  COLOR_VIOLET = 7;
+  COLOR_PINK = 8;
+  COLOR_WHITE = 10;
+  COLOR_BLACK = 11;
+  COLOR_GRASS = 12;
+  COLOR_SKY_BLUE = 13;
+  COLOR_COBALT_BLUE = 14;
+  COLOR_PURPLE = 15;
+  COLOR_NONE = 35;
+}
+
+message Envelope {
+  uint64 request_id = 1;
+  oneof body {
+    PingRequest ping_request = 2;
+    PingResponse ping_response = 3;
+    BeginEditRequest begin_edit_request = 4;
+    BeginEditResponse begin_edit_response = 5;
+    ApplyEditRequest apply_edit_request = 6;
+    ApplyEditResponse apply_edit_response = 7;
+    UndoRequest undo_request = 8;
+    UndoResponse undo_response = 9;
+    RedoRequest redo_request = 10;
+    RedoResponse redo_response = 11;
+    CurrentTickRequest current_tick_request = 12;
+    CurrentTickResponse current_tick_response = 13;
+    StatusRequest status_request = 14;
+    StatusResponse status_response = 15;
+    ErrorResponse error_response = 16;
+  }
+}
+
+message PingRequest {}
+
+message PingResponse {}
+
+message StatusRequest {}
+
+message StatusResponse {
+  string server_name = 1;
+  string server_version = 2;
+  string server_build_time = 3;
+  string instance_id = 4;
+  uint64 uptime = 5;
+  uint32 pid = 6;
+  string log_path = 7;
+  string config_path = 8;
+  uint32 api_version = 9;
+}
+
+message Note {
+  optional int32 id = 1;
+  NoteType type = 2;
+  LongAttr long_attr = 3;
+  Direction direction = 4;
+  ExAttr ex_attr = 5;
+  Color variation_id = 6;
+  int32 x = 7;
+  int32 width = 8;
+  int32 height = 9;
+  int32 tick = 10;
+  int32 timeline_id = 11;
+  int32 option_value = 12;
+  repeated Note children = 13;
+}
+
+message BpmEvent {
+  int32 tick = 1;
+  double bpm = 2;
+}
+
+message BeatChangeEvent {
+  int32 bar = 1;
+  int32 beats_per_bar = 2;
+  int32 beat_unit = 3;
+}
+
+message TimelineSpeedEvent {
+  int32 tick = 1;
+  int32 timeline_id = 2;
+  double speed = 3;
+}
+
+message NoteSpeedEvent {
+  int32 tick = 1;
+  double speed = 2;
+}
+
+message EventScanTilIds {
+  repeated int32 ids = 1;
+}
+
+message BeginEditRequest {
+  int32 event_scan_lookahead_ticks = 1;
+  optional EventScanTilIds event_scan_til_ids = 2;
+  bool snapshot = 3;
+}
+
+message BeginEditResponse {
+  int32 current_tick = 1;
+  repeated Note notes = 2;
+  repeated BpmEvent bpm_events = 3;
+  repeated BeatChangeEvent beat_change_events = 4;
+  repeated TimelineSpeedEvent timeline_speed_events = 5;
+  repeated NoteSpeedEvent note_speed_events = 6;
+  int32 event_scan_lookahead_ticks = 7;
+  repeated int32 event_scan_til_ids = 8;
+  bool snapshot = 9;
+}
+
+message TimelineSpeedKey {
+  int32 tick = 1;
+  int32 timeline_id = 2;
+}
+
+message ApplyEditRequest {
+  bool replace_all_notes = 1;
+  repeated Note notes_upsert = 2;
+  repeated int32 note_ids_delete = 3;
+
+  repeated BpmEvent bpm_upsert = 4;
+  repeated BeatChangeEvent beat_upsert = 5;
+  repeated TimelineSpeedEvent til_upsert = 6;
+  repeated NoteSpeedEvent note_speed_upsert = 7;
+
+  repeated int32 bpm_ticks_delete = 8;
+  repeated int32 beat_bars_delete = 9;
+  repeated TimelineSpeedKey til_keys_delete = 10;
+  repeated int32 note_speed_ticks_delete = 11;
+  bool replace_all_events = 12;
+}
+
+message ApplyEditResponse {}
+
+message UndoRequest {}
+
+message UndoResponse {
+  bool success = 1;
+}
+
+message RedoRequest {}
+
+message RedoResponse {
+  bool success = 1;
+}
+
+message CurrentTickRequest {}
+
+message CurrentTickResponse {
+  int32 current_tick = 1;
+}
+
+message ErrorResponse {
+  ErrorCode code = 1;
+  string message = 2;
+}

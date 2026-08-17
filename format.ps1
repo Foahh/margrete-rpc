@@ -68,7 +68,7 @@ try {
     }
 
     if (-not $SkipPython) {
-        $pyRoot = $RepoRoot
+        $pyRoot = Join-Path $RepoRoot 'python'
         if (-not (Test-Path -LiteralPath $pyRoot)) {
             Write-Host "Python package path not found: $pyRoot"
         }

@@ -1,5 +1,7 @@
-use margrete_rpc::deduper::deduplicate;
-use margrete_rpc::fake::FakeContext;
+mod common;
+
+use common::fake::FakeContext;
+use margrete_rpc::chart::deduper::deduplicate;
 
 #[test]
 fn root_note_deduper_removes_later_duplicate_ids() {

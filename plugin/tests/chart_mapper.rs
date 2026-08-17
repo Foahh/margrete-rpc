@@ -1,10 +1,12 @@
+mod common;
+
+use common::fake::{FakeBeatEvent, FakeBpmEvent, FakeContext, FakeNsmEvent, FakeTlsEvent};
 use margrete_rpc::abi::{
     MP_NOTEDIR_UPLEFT, MP_NOTEEXATTR_HAS_NOTE, MP_NOTELONGATTR_BEGIN, MP_NOTETYPE_SLIDE,
     MP_NOTETYPE_TAP,
 };
-use margrete_rpc::chart_mapper::{snapshot_for_edit, snapshot_notes};
-use margrete_rpc::fake::{FakeBeatEvent, FakeBpmEvent, FakeContext, FakeNsmEvent, FakeTlsEvent};
-use margrete_rpc::proto::v1::{BeginEditResponse, Direction, ExAttr, LongAttr, NoteType};
+use margrete_rpc::chart::mapper::{snapshot_for_edit, snapshot_notes};
+use margrete_rpc::rpc::proto::{BeginEditResponse, Direction, ExAttr, LongAttr, NoteType};
 
 #[test]
 fn chart_mapper_serializes_root_notes_and_child_notes() {

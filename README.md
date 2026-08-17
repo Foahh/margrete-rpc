@@ -22,9 +22,9 @@ specific transforms, but it can also feel brittle when you want to:
 
 ## Core repository content
 
-- **[`plugin/`](plugin/)**: Rust Margrete plugin that hosts the local protobuf RPC **server** over TCP, Windows named pipes, or both
+- **[`plugin/`](plugin/)**: Rust Margrete plugin that hosts the local protobuf RPC **server** over a Windows named pipe
 
-- **[`src/margrete_rpc`](src/margrete_rpc)**: Python **client** controlling the Margrete plugin
+- **[`python/margrete_rpc`](python/margrete_rpc)**: Python **client** controlling the Margrete plugin
 
 - **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the Python client
 

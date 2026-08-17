@@ -11,21 +11,39 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "grpcio-tools>=1.70.0",
     "pyright>=1.1.0,<2",
     "pytest>=9.0.3,<10",
     "ruff>=0.15.16,<1",
 ]
 
 [build-system]
-requires = ["hatchling>=1.30.1"]
+requires = ["hatchling>=1.30.1", "grpcio-tools>=1.70.0"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.hooks.custom]
+path = "scripts/hatch_proto.py"
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/margrete_rpc"]
+packages = ["python/margrete_rpc"]
+
+[tool.hatch.build.targets.wheel.sources]
+"python" = ""
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/python/margrete_rpc",
+    "/proto",
+    "/scripts",
+    "/README.md",
+]
+exclude = [
+    "/python/margrete_rpc/_proto",
+]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = ["python/tests"]
+pythonpath = ["python"]
 
 [tool.ruff]
 line-length = 100
@@ -37,7 +55,7 @@ select = ["E", "F", "I", "UP"]
 ignore = ["E501"]
 
 [tool.pyright]
-include = ["src"]
-exclude = ["**/node_modules", "**/__pycache__", "**/.*", "src/margrete_rpc/_proto", ".venv"]
+include = ["python/margrete_rpc"]
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", "python/margrete_rpc/_proto", ".venv"]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"

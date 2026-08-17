@@ -14,7 +14,8 @@ fn main() {
 
     println!("cargo:rerun-if-changed=config/VERSION");
     println!("cargo:rerun-if-changed=config/margrete_rpc.ini.in");
-    println!("cargo:rerun-if-changed=../proto/margrete/rpc/v1/messages.proto");
+    println!("cargo:rerun-if-changed=../proto/margrete/rpc/messages.proto");
+    println!("cargo:rerun-if-changed=../proto/API_VERSION");
 
     let version = fs::read_to_string(manifest_dir.join("config/VERSION"))
         .expect("config/VERSION")
@@ -25,10 +26,16 @@ fn main() {
     let proto_root = manifest_dir.join("../proto");
     prost_build::Config::new()
         .compile_protos(
-            &[proto_root.join("margrete/rpc/v1/messages.proto")],
+            &[proto_root.join("margrete/rpc/messages.proto")],
             &[&proto_root],
         )
         .expect("compile protobuf");
+
+    let api_version: u32 = fs::read_to_string(manifest_dir.join("../proto/API_VERSION"))
+        .expect("proto/API_VERSION")
+        .trim()
+        .parse()
+        .expect("proto/API_VERSION must be a u32");
 
     let build_time = build_time_utc();
     let desc_ini = format!("Local RPC/protobuf bridge for Margrete\\n{REPO_URL}");
@@ -41,7 +48,7 @@ fn main() {
          pub const DLL_NAME: &str = {DLL_NAME:?};\n\
          pub const CONFIG_FILE_NAME: &str = \"{DLL_NAME}.ini\";\n\
          pub const PRODUCT_VERSION: &str = {version:?};\n\
-         pub const RPC_API_VERSION: u32 = 1;\n\
+         pub const RPC_API_VERSION: u32 = {api_version};\n\
          pub const BUILD_TIME: &str = {build_time:?};\n\
          pub const DIALOG_TITLE: &str = {dialog_title:?};\n"
     );

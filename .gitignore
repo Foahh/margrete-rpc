@@ -233,3 +233,6 @@ publish/
 !.agents/skills/umiguri-charter
 skills-lock.json
 plans/
+
+# Generated Python protobuf
+python/margrete_rpc/_proto/

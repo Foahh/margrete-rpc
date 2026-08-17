@@ -2,8 +2,8 @@ use crate::abi::{
     copy_wide, Command, CommandVTable, Context, MpBoolean, MpGuid, MpInteger, MpPluginInfo,
     IID_BASE, IID_COMMAND, MP_FALSE, MP_SDK_VERSION, MP_TRUE,
 };
-use crate::config::{load_server_config, ServerConfig};
 use crate::meta;
+use crate::server::config::{load_server_config, ServerConfig};
 use crate::server::ServerController;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -25,14 +25,18 @@ static COMMAND_VT: CommandVTable = CommandVTable {
 
 impl Plugin {
     fn new() -> Box<Self> {
-        let config = ServerConfig {
-            source_path: resolve_config_path(),
-            ..ServerConfig::default()
+        let source_path = resolve_config_path();
+        let config = match load_server_config(&source_path) {
+            Ok(config) => config,
+            Err(_) => ServerConfig {
+                source_path,
+                ..ServerConfig::default()
+            },
         };
         Box::new(Self {
             vtable: &COMMAND_VT,
             ref_count: AtomicI32::new(0),
-            controller: ServerController::new(config),
+            controller: ServerController::new(config, dll_directory()),
         })
     }
 
@@ -125,8 +129,7 @@ unsafe extern "C" fn plugin_invoke(this: *mut Command, ctx: *mut Context) -> MpB
     if !plugin.controller.running() && config_error.is_empty() {
         plugin.controller.start(ctx);
     }
-    #[cfg(windows)]
-    crate::dialog::show_server_status_dialog(ctx, &plugin.controller, config_error);
+    crate::ui::dialog::show_server_status_dialog(ctx, &plugin.controller, config_error);
     MP_TRUE
 }
 
@@ -164,45 +167,37 @@ fn environment_path(name: &str) -> Option<PathBuf> {
 }
 
 fn dll_directory() -> Option<PathBuf> {
-    #[cfg(windows)]
-    {
-        use windows::core::PCWSTR;
-        use windows::Win32::Foundation::HMODULE;
-        use windows::Win32::System::LibraryLoader::{
-            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-        };
-        unsafe {
-            let mut module = HMODULE::default();
-            let addr = dll_directory as *const ();
-            if GetModuleHandleExW(
-                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
-                    | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                PCWSTR(addr as *const u16),
-                &mut module,
-            )
-            .is_err()
-                || module.is_invalid()
-            {
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::HMODULE;
+    use windows::Win32::System::LibraryLoader::{
+        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+    };
+    unsafe {
+        let mut module = HMODULE::default();
+        let addr = dll_directory as *const ();
+        if GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            PCWSTR(addr as *const u16),
+            &mut module,
+        )
+        .is_err()
+            || module.is_invalid()
+        {
+            return None;
+        }
+        let mut buf = vec![0u16; 260];
+        loop {
+            let n = GetModuleFileNameW(module, &mut buf);
+            if n == 0 {
                 return None;
             }
-            let mut buf = vec![0u16; 260];
-            loop {
-                let n = GetModuleFileNameW(module, &mut buf);
-                if n == 0 {
-                    return None;
-                }
-                if (n as usize) < buf.len() {
-                    buf.truncate(n as usize);
-                    let path = String::from_utf16_lossy(&buf);
-                    return Some(PathBuf::from(path).parent()?.to_path_buf());
-                }
-                buf.resize(buf.len() * 2, 0);
+            if (n as usize) < buf.len() {
+                buf.truncate(n as usize);
+                let path = String::from_utf16_lossy(&buf);
+                return Some(PathBuf::from(path).parent()?.to_path_buf());
             }
+            buf.resize(buf.len() * 2, 0);
         }
-    }
-    #[cfg(not(windows))]
-    {
-        None
     }
 }
