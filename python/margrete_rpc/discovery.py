@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from margrete_rpc._proto import messages_pb2
 from margrete_rpc._rpc.endpoint import create_transport
-from margrete_rpc.errors import MargreteDiscoveryError, MargreteError
+from margrete_rpc.errors import MargreteDiscoveryError
 from margrete_rpc.trace import NoopTracer
 
 _PIPE_DIR = r"\\.\pipe"
@@ -101,7 +101,7 @@ def _can_ping(pipe_name: str, timeout: float) -> bool:
     client = create_transport(pipe_name, timeout, NoopTracer())
     try:
         client.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
-    except (MargreteError, OSError, RuntimeError, ValueError):
+    except Exception:
         return False
     finally:
         close = getattr(client, "close", None)

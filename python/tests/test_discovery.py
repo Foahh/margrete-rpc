@@ -85,3 +85,23 @@ def test_margrete_rejects_instance_with_transport():
 
     with pytest.raises(ValueError, match="instance cannot be used with transport"):
         Margrete("0421", transport=_Transport())
+
+
+def test_list_instances_treats_unexpected_ping_errors_as_unreachable(monkeypatch):
+    class _Boom:
+        def request(self, envelope):
+            raise Exception("The pipe is being closed.")
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(
+        "margrete_rpc.discovery.os.listdir",
+        lambda _path: ["margrete-0421"],
+    )
+    monkeypatch.setattr(
+        "margrete_rpc.discovery.create_transport",
+        lambda *_args, **_kwargs: _Boom(),
+    )
+
+    assert list_instances(validate=True, timeout=0.1) == []

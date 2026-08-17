@@ -166,3 +166,46 @@ def test_generated_chart_transaction_messages_exist():
         apply_edit.apply_edit_request.notes_upsert[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
     )
     assert apply_edit.apply_edit_request.bpm_upsert[0].bpm == 180.0
+
+
+def test_pipe_client_retries_file_not_found(monkeypatch):
+    import pywintypes
+    import win32file
+    from margrete_rpc._rpc.pipe import PipeRpcClient
+    from margrete_rpc.errors import MargreteTimeoutError
+
+    now = {"t": 0.0}
+
+    def _monotonic() -> float:
+        return now["t"]
+
+    def _sleep(seconds: float) -> None:
+        now["t"] += seconds
+
+    calls = {"n": 0}
+
+    def _create_file(*_args, **_kwargs):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise pywintypes.error(2, "CreateFile", "The system cannot find the file specified.")
+        return "handle"
+
+    monkeypatch.setattr("margrete_rpc._rpc.pipe.time.monotonic", _monotonic)
+    monkeypatch.setattr("margrete_rpc._rpc.pipe.time.sleep", _sleep)
+    monkeypatch.setattr(win32file, "CreateFile", _create_file)
+
+    stream = PipeRpcClient("margrete-0421", timeout=1.0)._open_connection()
+    assert stream.handle == "handle"
+    assert calls["n"] == 3
+
+    now["t"] = 0.0
+    calls["n"] = 0
+
+    def _always_missing(*_args, **_kwargs):
+        calls["n"] += 1
+        raise pywintypes.error(2, "CreateFile", "The system cannot find the file specified.")
+
+    monkeypatch.setattr(win32file, "CreateFile", _always_missing)
+    with pytest.raises(MargreteTimeoutError, match="timed out connecting"):
+        PipeRpcClient("margrete-0421", timeout=0.05)._open_connection()
+    assert calls["n"] >= 1

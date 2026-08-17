@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -11,6 +12,7 @@ from margrete_rpc.errors import MargreteProtocolError, MargreteTimeoutError
 from margrete_rpc.trace import NoopTracer, Tracer
 
 _WIN32_PIPE_PREFIX = "\\\\.\\pipe\\"
+_RETRY_SLEEP_S = 0.02
 
 
 def _require_windows() -> None:
@@ -39,13 +41,20 @@ class PipeStream:
 
         chunks: list[bytes] = []
         remaining = size
-        while remaining:
-            _, chunk = win32file.ReadFile(self.handle, remaining)
-            chunk = cast(bytes, chunk)
-            if not chunk:
-                raise MargreteProtocolError("pipe closed before frame completed")
-            chunks.append(chunk)
-            remaining -= len(chunk)
+        try:
+            while remaining:
+                _, chunk = win32file.ReadFile(self.handle, remaining)
+                chunk = cast(bytes, chunk)
+                if not chunk:
+                    raise MargreteProtocolError("pipe closed before frame completed")
+                chunks.append(chunk)
+                remaining -= len(chunk)
+        except MargreteProtocolError:
+            raise
+        except Exception as exc:
+            if _winerror(exc) is None:
+                raise
+            raise MargreteProtocolError(f"pipe read failed: {exc}") from exc
         return b"".join(chunks)
 
     def write_all(self, data: bytes) -> None:
@@ -53,11 +62,18 @@ class PipeStream:
         import win32file
 
         offset = 0
-        while offset < len(data):
-            _, written = win32file.WriteFile(self.handle, data[offset:])
-            if written == 0:
-                raise MargreteProtocolError("pipe closed before frame completed")
-            offset += written
+        try:
+            while offset < len(data):
+                _, written = win32file.WriteFile(self.handle, data[offset:])
+                if written == 0:
+                    raise MargreteProtocolError("pipe closed before frame completed")
+                offset += written
+        except MargreteProtocolError:
+            raise
+        except Exception as exc:
+            if _winerror(exc) is None:
+                raise
+            raise MargreteProtocolError(f"pipe write failed: {exc}") from exc
 
     def close(self) -> None:
         _require_windows()
@@ -88,38 +104,39 @@ class PipeRpcClient(FramedRpcClient):
             winerror.ERROR_PIPE_BUSY,
             winerror.ERROR_SEM_TIMEOUT,
         }
-        timeout_ms = max(1, min(int(self.timeout * 1000), 0xFFFFFFFF))
-        try:
-            handle = win32file.CreateFile(
-                self._path,
-                win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                0,
-                None,
-                win32file.OPEN_EXISTING,
-                win32file.FILE_ATTRIBUTE_NORMAL,
-                None,
-            )
-        except pywintypes.error as exc:
-            if _winerror(exc) not in retryable_errors:
-                raise
+        deadline = time.monotonic() + max(self.timeout, 0.0)
+        while True:
             try:
-                win32pipe.WaitNamedPipe(self._path, timeout_ms)
-            except pywintypes.error as wait_exc:
-                if _winerror(wait_exc) in retryable_errors:
-                    raise MargreteTimeoutError(
-                        f"timed out connecting to pipe {self.endpoint}"
-                    ) from wait_exc
-                raise
-            handle = win32file.CreateFile(
-                self._path,
-                win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                0,
-                None,
-                win32file.OPEN_EXISTING,
-                win32file.FILE_ATTRIBUTE_NORMAL,
-                None,
-            )
-        return PipeStream(handle)
+                handle = win32file.CreateFile(
+                    self._path,
+                    win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                    0,
+                    None,
+                    win32file.OPEN_EXISTING,
+                    win32file.FILE_ATTRIBUTE_NORMAL,
+                    None,
+                )
+                return PipeStream(handle)
+            except pywintypes.error as exc:
+                err = _winerror(exc)
+                remaining = deadline - time.monotonic()
+                if err not in retryable_errors or remaining <= 0:
+                    if err in retryable_errors:
+                        raise MargreteTimeoutError(
+                            f"timed out connecting to pipe {self.endpoint}"
+                        ) from exc
+                    raise MargreteProtocolError(f"pipe connect failed: {exc}") from exc
+                if err == winerror.ERROR_PIPE_BUSY:
+                    try:
+                        win32pipe.WaitNamedPipe(
+                            self._path,
+                            max(1, min(int(remaining * 1000), 0xFFFFFFFF)),
+                        )
+                    except pywintypes.error:
+                        time.sleep(min(_RETRY_SLEEP_S, remaining))
+                else:
+                    # WaitNamedPipe returns immediately when no instance is listening.
+                    time.sleep(min(_RETRY_SLEEP_S, remaining))
 
 
 __all__ = ["PipeRpcClient", "pipe_path"]
