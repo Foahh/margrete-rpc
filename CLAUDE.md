@@ -4,7 +4,7 @@ This file provides guidance to agents when working with code in this repository.
 
 ## What this is
 
-- **`plugin/`** — C++ Margrete plugin that runs a TCP/protobuf RPC **server** inside Margrete
+- **`plugin/`** — Rust Margrete plugin that runs a TCP/protobuf RPC **server** inside Margrete
 - **`src/margrete_rpc/`** — Python **client** package that connects to the plugin
 - **`proto/`** — protobuf definitions shared by both
 - **`website/`** — Fumadocs documentation site; auto-generates API reference from the Python package
@@ -24,25 +24,29 @@ uv run --extra dev ruff format src/                # format
 
 The `proto/` generated files (`src/margrete_rpc/_proto/`) are excluded from ruff and pyright — don't edit them.
 
-## Plugin (C++) commands
+## Plugin (Rust) commands
 
-Prerequisites: MSVC, vcpkg with `VCPKG_ROOT` set, Visual Studio 2026 generator.
+Prerequisites: MSVC (`x86_64-pc-windows-msvc`) and a stable Rust toolchain (`rustfmt`, `clippy`).
 
 ```bash
 cd plugin
 
-# First time: configure (from plugin/ directory)
-cmake --preset windows-x64
-
-# Build the DLL (no vcvars needed, VS generator handles it)
-cmake --build build --config Release
-
-# Build + run C++ tests without touching the deployed DLL
-cmake --build build --config Release --target plugin_tests
-ctest --test-dir build -C Release --output-on-failure
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test
+cargo build --release
 ```
 
-Output DLL: `plugin/build/Release/margrete-rpc.dll`.
+Output DLL: `plugin/target/release/margrete_rpc.dll`. `.\build.ps1 -Publish` copies the DLL and `margrete_rpc.ini` to `publish/`.
+
+From the repo root:
+
+```bash
+.\build.ps1 -Test -Publish
+.\format.ps1
+```
+
+The `plugin/margrete/` submodule is the ABI header reference only — do not compile it.
 
 ## Development Notes
 

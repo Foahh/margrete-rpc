@@ -22,7 +22,7 @@ specific transforms, but it can also feel brittle when you want to:
 
 ## Core repository content
 
-- **[`plugin/`](plugin/)**: C++ Margrete plugin that hosts the local protobuf RPC **server** over TCP, Windows named pipes, or both
+- **[`plugin/`](plugin/)**: Rust Margrete plugin that hosts the local protobuf RPC **server** over TCP, Windows named pipes, or both
 
 - **[`src/margrete_rpc`](src/margrete_rpc)**: Python **client** controlling the Margrete plugin
 

@@ -1,22 +1,22 @@
 <#
 .SYNOPSIS
-  Format C++ and Python sources in this repository.
+  Format Rust plugin and Python client sources in this repository.
 
-.PARAMETER SkipCpp
-  Do not run clang-format.
+.PARAMETER SkipRust
+  Do not run cargo fmt.
 
 .PARAMETER SkipPython
   Do not run ruff on the Python client.
 
 .PARAMETER Check
-  Use clang-format --dry-run --Werror and ruff format --check
+  Use cargo fmt --check and ruff format --check
 
 .EXAMPLE
   .\format.ps1
   .\format.ps1 -Check
 #>
 param(
-    [switch] $SkipCpp,
+    [switch] $SkipRust,
     [switch] $SkipPython,
     [switch] $Check
 )
@@ -39,42 +39,30 @@ function Invoke-Checked {
     }
 }
 
-function Get-CppFormatFiles {
-    param([string] $RepoRoot)
-
-    $roots = @(
-        (Join-Path $RepoRoot 'plugin\src'),
-        (Join-Path $RepoRoot 'plugin\tests')
-    )
-    $files = @()
-    foreach ($r in $roots) {
-        if (-not (Test-Path -LiteralPath $r)) { continue }
-        $files += Get-ChildItem -Path $r -Recurse -File -Include '*.cpp', '*.h', '*.hpp' -ErrorAction SilentlyContinue
-    }
-    return ($files | Sort-Object FullName -Unique)
-}
-
 try {
     $RepoRoot = $PSScriptRoot
+    $PluginDir = Join-Path $RepoRoot 'plugin'
 
-    if (-not $SkipCpp) {
-        $clangFormat = Get-Command clang-format -ErrorAction SilentlyContinue
-        if (-not $clangFormat) {
-            Write-Host "clang-format not on PATH; skipping C++ (install LLVM or use -SkipCpp)." -ForegroundColor Yellow
+    if (-not $SkipRust) {
+        $cargo = Get-Command cargo -ErrorAction SilentlyContinue
+        if (-not $cargo) {
+            Write-Host "cargo not on PATH; skipping Rust (install rustup or use -SkipRust)." -ForegroundColor Yellow
+        }
+        elseif (-not (Test-Path -LiteralPath $PluginDir)) {
+            Write-Host "Plugin directory not found: $PluginDir"
         }
         else {
-            $cppFiles = Get-CppFormatFiles -RepoRoot $RepoRoot
-            if ($cppFiles.Count -eq 0) {
-                Write-Host "No C++ sources found under plugin/src or plugin/tests."
-            }
-            else {
-                Write-Host "`n==> clang-format ($($cppFiles.Count) files)"
+            Write-Host "`n==> cargo fmt"
+            Push-Location -LiteralPath $PluginDir
+            try {
+                $fmtArgs = @('fmt')
                 if ($Check) {
-                    Invoke-Checked -Exe $clangFormat.Source -Arguments (@('--dry-run', '--Werror') + $cppFiles.FullName)
+                    $fmtArgs += @('--', '--check')
                 }
-                else {
-                    Invoke-Checked -Exe $clangFormat.Source -Arguments (@('-i') + $cppFiles.FullName)
-                }
+                Invoke-Checked -Exe $cargo.Source -Arguments $fmtArgs
+            }
+            finally {
+                Pop-Location
             }
         }
     }

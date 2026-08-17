@@ -54,11 +54,11 @@ def test_decode_frame_rejects_truncated_payload():
 
 
 def test_pipe_endpoint_helpers_round_trip_windows_pipe_path():
-    path = "\\\\.\\pipe\\margrete-rpc-test"
+    path = "\\\\.\\pipe\\margrete_rpc-test"
 
     endpoint = display_pipe_endpoint(path)
 
-    assert endpoint == "npipe://./pipe/margrete-rpc-test"
+    assert endpoint == "npipe://./pipe/margrete_rpc-test"
     assert normalize_pipe_endpoint(endpoint) == path
 
 

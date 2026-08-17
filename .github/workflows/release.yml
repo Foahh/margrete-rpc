@@ -43,29 +43,24 @@ jobs:
         with:
           submodules: recursive
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: Export GitHub Actions cache env for vcpkg
-        uses: actions/github-script@v7
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+      - name: Format and lint
+        working-directory: plugin
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
       - name: Build, test, and stage plugin
         shell: pwsh
-        env:
-          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-        run: |
-          if (-not $env:VCPKG_ROOT -and $env:VCPKG_INSTALLATION_ROOT) {
-            $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
-          }
-          if (-not $env:VCPKG_ROOT -and (Test-Path -LiteralPath 'C:\vcpkg')) {
-            $env:VCPKG_ROOT = 'C:\vcpkg'
-          }
-          ./build.ps1 -Configuration Release -Test -Publish -SkipVcVars -ConfigurePreset windows-x64-cicd -BuildPreset windows-x64-release-cicd
+        run: ./build.ps1 -Configuration Release -Test -Publish -SkipVcVars
       - name: Create release archive
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
-          $archive = "margrete-rpc-plugin-$tag-windows-x64.zip"
+          $archive = "margrete_rpc-$tag-windows-x64.zip"
           Compress-Archive -Path publish\* -DestinationPath $archive -Force
           $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $archive
           "$($hash.Hash.ToLowerInvariant())  $archive" | Set-Content -Encoding ascii SHA256SUMS.txt
@@ -73,7 +68,7 @@ jobs:
         with:
           name: plugin-release
           path: |
-            margrete-rpc-plugin-${{ github.ref_name }}-windows-x64.zip
+            margrete_rpc-${{ github.ref_name }}-windows-x64.zip
             SHA256SUMS.txt
           if-no-files-found: error
 

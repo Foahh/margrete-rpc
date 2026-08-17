@@ -1,30 +1,21 @@
 <#
 .SYNOPSIS
-  Configure and build the Margrete RPC C++ plugin.
+  Build the Margrete RPC Rust plugin (cdylib).
 
 .PARAMETER Configuration
-  Debug or Release (passed to cmake --build / ctest).
+  Debug or Release (maps to Cargo's dev / release profiles).
 
 .PARAMETER SkipVcVars
   Skip vcvars64 import when you already opened a "x64 Native Tools" or VS dev shell.
 
 .PARAMETER Test
-  Run plugin_tests via ctest after a successful build.
+  Run `cargo test` after a successful build.
 
 .PARAMETER Publish
-  Copy margrete-rpc.dll and margrete-rpc.ini into repo-root publish/ for manual install.
-
-.PARAMETER VcpkgRoot
-  vcpkg installation root. Defaults to $env:VCPKG_ROOT (must be set for CMakePresets.json toolchain path).
-
-.PARAMETER ConfigurePreset
-  CMake configure preset from plugin/CMakePresets.json (default: windows-x64).
-
-.PARAMETER BuildPreset
-  CMake build preset from plugin/CMakePresets.json. Defaults to <ConfigurePreset>-<configuration>.
+  Copy margrete_rpc.dll and margrete_rpc.ini into repo-root publish/ for manual install.
 
 .PARAMETER InitSubmodules
-  Run `git submodule update --init --recursive` before CMake configure.
+  Run `git submodule update --init --recursive` before the build (Margrete SDK headers).
 
 .EXAMPLE
   .\build.ps1
@@ -38,9 +29,6 @@ param(
     [switch] $SkipVcVars,
     [switch] $Test,
     [switch] $Publish,
-    [string] $VcpkgRoot = $env:VCPKG_ROOT,
-    [string] $ConfigurePreset = 'windows-x64',
-    [string] $BuildPreset,
     [switch] $InitSubmodules
 )
 
@@ -97,42 +85,6 @@ function Import-VcVars64 {
     }
 }
 
-function Find-BuiltDll {
-    param([string] $BuildDir)
-
-    $candidates = @(
-        (Join-Path $BuildDir 'margrete-rpc.dll'),
-        (Join-Path $BuildDir "$Configuration\margrete-rpc.dll")
-    )
-    foreach ($p in $candidates) {
-        if (Test-Path -LiteralPath $p) { return (Resolve-Path -LiteralPath $p).Path }
-    }
-
-    $found = Get-ChildItem -Path $BuildDir -Recurse -Filter 'margrete-rpc.dll' -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($found) { return $found.FullName }
-    return $null
-}
-
-function Find-BuiltIni {
-    param([string] $BuildDir)
-
-    $candidates = @(
-        (Join-Path $BuildDir 'margrete-rpc.ini'),
-        (Join-Path $BuildDir "$Configuration\margrete-rpc.ini")
-    )
-    foreach ($p in $candidates) {
-        if (Test-Path -LiteralPath $p) { return (Resolve-Path -LiteralPath $p).Path }
-    }
-
-    $found = Get-ChildItem -Path $BuildDir -Recurse -Filter 'margrete-rpc.ini' -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($found) { return $found.FullName }
-    return $null
-}
-
 try {
     if (-not $SkipVcVars) {
         Import-VcVars64
@@ -140,26 +92,11 @@ try {
 
     $RepoRoot = $PSScriptRoot
     $PluginDir = Join-Path $RepoRoot 'plugin'
-    $BuildDir = Join-Path $PluginDir 'build'
+    $CargoProfile = if ($Configuration -eq 'Release') { 'release' } else { 'debug' }
+    $TargetDir = Join-Path $PluginDir "target\$CargoProfile"
 
     if (-not (Test-Path -LiteralPath $PluginDir)) {
         throw "Plugin directory not found: $PluginDir"
-    }
-
-    if ([string]::IsNullOrWhiteSpace($VcpkgRoot)) {
-        throw "vcpkg root not set. Set VCPKG_ROOT or pass -VcpkgRoot 'D:\path\to\vcpkg'."
-    }
-
-    $toolchain = Join-Path $VcpkgRoot 'scripts\buildsystems\vcpkg.cmake'
-    if (-not (Test-Path -LiteralPath $toolchain)) {
-        throw "vcpkg toolchain file not found: $toolchain"
-    }
-
-    $env:VCPKG_ROOT = $VcpkgRoot
-
-    $buildPreset = $BuildPreset
-    if ([string]::IsNullOrWhiteSpace($buildPreset)) {
-        $buildPreset = "$ConfigurePreset-$($Configuration.ToLowerInvariant())"
     }
 
     if ($InitSubmodules) {
@@ -169,27 +106,29 @@ try {
 
     Push-Location -LiteralPath $PluginDir
     try {
-        Write-Host "`n==> CMake configure (preset: $ConfigurePreset)"
-        Invoke-Checked -Exe 'cmake' -Arguments @('--preset', $ConfigurePreset)
+        if ($Test) {
+            Write-Host "`n==> cargo test"
+            Invoke-Checked -Exe 'cargo' -Arguments @('test')
+        }
 
-        Write-Host "`n==> CMake build (preset: $buildPreset)"
-        Invoke-Checked -Exe 'cmake' -Arguments @('--build', '--preset', $buildPreset)
+        Write-Host "`n==> cargo build --$CargoProfile"
+        if ($CargoProfile -eq 'release') {
+            Invoke-Checked -Exe 'cargo' -Arguments @('build', '--release')
+        }
+        else {
+            Invoke-Checked -Exe 'cargo' -Arguments @('build')
+        }
     }
     finally {
         Pop-Location
     }
 
-    if ($Test) {
-        Write-Host "`n==> ctest ($Configuration)"
-        Invoke-Checked -Exe 'ctest' -Arguments @('--test-dir', $BuildDir, '-C', $Configuration, '--output-on-failure')
-    }
-
     if ($Publish) {
-        $dll = Find-BuiltDll -BuildDir $BuildDir
-        $ini = Find-BuiltIni -BuildDir $BuildDir
+        $dll = Join-Path $TargetDir 'margrete_rpc.dll'
+        $ini = Join-Path $TargetDir 'margrete_rpc.ini'
         $installReadme = Join-Path $PluginDir 'config\README-install.txt'
-        if (-not $dll) { throw "Could not find margrete-rpc.dll under $BuildDir" }
-        if (-not $ini) { throw "Could not find margrete-rpc.ini under $BuildDir" }
+        if (-not (Test-Path -LiteralPath $dll)) { throw "Could not find $dll" }
+        if (-not (Test-Path -LiteralPath $ini)) { throw "Could not find $ini" }
         if (-not (Test-Path -LiteralPath $installReadme)) {
             throw "Install README not found: $installReadme"
         }
@@ -198,8 +137,8 @@ try {
         Write-Host "`n==> Publishing to $PublishDir"
         Remove-Item $PublishDir -Recurse -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Path $PublishDir | Out-Null
-        Copy-Item -LiteralPath $dll -Destination (Join-Path $PublishDir 'margrete-rpc.dll')
-        Copy-Item -LiteralPath $ini -Destination (Join-Path $PublishDir 'margrete-rpc.ini')
+        Copy-Item -LiteralPath $dll -Destination (Join-Path $PublishDir 'margrete_rpc.dll')
+        Copy-Item -LiteralPath $ini -Destination (Join-Path $PublishDir 'margrete_rpc.ini')
         Copy-Item -LiteralPath $installReadme -Destination (Join-Path $PublishDir 'README-install.txt')
         Write-Host "    Copied DLL, INI, and install README."
     }
