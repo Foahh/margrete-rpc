@@ -70,18 +70,25 @@ def list_instances(*, validate: bool = True, timeout: float = 1.0) -> list[Margr
     """
     instances: list[MargreteInstance] = []
     directory = discovery_dir()
-    if not directory.exists():
+    try:
+        if not directory.exists():
+            return instances
+        paths = sorted(directory.glob("*.json"))
+    except OSError:
         return instances
 
-    for path in sorted(directory.glob("*.json")):
-        instance = _load_instance(path)
-        if instance is None:
-            continue
-        if validate:
-            instance = _validated(instance, timeout)
+    for path in paths:
+        try:
+            instance = _load_instance(path)
             if instance is None:
                 continue
-        instances.append(instance)
+            if validate:
+                instance = _validated(instance, timeout)
+                if instance is None:
+                    continue
+            instances.append(instance)
+        except Exception:
+            continue
     return instances
 
 
@@ -126,8 +133,8 @@ def resolve_endpoint(instance_id: str | None = None, *, timeout: float = 1.0) ->
 
 def _load_instance(path: Path) -> MargreteInstance | None:
     try:
-        raw_data: object = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        raw_data: object = json.loads(_decode_discovery_bytes(path.read_bytes()))
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return None
     if not isinstance(raw_data, dict):
         return None
@@ -187,6 +194,25 @@ def _can_ping(endpoint: str, timeout: float) -> bool:
         if close is not None:
             close()
     return True
+
+
+def _decode_discovery_bytes(raw: bytes) -> str:
+    """Decode a discovery record written as UTF-8 or the Windows ANSI code page.
+
+    Older plugins wrote ``log`` with ``std::filesystem::path::string()``, which is the
+    system ANSI encoding on Windows. A non-ASCII profile path then makes strict UTF-8
+    decoding fail and aborts all discovery.
+    """
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        pass
+    if os.name == "nt":
+        try:
+            return raw.decode("mbcs")
+        except UnicodeDecodeError:
+            pass
+    return raw.decode("latin-1")
 
 
 def _load_transports(data: dict[str, object]) -> tuple[MargreteTransportEndpoint, ...]:

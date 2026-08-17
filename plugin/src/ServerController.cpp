@@ -10,6 +10,7 @@
 #endif
 
 #include "DiscoveryRegistry.h"
+#include "Utf8.h"
 #include "meta.h"
 
 namespace
@@ -35,8 +36,8 @@ ServerController::ServerController(ServerConfig config)
     router_.setStatusSnapshotProvider([this]() {
         RouterStatusSnapshot snapshot;
         snapshot.pid = processId_;
-        snapshot.logPath = logPath_.string();
-        snapshot.configPath = config_.sourcePath.string();
+        snapshot.logPath = PathUtf8(logPath_);
+        snapshot.configPath = PathUtf8(config_.sourcePath);
         if (running())
         {
             snapshot.uptime = static_cast<std::uint64_t>(
@@ -163,12 +164,12 @@ void ServerController::logConfig(const ServerConfig &config, const char *label)
 {
     if (!config.sourcePath.empty())
     {
-        logger_.info(std::string(label) + " path=" + config.sourcePath.string() +
+        logger_.info(std::string(label) + " path=" + PathUtf8(config.sourcePath) +
                      (config.loadedFromFile ? " (loaded)" : " (not found; using defaults)"));
     }
     logger_.info(std::string(label) + " transport=" + std::string(TransportModeName(config.transport)) + " host=" +
                  config.host + " port=" + (config.autoPort ? std::string("auto") : std::to_string(config.port)) +
-                 " pipe_name=" + config.pipeName + " resolved_log=" + logPath_.string());
+                 " pipe_name=" + config.pipeName + " resolved_log=" + PathUtf8(logPath_));
 }
 
 void ServerController::publishDiscovery()

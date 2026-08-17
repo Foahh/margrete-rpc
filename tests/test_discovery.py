@@ -114,6 +114,36 @@ def test_list_instances_loads_transport_records_without_validation(monkeypatch, 
     ]
 
 
+def test_list_instances_skips_invalid_records(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    directory = tmp_path / "MargreteRPC" / "instances"
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "broken.json").write_bytes(b"\xff\xfe not-json")
+    _write_record(tmp_path, "good", "127.0.0.1:49000")
+
+    instances = list_instances(validate=False)
+
+    assert [item.instance_id for item in instances] == ["good"]
+
+
+def test_list_instances_loads_legacy_ansi_records(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    directory = tmp_path / "MargreteRPC" / "instances"
+    directory.mkdir(parents=True, exist_ok=True)
+    # Older plugins wrote discovery JSON in the Windows ANSI code page, so a
+    # non-UTF-8 log path used to raise UnicodeDecodeError and abort discovery.
+    (directory / "ansi.json").write_bytes(
+        b'{"instance_id": "ansi", "endpoint": "127.0.0.1:49000",'
+        b' "log": "C:\\\\Users\\\\\x83\x65\x83\x58\x83\x67\\\\rpc.log"}'
+    )
+
+    instances = list_instances(validate=False)
+
+    assert len(instances) == 1
+    assert instances[0].instance_id == "ansi"
+    assert instances[0].endpoint == "127.0.0.1:49000"
+
+
 def test_list_instances_filters_stale_records(monkeypatch, tmp_path):
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     _write_record(tmp_path, "stale", "127.0.0.1:1")

@@ -116,6 +116,22 @@ TEST_CASE("loopback detection")
     REQUIRE_FALSE(IsLoopbackAddress("192.168.1.10"));
 }
 
+TEST_CASE("config ignores utf-8 bom")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "margrete-rpc-bom.ini";
+    {
+        std::ofstream out(path, std::ios::binary);
+        out << "\xEF\xBB\xBF[server]\n";
+        out << "port = 49000\n";
+    }
+
+    const ServerConfig config = LoadServerConfig(path);
+
+    REQUIRE(config.loadedFromFile == true);
+    REQUIRE(config.port == 49000);
+    REQUIRE(config.autoPort == false);
+}
+
 TEST_CASE("transport mode names")
 {
     REQUIRE(TransportModeName(ServerTransportMode::Tcp) == "tcp");

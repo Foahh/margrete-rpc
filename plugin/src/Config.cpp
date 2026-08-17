@@ -100,8 +100,13 @@ ServerConfig LoadServerConfig(const std::filesystem::path &iniPath)
 
     std::string section;
     std::string line;
+    constexpr std::string_view kUtf8Bom = "\xEF\xBB\xBF";
     while (std::getline(in, line))
     {
+        if (line.starts_with(kUtf8Bom))
+        {
+            line.erase(0, kUtf8Bom.size());
+        }
         line = Trim(line);
         if (line.empty() || line.starts_with(';') || line.starts_with('#'))
         {

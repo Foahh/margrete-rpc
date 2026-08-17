@@ -1,7 +1,9 @@
 #include "DiscoveryRegistry.h"
 
+#include "Utf8.h"
+
 #include <chrono>
-#include <cstdlib>
+#include <cstdio>
 #include <fstream>
 #include <random>
 #include <sstream>
@@ -17,7 +19,7 @@ std::string JsonEscape(const std::string &value)
 {
     std::string out;
     out.reserve(value.size() + 8);
-    for (const char ch : value)
+    for (const unsigned char ch : value)
     {
         switch (ch)
         {
@@ -37,7 +39,16 @@ std::string JsonEscape(const std::string &value)
             out += "\\t";
             break;
         default:
-            out += ch;
+            if (ch < 0x20)
+            {
+                char buf[8];
+                std::snprintf(buf, sizeof(buf), "\\u%04x", ch);
+                out += buf;
+            }
+            else
+            {
+                out += static_cast<char>(ch);
+            }
             break;
         }
     }
@@ -73,18 +84,18 @@ std::string DiscoveryRegistry::CreateInstanceId()
 
 std::filesystem::path DiscoveryRegistry::Directory()
 {
-    if (const char *localAppData = std::getenv("LOCALAPPDATA"); localAppData && *localAppData)
+    if (const auto localAppData = EnvironmentPath("LOCALAPPDATA"); !localAppData.empty())
     {
-        return std::filesystem::path(localAppData) / "MargreteRPC" / "instances";
+        return localAppData / "MargreteRPC" / "instances";
     }
     return std::filesystem::temp_directory_path() / "MargreteRPC" / "instances";
 }
 
 std::filesystem::path DiscoveryRegistry::LogDirectory()
 {
-    if (const char *localAppData = std::getenv("LOCALAPPDATA"); localAppData && *localAppData)
+    if (const auto localAppData = EnvironmentPath("LOCALAPPDATA"); !localAppData.empty())
     {
-        return std::filesystem::path(localAppData) / "MargreteRPC" / "logs";
+        return localAppData / "MargreteRPC" / "logs";
     }
     return std::filesystem::temp_directory_path() / "MargreteRPC" / "logs";
 }
@@ -109,7 +120,7 @@ void DiscoveryRegistry::Publish(const std::string &instanceId, const std::vector
         const auto recordPath = RecordPath(instanceId);
         const std::string endpoint = transports.empty() ? "" : transports.front().endpoint;
 
-        std::ofstream out(recordPath, std::ios::trunc);
+        std::ofstream out(recordPath, std::ios::binary | std::ios::trunc);
         out << "{\n";
         out << "  \"schema_version\": 2,\n";
         out << "  \"instance_id\": \"" << JsonEscape(instanceId) << "\",\n";
@@ -133,14 +144,14 @@ void DiscoveryRegistry::Publish(const std::string &instanceId, const std::vector
         out << "  ],\n";
         out << "  \"started_at_unix\": " << UnixTimeSeconds() << ",\n";
         out << "  \"plugin_version\": \"" << JsonEscape(pluginVersion ? pluginVersion : "") << "\",\n";
-        out << "  \"log\": \"" << JsonEscape(logPath.string()) << "\"\n";
+        out << "  \"log\": \"" << JsonEscape(PathUtf8(logPath)) << "\"\n";
         out << "}\n";
         if (!out)
         {
-            logger.error("discovery publish failed path=" + recordPath.string());
+            logger.error("discovery publish failed path=" + PathUtf8(recordPath));
             return;
         }
-        logger.info("discovery published path=" + recordPath.string() + " endpoint=" + endpoint);
+        logger.info("discovery published path=" + PathUtf8(recordPath) + " endpoint=" + endpoint);
     }
     catch (const std::exception &ex)
     {
@@ -157,10 +168,10 @@ void DiscoveryRegistry::Remove(const std::string &instanceId, Logger &logger)
         std::filesystem::remove(recordPath, ec);
         if (ec)
         {
-            logger.error("discovery remove failed path=" + recordPath.string() + " error=" + ec.message());
+            logger.error("discovery remove failed path=" + PathUtf8(recordPath) + " error=" + ec.message());
             return;
         }
-        logger.info("discovery removed path=" + recordPath.string());
+        logger.info("discovery removed path=" + PathUtf8(recordPath));
     }
     catch (const std::exception &ex)
     {

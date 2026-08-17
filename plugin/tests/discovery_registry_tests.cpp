@@ -9,36 +9,28 @@
 
 #include "DiscoveryRegistry.h"
 #include "Logger.h"
+#include "Utf8.h"
 
 #if defined(_WIN32)
-#include <stdlib.h>
+#include <windows.h>
 #endif
 
 using Catch::Matchers::ContainsSubstring;
 
 namespace
 {
-void SetLocalAppData(const std::string &value)
+void SetLocalAppData(const std::filesystem::path &value)
 {
 #if defined(_WIN32)
-    _putenv_s("LOCALAPPDATA", value.c_str());
+    SetEnvironmentVariableW(L"LOCALAPPDATA", value.empty() ? nullptr : value.c_str());
 #else
-    setenv("LOCALAPPDATA", value.c_str(), 1);
-#endif
-}
-
-void RestoreLocalAppData(bool hadPrevious, const std::string &previous)
-{
-#if defined(_WIN32)
-    _putenv_s("LOCALAPPDATA", hadPrevious ? previous.c_str() : "");
-#else
-    if (hadPrevious)
+    if (value.empty())
     {
-        setenv("LOCALAPPDATA", previous.c_str(), 1);
+        unsetenv("LOCALAPPDATA");
     }
     else
     {
-        unsetenv("LOCALAPPDATA");
+        setenv("LOCALAPPDATA", value.string().c_str(), 1);
     }
 #endif
 }
@@ -46,21 +38,15 @@ void RestoreLocalAppData(bool hadPrevious, const std::string &previous)
 class LocalAppDataGuard
 {
   public:
-    LocalAppDataGuard()
-    {
-        const char *value = std::getenv("LOCALAPPDATA");
-        hadPrevious_ = value != nullptr;
-        previous_ = value ? value : "";
-    }
+    LocalAppDataGuard() : previous_(EnvironmentPath("LOCALAPPDATA")) {}
 
     ~LocalAppDataGuard()
     {
-        RestoreLocalAppData(hadPrevious_, previous_);
+        SetLocalAppData(previous_);
     }
 
   private:
-    bool hadPrevious_{false};
-    std::string previous_;
+    std::filesystem::path previous_;
 };
 } // namespace
 
@@ -70,7 +56,7 @@ TEST_CASE("discovery publishes configured host")
     const std::filesystem::path base = std::filesystem::temp_directory_path() / "margrete-rpc-discovery-test";
     std::filesystem::remove_all(base);
     std::filesystem::create_directories(base);
-    SetLocalAppData(base.string());
+    SetLocalAppData(base);
 
     {
         const std::string instanceId = "test-instance";
@@ -94,6 +80,48 @@ TEST_CASE("discovery publishes configured host")
         REQUIRE_THAT(content, ContainsSubstring("\"type\": \"npipe\""));
         REQUIRE_THAT(content, ContainsSubstring("\"path\": \"\\\\\\\\.\\\\pipe\\\\margrete-rpc-test\""));
     }
+
+    std::filesystem::remove_all(base);
+}
+
+TEST_CASE("discovery publishes utf-8 log path")
+{
+    const LocalAppDataGuard localAppDataGuard;
+    const std::filesystem::path base = std::filesystem::temp_directory_path() / "margrete-rpc-discovery-utf8-test";
+    std::filesystem::remove_all(base);
+    std::filesystem::create_directories(base);
+    SetLocalAppData(base);
+
+    {
+        const std::string instanceId = "utf8-instance";
+        const std::filesystem::path logPath = base / std::filesystem::path(u8"\u30c6\u30b9\u30c8.log");
+        Logger logger(logPath);
+
+        DiscoveryRegistry::Publish(instanceId, std::vector<DiscoveryTransport>{DiscoveryTransport{"tcp", "127.0.0.1:49000", ""}},
+                                   logPath, "test-version", logger);
+
+        const std::filesystem::path recordPath = base / "MargreteRPC" / "instances" / (instanceId + ".json");
+        std::ifstream in(recordPath, std::ios::binary);
+        REQUIRE(in);
+        const std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        const std::string utf8LogName(reinterpret_cast<const char *>(u8"\u30c6\u30b9\u30c8.log"));
+        REQUIRE_THAT(content, ContainsSubstring(utf8LogName));
+    }
+
+    std::filesystem::remove_all(base);
+}
+
+TEST_CASE("discovery directory keeps unicode local app data")
+{
+    const LocalAppDataGuard localAppDataGuard;
+    const std::filesystem::path base =
+        std::filesystem::temp_directory_path() / std::filesystem::path(u8"\u30c6\u30b9\u30c8-rpc");
+    std::filesystem::remove_all(base);
+    std::filesystem::create_directories(base);
+    SetLocalAppData(base);
+
+    REQUIRE(DiscoveryRegistry::Directory() == base / "MargreteRPC" / "instances");
+    REQUIRE(DiscoveryRegistry::LogDirectory() == base / "MargreteRPC" / "logs");
 
     std::filesystem::remove_all(base);
 }

@@ -1,11 +1,10 @@
 #include "Plugin.h"
 
-#include <cstdlib>
 #include <cwchar>
 #include <exception>
 #include <filesystem>
-#include <iterator>
 #include <string>
+#include <system_error>
 #include <utility>
 
 #if defined(_WIN32)
@@ -14,14 +13,20 @@
 
 #include "Config.h"
 #include "Dialog.h"
+#include "Utf8.h"
 #include "meta.h"
 
 namespace
 {
+bool PathExists(const std::filesystem::path &path)
+{
+    std::error_code ec;
+    return !path.empty() && std::filesystem::exists(path, ec) && !ec;
+}
+
 std::filesystem::path DllDirectory()
 {
 #if defined(_WIN32)
-    wchar_t buf[MAX_PATH]{};
     HMODULE self = nullptr;
     if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                            reinterpret_cast<LPCWSTR>(&DllDirectory), &self) == 0 ||
@@ -29,12 +34,21 @@ std::filesystem::path DllDirectory()
     {
         return {};
     }
-    const DWORD n = GetModuleFileNameW(self, buf, static_cast<DWORD>(std::size(buf)));
-    if (n == 0 || n >= std::size(buf))
+    std::wstring buf(MAX_PATH, L'\0');
+    for (;;)
     {
-        return {};
+        const DWORD n = GetModuleFileNameW(self, buf.data(), static_cast<DWORD>(buf.size()));
+        if (n == 0)
+        {
+            return {};
+        }
+        if (n < buf.size())
+        {
+            buf.resize(n);
+            return std::filesystem::path(buf).parent_path();
+        }
+        buf.assign(buf.size() * 2, L'\0');
     }
-    return std::filesystem::path(buf).parent_path();
 #else
     return {};
 #endif
@@ -42,26 +56,22 @@ std::filesystem::path DllDirectory()
 
 std::filesystem::path ResolveConfigPath()
 {
-    if (const char *env = std::getenv("MARGRETE_RPC_CONFIG"); env && *env)
+    if (const auto envPath = EnvironmentPath("MARGRETE_RPC_CONFIG"); PathExists(envPath))
     {
-        std::filesystem::path p(env);
-        if (std::filesystem::exists(p))
-        {
-            return p;
-        }
+        return envPath;
     }
 
     const std::filesystem::path dllDir = DllDirectory();
     if (!dllDir.empty())
     {
         const std::filesystem::path nearDll = dllDir / "margrete-rpc.ini";
-        if (std::filesystem::exists(nearDll))
+        if (PathExists(nearDll))
         {
             return nearDll;
         }
     }
 
-    if (std::filesystem::exists("./plugins/margrete-rpc.ini"))
+    if (PathExists("./plugins/margrete-rpc.ini"))
     {
         return "./plugins/margrete-rpc.ini";
     }

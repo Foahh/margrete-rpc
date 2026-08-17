@@ -6,7 +6,7 @@
 
 Logger::Logger(std::filesystem::path path)
 {
-    out_.open(path, std::ios::app);
+    out_.open(path, std::ios::binary | std::ios::app);
 }
 
 void Logger::info(const std::string &message)
