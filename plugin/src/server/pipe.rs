@@ -24,6 +24,8 @@ use windows::core::PCWSTR;
 
 const STOP_TIMEOUT: Duration = Duration::from_secs(5);
 const STOP_POLL_MS: u32 = 50;
+const CONNECT_RETRY_LIMIT: u32 = 3;
+const CONNECT_RETRY_DELAY: Duration = Duration::from_millis(50);
 
 pub struct NamedPipeServer {
     pipe_name: String,
@@ -97,28 +99,31 @@ fn run(
     let Some(mut listener) = create_listening_pipe(&wide, &logger) else {
         return;
     };
+    let mut connect_failures = 0u32;
 
     while running.load(Ordering::SeqCst) {
-        let connected = match connect_pipe(listener) {
-            Ok(()) => true,
-            Err(err) => {
-                if running.load(Ordering::SeqCst) {
-                    logger.error(format!(
-                        "ConnectNamedPipe failed error={}",
-                        win32_code(&err)
-                    ));
-                }
-                false
-            }
+        let connect_error = match connect_pipe(listener) {
+            Ok(()) => None,
+            Err(err) => Some(win32_code(&err)),
         };
 
         if !running.load(Ordering::SeqCst) {
-            close_pipe(listener, connected);
+            close_pipe(listener, connect_error.is_none());
             break;
         }
-        if !connected {
+        if let Some(code) = connect_error {
             close_pipe(listener, false);
-            thread::sleep(Duration::from_millis(50));
+            connect_failures += 1;
+            if connect_failures >= CONNECT_RETRY_LIMIT {
+                logger.error(format!(
+                    "ConnectNamedPipe failed error={code}; giving up after {connect_failures} attempts"
+                ));
+                break;
+            }
+            logger.error(format!(
+                "ConnectNamedPipe failed error={code}; retrying ({connect_failures}/{CONNECT_RETRY_LIMIT})"
+            ));
+            thread::sleep(CONNECT_RETRY_DELAY);
             match create_listening_pipe(&wide, &logger) {
                 Some(pipe) => listener = pipe,
                 None => break,
@@ -126,6 +131,7 @@ fn run(
             continue;
         }
 
+        connect_failures = 0;
         let next = create_listening_pipe(&wide, &logger);
         spawn_client(
             listener,
