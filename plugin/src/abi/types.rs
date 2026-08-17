@@ -1,3 +1,4 @@
+use crate::wide::{str_to_wide, wide_null_to_string};
 use std::ffi::c_void;
 
 pub type MpBoolean = i32;
@@ -181,7 +182,7 @@ pub fn copy_wide(dest: *mut u16, dest_len: MpInteger, src: &str) {
     if dest.is_null() || dest_len <= 0 {
         return;
     }
-    let mut wide: Vec<u16> = src.encode_utf16().collect();
+    let mut wide = str_to_wide(src);
     let max = dest_len as usize;
     if wide.len() >= max {
         wide.truncate(max.saturating_sub(1));
@@ -199,8 +200,7 @@ pub fn utf16_to_string(ptr: *const u16, len: usize) -> String {
         return String::new();
     }
     let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
-    let end = slice.iter().position(|&c| c == 0).unwrap_or(len);
-    String::from_utf16_lossy(&slice[..end])
+    wide_null_to_string(slice)
 }
 
 pub type RawPtr = *mut c_void;

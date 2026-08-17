@@ -160,12 +160,8 @@ impl ServerController {
 
     fn apply_logger(&self) {
         let logging = self.config.lock().expect("config").logging;
-        let path = if logging {
-            log_file_path(self.shared.plugin_dir.as_deref(), &self.shared.instance_id)
-        } else {
-            None
-        };
-        logger::configure(path.as_deref());
+        let path = log_file_path(self.shared.plugin_dir.as_deref(), &self.shared.instance_id);
+        logger::configure(path.as_deref(), logging);
     }
 }
 

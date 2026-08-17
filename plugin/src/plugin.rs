@@ -6,6 +6,7 @@ use crate::error::Result;
 use crate::meta;
 use crate::server::ServerController;
 use crate::server::config::{ServerConfig, load_server_config};
+use crate::wide::wide_to_path;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -209,8 +210,7 @@ fn dll_directory() -> Option<PathBuf> {
             }
             if (n as usize) < buf.len() {
                 buf.truncate(n as usize);
-                let path = String::from_utf16_lossy(&buf);
-                return Some(PathBuf::from(path).parent()?.to_path_buf());
+                return Some(wide_to_path(&buf).parent()?.to_path_buf());
             }
             buf.resize(buf.len() * 2, 0);
         }

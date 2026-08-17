@@ -1,30 +1,22 @@
 use crate::error::PluginError;
 use crate::rpc::framing::{self, MAX_FRAME_SIZE};
 use crate::rpc::router::RequestRouter;
-use std::os::windows::io::AsRawHandle;
+use interprocess::os::windows::named_pipe::{
+    DuplexPipeStream, PipeListener, PipeListenerOptions, PipeMode, WaitTimeout, pipe_mode,
+};
+use std::io::{self, Read, Write};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
-use windows::Win32::Foundation::{
-    CloseHandle, ERROR_PIPE_CONNECTED, GENERIC_READ, GENERIC_WRITE, HANDLE, WAIT_OBJECT_0,
-    WIN32_ERROR,
-};
-use windows::Win32::Storage::FileSystem::{
-    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_MODE, OPEN_EXISTING, PIPE_ACCESS_DUPLEX,
-    ReadFile, WriteFile,
-};
-use windows::Win32::System::Pipes::{
-    ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE,
-    PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
-};
-use windows::Win32::System::Threading::WaitForSingleObject;
-use windows::core::PCWSTR;
+use std::time::Duration;
 
-const STOP_TIMEOUT: Duration = Duration::from_secs(5);
-const STOP_POLL_MS: u32 = 50;
-const CONNECT_RETRY_LIMIT: u32 = 3;
-const CONNECT_RETRY_DELAY: Duration = Duration::from_millis(50);
+type BytePipe = DuplexPipeStream<pipe_mode::Bytes>;
+type BytePipeListener = PipeListener<pipe_mode::Bytes, pipe_mode::Bytes>;
+
+const IO_POLL_INTERVAL: Duration = Duration::from_millis(10);
+const ACCEPT_RETRY_LIMIT: u32 = 3;
+const ACCEPT_RETRY_DELAY: Duration = Duration::from_millis(50);
 
 pub struct NamedPipeServer {
     pipe_name: String,
@@ -47,6 +39,9 @@ impl NamedPipeServer {
         if self.running.swap(true, Ordering::SeqCst) {
             return;
         }
+        if let Some(previous) = self.thread.lock().expect("thread").take() {
+            let _ = previous.join();
+        }
         let pipe_name = self.pipe_name.clone();
         let router = Arc::clone(&self.router);
         let running = Arc::clone(&self.running);
@@ -59,14 +54,6 @@ impl NamedPipeServer {
         let Some(thread) = self.thread.lock().expect("thread").take() else {
             return;
         };
-        let deadline = Instant::now() + STOP_TIMEOUT;
-        while Instant::now() < deadline {
-            wake_listener(&self.pipe_name);
-            let wait = unsafe { WaitForSingleObject(HANDLE(thread.as_raw_handle()), STOP_POLL_MS) };
-            if wait == WAIT_OBJECT_0 {
-                break;
-            }
-        }
         let _ = thread.join();
     }
 
@@ -84,55 +71,47 @@ impl Drop for NamedPipeServer {
 fn run(pipe_name: String, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
     let pipe_path = format!(r"\\.\pipe\{pipe_name}");
     log::info!("pipe server starting path={pipe_path}");
-    let wide: Vec<u16> = pipe_path.encode_utf16().chain(std::iter::once(0)).collect();
     let mut clients: Vec<JoinHandle<()>> = Vec::new();
 
-    let Some(mut listener) = create_listening_pipe(&wide) else {
-        return;
+    let listener = match create_listener(&pipe_path) {
+        Ok(listener) => listener,
+        Err(err) => {
+            log::error!("named pipe listener creation failed: {err}");
+            running.store(false, Ordering::SeqCst);
+            return;
+        }
     };
-    let mut connect_failures = 0u32;
+    let mut accept_failures = 0u32;
 
     while running.load(Ordering::SeqCst) {
-        let connect_error = match connect_pipe(listener) {
-            Ok(()) => None,
-            Err(err) => Some(win32_code(&err)),
-        };
-
-        if !running.load(Ordering::SeqCst) {
-            close_pipe(listener, connect_error.is_none());
-            break;
-        }
-        if let Some(code) = connect_error {
-            close_pipe(listener, false);
-            connect_failures += 1;
-            if connect_failures >= CONNECT_RETRY_LIMIT {
-                log::error!(
-                    "ConnectNamedPipe failed error={code}; giving up after {connect_failures} attempts"
+        reap_clients(&mut clients);
+        match listener.accept() {
+            Ok(pipe) => {
+                accept_failures = 0;
+                spawn_client(
+                    pipe,
+                    Arc::clone(&router),
+                    Arc::clone(&running),
+                    &mut clients,
                 );
-                break;
             }
-            log::error!(
-                "ConnectNamedPipe failed error={code}; retrying ({connect_failures}/{CONNECT_RETRY_LIMIT})"
-            );
-            thread::sleep(CONNECT_RETRY_DELAY);
-            match create_listening_pipe(&wide) {
-                Some(pipe) => listener = pipe,
-                None => break,
+            Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
+                thread::sleep(IO_POLL_INTERVAL);
             }
-            continue;
-        }
-
-        connect_failures = 0;
-        let next = create_listening_pipe(&wide);
-        spawn_client(
-            listener,
-            Arc::clone(&router),
-            Arc::clone(&running),
-            &mut clients,
-        );
-        match next {
-            Some(pipe) => listener = pipe,
-            None => break,
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => {}
+            Err(err) => {
+                accept_failures += 1;
+                if accept_failures >= ACCEPT_RETRY_LIMIT {
+                    log::error!(
+                        "named pipe accept failed: {err}; giving up after {accept_failures} attempts"
+                    );
+                    break;
+                }
+                log::error!(
+                    "named pipe accept failed: {err}; retrying ({accept_failures}/{ACCEPT_RETRY_LIMIT})"
+                );
+                thread::sleep(ACCEPT_RETRY_DELAY);
+            }
         }
     }
 
@@ -143,164 +122,153 @@ fn run(pipe_name: String, router: Arc<RequestRouter>, running: Arc<AtomicBool>) 
     log::info!("pipe server stopped");
 }
 
-fn create_listening_pipe(wide: &[u16]) -> Option<HANDLE> {
-    let pipe = unsafe {
-        CreateNamedPipeW(
-            PCWSTR(wide.as_ptr()),
-            PIPE_ACCESS_DUPLEX,
-            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-            PIPE_UNLIMITED_INSTANCES,
-            MAX_FRAME_SIZE,
-            MAX_FRAME_SIZE,
-            0,
-            None,
-        )
-    };
-    if pipe.is_invalid() {
-        log::error!(
-            "CreateNamedPipeW failed error={}",
-            std::io::Error::last_os_error()
-        );
-        None
-    } else {
-        Some(pipe)
-    }
-}
-
-fn connect_pipe(pipe: HANDLE) -> windows::core::Result<()> {
-    match unsafe { ConnectNamedPipe(pipe, None) } {
-        Ok(()) => Ok(()),
-        Err(err) if WIN32_ERROR::from_error(&err) == Some(ERROR_PIPE_CONNECTED) => Ok(()),
-        Err(err) => Err(err),
-    }
+fn create_listener(pipe_path: &str) -> io::Result<BytePipeListener> {
+    PipeListenerOptions::new()
+        .path(Path::new(pipe_path))
+        .mode(PipeMode::Bytes)
+        .nonblocking(true)
+        .instance_limit(None)
+        .accept_remote(true)
+        .input_buffer_size_hint(MAX_FRAME_SIZE)
+        .output_buffer_size_hint(MAX_FRAME_SIZE)
+        .wait_timeout(WaitTimeout::DEFAULT)
+        .create_duplex::<pipe_mode::Bytes>()
 }
 
 fn spawn_client(
-    pipe: HANDLE,
+    pipe: BytePipe,
     router: Arc<RequestRouter>,
     running: Arc<AtomicBool>,
     clients: &mut Vec<JoinHandle<()>>,
 ) {
-    let raw = pipe.0 as isize;
     match thread::Builder::new()
-        .spawn(move || handle_client(HANDLE(raw as *mut std::ffi::c_void), router, running))
+        .name("margrete-rpc-pipe-client".into())
+        .spawn(move || handle_client(pipe, router, running))
     {
         Ok(handle) => clients.push(handle),
         Err(err) => {
             log::error!("pipe client thread creation failed: {err}");
-            close_pipe(pipe, true);
         }
     }
 }
 
-fn wake_listener(pipe_name: &str) {
-    let path = format!(r"\\.\pipe\{pipe_name}");
-    let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
-    let handle = unsafe {
-        CreateFileW(
-            PCWSTR(wide.as_ptr()),
-            GENERIC_READ.0 | GENERIC_WRITE.0,
-            FILE_SHARE_MODE(0),
-            None,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            None,
-        )
-    };
-    if let Ok(handle) = handle {
-        let _ = unsafe { CloseHandle(handle) };
-    }
-}
-
-fn close_pipe(pipe: HANDLE, disconnect: bool) {
-    unsafe {
-        if disconnect {
-            let _ = DisconnectNamedPipe(pipe);
+fn reap_clients(clients: &mut Vec<JoinHandle<()>>) {
+    let mut index = 0;
+    while index < clients.len() {
+        if clients[index].is_finished() {
+            let handle = clients.swap_remove(index);
+            let _ = handle.join();
+        } else {
+            index += 1;
         }
-        let _ = CloseHandle(pipe);
     }
 }
 
-fn win32_code(err: &windows::core::Error) -> u32 {
-    WIN32_ERROR::from_error(err)
-        .map(|code| code.0)
-        .unwrap_or(err.code().0 as u32)
-}
-
-fn handle_client(pipe: HANDLE, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
-    if let Err(err) = client_loop(pipe, &router, &running) {
+fn handle_client(mut pipe: BytePipe, router: Arc<RequestRouter>, running: Arc<AtomicBool>) {
+    if let Err(err) = client_loop(&mut pipe, &router, &running)
+        && running.load(Ordering::SeqCst)
+    {
         log::error!("{err}");
     }
-    close_pipe(pipe, true);
+    pipe.assume_flushed();
 }
 
 fn client_loop(
-    pipe: HANDLE,
+    pipe: &mut BytePipe,
     router: &RequestRouter,
     running: &AtomicBool,
 ) -> Result<(), PluginError> {
     while running.load(Ordering::SeqCst) {
         let mut header = [0u8; 4];
-        if !read_exact(pipe, &mut header, true)? {
+        if !read_exact_cooperative(pipe, &mut header, true, running)? {
             break;
         }
         let size = framing::payload_size_from_header(&header)?;
         let mut frame = vec![0u8; 4 + size as usize];
         frame[..4].copy_from_slice(&header);
-        read_exact(pipe, &mut frame[4..], false)?;
+        if !read_exact_cooperative(pipe, &mut frame[4..], false, running)? {
+            break;
+        }
         let request = framing::decode(&frame)?;
         let response = router.route(&request);
         let out = framing::encode(&response)?;
-        write_all(pipe, &out)?;
+        if !write_all_cooperative(pipe, &out, running)? {
+            break;
+        }
     }
     Ok(())
 }
 
-fn read_exact(pipe: HANDLE, buf: &mut [u8], allow_clean_eof: bool) -> Result<bool, PluginError> {
+fn read_exact_cooperative(
+    pipe: &mut BytePipe,
+    buf: &mut [u8],
+    allow_clean_eof: bool,
+    running: &AtomicBool,
+) -> Result<bool, PluginError> {
     let mut received = 0usize;
     while received < buf.len() {
-        let mut n = 0u32;
-        let ok = unsafe { ReadFile(pipe, Some(&mut buf[received..]), Some(&mut n), None) };
-        match ok {
-            Ok(()) => {
-                if n == 0 {
-                    if allow_clean_eof && received == 0 {
-                        return Ok(false);
-                    }
-                    return Err(PluginError::internal(
-                        "pipe client disconnected before frame completed",
-                    ));
+        if !running.load(Ordering::SeqCst) {
+            return Ok(false);
+        }
+        match pipe.read(&mut buf[received..]) {
+            Ok(0) => {
+                if pipe.client_process_id().is_ok() {
+                    thread::sleep(IO_POLL_INTERVAL);
+                    continue;
                 }
-                received += n as usize;
-            }
-            Err(_) => {
                 if allow_clean_eof && received == 0 {
                     return Ok(false);
                 }
-                return Err(PluginError::internal(format!(
-                    "ReadFile failed error={}",
-                    std::io::Error::last_os_error()
-                )));
+                return Err(PluginError::internal(
+                    "pipe client disconnected before frame completed",
+                ));
+            }
+            Ok(n) => received += n,
+            Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
+                thread::sleep(IO_POLL_INTERVAL);
+            }
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => {}
+            Err(err) => {
+                if allow_clean_eof && received == 0 {
+                    return Ok(false);
+                }
+                return Err(PluginError::internal(format!("pipe read failed: {err}")));
             }
         }
     }
     Ok(true)
 }
 
-fn write_all(pipe: HANDLE, buf: &[u8]) -> Result<(), PluginError> {
+fn write_all_cooperative(
+    pipe: &mut BytePipe,
+    buf: &[u8],
+    running: &AtomicBool,
+) -> Result<bool, PluginError> {
     let mut sent = 0usize;
     while sent < buf.len() {
-        let mut n = 0u32;
-        let ok = unsafe { WriteFile(pipe, Some(&buf[sent..]), Some(&mut n), None) };
-        if ok.is_err() || n == 0 {
-            return Err(PluginError::internal(format!(
-                "WriteFile failed error={}",
-                std::io::Error::last_os_error()
-            )));
+        if !running.load(Ordering::SeqCst) {
+            return Ok(false);
         }
-        sent += n as usize;
+        match pipe.write(&buf[sent..]) {
+            Ok(0) if pipe.client_process_id().is_ok() => {
+                thread::sleep(IO_POLL_INTERVAL);
+            }
+            Ok(0) => {
+                return Err(PluginError::internal(
+                    "pipe client disconnected during write",
+                ));
+            }
+            Ok(n) => sent += n,
+            Err(err) if err.kind() == io::ErrorKind::WouldBlock => {
+                thread::sleep(IO_POLL_INTERVAL);
+            }
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => {}
+            Err(err) => {
+                return Err(PluginError::internal(format!("pipe write failed: {err}")));
+            }
+        }
     }
-    Ok(())
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -308,15 +276,17 @@ mod tests {
     use super::*;
     use crate::rpc::proto::{Envelope, envelope};
     use crate::server::instance;
+    use std::fs::File;
     use std::fs::OpenOptions;
     use std::io::{Read, Write};
+    use std::time::Instant;
 
-    fn ping(pipe_name: &str) -> std::io::Result<()> {
+    fn connect(pipe_name: &str) -> io::Result<File> {
         let path = format!(r"\\.\pipe\{pipe_name}");
         let start = Instant::now();
-        let mut file = loop {
+        loop {
             match OpenOptions::new().read(true).write(true).open(&path) {
-                Ok(file) => break file,
+                Ok(file) => return Ok(file),
                 Err(err)
                     if matches!(err.raw_os_error(), Some(2 | 231))
                         && start.elapsed() < Duration::from_secs(2) =>
@@ -325,7 +295,11 @@ mod tests {
                 }
                 Err(err) => return Err(err),
             }
-        };
+        }
+    }
+
+    fn ping(pipe_name: &str) -> io::Result<()> {
+        let mut file = connect(pipe_name)?;
         let request = Envelope {
             request_id: 1,
             body: Some(envelope::Body::PingRequest(Default::default())),
@@ -340,6 +314,39 @@ mod tests {
         frame.extend_from_slice(&header);
         frame.extend_from_slice(&payload);
         let decoded = framing::decode(&frame).expect("decode");
+        assert!(matches!(
+            decoded.body,
+            Some(envelope::Body::PingResponse(_))
+        ));
+        Ok(())
+    }
+
+    fn fragmented_ping(pipe_name: &str) -> io::Result<()> {
+        let mut file = connect(pipe_name)?;
+        let request = Envelope {
+            request_id: 7,
+            body: Some(envelope::Body::PingRequest(Default::default())),
+        };
+        let frame = framing::encode(&request).expect("encode");
+
+        for byte in frame {
+            file.write_all(&[byte])?;
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        let mut header = [0u8; 4];
+        for byte in &mut header {
+            file.read_exact(std::slice::from_mut(byte))?;
+        }
+        let size = u32::from_le_bytes(header) as usize;
+        let mut payload = vec![0u8; size];
+        for byte in &mut payload {
+            file.read_exact(std::slice::from_mut(byte))?;
+        }
+        let mut response = header.to_vec();
+        response.extend_from_slice(&payload);
+        let decoded = framing::decode(&response).expect("decode");
+        assert_eq!(decoded.request_id, 7);
         assert!(matches!(
             decoded.body,
             Some(envelope::Body::PingResponse(_))
@@ -377,9 +384,10 @@ mod tests {
     }
 
     #[test]
-    fn accepts_rapid_reconnects_and_stops() {
-        let (instance, server) = start_test_server();
+    fn lifecycle_is_idempotent_and_restartable() {
+        let (instance, mut server) = start_test_server();
         let pipe_name = instance.pipe_name();
+        server.start();
         ping_until(&pipe_name, Duration::from_secs(2));
         for _ in 0..64 {
             ping(&pipe_name).expect("ping");
@@ -387,6 +395,12 @@ mod tests {
         let started = Instant::now();
         server.stop();
         assert!(started.elapsed() < Duration::from_secs(2));
+        assert!(!server.running());
+        server.stop();
+
+        server.start();
+        ping_until(&pipe_name, Duration::from_secs(2));
+        server.stop();
         assert!(!server.running());
     }
 
@@ -406,5 +420,29 @@ mod tests {
             }
         });
         server.stop();
+    }
+
+    #[test]
+    fn accepts_fragmented_frames() {
+        let (instance, server) = start_test_server();
+        fragmented_ping(&instance.pipe_name()).expect("fragmented ping");
+        server.stop();
+    }
+
+    #[test]
+    fn stops_with_idle_and_partial_clients() {
+        let (instance, server) = start_test_server();
+        let pipe_name = instance.pipe_name();
+        ping_until(&pipe_name, Duration::from_secs(2));
+
+        let _idle = connect(&pipe_name).expect("idle client");
+        let mut partial = connect(&pipe_name).expect("partial client");
+        partial.write_all(&[8, 0]).expect("partial header");
+        thread::sleep(Duration::from_millis(20));
+
+        let started = Instant::now();
+        server.stop();
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(!server.running());
     }
 }

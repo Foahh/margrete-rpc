@@ -9,6 +9,7 @@ pub mod plugin;
 pub mod rpc;
 pub mod server;
 pub mod ui;
+mod wide;
 
 pub mod meta {
     include!(concat!(env!("OUT_DIR"), "/meta.rs"));

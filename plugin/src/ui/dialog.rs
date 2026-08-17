@@ -1,7 +1,7 @@
 use crate::abi::Context;
 use crate::meta;
-use crate::server::logger::path_utf8;
 use crate::server::{ServerController, ServerControllerStatus};
+use crate::wide::{clone_pcwstr, path_to_wide_null, str_to_wide, str_to_wide_null};
 use std::ffi::c_void;
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, SIZE, WPARAM};
 use windows::Win32::Graphics::Gdi::{
@@ -11,6 +11,7 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::SystemServices::{SS_CENTERIMAGE, SS_LEFT, SS_NOPREFIX};
+use windows::Win32::System::WindowsProgramming::MulDiv;
 use windows::Win32::UI::Controls::{
     ICC_STANDARD_CLASSES, INITCOMMONCONTROLSEX, InitCommonControlsEx,
 };
@@ -121,10 +122,7 @@ impl ServerStatusWindow {
     fn show_modal(&mut self) {
         unsafe {
             ensure_window_class();
-            let title: Vec<u16> = meta::DIALOG_TITLE
-                .encode_utf16()
-                .chain(std::iter::once(0))
-                .collect();
+            let title = str_to_wide_null(meta::DIALOG_TITLE);
             let style = WS_CAPTION | WS_SYSMENU;
             let ex = WS_EX_DLGMODALFRAME;
             let (width, height) = outer_size_for_client(client_width(), 80, style, ex);
@@ -263,7 +261,7 @@ impl ServerStatusWindow {
         };
         let status = controller.status();
         let log_path = if status.loaded_config.logging && !status.log_path.as_os_str().is_empty() {
-            Some(wide_from_path(&status.log_path))
+            Some(path_to_wide_null(&status.log_path))
         } else {
             None
         };
@@ -275,7 +273,7 @@ impl ServerStatusWindow {
                 w!("Start")
             },
         );
-        set_text_wide_if_changed(self.instance_value, &wide(&status.instance_id));
+        set_text_wide_if_changed(self.instance_value, &str_to_wide_null(&status.instance_id));
         self.update_log_visibility(log_path.is_some());
         if let Some(log_path) = log_path {
             set_text_wide_if_changed(self.log_value, &log_path);
@@ -291,7 +289,7 @@ impl ServerStatusWindow {
         self.update_message_visibility(has_message);
         if !self.config_error.is_empty() {
             set_text_if_changed(self.error_label, w!("Config reload failed"));
-            set_text_wide_if_changed(self.error_value, &wide(&self.config_error));
+            set_text_wide_if_changed(self.error_value, &str_to_wide_null(&self.config_error));
         } else if pending {
             set_text_if_changed(self.error_label, w!("Config changes pending"));
             set_text_if_changed(
@@ -567,18 +565,10 @@ fn create_message_font(point_delta: i32, weight: i32) -> HFONT {
             if !dc.0.is_null() {
                 let _ = ReleaseDC(None, dc);
             }
-            let current_points = mul_div(-font.lfHeight, 72, dpi);
-            font.lfHeight = -mul_div(current_points + point_delta, dpi, 72);
+            let current_points = MulDiv(-font.lfHeight, 72, dpi);
+            font.lfHeight = -MulDiv(current_points + point_delta, dpi, 72);
         }
         CreateFontIndirectW(&font)
-    }
-}
-
-fn mul_div(n: i32, num: i32, den: i32) -> i32 {
-    if den == 0 {
-        0
-    } else {
-        ((n as i64 * num as i64) / den as i64) as i32
     }
 }
 
@@ -723,7 +713,7 @@ fn title_text_width() -> i32 {
             return 0;
         }
         let old = SelectObject(dc, font.into());
-        let title: Vec<u16> = meta::DIALOG_TITLE.encode_utf16().collect();
+        let title = str_to_wide(meta::DIALOG_TITLE);
         let mut size = SIZE::default();
         let _ = GetTextExtentPoint32W(dc, &title, &mut size);
         let _ = SelectObject(dc, old);
@@ -775,7 +765,7 @@ fn move_control(hwnd: HWND, x: i32, y: i32, width: i32, height: i32) {
 }
 
 fn set_text_if_changed(hwnd: HWND, text: PCWSTR) {
-    set_text_wide_if_changed(hwnd, &pcwstr_to_wide(text));
+    set_text_wide_if_changed(hwnd, &unsafe { clone_pcwstr(text) });
 }
 
 fn set_text_wide(hwnd: HWND, text: &[u16]) {
@@ -803,31 +793,6 @@ fn window_text(hwnd: HWND) -> Vec<u16> {
             buf.push(0);
         }
         buf
-    }
-}
-
-fn pcwstr_to_wide(text: PCWSTR) -> Vec<u16> {
-    unsafe {
-        if text.0.is_null() {
-            return vec![0];
-        }
-        let mut len = 0usize;
-        while *text.0.add(len) != 0 {
-            len += 1;
-        }
-        std::slice::from_raw_parts(text.0, len + 1).to_vec()
-    }
-}
-
-fn wide(text: &str) -> Vec<u16> {
-    text.encode_utf16().chain(std::iter::once(0)).collect()
-}
-
-fn wide_from_path(path: &std::path::Path) -> Vec<u16> {
-    if path.as_os_str().is_empty() {
-        wide("(none)")
-    } else {
-        wide(&path_utf8(path))
     }
 }
 

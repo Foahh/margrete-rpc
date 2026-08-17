@@ -1,4 +1,5 @@
 use crate::error::{PluginError, Result};
+use configparser::ini::{Ini, IniDefault};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -30,31 +31,16 @@ pub fn load_server_config(ini_path: impl AsRef<Path>) -> Result<ServerConfig> {
     };
     config.loaded_from_file = true;
     let text = String::from_utf8_lossy(&bytes);
-    let mut section = String::new();
-    for (index, raw_line) in text.lines().enumerate() {
-        let mut line = raw_line;
-        if index == 0 {
-            line = line.strip_prefix('\u{feff}').unwrap_or(line);
-        }
-        let line = trim_ascii(line);
-        if line.is_empty() || line.starts_with(';') || line.starts_with('#') {
-            continue;
-        }
-        if let Some(inner) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
-            section = inner.to_string();
-            continue;
-        }
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        let key = trim_ascii(key);
-        let value = trim_ascii(value);
-        if section != "server" {
-            continue;
-        }
-        if key == "logging" {
-            config.logging = parse_logging(value)?;
-        }
+    let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+    let mut defaults = IniDefault::default();
+    defaults.delimiters = vec!['='];
+    defaults.case_sensitive = true;
+    defaults.enable_inline_comments = false;
+    let mut ini = Ini::new_from_defaults(defaults);
+    ini.read(text.to_owned())
+        .map_err(|err| PluginError::internal(format!("failed to parse server config: {err}")))?;
+    if let Some(value) = ini.get("server", "logging") {
+        config.logging = parse_logging(&value)?;
     }
     Ok(config)
 }
@@ -65,8 +51,4 @@ fn parse_logging(value: &str) -> Result<bool> {
         "off" => Ok(false),
         _ => Err(PluginError::internal("server logging must be on or off")),
     }
-}
-
-fn trim_ascii(value: &str) -> &str {
-    value.trim_matches(|c: char| c.is_ascii_whitespace())
 }

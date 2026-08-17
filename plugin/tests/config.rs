@@ -63,3 +63,27 @@ fn config_ignores_utf8_bom() {
     assert!(config.loaded_from_file);
     assert!(config.logging);
 }
+
+#[test]
+fn config_names_remain_case_sensitive() {
+    let path = temp_ini("margrete_rpc-case-sensitive.ini");
+    fs::write(&path, "[Server]\nlogging = on\n[server]\nLogging = on\n").unwrap();
+    let config = load_server_config(&path).unwrap();
+    assert!(!config.logging);
+}
+
+#[test]
+fn config_only_accepts_equals_as_the_delimiter() {
+    let path = temp_ini("margrete_rpc-equals-delimiter.ini");
+    fs::write(&path, "[server]\nlogging: on\n").unwrap();
+    let config = load_server_config(&path).unwrap();
+    assert!(!config.logging);
+}
+
+#[test]
+fn config_does_not_treat_inline_text_as_a_comment() {
+    let path = temp_ini("margrete_rpc-inline-comment.ini");
+    fs::write(&path, "[server]\nlogging = on ; enable logs\n").unwrap();
+    let err = load_server_config(&path).unwrap_err().to_string();
+    assert!(err.contains("server logging must be on or off"));
+}

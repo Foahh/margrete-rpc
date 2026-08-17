@@ -1,103 +1,101 @@
-use log::{LevelFilter, Log, Metadata, Record};
-use std::fs::{File, OpenOptions};
+use flexi_logger::{
+    DeferredNow, FileSpec, LogSpecification, Logger, LoggerHandle, WriteMode,
+    writers::FileLogWriter,
+};
+use log::Record;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, Once};
-use windows::Win32::System::SystemInformation::GetLocalTime;
+use std::sync::{Mutex, OnceLock};
 
-struct Inner {
+struct State {
+    handle: Option<LoggerHandle>,
     path: PathBuf,
-    out: Option<File>,
+    writer_path: Option<PathBuf>,
 }
 
-struct Logger {
-    inner: Mutex<Inner>,
+fn state() -> &'static Mutex<State> {
+    static STATE: OnceLock<Mutex<State>> = OnceLock::new();
+    STATE.get_or_init(|| {
+        Mutex::new(State {
+            handle: None,
+            path: PathBuf::new(),
+            writer_path: None,
+        })
+    })
 }
 
-static LOGGER: Logger = Logger::new();
-static INIT: Once = Once::new();
-
-impl Logger {
-    const fn new() -> Self {
-        Self {
-            inner: Mutex::new(Inner {
-                path: PathBuf::new(),
-                out: None,
-            }),
-        }
-    }
-
-    fn configure(&self, path: Option<&Path>) {
-        let Ok(mut inner) = self.inner.lock() else {
-            return;
-        };
-        inner.out = None;
-        inner.path = PathBuf::new();
-        let Some(path) = path else {
-            return;
-        };
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        inner.path = path.to_path_buf();
-        inner.out = OpenOptions::new().create(true).append(true).open(path).ok();
-    }
-
-    fn path(&self) -> PathBuf {
-        self.inner
-            .lock()
-            .map(|inner| inner.path.clone())
-            .unwrap_or_default()
-    }
-
-    fn write(&self, level: &str, message: &std::fmt::Arguments<'_>) {
-        let Ok(mut inner) = self.inner.lock() else {
-            return;
-        };
-        let Some(file) = inner.out.as_mut() else {
-            return;
-        };
-        let stamp = local_stamp();
-        let _ = writeln!(file, "{stamp} [{level}] {message}");
-        let _ = file.flush();
-    }
+fn log_format(
+    output: &mut dyn Write,
+    now: &mut DeferredNow,
+    record: &Record<'_>,
+) -> std::io::Result<()> {
+    write!(
+        output,
+        "{} [{}] {}",
+        now.format("%Y-%m-%d %H:%M:%S"),
+        record.level(),
+        record.args()
+    )
 }
 
-impl Log for Logger {
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        metadata.level() <= log::Level::Info
-    }
+pub fn configure(path: Option<&Path>, enabled: bool) {
+    let Ok(mut state) = state().lock() else {
+        return;
+    };
+    state.path.clear();
 
-    fn log(&self, record: &Record<'_>) {
-        if !self.enabled(record.metadata()) {
+    let Some(path) = path.filter(|_| enabled) else {
+        if let Some(handle) = state.handle.as_ref() {
+            handle.set_new_spec(LogSpecification::off());
+            handle.flush();
+        }
+        return;
+    };
+    state.path = path.to_path_buf();
+
+    let writer_is_current = state.writer_path.as_deref() == Some(path);
+    if let Some(handle) = state.handle.as_ref() {
+        if writer_is_current {
+            handle.set_new_spec(LogSpecification::info());
             return;
         }
-        self.write(record.level().as_str(), record.args());
-    }
 
-    fn flush(&self) {
-        if let Ok(mut inner) = self.inner.lock()
-            && let Some(file) = inner.out.as_mut()
-        {
-            let _ = file.flush();
+        handle.set_new_spec(LogSpecification::off());
+        handle.flush();
+        let Ok(file_spec) = FileSpec::try_from(path.to_path_buf()) else {
+            return;
+        };
+        let writer = FileLogWriter::builder(file_spec)
+            .append()
+            .write_mode(WriteMode::Direct)
+            .format(log_format);
+        if handle.reset_flw(&writer).is_ok() {
+            handle.set_new_spec(LogSpecification::info());
+            state.writer_path = Some(path.to_path_buf());
         }
+        return;
     }
-}
 
-pub fn configure(path: Option<&Path>) {
-    INIT.call_once(|| {
-        let _ = log::set_logger(&LOGGER);
-    });
-    LOGGER.configure(path);
-    log::set_max_level(if path.is_some() {
-        LevelFilter::Info
-    } else {
-        LevelFilter::Off
-    });
+    let Ok(file_spec) = FileSpec::try_from(path.to_path_buf()) else {
+        return;
+    };
+    if let Ok(handle) = Logger::with(LogSpecification::info())
+        .log_to_file(file_spec)
+        .append()
+        .write_mode(WriteMode::Direct)
+        .format_for_files(log_format)
+        .start()
+    {
+        state.handle = Some(handle);
+        state.writer_path = Some(path.to_path_buf());
+    }
 }
 
 pub fn path() -> PathBuf {
-    LOGGER.path()
+    state()
+        .lock()
+        .map(|state| state.path.clone())
+        .unwrap_or_default()
 }
 
 pub fn path_utf8(path: &Path) -> String {
@@ -105,14 +103,5 @@ pub fn path_utf8(path: &Path) -> String {
 }
 
 pub fn local_date() -> String {
-    let st = unsafe { GetLocalTime() };
-    format!("{:04}-{:02}-{:02}", st.wYear, st.wMonth, st.wDay)
-}
-
-fn local_stamp() -> String {
-    let st = unsafe { GetLocalTime() };
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond
-    )
+    DeferredNow::new().format("%Y-%m-%d").to_string()
 }
