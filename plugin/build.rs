@@ -63,7 +63,10 @@ fn main() {
     let ini_path = out_dir.join(&ini_name);
     fs::write(&ini_path, ini).expect("write ini");
     if let Some(profile_dir) = out_dir.ancestors().nth(3) {
-        let _ = fs::write(profile_dir.join(&ini_name), fs::read(&ini_path).unwrap());
+        let _ = fs::write(
+            profile_dir.join(&ini_name),
+            fs::read(&ini_path).expect("read generated ini"),
+        );
     }
 
     embed_version_resource(

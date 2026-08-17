@@ -42,21 +42,21 @@ pub fn snapshot_for_edit(
 
     for tick in 0..=scan_until {
         if let Some(event) = chart.find_event_bpm(tick) {
-            let info = event.as_ref().unwrap().info();
+            let info = event.get()?.info();
             response.bpm_events.push(BpmEvent {
                 tick: info.tick,
                 bpm: info.bpm,
             });
         }
         if let Some(event) = chart.find_event_note_speed(tick) {
-            let info = event.as_ref().unwrap().info();
+            let info = event.get()?.info();
             response.note_speed_events.push(NoteSpeedEvent {
                 tick: info.tick,
                 speed: info.speed,
             });
         }
         if let Some(event) = chart.find_event_beat_change(tick) {
-            let info = event.as_ref().unwrap().info();
+            let info = event.get()?.info();
             response.beat_change_events.push(BeatChangeEvent {
                 bar: info.bar,
                 beats_per_bar: info.beats_per_bar,
@@ -65,7 +65,7 @@ pub fn snapshot_for_edit(
         }
         for timeline_id in &scan_til_ids {
             if let Some(event) = chart.find_event_timeline_speed(tick, *timeline_id) {
-                let info = event.as_ref().unwrap().info();
+                let info = event.get()?.info();
                 response.timeline_speed_events.push(TimelineSpeedEvent {
                     tick: info.tick,
                     timeline_id: info.timeline_id,

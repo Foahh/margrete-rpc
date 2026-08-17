@@ -1,4 +1,4 @@
-use super::com::ComPtr;
+use super::com::{ComPtr, Unknown};
 use super::types::{
     EventBcInfo, EventBpmInfo, EventNsmInfo, EventTlsInfo, MP_FALSE, MP_TRUE, MpBoolean, MpGuid,
     MpInteger, NoteInfo,
@@ -174,6 +174,11 @@ impl Chart {
             }
             Ok(ptr)
         }
+    }
+
+    pub fn create_event_as<T: Unknown>(&self, iid: &MpGuid) -> Result<ComPtr<T>> {
+        let ptr = self.create_event(iid)?;
+        Ok(unsafe { ComPtr::from_raw(ptr as *mut T) })
     }
 
     pub fn append_event(&self, event: *mut Event) -> Result<()> {
@@ -389,6 +394,13 @@ impl EventNsm {
 
     pub fn as_event(&self) -> *mut Event {
         self as *const _ as *mut Event
+    }
+}
+
+impl<T: Unknown> ComPtr<T> {
+    pub fn get(&self) -> Result<&T> {
+        self.as_ref()
+            .ok_or_else(|| PluginError::internal("null COM object"))
     }
 }
 

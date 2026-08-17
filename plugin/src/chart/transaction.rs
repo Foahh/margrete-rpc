@@ -1,6 +1,6 @@
 use crate::abi::{
-    Chart, ComPtr, EventBcInfo, EventBpmInfo, EventNsmInfo, EventTlsInfo, IID_EVENT_BEAT,
-    IID_EVENT_BPM, IID_EVENT_NSM, IID_EVENT_TLS, Note,
+    Chart, ComPtr, EventBcInfo, EventBeat, EventBpm, EventBpmInfo, EventNsm, EventNsmInfo,
+    EventTls, EventTlsInfo, IID_EVENT_BEAT, IID_EVENT_BPM, IID_EVENT_NSM, IID_EVENT_TLS, Note,
 };
 use crate::chart::mapper::proto_to_note_info;
 use crate::chart::session::MargreteSession;
@@ -77,19 +77,15 @@ fn apply_bpm_event(chart: &Chart, proto: &crate::rpc::proto::BpmEvent) -> Result
         bpm: proto.bpm,
     };
     if let Some(existing) = chart.find_event_bpm(proto.tick) {
-        existing.as_ref().unwrap().set_info(&info);
+        existing.get()?.set_info(&info);
         return Ok(());
     }
-    let created = chart.create_event(&IID_EVENT_BPM)?;
-    let event = unsafe { ComPtr::<crate::abi::EventBpm>::from_raw(created as *mut _) };
-    event.as_ref().unwrap().set_info(&info);
-    match chart.append_event(event.as_ref().unwrap().as_event()) {
-        Ok(()) => {
-            let _ = event.into_raw();
-            Ok(())
-        }
-        Err(err) => Err(err),
-    }
+    let event = chart.create_event_as::<EventBpm>(&IID_EVENT_BPM)?;
+    let created = event.get()?;
+    created.set_info(&info);
+    chart.append_event(created.as_event())?;
+    let _ = event.into_raw();
+    Ok(())
 }
 
 fn apply_beat_event(chart: &Chart, proto: &crate::rpc::proto::BeatChangeEvent) -> Result<()> {
@@ -99,19 +95,15 @@ fn apply_beat_event(chart: &Chart, proto: &crate::rpc::proto::BeatChangeEvent) -
         beat_unit: proto.beat_unit,
     };
     if let Some(existing) = chart.find_event_beat_change(proto.bar) {
-        existing.as_ref().unwrap().set_info(&info);
+        existing.get()?.set_info(&info);
         return Ok(());
     }
-    let created = chart.create_event(&IID_EVENT_BEAT)?;
-    let event = unsafe { ComPtr::<crate::abi::EventBeat>::from_raw(created as *mut _) };
-    event.as_ref().unwrap().set_info(&info);
-    match chart.append_event(event.as_ref().unwrap().as_event()) {
-        Ok(()) => {
-            let _ = event.into_raw();
-            Ok(())
-        }
-        Err(err) => Err(err),
-    }
+    let event = chart.create_event_as::<EventBeat>(&IID_EVENT_BEAT)?;
+    let created = event.get()?;
+    created.set_info(&info);
+    chart.append_event(created.as_event())?;
+    let _ = event.into_raw();
+    Ok(())
 }
 
 fn apply_tls_event(chart: &Chart, proto: &crate::rpc::proto::TimelineSpeedEvent) -> Result<()> {
@@ -121,19 +113,15 @@ fn apply_tls_event(chart: &Chart, proto: &crate::rpc::proto::TimelineSpeedEvent)
         speed: proto.speed,
     };
     if let Some(existing) = chart.find_event_timeline_speed(proto.tick, proto.timeline_id) {
-        existing.as_ref().unwrap().set_info(&info);
+        existing.get()?.set_info(&info);
         return Ok(());
     }
-    let created = chart.create_event(&IID_EVENT_TLS)?;
-    let event = unsafe { ComPtr::<crate::abi::EventTls>::from_raw(created as *mut _) };
-    event.as_ref().unwrap().set_info(&info);
-    match chart.append_event(event.as_ref().unwrap().as_event()) {
-        Ok(()) => {
-            let _ = event.into_raw();
-            Ok(())
-        }
-        Err(err) => Err(err),
-    }
+    let event = chart.create_event_as::<EventTls>(&IID_EVENT_TLS)?;
+    let created = event.get()?;
+    created.set_info(&info);
+    chart.append_event(created.as_event())?;
+    let _ = event.into_raw();
+    Ok(())
 }
 
 fn apply_nsm_event(chart: &Chart, proto: &crate::rpc::proto::NoteSpeedEvent) -> Result<()> {
@@ -142,19 +130,15 @@ fn apply_nsm_event(chart: &Chart, proto: &crate::rpc::proto::NoteSpeedEvent) -> 
         speed: proto.speed,
     };
     if let Some(existing) = chart.find_event_note_speed(proto.tick) {
-        existing.as_ref().unwrap().set_info(&info);
+        existing.get()?.set_info(&info);
         return Ok(());
     }
-    let created = chart.create_event(&IID_EVENT_NSM)?;
-    let event = unsafe { ComPtr::<crate::abi::EventNsm>::from_raw(created as *mut _) };
-    event.as_ref().unwrap().set_info(&info);
-    match chart.append_event(event.as_ref().unwrap().as_event()) {
-        Ok(()) => {
-            let _ = event.into_raw();
-            Ok(())
-        }
-        Err(err) => Err(err),
-    }
+    let event = chart.create_event_as::<EventNsm>(&IID_EVENT_NSM)?;
+    let created = event.get()?;
+    created.set_info(&info);
+    chart.append_event(created.as_event())?;
+    let _ = event.into_raw();
+    Ok(())
 }
 
 fn current_root_notes(chart: &Chart) -> Result<Vec<ComPtr<Note>>> {
@@ -236,22 +220,22 @@ fn apply_edit_notes(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
 fn apply_edit_events(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
     for tick in &request.bpm_ticks_delete {
         if let Some(event) = chart.find_event_bpm(*tick) {
-            chart.delete_event(event.as_ref().unwrap().as_event())?;
+            chart.delete_event(event.get()?.as_event())?;
         }
     }
     for bar in &request.beat_bars_delete {
         if let Some(event) = chart.find_event_beat_change(*bar) {
-            chart.delete_event(event.as_ref().unwrap().as_event())?;
+            chart.delete_event(event.get()?.as_event())?;
         }
     }
     for key in &request.til_keys_delete {
         if let Some(event) = chart.find_event_timeline_speed(key.tick, key.timeline_id) {
-            chart.delete_event(event.as_ref().unwrap().as_event())?;
+            chart.delete_event(event.get()?.as_event())?;
         }
     }
     for tick in &request.note_speed_ticks_delete {
         if let Some(event) = chart.find_event_note_speed(*tick) {
-            chart.delete_event(event.as_ref().unwrap().as_event())?;
+            chart.delete_event(event.get()?.as_event())?;
         }
     }
 

@@ -2,6 +2,7 @@ use crate::abi::{
     Command, CommandVTable, Context, IID_BASE, IID_COMMAND, MP_FALSE, MP_SDK_VERSION, MP_TRUE,
     MpBoolean, MpGuid, MpInteger, MpPluginInfo, copy_wide,
 };
+use crate::error::Result;
 use crate::meta;
 use crate::server::ServerController;
 use crate::server::config::{ServerConfig, load_server_config};
@@ -24,7 +25,7 @@ static COMMAND_VT: CommandVTable = CommandVTable {
 };
 
 impl Plugin {
-    fn new() -> Box<Self> {
+    fn new() -> Result<Box<Self>> {
         let source_path = resolve_config_path();
         let config = match load_server_config(&source_path) {
             Ok(config) => config,
@@ -33,11 +34,11 @@ impl Plugin {
                 ..ServerConfig::default()
             },
         };
-        Box::new(Self {
+        Ok(Box::new(Self {
             vtable: &COMMAND_VT,
             ref_count: AtomicI32::new(0),
-            controller: ServerController::new(config, dll_directory()),
-        })
+            controller: ServerController::new(config, dll_directory())?,
+        }))
     }
 
     fn from_ptr<'a>(ptr: *mut Command) -> &'a mut Self {
@@ -66,7 +67,13 @@ pub unsafe fn margrete_plugin_command_create(ppobj: *mut *mut Command) -> MpBool
         if ppobj.is_null() {
             return MP_FALSE;
         }
-        let plugin = Plugin::new();
+        let plugin = match Plugin::new() {
+            Ok(plugin) => plugin,
+            Err(err) => {
+                log::error!("failed to create plugin: {err}");
+                return MP_FALSE;
+            }
+        };
         let ptr = Box::into_raw(plugin) as *mut Command;
         plugin_add_ref(ptr);
         *ppobj = ptr;

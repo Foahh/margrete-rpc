@@ -4,6 +4,7 @@ pub mod logger;
 mod pipe;
 
 use crate::abi::Context;
+use crate::error::Result;
 use crate::rpc::router::{RequestRouter, RouterStatusSnapshot};
 use config::ServerConfig;
 use instance::AllocatedInstance;
@@ -42,8 +43,8 @@ pub struct ServerController {
 }
 
 impl ServerController {
-    pub fn new(config: ServerConfig, plugin_dir: Option<PathBuf>) -> Self {
-        let instance = instance::allocate().expect("allocate margrete-XXXX");
+    pub fn new(config: ServerConfig, plugin_dir: Option<PathBuf>) -> Result<Self> {
+        let instance = instance::allocate()?;
         let instance_id = instance.code.clone();
         let pipe_name = instance.pipe_name();
         let router = Arc::new(RequestRouter::with_config(
@@ -74,7 +75,7 @@ impl ServerController {
             controller.shared.instance_id,
             controller.shared.pipe_name
         );
-        controller
+        Ok(controller)
     }
 
     pub fn running(&self) -> bool {
