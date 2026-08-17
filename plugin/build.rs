@@ -12,16 +12,14 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
 
-    println!("cargo:rerun-if-changed=config/VERSION");
     println!("cargo:rerun-if-changed=config/margrete_rpc.ini.in");
     println!("cargo:rerun-if-changed=../proto/margrete/rpc/messages.proto");
     println!("cargo:rerun-if-changed=../proto/API_VERSION");
 
-    let version = fs::read_to_string(manifest_dir.join("config/VERSION"))
-        .expect("config/VERSION")
-        .trim()
-        .to_string();
-    let (major, minor, patch) = parse_version(&version);
+    let version = env::var("CARGO_PKG_VERSION").expect("CARGO_PKG_VERSION");
+    let major = env_u16("CARGO_PKG_VERSION_MAJOR");
+    let minor = env_u16("CARGO_PKG_VERSION_MINOR");
+    let patch = env_u16("CARGO_PKG_VERSION_PATCH");
 
     let proto_root = manifest_dir.join("../proto");
     prost_build::Config::new()
@@ -76,12 +74,11 @@ fn main() {
     );
 }
 
-fn parse_version(version: &str) -> (u16, u16, u16) {
-    let mut parts = version.split('.');
-    let major = parts.next().unwrap_or("0").parse().unwrap_or(0);
-    let minor = parts.next().unwrap_or("0").parse().unwrap_or(0);
-    let patch = parts.next().unwrap_or("0").parse().unwrap_or(0);
-    (major, minor, patch)
+fn env_u16(key: &str) -> u16 {
+    env::var(key)
+        .unwrap_or_else(|_| panic!("{key}"))
+        .parse()
+        .unwrap_or_else(|_| panic!("{key} must be a u16"))
 }
 
 fn build_time_utc() -> String {

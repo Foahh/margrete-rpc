@@ -29,9 +29,9 @@ class FakeTransport:
 def test_python_and_plugin_release_versions_match():
     root = Path(__file__).parents[2]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    plugin_version = (root / "plugin" / "config" / "VERSION").read_text(encoding="utf-8")
+    cargo = tomllib.loads((root / "plugin" / "Cargo.toml").read_text(encoding="utf-8"))
 
-    assert project["project"]["version"] == plugin_version.strip()
+    assert project["project"]["version"] == cargo["package"]["version"]
 
 
 def test_python_and_plugin_rpc_api_versions_match():
