@@ -77,6 +77,11 @@ pub fn path_utf8(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
+pub fn local_date() -> String {
+    let st = unsafe { GetLocalTime() };
+    format!("{:04}-{:02}-{:02}", st.wYear, st.wMonth, st.wDay)
+}
+
 fn local_stamp() -> String {
     let st = unsafe { GetLocalTime() };
     format!(

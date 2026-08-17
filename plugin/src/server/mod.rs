@@ -199,7 +199,7 @@ fn log_file_path(plugin_dir: Option<&Path>, code: &str) -> Option<PathBuf> {
         plugin_dir?
             .join("margrete_rpc")
             .join("logs")
-            .join(format!("margrete-{code}.log")),
+            .join(format!("margrete-{code}-{}.log", logger::local_date())),
     )
 }
 
