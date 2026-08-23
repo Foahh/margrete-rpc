@@ -26,6 +26,9 @@ path = "scripts/hatch_proto.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["python/margrete_rpc"]
+artifacts = [
+    "python/margrete_rpc/_proto",
+]
 
 [tool.hatch.build.targets.wheel.sources]
 "python" = ""
