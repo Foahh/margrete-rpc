@@ -25,6 +25,22 @@ def test_snapshot_noop_returns_none():
     assert req is None
 
 
+def test_reordering_existing_notes_does_not_send_an_empty_edit():
+    chart = Chart(notes=[_id_note(1), _id_note(2, tick=480)])
+    snap = capture_edit_snapshot(chart)
+    chart.notes.reverse()
+    assert (
+        build_apply_edit_request(
+            chart,
+            snapshot_enabled=True,
+            replace_all_notes=False,
+            replace_all_events=False,
+            snapshot=snap,
+        )
+        is None
+    )
+
+
 def test_snapshot_modified_note_upserts_with_id():
     snap = capture_edit_snapshot(Chart(notes=[_id_note(1, x=1)]))
     final = Chart(notes=[_id_note(1, x=5)])

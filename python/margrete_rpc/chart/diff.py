@@ -9,8 +9,6 @@ from margrete_rpc.chart.notes import RawNote
 
 @dataclass
 class EditSnapshot:
-    notes_signature: bytes = b""
-    events_signature: bytes = b""
     notes: list[RawNote] = field(default_factory=list)
     events: Chart = field(default_factory=Chart)
 
@@ -18,8 +16,6 @@ class EditSnapshot:
 def capture_edit_snapshot(chart: Chart) -> EditSnapshot:
     normalized_events = chart.normalized_events()
     return EditSnapshot(
-        notes_signature=_notes_signature(_final_notes_without_ids(chart)),
-        events_signature=_event_signature_from_events(normalized_events),
         notes=[_clone_raw(note) for note in _final_notes(chart)],
         events=_clone_chart_events(normalized_events),
     )
@@ -50,16 +46,6 @@ def build_apply_edit_request(
 
     if snapshot_enabled:
         snapshot = snapshot or EditSnapshot()
-        final_notes = _final_notes_without_ids(chart)
-        final_events_sig = _event_signature_from_events(normalized_events)
-        if (
-            _notes_signature(final_notes) == snapshot.notes_signature
-            and final_events_sig == snapshot.events_signature
-            and not replace_all_events
-        ):
-            return None
-
-        request.replace_all_notes = False
         _append_scanned_note_diffs(request, snapshot.notes, _final_notes(chart))
         if replace_all_events:
             request.replace_all_events = True
@@ -67,7 +53,7 @@ def build_apply_edit_request(
             _append_all_event_upserts(request, normalized_events)
         else:
             _append_scanned_event_diffs(request, snapshot.events, normalized_events)
-        return request
+        return request if request.ListFields() else None
 
     if replace_all_events:
         raise ValueError("replace_all_events requires snapshot=True")
@@ -101,26 +87,6 @@ def _strip_note_ids(note: RawNote) -> RawNote:
 
 def _final_notes_without_ids(chart: Chart) -> list[RawNote]:
     return [_strip_note_ids(note) for note in _final_notes(chart)]
-
-
-def _notes_signature(notes: list[RawNote]) -> bytes:
-    return b"\n".join(note.to_proto().SerializeToString() for note in notes)
-
-
-def _event_signature_from_events(events: Chart) -> bytes:
-    ev = events
-    bpms = sorted(ev.bpms, key=lambda event: int(event.t))
-    beats = sorted(ev.beats, key=lambda event: int(event.bar))
-    tils = sorted(ev.tils, key=lambda event: (int(event.t), int(event.til)))
-    speeds = sorted(ev.speeds, key=lambda event: int(event.t))
-    return b"\x1e".join(
-        [
-            b"\x1f".join(event.to_proto().SerializeToString() for event in bpms),
-            b"\x1f".join(event.to_proto().SerializeToString() for event in beats),
-            b"\x1f".join(event.to_proto().SerializeToString() for event in tils),
-            b"\x1f".join(event.to_proto().SerializeToString() for event in speeds),
-        ]
-    )
 
 
 def _has_existing_note_id(notes: list[RawNote]) -> bool:
