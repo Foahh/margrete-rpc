@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import sys
 from collections.abc import Iterable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
@@ -65,6 +66,8 @@ class EditTransaction:
         return pos_to_tick(*pos, beat_events=self.chart.beats)
 
     def __enter__(self) -> EditTransaction:
+        if self.snapshot_enabled:
+            self._snapshot = capture_edit_snapshot(self.chart)
         self._span_active = self.tracer.span(
             "margrete.tx",
             attrs={"tx.type": self.tx_type},
@@ -73,8 +76,6 @@ class EditTransaction:
         self._beat_events_token = push_beat_events(self.chart.beats)
         self._resolver_token = push_tick_resolver(self._resolve_position)
 
-        if self.snapshot_enabled:
-            self._snapshot = capture_edit_snapshot(self.chart)
         return self
 
     def __exit__(
@@ -99,6 +100,9 @@ class EditTransaction:
                     ):
                         self.transport.request(messages_pb2.Envelope(apply_edit_request=request))
             return False
+        except BaseException:
+            exc_type, exc, tb = sys.exc_info()
+            raise
         finally:
             if self._resolver_token is not None:
                 pop_tick_resolver(self._resolver_token)

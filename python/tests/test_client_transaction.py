@@ -1,9 +1,15 @@
+import contextvars
+
 import pytest
 from margrete_rpc import Margrete
 from margrete_rpc._proto import messages_pb2
 from margrete_rpc._version import RPC_API_VERSION
 from margrete_rpc.chart import Chart
+from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.notes import R, Tap
+from margrete_rpc.chart.time import TICK_RESOLUTION, pos_to_tick, resolve_tick
+from margrete_rpc.trace import CallbackTracer
+from margrete_rpc.transaction import EditTransaction
 
 
 class FakeTransport:
@@ -27,6 +33,63 @@ class ClosableFakeTransport(FakeTransport):
 
     def close(self):
         self.closed = True
+
+
+def test_failed_snapshot_does_not_leave_transaction_context_active():
+    def run():
+        events = []
+        tx = EditTransaction(
+            transport=FakeTransport([]),
+            current_tick=0,
+            chart=Chart(
+                notes=[R.tap(t=2**40, x=0, w=1)],
+                beats=[BeatEvent(bar=0, beats_per_bar=3, beat_unit=4)],
+            ),
+            snapshot_enabled=True,
+            tracer=CallbackTracer(events.append),
+        )
+        with pytest.raises(ValueError):
+            with tx:
+                pytest.fail("invalid snapshot must prevent entry")
+
+        assert pos_to_tick(1) == TICK_RESOLUTION
+        assert resolve_tick((1,)) == TICK_RESOLUTION
+        assert tx._span_active is None
+
+    contextvars.Context().run(run)
+
+
+@pytest.mark.parametrize("failure", ["body", "validation", "transport"])
+def test_transaction_errors_are_traced_and_restore_context(failure):
+    def run():
+        events = []
+        transport = FakeTransport([])
+        tx = EditTransaction(
+            transport=transport,
+            current_tick=0,
+            chart=Chart(beats=[BeatEvent(bar=0, beats_per_bar=3, beat_unit=4)]),
+            snapshot_enabled=False,
+            tracer=CallbackTracer(events.append),
+        )
+        error_type = {"body": RuntimeError, "validation": ValueError, "transport": IndexError}[
+            failure
+        ]
+        with pytest.raises(error_type):
+            with tx:
+                if failure == "body":
+                    raise RuntimeError("edit failed")
+                note = R.tap(t=0, x=0, w=1)
+                if failure == "validation":
+                    note._id = 1
+                tx.chart.notes.append(note)
+
+        assert events[-1].name == "margrete.tx"
+        assert events[-1].error_type == error_type.__name__
+        assert pos_to_tick(1) == TICK_RESOLUTION
+        assert resolve_tick((1,)) == TICK_RESOLUTION
+        assert len(transport.requests) == (1 if failure == "transport" else 0)
+
+    contextvars.Context().run(run)
 
 
 def test_open_edit_sends_snapshot_true_and_commits_apply_edit():
