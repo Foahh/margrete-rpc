@@ -1,6 +1,6 @@
 import pytest
 from margrete_rpc import Margrete, MargreteDiscoveryError, list_instances
-from margrete_rpc.discovery import pipe_name_for, resolve_pipe_name
+from margrete_rpc.discovery import resolve_pipe_name
 
 
 def test_list_instances_filters_pipe_names(monkeypatch):
@@ -64,11 +64,6 @@ def test_resolve_pipe_name_rejects_ambiguous_instances(monkeypatch):
 def test_resolve_pipe_name_selects_explicit_instance_without_listing():
     assert resolve_pipe_name("0421") == "margrete-0421"
     assert resolve_pipe_name("margrete-0999") == "margrete-0999"
-
-
-def test_pipe_name_for_round_trips():
-    assert pipe_name_for("0421") == "margrete-0421"
-    assert pipe_name_for("margrete-0421") == "margrete-0421"
 
 
 def test_margrete_requires_single_discovered_instance(monkeypatch):

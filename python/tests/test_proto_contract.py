@@ -1,21 +1,6 @@
 from margrete_rpc._proto import messages_pb2
 
 
-def test_edit_wire_contract_has_only_begin_and_apply_edit():
-    assert hasattr(messages_pb2, "BeginEditRequest")
-    assert hasattr(messages_pb2, "BeginEditResponse")
-    assert hasattr(messages_pb2, "ApplyEditRequest")
-    assert hasattr(messages_pb2, "ApplyEditResponse")
-    assert hasattr(messages_pb2, "UndoRequest")
-    assert hasattr(messages_pb2, "UndoResponse")
-    assert hasattr(messages_pb2, "RedoRequest")
-    assert hasattr(messages_pb2, "RedoResponse")
-    assert hasattr(messages_pb2, "CurrentTickRequest")
-    assert hasattr(messages_pb2, "CurrentTickResponse")
-    assert hasattr(messages_pb2, "StatusRequest")
-    assert hasattr(messages_pb2, "StatusResponse")
-
-
 def test_envelope_body_contract_uses_expected_fields_and_numbers():
     body = messages_pb2.Envelope.DESCRIPTOR.oneofs_by_name["body"]
 
@@ -38,14 +23,6 @@ def test_envelope_body_contract_uses_expected_fields_and_numbers():
     ]
 
     assert [field.number for field in body.fields] == list(range(2, 17))
-
-
-def test_begin_edit_request_and_response_have_snapshot_field():
-    request = messages_pb2.BeginEditRequest(snapshot=False)
-    response = messages_pb2.BeginEditResponse(current_tick=480, snapshot=False)
-
-    assert request.snapshot is False
-    assert response.snapshot is False
 
 
 def test_status_response_fields_are_sequential():

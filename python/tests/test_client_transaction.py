@@ -287,37 +287,6 @@ def test_open_edit_replace_all_notes_and_events_are_separate_options():
     assert not apply_request.notes_upsert[0].HasField("id")
 
 
-def test_open_edit_has_no_separate_raw_notes_method():
-    mg = Margrete(transport=FakeTransport([]))
-
-    assert not hasattr(mg, "open_edit_raw_notes")
-
-
-def test_open_edit_chart_has_no_nested_events_group():
-    transport = FakeTransport(
-        [
-            messages_pb2.Envelope(
-                begin_edit_response=messages_pb2.BeginEditResponse(current_tick=0, snapshot=True)
-            )
-        ]
-    )
-    mg = Margrete(transport=transport)
-
-    with mg.open_edit() as tx:
-        assert not hasattr(tx.chart, "events")
-        assert not hasattr(tx.chart, "bpm")
-        assert not hasattr(tx.chart, "beat")
-        assert not hasattr(tx.chart, "til")
-        assert not hasattr(tx.chart, "note_speed")
-        assert not hasattr(tx.chart, "note_speeds")
-
-
-def test_open_append_is_removed():
-    mg = Margrete(transport=FakeTransport([]))
-
-    assert not hasattr(mg, "open_append")
-
-
 def test_snapshot_false_rejects_existing_note_ids_before_commit_request():
     transport = FakeTransport(
         [

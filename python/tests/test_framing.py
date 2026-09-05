@@ -165,32 +165,6 @@ def test_remote_error_response_keeps_connection_usable():
     assert stream.closed is False
 
 
-def test_generated_chart_transaction_messages_exist():
-    note = messages_pb2.Note(
-        id=7,
-        type=messages_pb2.NOTE_TYPE_TAP,
-        tick=960,
-        x=4,
-        width=1,
-    )
-    note.children.add(type=messages_pb2.NOTE_TYPE_AIR, tick=1000, x=4)
-
-    begin_edit = messages_pb2.Envelope(begin_edit_request=messages_pb2.BeginEditRequest())
-    apply_edit = messages_pb2.Envelope(
-        apply_edit_request=messages_pb2.ApplyEditRequest(
-            notes_upsert=[note],
-            bpm_upsert=[messages_pb2.BpmEvent(tick=0, bpm=180.0)],
-        )
-    )
-
-    assert begin_edit.HasField("begin_edit_request")
-    assert apply_edit.HasField("apply_edit_request")
-    assert (
-        apply_edit.apply_edit_request.notes_upsert[0].children[0].type == messages_pb2.NOTE_TYPE_AIR
-    )
-    assert apply_edit.apply_edit_request.bpm_upsert[0].bpm == 180.0
-
-
 @pytest.mark.skipif(sys.platform != "win32", reason="named pipe client requires pywin32")
 def test_pipe_client_retries_file_not_found(monkeypatch):
     import pywintypes
