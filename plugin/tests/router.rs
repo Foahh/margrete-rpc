@@ -214,6 +214,33 @@ fn router_deduplicates_root_notes_after_successful_undo() {
 }
 
 #[test]
+fn router_reports_deduplication_failures_after_undo_and_redo() {
+    for body in [
+        envelope::Body::UndoRequest(Default::default()),
+        envelope::Body::RedoRequest(Default::default()),
+    ] {
+        let mut context = FakeContext::new();
+        context.chart.add_existing_note(10);
+        context.chart.add_existing_note(10);
+        context.chart.delete_note_result = margrete_rpc::abi::MP_FALSE;
+        context.undo.can_redo_result = margrete_rpc::abi::MP_TRUE;
+        context.undo.redo_result = margrete_rpc::abi::MP_TRUE;
+        let router = RequestRouter::new(context.as_ptr());
+        let response = router.route(&Envelope {
+            request_id: 31,
+            body: Some(body),
+        });
+        let Some(envelope::Body::ErrorResponse(error)) = response.body else {
+            panic!("expected deduplication error");
+        };
+        assert_eq!(error.code, ErrorCode::Internal as i32);
+        assert_eq!(error.message, "failed to delete note");
+        assert_eq!(context.chart.notes.len(), 2);
+        assert!(context.updated());
+    }
+}
+
+#[test]
 fn router_invokes_redo_and_reports_result() {
     let mut context = FakeContext::new();
     context.undo.can_redo_result = margrete_rpc::abi::MP_TRUE;

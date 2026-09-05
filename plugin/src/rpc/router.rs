@@ -229,8 +229,9 @@ impl RequestRouter {
                 let success =
                     session.undo_buffer().can_undo() && session.undo_buffer().undo() == MP_TRUE;
                 if success {
-                    let _ = deduplicate(session.chart());
+                    let result = deduplicate(session.chart());
                     session.update();
+                    result?;
                 }
                 log::info!(
                     "undo ok id={} success={}",
@@ -249,8 +250,9 @@ impl RequestRouter {
                 let success =
                     session.undo_buffer().can_redo() && session.undo_buffer().redo() == MP_TRUE;
                 if success {
-                    let _ = deduplicate(session.chart());
+                    let result = deduplicate(session.chart());
                     session.update();
+                    result?;
                 }
                 log::info!(
                     "redo ok id={} success={}",

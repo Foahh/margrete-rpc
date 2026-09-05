@@ -150,6 +150,7 @@ pub struct FakeChart {
     pub deleted_notes: i32,
     pub deleted_events: i32,
     pub append_note_result: MpBoolean,
+    pub delete_note_result: MpBoolean,
     pub append_event_result: MpBoolean,
     pub deleted_event_pointers: Vec<*mut Event>,
 }
@@ -180,6 +181,7 @@ impl FakeChart {
             deleted_notes: 0,
             deleted_events: 0,
             append_note_result: MP_TRUE,
+            delete_note_result: MP_TRUE,
             append_event_result: MP_TRUE,
             deleted_event_pointers: Vec::new(),
         })
@@ -751,6 +753,9 @@ unsafe extern "C" fn chart_delete_note(this: *mut Chart, note: *mut Note) -> MpB
     unsafe {
         let chart = FakeChart::from_ptr(this);
         chart.deleted_notes += 1;
+        if chart.delete_note_result != MP_TRUE {
+            return chart.delete_note_result;
+        }
         let fake = note as *mut FakeNote;
         let old = chart.notes.len();
         chart.notes.retain(|n| *n != fake);
