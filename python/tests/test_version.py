@@ -12,6 +12,10 @@ class FakeTransport:
         self.responses = list(responses)
         self.requests = []
         self.api_version = api_version
+        self.closed = False
+
+    def close(self):
+        self.closed = True
 
     def request(self, envelope):
         self.requests.append(envelope)
@@ -67,3 +71,15 @@ def test_margrete_rejects_incompatible_plugin_api_version():
     assert exc.value.client_api_version == RPC_API_VERSION
     assert exc.value.server_version == "0.1.0"
     assert "RPC API 0" in str(exc.value)
+    assert transport.closed
+
+
+def test_margrete_closes_transport_when_status_fails():
+    class FailingTransport(FakeTransport):
+        def request(self, envelope):
+            raise RuntimeError("status failed")
+
+    transport = FailingTransport([])
+    with pytest.raises(RuntimeError, match="status failed"):
+        Margrete(transport=transport)
+    assert transport.closed

@@ -89,8 +89,12 @@ class Margrete:
             pipe_name = resolve_pipe_name(instance, timeout=min(timeout, 1.0))
             self._transport = create_transport(pipe_name, timeout, self._tracer)
 
-        status = self.status()
-        ensure_compatible_api_version(status.api_version, server_version=status.server_version)
+        try:
+            status = self.status()
+            ensure_compatible_api_version(status.api_version, server_version=status.server_version)
+        except BaseException:
+            self.close()
+            raise
 
     def __enter__(self) -> Margrete:
         return self
