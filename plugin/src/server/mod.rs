@@ -37,7 +37,6 @@ pub struct ServerController {
     active_config: Mutex<Option<ServerConfig>>,
     shared: Arc<Shared>,
     process_id: u32,
-    server_start: Mutex<Option<Instant>>,
     router: Arc<RequestRouter>,
     pipe_server: Mutex<Option<NamedPipeServer>>,
     ui: Mutex<Option<UiDispatcher>>,
@@ -49,10 +48,7 @@ impl ServerController {
         let instance = instance::allocate()?;
         let instance_id = instance.code.clone();
         let pipe_name = instance.pipe_name();
-        let router = Arc::new(RequestRouter::with_config(
-            std::ptr::null_mut(),
-            config.clone(),
-        ));
+        let router = Arc::new(RequestRouter::new(std::ptr::null_mut()));
         router.set_instance_id(instance_id.clone());
 
         let controller = Self {
@@ -64,7 +60,6 @@ impl ServerController {
                 plugin_dir,
             }),
             process_id: std::process::id(),
-            server_start: Mutex::new(None),
             router,
             pipe_server: Mutex::new(None),
             ui: Mutex::new(None),
@@ -105,7 +100,6 @@ impl ServerController {
 
     pub fn set_config(&self, config: ServerConfig) {
         let running = self.running();
-        self.router.set_config(config.clone());
         *self.config.lock().expect("config") = config;
         if !running {
             self.apply_logger();
@@ -130,10 +124,8 @@ impl ServerController {
         self.apply_logger();
         self.router.set_ui_dispatcher(Some(ui.clone()));
         self.router.set_context(context);
-        self.router.set_config(config.clone());
 
         let start = Instant::now();
-        *self.server_start.lock().expect("start") = Some(start);
         let pid = self.process_id;
         let log_path = path_utf8(&logger::path());
         let config_path = path_utf8(&config.source_path);

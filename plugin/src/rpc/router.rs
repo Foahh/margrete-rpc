@@ -6,7 +6,6 @@ use crate::chart::transaction::apply_edit;
 use crate::meta;
 use crate::rpc::marshal::UiDispatcher;
 use crate::rpc::proto::{Envelope, ErrorCode, ErrorResponse, StatusResponse, envelope};
-use crate::server::config::ServerConfig;
 use std::sync::Mutex;
 
 const DEFAULT_EVENT_SCAN_LOOKAHEAD_TICKS: i32 = 19200;
@@ -25,7 +24,6 @@ pub struct RequestRouter {
 
 struct RouterInner {
     context: *mut Context,
-    config: ServerConfig,
     instance_id: String,
     status_snapshot: Option<Box<dyn Fn() -> RouterStatusSnapshot + Send + Sync>>,
     ui: Option<UiDispatcher>,
@@ -36,14 +34,9 @@ unsafe impl Sync for RouterInner {}
 
 impl RequestRouter {
     pub fn new(context: *mut Context) -> Self {
-        Self::with_config(context, ServerConfig::default())
-    }
-
-    pub fn with_config(context: *mut Context, config: ServerConfig) -> Self {
         let router = Self {
             inner: Mutex::new(RouterInner {
                 context: std::ptr::null_mut(),
-                config,
                 instance_id: String::new(),
                 status_snapshot: None,
                 ui: None,
@@ -66,10 +59,6 @@ impl RequestRouter {
             }
         }
         inner.context = context;
-    }
-
-    pub fn set_config(&self, config: ServerConfig) {
-        self.inner.lock().expect("router").config = config;
     }
 
     pub fn set_instance_id(&self, instance_id: impl Into<String>) {

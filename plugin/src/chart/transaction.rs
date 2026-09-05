@@ -235,12 +235,8 @@ fn apply_edit_notes(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
         delete_all_root_notes(chart)?;
         for note_proto in &request.notes_upsert {
             let note = create_note_tree(chart, note_proto)?;
-            match chart.append_note(note.as_ptr()) {
-                Ok(()) => {
-                    let _ = note.into_raw();
-                }
-                Err(err) => return Err(err),
-            }
+            chart.append_note(note.as_ptr())?;
+            let _ = note.into_raw();
         }
         return Ok(());
     }
@@ -271,12 +267,8 @@ fn apply_edit_notes(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
                 upsert_note_tree(unsafe { &**found }, proto)?;
             } else {
                 let note = create_note_tree(chart, proto)?;
-                match chart.append_note(note.as_ptr()) {
-                    Ok(()) => {
-                        let _ = note.into_raw();
-                    }
-                    Err(err) => return Err(err),
-                }
+                chart.append_note(note.as_ptr())?;
+                let _ = note.into_raw();
             }
         }
     }
