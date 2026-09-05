@@ -91,7 +91,6 @@ class FramedRpcClient:
                     response = messages_pb2.Envelope()
                     response.ParseFromString(connection.read_exact(size))
                     if response.request_id != request_id:
-                        self._close_unlocked()
                         raise MargreteProtocolError(
                             f"response request_id {response.request_id} did not match {request_id}"
                         )
@@ -103,10 +102,7 @@ class FramedRpcClient:
                 except OSError as exc:
                     self._close_unlocked()
                     raise MargreteProtocolError(f"transport error: {exc}") from exc
-                except MargreteProtocolError:
-                    self._close_unlocked()
-                    raise
-                except Exception:
+                except BaseException:
                     self._close_unlocked()
                     raise
             if response.HasField("error_response"):

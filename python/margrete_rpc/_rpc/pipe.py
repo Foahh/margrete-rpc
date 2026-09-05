@@ -9,7 +9,6 @@ from typing import Any, cast
 
 from margrete_rpc._rpc.framed import ByteStream, FramedRpcClient
 from margrete_rpc.errors import MargreteProtocolError, MargreteTimeoutError
-from margrete_rpc.trace import NoopTracer, Tracer
 
 _WIN32_PIPE_PREFIX = "\\\\.\\pipe\\"
 _RETRY_SLEEP_S = 0.02
@@ -27,52 +26,77 @@ def pipe_path(pipe_name: str) -> str:
     return _WIN32_PIPE_PREFIX + pipe_name
 
 
-def _winerror(exc: BaseException) -> int | None:
-    return getattr(exc, "winerror", None) or (exc.args[0] if exc.args else None)
-
-
 @dataclass
 class PipeStream:
     handle: Any
+    timeout: float = 60.0
+    _deadline: float = field(default=0.0, init=False, repr=False)
+
+    def _transfer(self, buffer: Any, *, write: bool) -> int:
+        import pywintypes
+        import win32api
+        import win32event
+        import win32file
+        import winerror
+
+        overlapped = pywintypes.OVERLAPPED()
+        event = win32event.CreateEvent(None, True, False, None)
+        overlapped.hEvent = event
+        try:
+            operation = win32file.WriteFile if write else win32file.ReadFile
+            operation(self.handle, buffer, overlapped)
+            try:
+                remaining = max(0.0, self._deadline - time.monotonic())
+                wait = win32event.WaitForSingleObject(
+                    overlapped.hEvent, min(int(remaining * 1000), 0xFFFFFFFE)
+                )
+                if wait == win32event.WAIT_TIMEOUT:
+                    raise TimeoutError("pipe request timed out")
+                return win32file.GetOverlappedResult(self.handle, overlapped, False)
+            except BaseException:
+                # Keep the buffer and OVERLAPPED alive until cancellation completes.
+                win32file.CancelIo(self.handle)
+                try:
+                    win32file.GetOverlappedResult(self.handle, overlapped, True)
+                except pywintypes.error as exc:
+                    if exc.winerror != winerror.ERROR_OPERATION_ABORTED:
+                        raise
+                raise
+        finally:
+            win32api.CloseHandle(event)
 
     def read_exact(self, size: int) -> bytes:
         _require_windows()
+        import pywintypes
         import win32file
 
         chunks: list[bytes] = []
         remaining = size
         try:
             while remaining:
-                _, chunk = win32file.ReadFile(self.handle, remaining)
-                chunk = cast(bytes, chunk)
-                if not chunk:
+                buffer = cast(Any, win32file.AllocateReadBuffer(remaining))
+                count = self._transfer(buffer, write=False)
+                if count == 0:
                     raise MargreteProtocolError("pipe closed before frame completed")
-                chunks.append(chunk)
-                remaining -= len(chunk)
-        except MargreteProtocolError:
-            raise
-        except Exception as exc:
-            if _winerror(exc) is None:
-                raise
+                chunks.append(bytes(buffer[:count]))
+                remaining -= count
+        except pywintypes.error as exc:
             raise MargreteProtocolError(f"pipe read failed: {exc}") from exc
         return b"".join(chunks)
 
     def write_all(self, data: bytes) -> None:
         _require_windows()
-        import win32file
+        import pywintypes
 
+        self._deadline = time.monotonic() + max(self.timeout, 0.0)
         offset = 0
         try:
             while offset < len(data):
-                _, written = win32file.WriteFile(self.handle, data[offset:])
+                written = self._transfer(data[offset:], write=True)
                 if written == 0:
                     raise MargreteProtocolError("pipe closed before frame completed")
                 offset += written
-        except MargreteProtocolError:
-            raise
-        except Exception as exc:
-            if _winerror(exc) is None:
-                raise
+        except pywintypes.error as exc:
             raise MargreteProtocolError(f"pipe write failed: {exc}") from exc
 
     def close(self) -> None:
@@ -84,10 +108,6 @@ class PipeStream:
 
 @dataclass
 class PipeRpcClient(FramedRpcClient):
-    endpoint: str
-    timeout: float = 60.0
-    tracer: Tracer = field(default_factory=NoopTracer)
-
     def __post_init__(self) -> None:
         super().__post_init__()
         self._path = pipe_path(self.endpoint)
@@ -113,12 +133,12 @@ class PipeRpcClient(FramedRpcClient):
                     0,
                     None,
                     win32file.OPEN_EXISTING,
-                    win32file.FILE_ATTRIBUTE_NORMAL,
+                    win32file.FILE_FLAG_OVERLAPPED,
                     None,
                 )
-                return PipeStream(handle)
+                return PipeStream(handle, self.timeout)
             except pywintypes.error as exc:
-                err = _winerror(exc)
+                err = exc.winerror
                 remaining = deadline - time.monotonic()
                 if err not in retryable_errors or remaining <= 0:
                     if err in retryable_errors:

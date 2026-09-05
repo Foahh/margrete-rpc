@@ -7,7 +7,7 @@ from margrete_rpc._rpc.framed import FramedRpcClient
 from margrete_rpc._rpc.framing import decode_frame, encode_frame
 from margrete_rpc._rpc.pipe import pipe_path
 from margrete_rpc.discovery import pipe_name_for
-from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError
+from margrete_rpc.errors import MargreteProtocolError, MargreteRemoteError, MargreteTimeoutError
 
 
 def test_encode_decode_frame_round_trips_envelope():
@@ -114,6 +114,28 @@ def test_request_id_mismatch_closes_connection():
         client.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
 
     assert stream.closed is True
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected"),
+    [
+        (TimeoutError, MargreteTimeoutError),
+        (OSError, MargreteProtocolError),
+        (KeyboardInterrupt, KeyboardInterrupt),
+    ],
+)
+def test_failed_read_closes_connection(monkeypatch, failure, expected):
+    stream = _ScriptedStream([])
+    client = _FakeClient(stream)
+
+    def fail(size):
+        raise failure()
+
+    monkeypatch.setattr(stream, "read_exact", fail)
+    with pytest.raises(expected):
+        client.request(messages_pb2.Envelope(ping_request=messages_pb2.PingRequest()))
+    assert stream.closed
+    assert client._connection is None
 
 
 def test_remote_error_response_keeps_connection_usable():
