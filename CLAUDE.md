@@ -12,12 +12,11 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Client (Python) commands
 
-All commands use `uv` as the project tool (the `.venv` does not have pip/pytest directly):
+Run Python tools through `uv` to use the project's development dependencies:
 
 ```bash
 uv run --extra dev pytest                                  # run all tests
 uv run --extra dev pytest python/tests/test_chart_time.py  # run a single test file
-uv run --extra dev pytest python/tests/test_foo.py::test_bar  # run a single test
 uv run --extra dev pyright                                 # type checking
 uv run --extra dev ruff check python/                      # lint
 uv run --extra dev ruff format python/                     # format
@@ -38,16 +37,22 @@ cargo test
 cargo build --release
 ```
 
-Output DLL: `plugin/target/release/margrete_rpc.dll`. `.\build.ps1 -Publish` copies the DLL and `margrete_rpc.ini` to `publish/`.
+Output DLL: `plugin/target/release/margrete_rpc.dll`.
 
 From the repo root:
 
 ```bash
-.\build.ps1 -Test -Publish
+.\build.ps1 -Test
 .\format.ps1
 ```
 
+For local packaging, `.\build.ps1 -Publish` replaces `publish/` with the DLL, INI, and install README.
+
 The `plugin/margrete/` submodule is the ABI header reference only — do not compile it.
+
+## Website API reference
+
+`website/content/docs/reference/` is generated and replaced by `website/scripts/generate-docs.mjs`. Make API-reference changes in the Python docstrings or generator. Website commands are defined in `website/package.json`.
 
 ## Development Notes
 

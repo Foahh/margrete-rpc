@@ -73,20 +73,24 @@ try {
             Write-Host "Python package path not found: $pyRoot"
         }
         else {
-            $ruff = Get-Command ruff -ErrorAction SilentlyContinue
-            if (-not $ruff) {
-                Write-Host "ruff not on PATH; install dev deps (e.g. uv sync --extra dev) or use -SkipPython." -ForegroundColor Yellow
+            $uv = Get-Command uv -ErrorAction SilentlyContinue
+            if (-not $uv) {
+                throw "uv not on PATH; install uv or use -SkipPython."
             }
-            else {
+            Push-Location -LiteralPath $RepoRoot
+            try {
                 Write-Host "`n==> ruff format"
                 if ($Check) {
-                    Invoke-Checked -Exe $ruff.Source -Arguments @('format', '--check', $pyRoot)
-                    Invoke-Checked -Exe $ruff.Source -Arguments @('check', $pyRoot)
+                    Invoke-Checked -Exe $uv.Source -Arguments @('run', '--extra', 'dev', 'ruff', 'format', '--check', $pyRoot)
+                    Invoke-Checked -Exe $uv.Source -Arguments @('run', '--extra', 'dev', 'ruff', 'check', $pyRoot)
                 }
                 else {
-                    Invoke-Checked -Exe $ruff.Source -Arguments @('format', $pyRoot)
-                    Invoke-Checked -Exe $ruff.Source -Arguments @('check', '--fix', $pyRoot)
+                    Invoke-Checked -Exe $uv.Source -Arguments @('run', '--extra', 'dev', 'ruff', 'format', $pyRoot)
+                    Invoke-Checked -Exe $uv.Source -Arguments @('run', '--extra', 'dev', 'ruff', 'check', '--fix', $pyRoot)
                 }
+            }
+            finally {
+                Pop-Location
             }
         }
     }
