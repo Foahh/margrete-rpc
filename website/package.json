@@ -19,7 +19,7 @@
     "@fumadocs/base-ui": "^16.10.3",
     "class-variance-authority": "^0.7.1",
     "fumadocs-core": "16.10.3",
-    "fumadocs-mdx": "15.0.12",
+    "fumadocs-mdx": "15.4.0",
     "fumadocs-python": "^0.0.11",
     "fumadocs-ui": "16.10.3",
     "lucide-react": "^1.18.0",
