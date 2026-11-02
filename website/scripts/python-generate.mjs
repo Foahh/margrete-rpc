@@ -1,12 +1,18 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const srcPath = resolve(__dirname, "../../python");
+const websitePath = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-execSync("pip install ./node_modules/fumadocs-python", { stdio: "inherit" });
-execSync("fumapy-generate margrete_rpc", {
-  stdio: "inherit",
-  env: { ...process.env, PYTHONPATH: srcPath },
-});
+execFileSync(
+  "uv",
+  [
+    "run",
+    "--no-dev",
+    "--with",
+    resolve(websitePath, "node_modules/fumadocs-python"),
+    "fumapy-generate",
+    "margrete_rpc",
+  ],
+  { cwd: websitePath, stdio: "inherit" },
+);
