@@ -1,0 +1,39 @@
+name: Python compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Sync dependencies
+        run: uv sync --extra dev
+      - name: Typecheck
+        run: uv run pyright --pythonversion ${{ matrix.python }}
+      - name: Tests
+        run: uv run pytest
+      - name: Lint and format
+        if: matrix.python == '3.10' && matrix.os == 'ubuntu-latest'
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Build distributions
+        if: matrix.python == '3.10'
+        run: uv build

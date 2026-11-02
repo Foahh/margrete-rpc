@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 from margrete_rpc.chart.notes import (
     STANDARD_FIELD_WIDTH,

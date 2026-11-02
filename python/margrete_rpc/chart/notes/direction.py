@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from enum import IntEnum, StrEnum
-from typing import Literal, SupportsInt
+from enum import IntEnum
+from typing import Literal, SupportsInt, TypeAlias
 
+from margrete_rpc._compat import StrEnum
 from margrete_rpc._proto import messages_pb2
 
 
@@ -63,7 +64,7 @@ class FlickDirection(StrEnum):
     RIGHT = "right"
 
 
-type AirDirectionLike = (
+AirDirectionLike: TypeAlias = (
     AirDirection
     | Literal[
         "up",
@@ -74,7 +75,7 @@ type AirDirectionLike = (
         "down_right",
     ]
 )
-type ExtapDirectionLike = (
+ExtapDirectionLike: TypeAlias = (
     ExtapDirection
     | Literal[
         "up",
@@ -88,8 +89,8 @@ type ExtapDirectionLike = (
         "out_in",
     ]
 )
-type FlickDirectionLike = FlickDirection | Literal["auto", "left", "right"]
-type DirectionValue = AirDirection | ExtapDirection | FlickDirection | Direction | int
+FlickDirectionLike: TypeAlias = FlickDirection | Literal["auto", "left", "right"]
+DirectionValue: TypeAlias = AirDirection | ExtapDirection | FlickDirection | Direction | int
 """Any accepted direction spec: one of the typed direction enums, :class:`Direction`, or a
 raw int code."""
 

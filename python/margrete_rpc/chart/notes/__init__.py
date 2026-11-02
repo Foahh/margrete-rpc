@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from ..constants import (
     AIRCRUSH_GAP_HEADONLY,
     AIRCRUSH_GAP_TRACELIKE,

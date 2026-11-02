@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 from margrete_rpc.chart.events import BeatEvent
 from margrete_rpc.chart.time import (

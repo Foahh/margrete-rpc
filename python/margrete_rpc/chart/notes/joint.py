@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import ClassVar, Self
+from typing import ClassVar
+
+from typing_extensions import Self
 
 from ..constants import DEFAULT_H
 from ..time import PositionLike, resolve_tick

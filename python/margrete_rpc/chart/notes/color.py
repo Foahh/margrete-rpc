@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from enum import IntEnum, StrEnum
-from typing import Literal
+from enum import IntEnum
+from typing import Literal, TypeAlias
 
+from margrete_rpc._compat import StrEnum
 from margrete_rpc._proto import messages_pb2
 
 
@@ -50,7 +51,7 @@ class ColorValue(StrEnum):
     NONE = "none"
 
 
-type ColorLike = (
+ColorLike: TypeAlias = (
     ColorValue
     | Color
     | Literal[

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from enum import IntEnum, StrEnum
-from typing import Any, Literal
+from enum import IntEnum
+from typing import Any, Literal, TypeAlias
 
+from margrete_rpc._compat import StrEnum
 from margrete_rpc._proto import messages_pb2
 
 from ..constants import DEFAULT_H
@@ -73,7 +74,7 @@ class JointKind(StrEnum):
     CURVE_CONTROL = "curve_control"
 
 
-type JointKindLike = JointKind | Literal["step", "control", "curve_control"]
+JointKindLike: TypeAlias = JointKind | Literal["step", "control", "curve_control"]
 """A :class:`JointKind` or its equivalent string name."""
 
 

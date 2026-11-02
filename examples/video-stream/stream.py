@@ -27,11 +27,14 @@ Examples:
   python stream.py c.mp4 --mode color --width 24 --fps 24 --dark-threshold 35
 """
 
+from __future__ import annotations
+
 import argparse
 import functools
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import _color
 import _mono
@@ -43,7 +46,7 @@ from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import RawNote
 
 # A renderer maps (frame_bgr, base_tick, tick_per_row, x_offset) -> notes.
-type FrameConverter = Callable[[np.ndarray, int, int, int], list[RawNote]]
+FrameConverter: TypeAlias = Callable[[np.ndarray, int, int, int], list[RawNote]]
 
 
 @dataclass

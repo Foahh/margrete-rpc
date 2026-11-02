@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TypeAlias
 
 from margrete_rpc._proto import messages_pb2
 from margrete_rpc.chart.chart import Chart, ChartNote
@@ -115,7 +116,7 @@ def _note_tree_sig(note: RawNote) -> bytes:
     return _strip_note_ids(note).to_proto().SerializeToString()
 
 
-type IdStructure = tuple[int | None, tuple["IdStructure", ...]]
+IdStructure: TypeAlias = tuple[int | None, tuple["IdStructure", ...]]
 
 
 def _id_structure(note: RawNote) -> IdStructure:

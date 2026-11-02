@@ -1,7 +1,6 @@
-# pyright: reportMissingModuleSource=false
-
 from __future__ import annotations
 
+# pyright: reportMissingModuleSource=false
 import sys
 import time
 from dataclasses import dataclass, field

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from enum import IntEnum, StrEnum
-from typing import Any, Literal, Protocol, Self, cast, runtime_checkable
+from enum import IntEnum
+from typing import Any, Literal, Protocol, TypeAlias, TypeVar, cast, runtime_checkable
+
+from typing_extensions import Self
+
+from margrete_rpc._compat import StrEnum
 
 from ..constants import STANDARD_FIELD_WIDTH, STANDARD_FLIP_LANE
 from ..time import DivisionLike, Position, PositionLike
@@ -10,9 +14,12 @@ from .direction import direction_from_proto
 from .raw import RawNote
 from .types import NoteInfo
 
-type Delta = int | Callable[[int], int]
+_DirectionT = TypeVar("_DirectionT", bound="StrEnum")
 
-type AlignMode = Literal["round", "floor", "ceil"]
+
+Delta: TypeAlias = int | Callable[[int], int]
+
+AlignMode: TypeAlias = Literal["round", "floor", "ceil"]
 
 
 class UnsupportedNoteTree(ValueError):
@@ -170,21 +177,21 @@ def _copy_info(info: NoteInfo | None) -> NoteInfo:
     return info.copy() if info is not None else NoteInfo()
 
 
-def _get_direction[E: StrEnum](enum_type: type[E], info: NoteInfo) -> E:
+def _get_direction(enum_type: type[_DirectionT], info: NoteInfo) -> _DirectionT:
     value = info.direction
     if isinstance(value, enum_type):
         return value
     if isinstance(value, str):
         return enum_type(value)
-    return cast(E, direction_from_proto(info.type, int(value)))
+    return cast(_DirectionT, direction_from_proto(info.type, int(value)))
 
 
-def _set_direction[E: StrEnum](
-    enum_type: type[E], label: str, info: NoteInfo, value: E | str | int
+def _set_direction(
+    enum_type: type[_DirectionT], label: str, info: NoteInfo, value: _DirectionT | str | int
 ) -> None:
     try:
         if isinstance(value, str):
-            direction: E = enum_type(value)
+            direction: _DirectionT = enum_type(value)
         else:
             result = direction_from_proto(info.type, int(value))
             if not isinstance(result, enum_type):

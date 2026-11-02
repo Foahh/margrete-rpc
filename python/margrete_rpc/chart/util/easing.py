@@ -3,12 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
-
-type EaseLike = str | Easing | Callable[[float], float]
-"""An input easing: a registry name, an :class:`Easing`, or a bare ``[0,1]->[0,1]`` callable.
-
-Resolve via :func:`resolve_easing`."""
+from typing import Literal, TypeAlias
 
 EaseName = Literal[
     "linear",
@@ -48,6 +43,12 @@ class Easing:
 
     name: str
     solve: Callable[[float], float]
+
+
+EaseLike: TypeAlias = str | Easing | Callable[[float], float]
+"""An input easing: a registry name, an :class:`Easing`, or a bare ``[0,1]->[0,1]`` callable.
+
+Resolve via :func:`resolve_easing`."""
 
 
 def _power(n: int) -> tuple[Easing, Easing, Easing]:

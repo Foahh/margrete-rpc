@@ -1,10 +1,15 @@
-import tomllib
+import sys
 from pathlib import Path
 
 import pytest
 from margrete_rpc import Margrete, MargreteVersionError
 from margrete_rpc._proto import messages_pb2
 from margrete_rpc._version import RPC_API_VERSION, plugin_api_is_compatible
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 
 class FakeTransport:

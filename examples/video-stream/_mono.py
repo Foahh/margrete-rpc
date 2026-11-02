@@ -4,6 +4,8 @@ One note per pixel. Brightness is measured by Otsu's method on the grayscale
 frame, so the threshold adapts to each frame's histogram automatically.
 """
 
+from __future__ import annotations
+
 import cv2
 import numpy as np
 from margrete_rpc.chart.notes import R, RawNote

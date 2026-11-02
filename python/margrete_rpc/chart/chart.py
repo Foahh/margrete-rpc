@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass, field
+from typing import TypeAlias, TypeVar
 
 from margrete_rpc._proto import messages_pb2
 from margrete_rpc.chart.events import (
@@ -13,7 +14,11 @@ from margrete_rpc.chart.events import (
 from margrete_rpc.chart.notes import Note, RawNote, UnsupportedNoteTree
 from margrete_rpc.chart.notes.wrap import wrap_raw_note
 
-type ChartNote = Note | RawNote
+_ItemT = TypeVar("_ItemT")
+_KeyT = TypeVar("_KeyT", bound="Hashable")
+
+
+ChartNote: TypeAlias = Note | RawNote
 """A note in a chart: either a typed :class:`Note` or a raw :class:`RawNote` tree.
 
 Typed notes are produced by default; a :class:`RawNote` appears when the edit was opened
@@ -93,8 +98,8 @@ class Chart:
         )
 
 
-def _last_by_key[T, K: Hashable](items: list[T], key: Callable[[T], K]) -> list[T]:
-    by_key: dict[K, T] = {}
+def _last_by_key(items: list[_ItemT], key: Callable[[_ItemT], _KeyT]) -> list[_ItemT]:
+    by_key: dict[_KeyT, _ItemT] = {}
     for item in items:
         by_key[key(item)] = item
     return list(by_key.values())

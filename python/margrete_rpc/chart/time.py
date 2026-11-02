@@ -4,7 +4,7 @@ import contextvars
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 from .constants import TICK_RESOLUTION as TICK_RESOLUTION
 from .events import BeatEvent
@@ -22,14 +22,14 @@ class Position(NamedTuple):
     offset: int
 
 
-type PositionLike = Position | tuple[int] | tuple[int, int] | tuple[int, int, int]
+PositionLike: TypeAlias = Position | tuple[int] | tuple[int, int] | tuple[int, int, int]
 """An input position as ``(bar,)``, ``(bar, beat)``, or ``(bar, beat, offset)``.
 
 The accepted, loose form for arguments; missing components default to zero. Resolved to an
 absolute tick against the chart's beat events (see :func:`pos_to_tick`). Functions return the
 canonical 3-field :class:`Position`."""
 
-type TickResolver = Callable[[PositionLike], int]
+TickResolver: TypeAlias = Callable[[PositionLike], int]
 """A function mapping a :data:`PositionLike` to an absolute tick.
 
 Installed via :func:`push_tick_resolver` so positions resolve against a chart's beat
@@ -47,7 +47,7 @@ class Division(NamedTuple):
     denominator: int
 
 
-type DivisionLike = Division | tuple[int, int]
+DivisionLike: TypeAlias = Division | tuple[int, int]
 """An input duration as a ``(numerator, denominator)`` beat fraction.
 
 The accepted, loose form for fractional durations; converted to ticks via :func:`div_to_tick`,

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
+
+from typing_extensions import Self
 
 from ..time import PositionLike, resolve_tick
 from .direction import AirDirection, AirDirectionLike
@@ -18,6 +20,11 @@ from .shared import (
     _TransformMixin,
 )
 from .types import ExAttr, JointKind, LongAttr, NoteInfo, NoteType
+
+_AirTarget = TypeVar("_AirTarget", "Tap", "Extap", "Flick", "Damage")
+_AirSlideTarget = TypeVar("_AirSlideTarget", "Slide", "AirCrush")
+_AirHoldTarget = TypeVar("_AirHoldTarget", "Slide", "AirSlide", "AirCrush")
+
 
 if TYPE_CHECKING:
     from .ground import Damage, Extap, Flick, Tap
@@ -89,9 +96,9 @@ class Air(_GeometryInfoMixin, _TransformMixin):
             self.validate()
         return RawNote(info=self._info.copy(), _id=self._id)
 
-    def converted[T: (Tap, Extap, Flick, Damage)](self, target: type[T], **overrides: Any) -> T:
+    def converted(self, target: type[_AirTarget], **overrides: Any) -> _AirTarget:
         """Return a new ground note of type ``target`` with this air note attached."""
-        return cast(T, self._converted_to(target, **overrides))
+        return cast(_AirTarget, self._converted_to(target, **overrides))
 
     def __str__(self) -> str:
         parts = [
@@ -221,9 +228,9 @@ class AirSlide(_AttachableAirLong):
             return LongAttr.END_NOACT
         return LongAttr.END
 
-    def converted[T: (Slide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+    def converted(self, target: type[_AirSlideTarget], **overrides: Any) -> _AirSlideTarget:
         """Return a new note of type ``target`` carrying this note's geometry and joints."""
-        return cast(T, self._converted_to(target, **overrides))
+        return cast(_AirSlideTarget, self._converted_to(target, **overrides))
 
 
 class AirHold(_AttachableAirLong):
@@ -241,9 +248,9 @@ class AirHold(_AttachableAirLong):
             return LongAttr.END_NOACT
         return LongAttr.END
 
-    def converted[T: (Slide, AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+    def converted(self, target: type[_AirHoldTarget], **overrides: Any) -> _AirHoldTarget:
         """Return a new note of type ``target`` carrying this note's geometry and joints."""
-        return cast(T, self._converted_to(target, **overrides))
+        return cast(_AirHoldTarget, self._converted_to(target, **overrides))
 
 
 class _AirAttachable:

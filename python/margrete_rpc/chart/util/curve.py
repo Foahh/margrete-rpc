@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import TypeAlias
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..notes import AirCrush, AirHold, AirSlide, ColorLike, ColorValue, Hold, Slide
@@ -9,7 +10,7 @@ from .easing import EaseLike, Easing, resolve_easing
 
 _LINEAR = resolve_easing("linear")
 
-type SlideLike = Slide | Hold | AirSlide | AirHold | AirCrush
+SlideLike: TypeAlias = Slide | Hold | AirSlide | AirHold | AirCrush
 """A long note whose path (begin + joints) can be loaded into a :class:`Curve`."""
 
 

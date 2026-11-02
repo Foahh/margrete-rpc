@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Self, cast
+from typing import Any, TypeVar, cast
+
+from typing_extensions import Self
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..time import Division, DivisionLike, PositionLike, resolve_division, resolve_tick, tick_to_div
@@ -24,6 +26,10 @@ from .shared import (
     _TransformMixin,
 )
 from .types import LongAttr, NoteInfo, NoteType
+
+_SlideTarget = TypeVar("_SlideTarget", "AirSlide", "AirCrush")
+_HoldTarget = TypeVar("_HoldTarget", "Slide", "AirSlide", "AirCrush", "AirHold")
+_AirCrushTarget = TypeVar("_AirCrushTarget", "Slide", "AirSlide")
 
 
 class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
@@ -136,9 +142,9 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
         copy.add_ctrl(t=t, x=x, w=w)
         return copy
 
-    def converted[T: (AirSlide, AirCrush)](self, target: type[T], **overrides: Any) -> T:
+    def converted(self, target: type[_SlideTarget], **overrides: Any) -> _SlideTarget:
         """Return a new note of type ``target`` carrying this note's geometry and joints."""
-        return cast(T, self._converted_to(target, **overrides))
+        return cast(_SlideTarget, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         """Convert to a :class:`RawNote` tree (begin note with joint children)."""
@@ -175,11 +181,9 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
             copy.add_step(t=tick, x=x, w=w)
         return copy
 
-    def converted[T: (Slide, AirSlide, AirCrush, AirHold)](
-        self, target: type[T], **overrides: Any
-    ) -> T:
+    def converted(self, target: type[_HoldTarget], **overrides: Any) -> _HoldTarget:
         """Return a new note of type ``target`` carrying this note's geometry and joints."""
-        return cast(T, self._converted_to(target, **overrides))
+        return cast(_HoldTarget, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         """Convert to a :class:`RawNote` tree (begin note with joint children)."""
@@ -272,9 +276,9 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         copy.add_ctrl(t=t, x=x, w=w, h=h)
         return copy
 
-    def converted[T: (Slide, AirSlide)](self, target: type[T], **overrides: Any) -> T:
+    def converted(self, target: type[_AirCrushTarget], **overrides: Any) -> _AirCrushTarget:
         """Return a new note of type ``target`` carrying this note's geometry and joints."""
-        return cast(T, self._converted_to(target, **overrides))
+        return cast(_AirCrushTarget, self._converted_to(target, **overrides))
 
     def to_raw(self, *, skip_validation: bool = False) -> RawNote:
         """Convert to a :class:`RawNote` tree (begin note with joint children)."""

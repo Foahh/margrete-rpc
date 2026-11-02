@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import math
 from collections.abc import Callable, Iterator, Sequence
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple, TypeAlias, TypeVar, cast
 
 from ..constants import DEFAULT_H
 from ..time import DivisionLike, PositionLike, resolve_division, resolve_tick
@@ -16,8 +16,12 @@ from .long import AirCrush, Hold, Slide
 from .shared import AlignMode, Note
 from .types import JointKind, JointKindLike
 
-type SlideLike = Slide | AirSlide | AirCrush
-type LongLike = Slide | Hold | AirSlide | AirHold | AirCrush
+_NoteT = TypeVar("_NoteT", bound="Note")
+_SlideT = TypeVar("_SlideT", bound="SlideLike")
+
+
+SlideLike: TypeAlias = Slide | AirSlide | AirCrush
+LongLike: TypeAlias = Slide | Hold | AirSlide | AirHold | AirCrush
 
 _GROUND_TYPES = (Tap, Extap, Flick, Damage)
 _SLIDE_LIKE = (Slide, AirSlide, AirCrush)
@@ -62,7 +66,7 @@ def _detach(note: Any) -> None:
             joint._id = None
 
 
-def _clone[T: Note](note: T) -> T:
+def _clone(note: _NoteT) -> _NoteT:
     new = copy.deepcopy(note)
     _detach(new)
     return new
@@ -156,21 +160,21 @@ def _scale(note: Note, factor: float, pivot: int | PositionLike) -> Note:
 # ----------------------------------------------------------------------------- convert
 
 
-def _convert[T: Note](note: Note, target: type[T], overrides: dict[str, Any]) -> T:
+def _convert(note: Note, target: type[_NoteT], overrides: dict[str, Any]) -> _NoteT:
     if not isinstance(target, type):
         raise TypeError("convert target must be a note class")
     if isinstance(note, Air) and issubclass(target, _GROUND_TYPES):
-        return cast(T, _convert_air_to_ground(note, target, overrides))
+        return cast(_NoteT, _convert_air_to_ground(note, target, overrides))
     if isinstance(note, _GROUND_TYPES) and issubclass(target, Air):
-        return cast(T, _convert_ground_to_air(note, overrides))
+        return cast(_NoteT, _convert_ground_to_air(note, overrides))
     if isinstance(note, _GROUND_TYPES) and issubclass(target, _GROUND_TYPES):
-        return cast(T, _convert_ground(note, target, overrides))
+        return cast(_NoteT, _convert_ground(note, target, overrides))
     if isinstance(note, Hold) and issubclass(target, (*_SLIDE_LIKE, AirHold)):
-        return cast(T, _convert_long(note, target, overrides))
+        return cast(_NoteT, _convert_long(note, target, overrides))
     if isinstance(note, AirHold) and issubclass(target, _SLIDE_LIKE):
-        return cast(T, _convert_long(note, target, overrides))
+        return cast(_NoteT, _convert_long(note, target, overrides))
     if isinstance(note, _SLIDE_LIKE) and issubclass(target, _SLIDE_LIKE):
-        return cast(T, _convert_long(note, target, overrides))
+        return cast(_NoteT, _convert_long(note, target, overrides))
     raise ValueError(f"cannot convert {type(note).__name__} to {target.__name__}")
 
 
@@ -324,10 +328,10 @@ def _joint_h(point: _Point) -> int | None:
     return point.h
 
 
-def _resolve_join[T: SlideLike](
-    join: JointKindLike | Callable[[T, T], JointKindLike],
-    prev: T,
-    nxt: T,
+def _resolve_join(
+    join: JointKindLike | Callable[[_SlideT, _SlideT], JointKindLike],
+    prev: _SlideT,
+    nxt: _SlideT,
     note_type: type,
 ) -> JointKind:
     if note_type is AirCrush:
@@ -337,11 +341,11 @@ def _resolve_join[T: SlideLike](
     return JointKind(join)
 
 
-def merge[T: SlideLike](
-    notes: Sequence[T],
+def merge(
+    notes: Sequence[_SlideT],
     *,
-    join: JointKindLike | Callable[[T, T], JointKindLike] = JointKind.STEP,
-) -> T:
+    join: JointKindLike | Callable[[_SlideT, _SlideT], JointKindLike] = JointKind.STEP,
+) -> _SlideT:
     """Combine consecutive slides / air-slides / air-crushes into a single note.
 
     The notes are chained end-to-begin in order; each boundary becomes a joint.
@@ -429,7 +433,7 @@ def _locate_split(
     raise ValueError("could not locate split segment")
 
 
-def split[T: SlideLike](note: T, at: Joint | int | PositionLike) -> tuple[T, T]:
+def split(note: _SlideT, at: Joint | int | PositionLike) -> tuple[_SlideT, _SlideT]:
     """Divide a slide / air-slide / air-crush into two notes at a joint or time.
 
     Args:
@@ -473,7 +477,7 @@ def split[T: SlideLike](note: T, at: Joint | int | PositionLike) -> tuple[T, T]:
 
     first.validate()
     second.validate()
-    return cast(T, first), cast(T, second)
+    return cast(_SlideT, first), cast(_SlideT, second)
 
 
 def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
