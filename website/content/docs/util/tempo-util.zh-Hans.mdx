@@ -1,0 +1,121 @@
+---
+title: BPM 调整工具
+---
+
+import VeryShortSlideImage from "../assets/very-short-slide.png";
+import MelodiniqExampleImage1 from "../assets/melodiniq-example-1.png";
+import MelodiniqExampleImage2 from "../assets/melodiniq-example-2.png";
+
+## 这是什么
+
+这些工具通常用来处理两类需求：隐藏极短的 Slide 身体，或是摆放五连音、七连音这样的节奏。
+
+<ImageZoom src={VeryShortSlideImage} alt="Very short slide" width="400" />
+
+## 调整指定范围的用时
+
+### 缩短
+
+[`bpm_pulse(...)`](/docs/reference/chart/util/tempo) 会提高指定范围内的 BPM，再降低随后一段的 BPM，把省下的时间补回来。
+
+```python
+from margrete_rpc.chart.notes import Slide
+from margrete_rpc.chart.util import bpm_pulse
+
+with m.open_edit() as tx:
+    pulse = bpm_pulse(
+        tx.chart.bpms,
+        t=(24, 0),
+        length=(1, 384),  # 长度为 1/384
+        span=(1, 48),     # 一共调整 1/48
+        bpm_scale=100,    # 将 BPM 放大 100 倍
+    )
+    pulse.apply(tx.chart.bpms) # 把 BPM 写入谱面
+
+    slide = Slide(t=pulse.start, x=0, w=4).with_step(t=pulse.pivot, x=12, w=4)
+    tx.chart.notes.append(slide)
+```
+
+`length` 指定从 `t` 开始加速的部分有多长，`span` 是前后两段的总长度，必须大于 `length`。
+
+以上面的代码为例，假设原 BPM 为 `240`，从 `t` 开始：
+
+| 位置          | BPM        | 作用                            |
+| ------------- | ---------- | ------------------------------- |
+| 第 0～5 tick  | 24000      | 这一段的用时缩短到约 0.026 毫秒 |
+| 第 5～40 tick | 约 210.263 | 稍微放慢，补回前面省下的时间    |
+| 第 40 tick 起 | 240        | 恢复原 BPM                      |
+
+`pulse.start` 是加速开始的位置，`pulse.pivot` 是加速结束、开始放慢的位置。
+`pulse.end` 是整个调整范围的结束位置，也就是上表中的第 40 tick。到这里时，前后两段加起来的用时与调整前相同。
+
+例如，官谱 _Melodiniq_ 是这样做的：
+
+<ImageZoom src={MelodiniqExampleImage1} alt="Melodiniq 谱面示例 1" width="400" />
+
+### 延长
+
+把 `bpm_scale` 设为小于 `1` 即可。例如 `0.5` 会让这一段的用时变成原来的两倍，后面再加速补回来：
+
+```python
+with m.open_edit() as tx:
+    pulse = bpm_pulse(tx.chart.bpms, t=(32, 0), length=5, span=40, bpm_scale=0.5)
+    pulse.apply(tx.chart.bpms) # 把 BPM 写入谱面
+```
+
+### 直接指定毫秒
+
+如果想直接指定 `length` 这一段要用多少毫秒，可以改用 `duration_ms`：
+
+```python
+with m.open_edit() as tx:
+    pulse = bpm_pulse(tx.chart.bpms, t=(40, 0), length=5, span=40, duration_ms=5)
+    pulse.apply(tx.chart.bpms) # 把 BPM 写入谱面
+```
+
+`bpm_scale` 和 `duration_ms` 只能二选一。
+
+## 均分指定范围的时间
+
+[`bpm_divide(...)`](/docs/reference/chart/util/tempo) 会把指定范围的时间均分成 `count` 份。例如，可以用它把一个八分音符的时间分成五份：
+
+```python
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import bpm_divide
+
+with m.open_edit() as tx:
+    rhythm = bpm_divide(
+        tx.chart.bpms,
+        t=(24, 2),
+        span=(1, 8),  # 八分音符
+        count=5,      # 分成五份
+    )
+    rhythm.apply(tx.chart.bpms) # 把 BPM 写入谱面
+
+    for tick in rhythm.ticks:
+        tx.chart.notes.append(Tap(t=tick, x=0, w=2))
+```
+
+把 `count` 改成 `7` 或 `9`，就能生成七连音或九连音。
+
+在这个例子中，`rhythm.ticks` 里有五个音符位置；`rhythm.end` 是这组连音结束的位置。第五个音符到 `rhythm.end` 之间也占一份时间。
+
+### 指定分段的 tick 间距
+
+可以用 `step` 指定前 `count - 1` 段各占多少 tick，最后一段占用剩下的 tick：
+
+```python
+with m.open_edit() as tx:
+    rhythm = bpm_divide(
+        tx.chart.bpms, t=(24, 2), span=(1, 8), count=5, step=(1, 64)
+    )
+    rhythm.apply(tx.chart.bpms) # 把 BPM 写入谱面
+```
+
+`step=(1, 64)` 会让五个音符按 1/64 的间距排列，相邻音符之间都是 30 tick。第五个音符到整个范围结束，还剩 120 tick，是前面每个间隔的 4 倍。
+
+工具会把最后这段的 BPM 设为前面的 4 倍。这样，最后一段虽然在编辑器里更长，播放用时仍与前面每个音符间隔相同。
+
+例如，官谱 _Melodiniq_ 是这样做的：
+
+<ImageZoom src={MelodiniqExampleImage2} alt="Melodiniq 谱面示例 2" width="400" />

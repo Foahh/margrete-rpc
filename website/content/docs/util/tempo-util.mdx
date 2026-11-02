@@ -1,0 +1,132 @@
+---
+title: BPM Utilities
+---
+
+import VeryShortSlideImage from "../assets/very-short-slide.png";
+import MelodiniqExampleImage1 from "../assets/melodiniq-example-1.png";
+import MelodiniqExampleImage2 from "../assets/melodiniq-example-2.png";
+
+## What is this?
+
+These tools are commonly used to hide the bodies of very short Slides or place rhythms such
+as quintuplets and septuplets.
+
+<ImageZoom src={VeryShortSlideImage} alt="Very short slide" width="400" />
+
+## Adjusting the duration of a range
+
+### Shortening
+
+[`bpm_pulse(...)`](/docs/reference/chart/util/tempo) raises the BPM over a specified range to
+shorten its duration, then lowers the BPM over the next range to make up the time saved.
+
+```python
+from margrete_rpc.chart.notes import Slide
+from margrete_rpc.chart.util import bpm_pulse
+
+with m.open_edit() as tx:
+    pulse = bpm_pulse(
+        tx.chart.bpms,
+        t=(24, 0),
+        length=(1, 384),  # Length: 1/384 of a whole note
+        span=(1, 48),     # Total length to adjust: 1/48 of a whole note
+        bpm_scale=100,    # Multiply the BPM by 100
+    )
+    pulse.apply(tx.chart.bpms) # Write the BPMs to the chart
+
+    slide = Slide(t=pulse.start, x=0, w=4).with_step(t=pulse.pivot, x=12, w=4)
+    tx.chart.notes.append(slide)
+```
+
+`length` sets the length of the faster part, starting at `t`. `span` is the total length of
+both parts, so it must be greater than `length`.
+
+For the code above, with an original BPM of `240` and ticks counted from `t`:
+
+| Position        | BPM           | Effect                                                   |
+| --------------- | ------------- | -------------------------------------------------------- |
+| Ticks 0–5       | 24000         | Shorten this part's duration to about 0.026 milliseconds |
+| Ticks 5–40      | About 210.263 | Slow down slightly to make up the time saved             |
+| Tick 40 onwards | 240           | Restore the original BPM                                 |
+
+`pulse.start` is where the faster part begins. At `pulse.pivot`, it ends and the slower part begins.
+`pulse.end` marks the end of the whole adjusted section: tick 40 in this example.
+The two parts together take the same amount of time as the original section.
+
+For example, the official _Melodiniq_ chart does this as shown below:
+
+<ImageZoom src={MelodiniqExampleImage1} alt="Melodiniq chart example 1" width="400" />
+
+### Lengthening
+
+Set `bpm_scale` below `1` to stretch the section. For example, `0.5` doubles its duration,
+then speeds up afterwards to make up the time:
+
+```python
+with m.open_edit() as tx:
+    pulse = bpm_pulse(tx.chart.bpms, t=(32, 0), length=5, span=40, bpm_scale=0.5)
+    pulse.apply(tx.chart.bpms) # Write the BPMs to the chart
+```
+
+### Setting the duration in milliseconds
+
+To specify how many milliseconds the part covered by `length` should take, use `duration_ms`:
+
+```python
+with m.open_edit() as tx:
+    pulse = bpm_pulse(tx.chart.bpms, t=(40, 0), length=5, span=40, duration_ms=5)
+    pulse.apply(tx.chart.bpms) # Write the BPMs to the chart
+```
+
+Choose either `bpm_scale` or `duration_ms`.
+
+## Dividing a range into equal time intervals
+
+[`bpm_divide(...)`](/docs/reference/chart/util/tempo) divides the duration of a specified range
+into `count` equal parts. For example, you can split an eighth note's duration into five parts:
+
+```python
+from margrete_rpc.chart.notes import Tap
+from margrete_rpc.chart.util import bpm_divide
+
+with m.open_edit() as tx:
+    rhythm = bpm_divide(
+        tx.chart.bpms,
+        t=(24, 2),
+        span=(1, 8),  # An eighth note
+        count=5,      # Divide it into five parts
+    )
+    rhythm.apply(tx.chart.bpms) # Write the BPMs to the chart
+
+    for tick in rhythm.ticks:
+        tx.chart.notes.append(Tap(t=tick, x=0, w=2))
+```
+
+Change `count` to `7` or `9` to create septuplets or nonuplets.
+
+In this example, `rhythm.ticks` contains five note positions. `rhythm.end` is where the group
+ends. The gap from the fifth note to `rhythm.end` also takes one part's time.
+
+### Choosing the tick spacing between divisions
+
+Use `step` to set the tick length of the first `count - 1` intervals. The final interval uses
+the remaining ticks:
+
+```python
+with m.open_edit() as tx:
+    rhythm = bpm_divide(
+        tx.chart.bpms, t=(24, 2), span=(1, 8), count=5, step=(1, 64)
+    )
+    rhythm.apply(tx.chart.bpms) # Write the BPMs to the chart
+```
+
+With `step=(1, 64)`, the five notes are spaced a 64th note apart: 30 ticks between each pair.
+After the fifth note, 120 ticks remain before the range ends—four times the length of each
+earlier gap.
+
+The tool sets the BPM for this final gap to four times the BPM of the earlier gaps. Even
+though it looks longer in the editor, it takes the same time to play as each gap between notes.
+
+For example, the official _Melodiniq_ chart does this as shown below:
+
+<ImageZoom src={MelodiniqExampleImage2} alt="Melodiniq chart example 2" width="400" />
