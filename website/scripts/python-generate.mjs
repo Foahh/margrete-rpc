@@ -11,6 +11,9 @@ execFileSync(
     "--no-dev",
     "--with",
     resolve(websitePath, "node_modules/fumadocs-python"),
+    // fumadocs-python uses Griffe 1; typingdoc 0.3 installs conflicting Griffe 2 files.
+    "--with",
+    "griffe-typingdoc<0.3",
     "fumapy-generate",
     "margrete_rpc",
   ],
