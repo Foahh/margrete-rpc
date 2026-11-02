@@ -1,4 +1,13 @@
-import * as Python from "fumadocs-python/components";
+import {
+  PyAttribute,
+  PyAttributes,
+  PyFunction,
+  PyFunctionReturn,
+  PyParameter,
+  PySourceCode,
+  Tab,
+  Tabs,
+} from "fumadocs-python/components";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
 import * as TabsComponents from "./ui/tabs";
@@ -12,7 +21,14 @@ export function getMDXComponents(components?: MDXComponents) {
     ...ImageComponents,
     ...TabsComponents,
     ...FileComponents,
-    ...Python,
+    PyAttribute,
+    PyAttributes,
+    PyFunction,
+    PyFunctionReturn,
+    PyParameter,
+    PySourceCode,
+    Tab,
+    Tabs,
     ...components,
   } satisfies MDXComponents;
 }

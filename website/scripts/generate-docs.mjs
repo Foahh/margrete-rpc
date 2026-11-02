@@ -12,14 +12,10 @@ async function generate() {
 
   const converted = Python.convert(content, {
     baseUrl: "/docs/reference",
-  }).map((file) => ({
-    ...file,
-    content: file.content.replaceAll("/docs/reference/margrete_rpc/", "/docs/reference/"),
-  }));
-
-  await Python.write(converted, {
-    outDir: out,
+    groupBy: "none",
   });
+
+  await Python.write(converted, out);
 }
 
 void generate();
