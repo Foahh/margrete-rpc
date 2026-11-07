@@ -89,31 +89,95 @@ def test_single_height_constant() -> None:
     assert all(wp.h == 55 for wp in path.points())
 
 
-def test_smaller_delta_axis_drives_no_flat_runs() -> None:
+@pytest.mark.parametrize("grid", [1, 5, 20])
+def test_smaller_delta_axis_drives_no_flat_runs(grid: int) -> None:
     # x moves 12 lanes, h moves 100 units: the smaller-delta axis (x) drives sampling, so x
     # advances one lane per joint -- no long flat X runs that would look like a blocky
     # staircase in the main view -- and the joint count tracks the x delta, not the h delta.
-    pts = Curve(t=0, x=1, h=20).to(t=960, x=13, h=120, ease_h="in_out_sine").points(grid=1)
+    pts = Curve(t=0, x=1, h=20).to(t=960, x=13, h=120, ease_h="in_out_sine").points(grid=grid)
     xs = [wp.x for wp in pts]
     assert xs == sorted(xs)
     assert all(b > a for a, b in zip(xs, xs[1:]))  # strictly increasing: no repeated X
     assert len(pts) <= 20  # far fewer than the ~100 the height delta would force
 
 
-def test_height_drives_when_it_has_smaller_delta() -> None:
+@pytest.mark.parametrize("grid", [1, 5, 20])
+def test_height_drives_when_it_has_smaller_delta(grid: int) -> None:
     # When height has the smaller delta, it drives instead and gains no flat runs.
-    pts = Curve(t=0, x=0, h=0).to(t=960, x=12, h=4, ease_h="in_out_sine").points(grid=1)
+    pts = Curve(t=0, x=0, h=0).to(t=960, x=12, h=4, ease_h="in_out_sine").points(grid=grid)
     hs = [wp.h for wp in pts]
     assert hs == sorted(hs)
     assert all(b > a for a, b in zip(hs, hs[1:]))
 
 
-def test_eased_driver_has_no_flat_start_run() -> None:
+@pytest.mark.parametrize("grid", [1, 5, 20])
+@pytest.mark.parametrize("x0,x1", [(0, 12), (12, 0)])
+def test_eased_driver_has_no_flat_start_run(grid: int, x0: int, x1: int) -> None:
     # A flat-starting easing must not emit two joints at the same lane (the j1 == j2 == 0 then
     # j3 == 1 artifact): the driver advances by one lane every joint, never repeating a value.
-    pts = Curve(t=0, x=0).to(t=960, x=12, ease_x="in_quad").points(grid=1)
+    pts = Curve(t=0, x=x0).to(t=960, x=x1, ease_x="in_quad").points(grid=grid)
     xs = [wp.x for wp in pts]
     assert all(b != a for a, b in zip(xs, xs[1:]))  # no flat lane segments anywhere
+
+
+@pytest.mark.parametrize(
+    "span,grid,ease",
+    [
+        (20, 5, "out_cubic"),
+        (40, 5, "in_out_sine"),
+        (120, 20, "in_out_cubic"),
+        (1920, 1, "out_quint"),
+    ],
+)
+@pytest.mark.parametrize("x0,x1", [(0, 12), (12, 0)])
+def test_quantization_does_not_reach_endpoint_early(
+    span: int, grid: int, ease: str, x0: int, x1: int
+) -> None:
+    pts = Curve(t=0, x=x0).to(t=span, x=x1, ease_x=ease).points(grid=grid)
+    assert pts[-1].t == span
+    assert all(a.x != b.x for a, b in zip(pts, pts[1:]))
+
+
+@pytest.mark.parametrize("grid", [1, 5, 20])
+def test_custom_easing_preserves_real_pause(grid: int) -> None:
+    def pause(t: float) -> float:
+        if t < 0.25:
+            return 2 * t
+        if t <= 0.75:
+            return 0.5
+        return 2 * t - 1
+
+    pts = Curve(t=0, x=0).to(t=960, x=12, ease_x=pause).points(grid=grid)
+    assert any(wp.t == 240 and wp.x == 6 for wp in pts)
+    assert any(wp.t == 720 and wp.x == 6 for wp in pts)
+
+
+@pytest.mark.parametrize("grid", [1, 5, 20])
+def test_custom_easing_preserves_real_terminal_pause(grid: int) -> None:
+    pts = Curve(t=0, x=0).to(t=960, x=12, ease_x=lambda t: min(2 * t, 1)).points(grid=grid)
+    assert (pts[-2].t, pts[-2].x) == (480, 12)
+    assert (pts[-1].t, pts[-1].x) == (960, 12)
+
+
+@pytest.mark.parametrize("materializer", ["to_slide", "to_air_slide", "to_air_crush"])
+def test_default_grid_materializes_smooth_clamped_cubic(materializer: str) -> None:
+    # The reported example used the default grid and produced paired joints on every
+    # lane. Check the geometry sent over RPC, including the clipped boundary widths.
+    path = Curve(t=(69, 0), x=-1).to(t=(69, 2), x=13, ease_x="in_out_cubic")
+    note = getattr(path, materializer)(w=4).clamp()
+    note.validate()
+    raw = RawNote.from_proto(note.to_raw().to_proto())
+    if isinstance(note, AirSlide):
+        raw = raw.children[0]  # AirSlide is serialized under its air attachment.
+    points = [raw, *raw.children]
+
+    assert (points[0].t, points[-1].t) == (path.waypoints[0].t, path.waypoints[-1].t)
+    assert (points[0].x, points[0].w) == (0, 3)
+    assert (points[-1].x, points[-1].w) == (13, 3)
+    assert all(point.t % 5 == 0 for point in points[1:-1])
+    centers = [point.x + point.w / 2 for point in points]
+    assert all(b > a for a, b in zip(centers, centers[1:]))
+    assert len(points) > 2  # retain the easing instead of collapsing to a straight line
 
 
 def test_grid_default_is_five() -> None:
@@ -154,15 +218,27 @@ def test_grid_materializes_valid_note() -> None:
     Curve(t=0, x=0).to(t=960, x=13, ease_x="in_out_sine").to_slide(w=2, grid=5).validate()
 
 
-def test_non_monotonic_easing_overshoots() -> None:
+@pytest.mark.parametrize("grid", [1, 5, 20])
+@pytest.mark.parametrize("x0,x1", [(0, 10), (10, 0)])
+def test_non_monotonic_easing_overshoots(grid: int, x0: int, x1: int) -> None:
     # A back-out easing overshoots above 1 before settling; forward sampling captures the
     # turning point as interior joints past the target lane -- impossible under value inversion.
     c1 = 1.70158
     out_back = lambda t: 1 + (c1 + 1) * (t - 1) ** 3 + c1 * (t - 1) ** 2  # noqa: E731
-    pts = Curve(t=0, x=0).to(t=960, x=10, ease_x=out_back).points()
-    assert (pts[0].t, pts[0].x) == (0, 0)
-    assert (pts[-1].t, pts[-1].x) == (960, 10)
-    assert any(wp.x > 10 for wp in pts)  # overshoot beyond the endpoint is materialized
+    pts = Curve(t=0, x=x0).to(t=960, x=x1, ease_x=out_back).points(grid=grid)
+    assert (pts[0].t, pts[0].x) == (0, x0)
+    assert (pts[-1].t, pts[-1].x) == (960, x1)
+    assert any((wp.x - x1) * (x1 - x0) > 0 for wp in pts)  # overshoot beyond the endpoint
+    peak = max(range(len(pts)), key=lambda i: (pts[i].x - x1) * (x1 - x0))
+    assert any(wp.x == x1 for wp in pts[1:peak])  # keep the crossing before the overshoot
+
+
+@pytest.mark.parametrize("grid", [1, 5, 20])
+def test_non_driver_height_turning_point_is_preserved(grid: int) -> None:
+    # x drives sampling, but the height's peak still needs a joint between lane changes.
+    peak_height = lambda t: 6 * t if t <= 0.25 else 1.5 - (t - 0.25) * 2 / 3  # noqa: E731
+    pts = Curve(t=0, x=0, h=0).to(t=960, x=2, h=10, ease_h=peak_height).points(grid=grid)
+    assert any(wp.t == 240 and wp.h == 15 for wp in pts)
 
 
 def test_linear_collapses_to_endpoints() -> None:
@@ -181,10 +257,14 @@ def test_sampling_error_within_half_lane() -> None:
 
 
 def test_closeness_to_ideal_curve() -> None:
-    t0, t1, x0, x1 = 0, 960, 0, 15
-    pts = Curve(t=t0, x=x0).to(t=t1, x=x1, ease_x="in_out_sine").points()
-    for wp in pts:
-        assert abs(wp.x - _ideal_x(t0, t1, x0, x1, "in_out_sine", wp.t)) <= 1.0
+    t0, t1, x0, x1 = 0, 960, -1, 13
+    pts = Curve(t=t0, x=x0).to(t=t1, x=x1, ease_x="in_out_cubic").points()
+    # Margrete draws straight segments between joints. Check the reconstructed path,
+    # not just the rounded joint positions, against the requested easing.
+    for a, b in zip(pts, pts[1:]):
+        for t in range(a.t, b.t + 1):
+            x = a.x + (b.x - a.x) * (t - a.t) / (b.t - a.t)
+            assert abs(x - _ideal_x(t0, t1, x0, x1, "in_out_cubic", t)) <= 0.5
 
 
 def test_linear_easing_is_collinear() -> None:
@@ -209,6 +289,11 @@ def test_multi_joint_chain_dedups_seam_and_keeps_endpoints() -> None:
     assert (pts[-1].t, pts[-1].x, pts[-1].h) == (960, 13, 120)
     seam = next(wp for wp in pts if wp.t == 480)
     assert (seam.x, seam.h) == (7, 70)  # interior leg endpoint is exact
+
+
+def test_explicit_flat_legs_are_preserved() -> None:
+    path = Curve(t=0, x=0).to(t=120, x=0).to(t=240, x=6).to(t=360, x=6)
+    assert [(wp.t, wp.x) for wp in path.points()] == [(0, 0), (120, 0), (240, 6), (360, 6)]
 
 
 def test_chained_to_matches_independent_then() -> None:
@@ -409,6 +494,25 @@ def test_envelope_rejects_bad_count() -> None:
         envelope(inner, outer, count=0)
 
 
+@pytest.mark.parametrize("count", [2, 191, 192])
+def test_envelope_identical_boundaries_preserve_curve(count: int) -> None:
+    inner = Curve(t=0, x=0, h=20).to(t=960, x=12, h=80, ease_x="in_out_cubic")
+    outer = Curve(t=0, x=0, h=20).to(t=960, x=12, h=80, ease_x="in_out_cubic")
+    woven = envelope(inner, outer, count=count)
+    assert woven.points() == inner.points()
+    woven.waypoints[-1].ease_x = "linear"
+    woven.waypoints[0].x = 4
+    assert inner.waypoints[-1].ease_x is EASINGS["in_out_cubic"]
+    assert inner.waypoints[0].x == 0
+
+
+def test_envelope_distinct_easings_still_weave() -> None:
+    inner = Curve(t=0, x=0).to(t=960, x=12, ease_x="in_quad")
+    outer = Curve(t=0, x=0).to(t=960, x=12, ease_x="out_quad")
+    woven = envelope(inner, outer, count=4)
+    assert [wp.x for wp in woven] == [0, outer.at(240).x, inner.at(480).x, outer.at(720).x, 12]
+
+
 def test_crease_anchors_both_ends() -> None:
     base = Curve(t=0, x=6).to(t=960, x=6)
     woven = crease(base, count=4, x_range=3)
@@ -441,6 +545,31 @@ def test_crease_rejects_bad_count() -> None:
     base = Curve(t=0, x=6).to(t=960, x=6)
     with pytest.raises(ValueError):
         crease(base, count=1, x_range=3)
+
+
+@pytest.mark.parametrize("count", [2, 191, 192])
+def test_crease_zero_offsets_preserve_curve(count: int) -> None:
+    base = (
+        Curve(t=3, x=0, h=20)
+        .to(t=483, x=12, h=80, ease_x="in_out_cubic")
+        .to(t=963, x=0, h=40, ease_x="in_quad")
+    )
+    woven = crease(base, count=count, x_range=0)
+    assert woven.points() == base.points()
+    woven.waypoints[1].ease_x = "linear"
+    woven.waypoints[0].x = 4
+    assert base.waypoints[1].ease_x is EASINGS["in_out_cubic"]
+    assert base.waypoints[0].x == 0
+
+
+@pytest.mark.parametrize("helper", ["crease", "envelope"])
+def test_noop_helpers_reject_more_legs_than_ticks(helper: str) -> None:
+    base = Curve(t=0, x=0).to(t=4, x=12, ease_x="in_out_cubic")
+    with pytest.raises(ValueError):
+        if helper == "crease":
+            crease(base, count=5, x_range=0)
+        else:
+            envelope(base, base, count=5)
 
 
 def test_crease_materializes() -> None:

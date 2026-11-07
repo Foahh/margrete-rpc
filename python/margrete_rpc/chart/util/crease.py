@@ -18,6 +18,7 @@ def crease(base: Curve, *, count: int, x_range: int, h_range: int = 0) -> Curve:
 
     Returns:
         A new :class:`Curve` with ``count`` linear legs zigzagging around ``base``.
+        When both offsets are zero, returns a copy of ``base`` with its easing intact.
 
     Raises:
         ValueError: If ``count < 2`` or the time span is too small for ``count`` legs.
@@ -27,6 +28,10 @@ def crease(base: Curve, *, count: int, x_range: int, h_range: int = 0) -> Curve:
     t0 = base.waypoints[0].t
     t1 = base.waypoints[-1].t
     span = t1 - t0
+    if count > span:
+        raise ValueError("time span is too small for count legs")
+    if x_range == 0 and h_range == 0:
+        return base._copy()
     turning: list[Waypoint] = []
     for j in range(count + 1):
         tick = round(t0 + j / count * span)

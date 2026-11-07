@@ -14,9 +14,11 @@ def envelope(inner: Curve, outer: Curve, *, count: int = 2) -> Curve:
 
     Returns:
         A new :class:`Curve` with ``count`` linear legs oscillating between the two boundaries.
+        Boundaries with identical waypoints and easing return a copy of ``inner``.
 
     Raises:
-        ValueError: If ``count < 1`` or the curves have different time spans.
+        ValueError: If ``count < 1``, the curves have different time spans, or the time
+            span is too small for ``count`` legs.
     """
     if count < 1:
         raise ValueError("count must be at least 1")
@@ -26,6 +28,10 @@ def envelope(inner: Curve, outer: Curve, *, count: int = 2) -> Curve:
         raise ValueError("inner and outer must share the same time span")
 
     span = t1 - t0
+    if count > span:
+        raise ValueError("time span is too small for count legs")
+    if inner.waypoints == outer.waypoints:
+        return inner._copy()
     turning: list[Waypoint] = []
     for j in range(count + 1):
         tick = round(t0 + j / count * span)

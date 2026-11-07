@@ -3,6 +3,8 @@ title: 曲线 Slide
 ---
 
 import CurveSlide1Image from "../assets/curve-slide-1.png";
+import CurveSlideStairImage from "../assets/curve-slide-stair.png";
+import CurveSlideIntervalImage from "../assets/curve-slide-stair-interval.png";
 
 ## 如何理解
 
@@ -110,9 +112,32 @@ crush = (
 )
 ```
 
+## 阶梯模式
+
+在 `points()` 或任意 `to_*()` 方法中传入 `mode="stair"`，即可生成阶梯风格的曲线。
+
+```python
+path = Curve(t=0, x=0).to(t=960, x=12, ease_x="linear")
+slide = path.to_slide(w=4, mode="stair")
+```
+
+<ImageZoom src={CurveSlideStairImage} alt="阶梯模式生成的 Slide" width="300" />
+
+## 固定间隔
+
+传入 `interval=(1, 16)`，即可按十六分固定间隔采样。
+`grid` 与 `interval` 不可同时指定。
+
+```python
+slide = path.to_slide(w=4, mode="stair", interval=(1, 16), ramp=5)
+points = path.points(interval=120)
+```
+
+<ImageZoom src={CurveSlideIntervalImage} alt="固定十六分间隔生成的阶梯 Slide" width="300" />
+
 ## 限制分辨率
 
-物件化方法会把节点 tick 对齐到 `grid` 的整数倍上。默认值为 `5`，传入 `grid=1` 可使用完整分辨率。
+默认 `interval=None` 时，物件化方法会把节点 tick 对齐到 `grid` 的整数倍上。省略 `grid` 时使用 `5`，传入 `grid=1` 可使用完整分辨率。
 
 ```python
 slide = (

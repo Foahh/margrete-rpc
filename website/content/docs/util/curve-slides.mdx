@@ -3,6 +3,8 @@ title: Curve Slides
 ---
 
 import CurveSlide1Image from "../assets/curve-slide-1.png";
+import CurveSlideStairImage from "../assets/curve-slide-stair.png";
+import CurveSlideIntervalImage from "../assets/curve-slide-stair-interval.png";
 
 ## Mental model
 
@@ -119,10 +121,37 @@ crush = (
 )
 ```
 
-### Limiting resolution
+## Stair mode
 
-The materialize methods snap joint tick to absolute multiples of
-`grid`. The default is `5`, pass `grid=1` for full resolution.
+Pass `mode="stair"` to `points()` or any `to_*()` method to generate a staircase curve.
+
+```python
+path = Curve(t=0, x=0).to(t=960, x=12, ease_x="linear")
+slide = path.to_slide(w=4, mode="stair")
+```
+
+<ImageZoom src={CurveSlideStairImage} alt="Slide generated in stair mode" width="300" />
+
+## Fixed intervals
+
+Pass `interval=(1, 16)` to sample at fixed sixteenth-note intervals.
+`grid` and `interval` cannot be specified together.
+
+```python
+slide = path.to_slide(w=4, mode="stair", interval=(1, 16), ramp=5)
+points = path.points(interval=120)
+```
+
+<ImageZoom
+  src={CurveSlideIntervalImage}
+  alt="Staircase Slide sampled at fixed sixteenth-note intervals"
+  width="300"
+/>
+
+## Limiting resolution
+
+With `interval=None` (the default), materialize methods snap joint tick to absolute multiples of
+`grid`. Omitting `grid` uses `5`; pass `grid=1` for full resolution.
 
 ```python
 slide = (

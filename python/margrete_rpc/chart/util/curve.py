@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..notes import AirCrush, AirHold, AirSlide, ColorLike, ColorValue, Hold, Slide
-from ..time import DivisionLike, Position, PositionLike, resolve_tick, tick_to_pos
+from ..time import DivisionLike, Position, PositionLike, resolve_division, resolve_tick, tick_to_pos
 from .easing import EaseLike, Easing, resolve_easing
 
 _LINEAR = resolve_easing("linear")
+
+CurveMode: TypeAlias = Literal["smooth", "stair"]
+"""How a curve is sampled into note joints."""
 
 SlideLike: TypeAlias = Slide | Hold | AirSlide | AirHold | AirCrush
 """A long note whose path (begin + joints) can be loaded into a :class:`Curve`."""
@@ -121,6 +124,12 @@ class Curve:
         self.waypoints = waypoints
         return self
 
+    def _copy(self) -> Curve:
+        """Copy control waypoints so edits to a derived curve cannot change its source."""
+        return Curve._of(
+            tuple(Waypoint(wp.t, wp.x, wp.h, wp.ease_x, wp.ease_h) for wp in self.waypoints)
+        )
+
     @classmethod
     def from_note(cls, note: SlideLike) -> Curve:
         """Load a long note's path as editable control waypoints with linear legs.
@@ -176,49 +185,99 @@ class Curve:
         waypoint = Waypoint(t1, x, h1, resolve_easing(ease_x), resolve_easing(ease_h))
         return Curve._of((*self.waypoints, waypoint))
 
-    def points(self, *, grid: int = 5) -> tuple[Waypoint, ...]:
+    def points(
+        self,
+        *,
+        grid: int | None = None,
+        mode: CurveMode = "smooth",
+        interval: int | DivisionLike | None = None,
+        ramp: int | None = None,
+    ) -> tuple[Waypoint, ...]:
         """Quantize the path into integer waypoints.
 
         Args:
-            grid: Snap generated joints to absolute multiples of ``grid`` ticks (default
-                ``5``); pass ``grid=1`` for full resolution. The anchor and ``.to(...)``
-                ticks stay exact.
+            grid: Auto-sampling tick grid; omitted uses ``5``. Mutually exclusive with ``interval``.
+            mode: ``"smooth"`` follows the curve; ``"stair"`` keeps integer plateaus
+                linked by short ramps, including for linear legs.
+            interval: Fixed spacing in ticks or a whole-note fraction, e.g. ``(1, 16)``.
+                Measured from the curve start across all legs; ``None`` uses auto sampling.
+            ramp: Fixed-interval stair ramp duration in ticks (default ``5``), shortened for small gaps.
 
         Returns:
             All sampled waypoints in order; useful to preview the realized joints before
             calling a ``to_*`` materializer.
 
         Raises:
-            ValueError: If the curve has no legs yet (only an anchor), or ``grid < 1``.
+            ValueError: If the curve has no legs, a duration is non-positive, or options are invalid.
+            TypeError: If a duration does not resolve to an integer.
         """
         if len(self.waypoints) < 2:
             raise ValueError("add at least one .to(...) leg before materializing a Curve")
+        if grid is not None and interval is not None:
+            raise ValueError("grid and interval are mutually exclusive")
+        if mode not in ("smooth", "stair"):
+            raise ValueError(f"unknown curve mode: {mode!r}")
+        if ramp is not None:
+            if interval is None or mode != "stair":
+                raise ValueError("ramp requires mode='stair' and interval")
+            if type(ramp) is not int:
+                raise TypeError("ramp must be an int")
+            if ramp < 1:
+                raise ValueError("ramp must be at least 1")
+        if interval is not None:
+            step = resolve_division(interval)
+            if type(step) is not int:
+                raise TypeError("interval must be an int or a (numerator, denominator) tuple")
+            if step < 1:
+                raise ValueError("interval must be positive")
+            return _sample_interval(self.waypoints, step, 5 if ramp is None else ramp, mode)
+        grid = 5 if grid is None else grid
+        if type(grid) is not int:
+            raise TypeError("grid must be an int")
         if grid < 1:
             raise ValueError("grid must be at least 1")
         out: list[Waypoint] = []
         for a, b in zip(self.waypoints, self.waypoints[1:]):
-            leg = _sample_segment(a.t, a.x, a.h, b.t, b.x, b.h, b.ease_x, b.ease_h, grid)
+            leg = _sample_segment(a.t, a.x, a.h, b.t, b.x, b.h, b.ease_x, b.ease_h, grid, mode)
             out.extend(leg[1:] if out else leg)
         return tuple(out)
 
-    def _path(self, grid: int) -> tuple[Waypoint, list[Waypoint], Waypoint]:
+    def _path(
+        self,
+        grid: int | None,
+        mode: CurveMode,
+        interval: int | DivisionLike | None,
+        ramp: int | None,
+    ) -> tuple[Waypoint, list[Waypoint], Waypoint]:
         """Quantize, then split into ``(first, interior, last)`` (always >= 2 points)."""
-        first, *mid, last = self.points(grid=grid)
+        first, *mid, last = self.points(grid=grid, mode=mode, interval=interval, ramp=ramp)
         return first, mid, last
 
-    def to_slide(self, *, w: int, til: int = 0, grid: int = 5) -> Slide:
+    def to_slide(
+        self,
+        *,
+        w: int,
+        til: int = 0,
+        grid: int | None = None,
+        mode: CurveMode = "smooth",
+        interval: int | DivisionLike | None = None,
+        ramp: int | None = None,
+    ) -> Slide:
         """Materialize as a ground :class:`Slide`.
 
         Args:
             w: Constant lane width for every joint.
             til: Timeline index assigned to the note.
-            grid: Snap generated joints to a tick grid (default ``5``). See :meth:`points`.
+            grid: Auto-sampling tick grid; mutually exclusive with ``interval``. See :meth:`points`.
+            mode: ``"smooth"`` (default) or ``"stair"``. See :meth:`points`.
+            interval: Fixed sampling spacing; ``None`` for automatic. See :meth:`points`.
+            ramp: Fixed-interval stair ramp duration in ticks. See :meth:`points`.
 
         Returns:
             A :class:`Slide` whose joints follow the quantized path. Height is preserved
             in the underlying raw note fields.
         """
-        first, mid, last = self._path(grid)
+        first, mid, last = self._path(grid, mode, interval, ramp)
         slide = Slide(t=first.t, x=first.x, w=w)
         slide._info.h = first.h
         slide.til = til
@@ -229,18 +288,30 @@ class Curve:
         slide.joints[-1]._info.h = last.h
         return slide
 
-    def to_air_slide(self, *, w: int, til: int = 0, grid: int = 5) -> AirSlide:
+    def to_air_slide(
+        self,
+        *,
+        w: int,
+        til: int = 0,
+        grid: int | None = None,
+        mode: CurveMode = "smooth",
+        interval: int | DivisionLike | None = None,
+        ramp: int | None = None,
+    ) -> AirSlide:
         """Materialize as an :class:`AirSlide`.
 
         Args:
             w: Constant lane width for every joint.
             til: Timeline index assigned to the note.
-            grid: Snap generated joints to a tick grid (default ``5``). See :meth:`points`.
+            grid: Auto-sampling tick grid; mutually exclusive with ``interval``. See :meth:`points`.
+            mode: ``"smooth"`` (default) or ``"stair"``. See :meth:`points`.
+            interval: Fixed sampling spacing; ``None`` for automatic. See :meth:`points`.
+            ramp: Fixed-interval stair ramp duration in ticks. See :meth:`points`.
 
         Returns:
             An :class:`AirSlide` whose joints follow the quantized path.
         """
-        first, mid, last = self._path(grid)
+        first, mid, last = self._path(grid, mode, interval, ramp)
         air = AirSlide(t=first.t, x=first.x, w=w, h=first.h)
         air.til = til
         for wp in mid:
@@ -255,7 +326,10 @@ class Curve:
         gap: int | DivisionLike = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int = 0,
-        grid: int = 5,
+        grid: int | None = None,
+        mode: CurveMode = "smooth",
+        interval: int | DivisionLike | None = None,
+        ramp: int | None = None,
     ) -> AirCrush:
         """Materialize as an :class:`AirCrush`.
 
@@ -266,12 +340,15 @@ class Curve:
                 :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
             color: Crush particle color.
             til: Timeline index assigned to the note.
-            grid: Snap generated joints to a tick grid (default ``5``). See :meth:`points`.
+            grid: Auto-sampling tick grid; mutually exclusive with ``interval``. See :meth:`points`.
+            mode: ``"smooth"`` (default) or ``"stair"``. See :meth:`points`.
+            interval: Fixed sampling spacing; ``None`` for automatic. See :meth:`points`.
+            ramp: Fixed-interval stair ramp duration in ticks. See :meth:`points`.
 
         Returns:
             An :class:`AirCrush` whose joints follow the quantized path.
         """
-        first, mid, last = self._path(grid)
+        first, mid, last = self._path(grid, mode, interval, ramp)
         crush = AirCrush(t=first.t, x=first.x, w=w, h=first.h, gap=gap, color=color)
         crush.til = til
         for wp in (*mid, last):
@@ -279,7 +356,9 @@ class Curve:
         return crush
 
     def at(self, tick: int) -> Waypoint:
-        """Evaluate the eased path at ``tick``.
+        """Evaluate the eased path at ``tick``, rounding lane and height to integers.
+
+        Use :meth:`points` for joint generation; dense ``at()`` samples can form a staircase.
 
         Args:
             tick: The tick to evaluate; clamped to ``[first.t, last.t]``.
@@ -325,7 +404,35 @@ class Curve:
 
 
 _LINEAR_TOL = 1e-9
-"""Real-space deviation under which a leg is treated as exactly linear (float-noise slack)."""
+"""Float-noise tolerance for linearity and pause detection."""
+
+
+def _sample_interval(
+    waypoints: tuple[Waypoint, ...], interval: int, ramp: int, mode: CurveMode
+) -> tuple[Waypoint, ...]:
+    """Keep fixed samples and anchors, adding a short ramp before each stair change."""
+    first = waypoints[0]
+    samples = [Waypoint(first.t, first.x, first.h)]
+    for a, b in zip(waypoints, waypoints[1:]):
+        if b.t <= a.t:
+            raise ValueError("waypoint ticks must be strictly increasing")
+        start = first.t + ((a.t - first.t) // interval + 1) * interval
+        for t in range(start, b.t, interval):
+            p = (t - a.t) / (b.t - a.t)
+            x = round(a.x + b.ease_x.solve(p) * (b.x - a.x))
+            h = round(a.h + b.ease_h.solve(p) * (b.h - a.h))
+            samples.append(Waypoint(t, x, h))
+        samples.append(Waypoint(b.t, b.x, b.h))
+    if mode == "smooth":
+        return tuple(samples)
+
+    out = [samples[0]]
+    for a, b in zip(samples, samples[1:]):
+        ramp_start = b.t - ramp
+        if ramp_start > a.t and (a.x, a.h) != (b.x, b.h):
+            out.append(Waypoint(ramp_start, a.x, a.h))
+        out.append(b)
+    return tuple(out)
 
 
 def _collinear(a: Waypoint, b: Waypoint, c: Waypoint) -> bool:
@@ -366,40 +473,9 @@ def _drop_collinear(pts: list[Waypoint]) -> tuple[Waypoint, ...]:
     return tuple(out)
 
 
-def _sample_segment_grid(
-    t0: int,
-    x0: int,
-    h0: int,
-    t1: int,
-    x1: int,
-    h1: int,
-    ease_x: Easing,
-    ease_h: Easing,
-    grid: int,
-) -> tuple[Waypoint, ...]:
-    """Quantize an eased segment onto absolute multiples of ``grid`` ticks.
-
-    Interior joints land on grid ticks (``t % grid == 0``); the endpoints stay exact.
-    """
-    span = t1 - t0
-    interior = range(((t0 // grid) + 1) * grid, t1, grid)
-    reals = [
-        (
-            t,
-            x0 + ease_x.solve((t - t0) / span) * (x1 - x0),
-            h0 + ease_h.solve((t - t0) / span) * (h1 - h0),
-        )
-        for t in interior
-    ]
-    reals = [(t0, float(x0), float(h0)), *reals, (t1, float(x1), float(h1))]
-    if _is_linear(reals):
-        return (Waypoint(t0, x0, h0), Waypoint(t1, x1, h1))
-
-    pts = [Waypoint(t0, x0, h0)]
-    for t, rx, rh in reals[1:-1]:
-        pts.append(Waypoint(t, round(rx), round(rh)))
-    pts.append(Waypoint(t1, x1, h1))
-    return _drop_collinear(pts)
+def _pause_boundary(a: float, b: float, c: float) -> bool:
+    """Detect entry to or exit from a real plateau, ignoring floating-point noise."""
+    return (a == b and abs(c - b) > _LINEAR_TOL) or (b == c and abs(b - a) > _LINEAR_TOL)
 
 
 def _sample_segment(
@@ -412,37 +488,49 @@ def _sample_segment(
     ease_x: Easing,
     ease_h: Easing,
     grid: int = 1,
+    mode: CurveMode = "smooth",
 ) -> tuple[Waypoint, ...]:
-    """Quantize an eased segment to integer waypoints driven by the smaller-delta axis.
-
-    With ``grid > 1`` joints are instead snapped to absolute multiples of ``grid`` ticks
-    (see :func:`_sample_segment_grid`).
-    """
+    """Sample eased geometry in the requested mode, keeping endpoints exact."""
     if t1 <= t0:
         raise ValueError("segment end tick must be later than its start")
-    if grid > 1:
-        return _sample_segment_grid(t0, x0, h0, t1, x1, h1, ease_x, ease_h, grid)
     span = t1 - t0
+    interior = range(((t0 // grid) + 1) * grid, t1, grid)
     reals = [
         (
             t,
             x0 + ease_x.solve((t - t0) / span) * (x1 - x0),
             h0 + ease_h.solve((t - t0) / span) * (h1 - h0),
         )
-        for t in range(t0, t1 + 1)
+        for t in interior
     ]
+    reals = [(t0, float(x0), float(h0)), *reals, (t1, float(x1), float(h1))]
+    if mode == "stair":
+        return _drop_collinear([Waypoint(t, round(x), round(h)) for t, x, h in reals])
     if _is_linear(reals):
         return (Waypoint(t0, x0, h0), Waypoint(t1, x1, h1))
 
     dx, dh = abs(x1 - x0), abs(h1 - h0)
     drive_x = dh == 0 or (dx != 0 and dx <= dh)
 
+    terminal_start = t1
+    for t, rx, rh in reversed(reals[1:-1]):
+        if (round(rx), round(rh)) != (x1, h1):
+            break
+        terminal_start = t
+
     pts = [Waypoint(t0, x0, h0)]
     last = x0 if drive_x else h0
-    for t, rx, rh in reals[1:-1]:
+    for (_, px, ph), (t, rx, rh), (_, qx, qh) in zip(reals, reals[1:], reals[2:]):
         v = rx if drive_x else rh
-        if v >= last + 1 or v <= last - 1:  # driver has reached the next integer level
-            nx, nh = round(rx), round(rh)
+        nx, nh = round(rx), round(rh)
+        # A reversal can fall short of the next integer crossing on either axis.
+        turns_x = px < rx > qx or px > rx < qx
+        turns_h = ph < rh > qh or ph > rh < qh
+        turn = (turns_x or turns_h) and (nx, nh) != (pts[-1].x, pts[-1].h)
+        pause = _pause_boundary(px, rx, qx) or _pause_boundary(ph, rh, qh)
+        advanced = v >= last + 1 or v <= last - 1
+        # Suppress a rounded terminal plateau, retaining real pauses and earlier crossings.
+        if turn or pause or (advanced and t < terminal_start):
             pts.append(Waypoint(t, nx, nh))
             last = nx if drive_x else nh
     pts.append(Waypoint(t1, x1, h1))
@@ -454,4 +542,4 @@ def _stored_height(obj: object) -> int:
     return int(getattr(getattr(obj, "_info", None), "h", DEFAULT_H))
 
 
-__all__ = ["Curve", "SlideLike", "Waypoint"]
+__all__ = ["Curve", "CurveMode", "SlideLike", "Waypoint"]
