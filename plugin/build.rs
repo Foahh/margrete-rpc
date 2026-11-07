@@ -24,6 +24,8 @@ fn main() {
 
     let proto_root = manifest_dir.join("../proto");
     prost_build::Config::new()
+        // Keep the descriptor in Cargo's writable output directory instead of system temp.
+        .file_descriptor_set_path(out_dir.join("margrete.rpc.descriptor.bin"))
         .compile_protos(
             &[proto_root.join("margrete/rpc/messages.proto")],
             &[&proto_root],
