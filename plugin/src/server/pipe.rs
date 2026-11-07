@@ -84,6 +84,8 @@ impl NamedPipeServer {
         self.stop_while(|| {});
     }
 
+    /// Stop and join all workers, pumping pending UI jobs while waiting.
+    /// Use this on the UI thread so workers blocked in `UiDispatcher::call` can finish.
     pub fn stop_while(&self, mut pump: impl FnMut()) {
         self.stop.store(true, Ordering::SeqCst);
         self.running.store(false, Ordering::SeqCst);

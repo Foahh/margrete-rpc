@@ -14,7 +14,12 @@ def read_api_version(root: Path) -> int:
 
 
 def generate(root: Path | None = None) -> Path:
-    """Compile proto/margrete/rpc/messages.proto into python/margrete_rpc/_proto/."""
+    """Write Python protobuf bindings, type stubs, and the API version to ``_proto/``.
+
+    Read the schema and ``API_VERSION`` from ``root/proto``; ``root`` defaults to
+    this repository. Return the generated package directory. The Hatch build hook
+    calls this automatically; run this script after schema changes during development.
+    """
     root = root or repo_root()
     proto_file = root / "proto" / "margrete" / "rpc" / "messages.proto"
     out_dir = root / "python" / "margrete_rpc" / "_proto"

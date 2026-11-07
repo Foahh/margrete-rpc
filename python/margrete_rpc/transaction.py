@@ -30,20 +30,20 @@ from margrete_rpc.trace import NoopTracer, Tracer
 
 @dataclass
 class EditTransaction:
-    """A scoped, atomic edit of a Margrete chart.
+    """Collect local chart changes and submit them when the context exits normally.
 
-    Created by :meth:`Margrete.open_edit` and used as a context manager. Entering the
-    ``with`` block snapshots the chart (when ``snapshot`` is enabled) and installs the
-    chart's beat events as the active position context, so bare ``(bar, beat, offset)``
-    positions passed to note constructors resolve to ticks. Mutate :attr:`chart` inside
-    the block; on clean exit the changes are diffed and sent to Margrete as one undoable
-    edit, and if the block raises, nothing is applied.
+    Obtain this from :meth:`Margrete.open_edit`. Context entry captures the local diff
+    baseline when enabled and installs ``chart.beats`` for tuple-position conversion.
+    Make changes inside the block: edits made before entry become part of the baseline.
+
+    An exception in the block skips submission and propagates. Validation and RPC errors
+    during exit also propagate; the previous position context is restored in either case.
+    See :meth:`Margrete.open_edit` for append, diff, and replacement behavior.
 
     Attributes:
         current_tick: The editor playhead tick captured when the transaction opened.
-        chart: The loaded :class:`~margrete_rpc.chart.Chart`; mutate its ``notes`` and
-            event lists to describe the edit.
-        snapshot_enabled: Whether a baseline snapshot was captured for diffing.
+        chart: Local :class:`~margrete_rpc.chart.Chart`; mutate its note and event lists.
+        snapshot_enabled: Whether context entry captures a baseline for diffing.
         replace_all_notes: Replace all notes on apply instead of sending a diff.
         replace_all_events: Replace all scanned events on apply instead of sending a diff.
     """

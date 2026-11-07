@@ -30,10 +30,10 @@ def rain(
     Args:
         t0: Start tick or position; the first drop begins here.
         t1: End tick or position; no drop starts at or after it.
-        step: Spacing between drop starts (tick count or beat fraction).
+        step: Spacing between drop starts (tick count or fraction of a whole note).
         x_range: Inclusive ``(lo, hi)`` lane bounds for each drop.
         h_range: Inclusive ``(lo, hi)`` height bounds; defaults to a constant :data:`DEFAULT_H`.
-        length: Drop duration (tick count or beat fraction); defaults to ``step``.
+        length: Drop duration (tick count or fraction of a whole note); defaults to ``step``.
         w: Constant width of every drop.
         gap: Segment gap passed to each :class:`AirCrush`. Also accepts
             :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE` and

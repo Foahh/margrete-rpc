@@ -2,14 +2,11 @@ from __future__ import annotations
 
 
 class MargreteError(Exception):
-    """Base class for all errors raised by ``margrete_rpc``.
-
-    Catch this to handle any client-side failure regardless of cause.
-    """
+    """Base class for discovery, version, transport, and remote RPC errors."""
 
 
 class MargreteProtocolError(MargreteError):
-    """Raised when a server response cannot be parsed (invalid RPC/protobuf framing)."""
+    """Raised for transport failures and invalid frame lengths or response IDs."""
 
 
 class MargreteTimeoutError(MargreteError, TimeoutError):

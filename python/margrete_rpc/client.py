@@ -44,9 +44,8 @@ class ServerStatus:
 class Margrete:
     """Client for a running Margrete RPC server.
 
-    This is the entry point of the Python client. Construct one to connect to a Margrete
-    instance, then call :meth:`open_edit` to make scriptable changes to the current
-    chart inside a transaction.
+    Use ``with Margrete() as mg`` to close the connection on exit, and
+    ``with mg.open_edit() as tx`` to edit ``tx.chart``.
     """
 
     def __init__(
@@ -57,7 +56,7 @@ class Margrete:
         transport: RpcTransport | None = None,
         tracer: Tracer | None = None,
     ) -> None:
-        """Connect to a Margrete RPC server.
+        """Connect and check that the plugin's RPC API version matches this client.
 
         With no arguments the single running instance is auto-detected from named
         pipes named ``margrete-XXXX``. If more than one Margrete window is open, pass
@@ -67,10 +66,12 @@ class Margrete:
             instance: ``0421`` or ``margrete-0421`` to connect to that named pipe.
                 Omit to auto-detect the sole running instance. Mutually exclusive
                 with ``transport``.
-            timeout: Request timeout in seconds. Auto-detection pings use at most
-                one second of this budget.
-            transport: Pre-built transport to use instead of opening a pipe; intended
-                for testing. Cannot be combined with ``instance``.
+            timeout: Seconds allowed separately for connecting and for sending a request
+                and reading its response. Each auto-detection probe uses
+                ``min(timeout, 1.0)`` for these limits. Ignored with ``transport``.
+            transport: Pre-built transport, typically for testing. It receives the initial
+                status request and is closed with the client if it provides ``close()``.
+                Cannot be combined with ``instance``.
             tracer: Optional tracer for observability spans; defaults to a no-op.
 
         Raises:
@@ -108,7 +109,10 @@ class Margrete:
         self.close()
 
     def close(self) -> None:
-        """Close the underlying transport when it owns a persistent connection."""
+        """Call the transport's ``close()`` if available.
+
+        The default pipe transport reconnects if another request is made later.
+        """
         close = getattr(self._transport, "close", None)
         if close is not None:
             close()
@@ -145,16 +149,12 @@ class Margrete:
         )
 
     def undo(self) -> bool:
-        """Undo the last edit on the Margrete undo stack.
+        """Undo the latest edit in Margrete's history, including edits made in the UI.
+
+        After a successful undo, the plugin removes duplicate root-note IDs.
 
         Returns:
-            ``True`` if an edit was undone, ``False`` if the stack was empty.
-
-        Note:
-            Undo applies to Margrete's own history, which includes edits made through
-            this Python client. Undoing a transaction that deleted notes can re-create them in a
-            duplicated state, so prefer designing transactions that add or modify rather
-            than relying on undo to reverse deletions.
+            ``True`` on success; ``False`` if undo is unavailable or Margrete rejects it.
         """
         with self._tracer.span("margrete.client.undo"):
             response = self._transport.request(
@@ -163,10 +163,10 @@ class Margrete:
         return response.undo_response.success
 
     def redo(self) -> bool:
-        """Redo the edit most recently undone.
+        """Redo the edit most recently undone, then remove duplicate root-note IDs.
 
         Returns:
-            ``True`` if an edit was redone, ``False`` if there was nothing to redo.
+            ``True`` on success; ``False`` if redo is unavailable or Margrete rejects it.
         """
         with self._tracer.span("margrete.client.redo"):
             response = self._transport.request(
@@ -196,30 +196,36 @@ class Margrete:
         replace_all_notes: bool = False,
         replace_all_events: bool = False,
     ) -> EditTransaction:
-        """Begin an edit transaction over the current chart.
+        """Load the current chart for an edit context.
 
-        Returns an :class:`~margrete_rpc.transaction.EditTransaction` to be used as a
-        context manager. Mutate ``tx.chart`` inside the ``with`` block; on clean exit the
-        changes are diffed and applied to Margrete as a single undoable edit, and on an
-        exception nothing is applied.
+        Use ``with mg.open_edit() as tx:`` and mutate ``tx.chart`` inside the block.
+        Normal exit submits one undoable edit; an exception in the block skips
+        submission. With the default options, an unchanged chart sends no edit request.
+
+        The plugin applies the request to the document active at submission time.
+        Keep that document open and avoid concurrent edits while the block runs.
 
         Args:
-            event_scan_lookahead_ticks: Extra tick window to scan for timeline events beyond
-                the note range; ``None`` uses the server default.
-            event_scan_til_ids: Timeline IDs to scan for speed events. ``None`` (default)
-                restricts scanning to timelines that carry notes. Pass an explicit list
-                (including ``[]`` for all default timelines) to override.
-            snapshot: Capture a baseline snapshot so only changed notes are sent on apply.
-                Disable to skip diffing.
-            raw_notes: Load every note as a raw protobuf-tree model (:class:`RawNote`)
-                instead of typed note objects.
-            replace_all_notes: Replace every note in the chart on apply instead of
-                applying a note diff. Useful for full note rewrites.
-            replace_all_events: Replace every event captured by the opening snapshot on
-                apply instead of applying an event diff. Requires ``snapshot=True``.
+            event_scan_lookahead_ticks: Extend event scanning beyond the last note tick
+                by this amount. ``None`` or a non-positive value uses 19200 ticks.
+            event_scan_til_ids: Timelines to scan for timeline-speed events. ``None`` scans
+                timelines 0-15 used by notes; ``[]`` scans all 0-15. A nonempty list scans
+                those IDs regardless of note usage. Scanning runs only with ``snapshot=True``.
+            snapshot: Load notes and scanned events, then diff edits against a baseline
+                captured on context entry. If false, start with empty lists, append new
+                notes, and upsert supplied events; existing note IDs are rejected unless
+                ``replace_all_notes=True``. Without loaded beat events, tuple positions
+                use 4/4; use absolute ticks when the chart's meter is unknown.
+            raw_notes: Load all notes as :class:`RawNote` trees. Otherwise, use typed
+                objects where supported and raw trees for unsupported structures.
+            replace_all_notes: Recreate all chart notes from ``tx.chart.notes``, discarding
+                their IDs. Event lists are upserted; removing events also requires
+                ``replace_all_events=True``.
+            replace_all_events: Delete only events captured in the baseline, then upsert
+                the final event lists. Requires ``snapshot=True``.
 
         Returns:
-            An :class:`~margrete_rpc.transaction.EditTransaction` bound to the loaded chart.
+            An :class:`~margrete_rpc.transaction.EditTransaction` to enter immediately.
         """
         from margrete_rpc.chart import Chart
         from margrete_rpc.transaction import EditTransaction

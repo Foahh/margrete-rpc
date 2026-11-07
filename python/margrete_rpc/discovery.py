@@ -40,7 +40,7 @@ def pipe_name_for(instance: str) -> str:
 
 
 def list_pipe_names() -> list[str]:
-    """Return ``margrete-XXXX`` names currently listed under ``\\\\.\\pipe``."""
+    """Return sorted ``margrete-XXXX`` pipe names, or ``[]`` if enumeration fails."""
     try:
         names = os.listdir(_PIPE_DIR)
     except OSError:
@@ -49,11 +49,11 @@ def list_pipe_names() -> list[str]:
 
 
 def list_instances(*, validate: bool = True, timeout: float = 1.0) -> list[MargreteInstance]:
-    """List running Margrete RPC instances by enumerating named pipes.
+    """List pipe instances in name order, optionally checking reachability.
 
     Args:
         validate: Ping each instance and drop any that do not respond.
-        timeout: Per-instance ping timeout in seconds when validating.
+        timeout: Per-instance connection and ping I/O timeout in seconds when validating.
 
     Returns:
         The discovered instances (only reachable ones when ``validate`` is true).
@@ -72,8 +72,9 @@ def resolve_pipe_name(instance: str | None = None, *, timeout: float = 1.0) -> s
 
     Args:
         instance: ``0421`` or ``margrete-0421`` to select a specific instance.
-            When ``None``, auto-detect the sole running instance.
-        timeout: Per-instance ping timeout in seconds during auto-detection.
+            An explicit instance is normalized without probing it. ``None`` selects the
+            sole instance that responds to a ping.
+        timeout: Per-instance connection and ping I/O timeout during auto-detection, in seconds.
 
     Returns:
         The pipe name to connect to.

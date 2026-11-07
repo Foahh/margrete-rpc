@@ -1,3 +1,7 @@
+//! One envelope per frame: a four-byte little-endian payload length followed by
+//! protobuf bytes. The 16 MiB limit excludes the header; `decode` requires exactly
+//! one complete frame. Pipe reads may split a frame across multiple reads.
+
 use crate::error::{PluginError, Result};
 use crate::rpc::proto::Envelope;
 use prost::Message;

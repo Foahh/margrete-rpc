@@ -30,16 +30,18 @@ class UnsupportedNoteTree(ValueError):
 class Note(Protocol):
     """The common interface implemented by every typed note.
 
-    Notes expose geometry (timing ``t``/``p``, lane ``x``, width ``w``) and a set of
-    transforms. Each transform comes in two forms: the bare verb (e.g. :meth:`shift`)
-    mutates the note in place and returns ``self`` for chaining, while the past-tense form
-    (e.g. :meth:`shifted`) returns a transformed :meth:`clone` and leaves the original
-    untouched.
+    Geometry properties describe the note's begin point. Transforms also visit its joints
+    and attached air. A bare verb such as :meth:`shift` mutates the tree and returns
+    ``self``; its past-tense form, :meth:`shifted`, transforms an independent :meth:`clone`.
+
+    Clones have no server IDs, so adding one to ``chart.notes`` creates a new note. To edit
+    a loaded note in place, use the mutating form. Call :meth:`validate` to check the final
+    geometry; :meth:`to_raw` does this by default before an edit is sent.
     """
 
     @property
     def t(self) -> int:
-        """Absolute tick of the note from the chart start."""
+        """Absolute tick; assigning a position resolves it using the active edit context."""
         ...
 
     @t.setter
@@ -47,7 +49,7 @@ class Note(Protocol):
 
     @property
     def p(self) -> Position:
-        """Timing as a ``(bar, beat, offset)`` :class:`Position`; the read-only view of ``t``."""
+        """Read-only position of ``t`` using active beat events, with 4/4 as the fallback."""
         ...
 
     @property
@@ -70,12 +72,16 @@ class Note(Protocol):
     ) -> Self:
         """Move/resize the note in place and return ``self``.
 
-        Each delta is either an int added to the field, or a callable mapping the current
-        value to a new one. Pass a :data:`Position` tuple for ``t`` to shift timing by a
-        musical position delta.
+        An int delta is added to each field; a callable maps each current value to its new
+        value. A position tuple for ``t`` is resolved once from the chart start and added
+        as a tick delta to every point, including across time-signature changes.
+
+        Geometry validation is deferred to :meth:`validate` or :meth:`to_raw`. A timing
+        callable must preserve strictly increasing joint times; a failure can leave the
+        note modified. Use :meth:`shifted` when the original must survive a failed shift.
 
         Args:
-            t: Tick delta, callable, or :data:`Position` tuple for a position-based shift.
+            t: Tick delta, callable, or :data:`PositionLike` resolved to a tick delta.
             x: Lane delta.
             w: Width delta.
             h: Air-height delta (for notes with height).
@@ -89,7 +95,11 @@ class Note(Protocol):
         ...
 
     def scale(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
-        """Scale the note's timing about ``pivot`` by ``factor``, in place; returns ``self``."""
+        """Scale all ticks about ``pivot`` in place and return ``self``.
+
+        Ticks use Python's ``round`` (ties to even). As with :meth:`shift`, the resulting
+        joint times must remain strictly increasing.
+        """
         ...
 
     def scaled(self, factor: float, *, pivot: int | PositionLike = 0) -> Self:
@@ -101,7 +111,12 @@ class Note(Protocol):
 
         Args:
             interval: Grid spacing in ticks, or a :data:`DivisionLike` resolved to ticks.
-            mode: How to snap: ``"round"`` (nearest), ``"floor"``, or ``"ceil"``.
+            mode: ``"round"`` snaps to the nearest grid tick, with ties toward the later
+                tick; ``"floor"`` and ``"ceil"`` snap backward and forward.
+
+        Raises:
+            ValueError: If the interval is non-positive, the mode is unknown, or snapping
+                makes joint times equal or decreasing. The note may already be modified.
         """
         ...
 
@@ -131,7 +146,7 @@ class Note(Protocol):
         ...
 
     def clone(self) -> Self:
-        """Return a deep copy of the note (without its server-assigned id)."""
+        """Deep-copy the note, its joints, and attached air, clearing all server IDs."""
         ...
 
     def validate(self) -> None:

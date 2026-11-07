@@ -194,7 +194,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     """An air-crush note: an air-lane long note with height and a color.
 
     Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and
-    a gap (:attr:`gap`, with the :attr:`interval` beat-fraction view) controlling the
+    a gap (:attr:`gap`, expressed as a whole-note fraction by :attr:`interval`) controlling the
     spacing of generated segments between joints. Add control joints with
     :meth:`with_ctrl` / :meth:`add_ctrl`.
 
@@ -228,7 +228,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
             x: Left lane index.
             w: Width in lane units.
             h: Air height.
-            gap: Segment gap as a tick count or ``(numerator, denominator)`` beat fraction.
+            gap: Segment gap as a tick count or ``(numerator, denominator)`` whole-note fraction.
                 Also accepts :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE`
                 and :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
             color: Crush color (:class:`ColorValue` or raw int).
@@ -243,7 +243,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         """Segment gap as an int tick count.
 
         Set with an int tick count or an :data:`DivisionLike` ``(numerator, denominator)``
-        beat fraction. Read the fraction form via the :attr:`interval` view.
+        whole-note fraction. Read the fraction form via the :attr:`interval` view.
 
         Special values:
 
@@ -258,7 +258,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
 
     @property
     def interval(self) -> Division:
-        """Read-only ``(numerator, denominator)`` beat-fraction view of ``gap``."""
+        """Read-only view of ``gap`` as a fraction of a whole note."""
         return tick_to_div(int(self._info.option_value))
 
     @property

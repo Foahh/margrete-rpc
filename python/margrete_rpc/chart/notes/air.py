@@ -280,7 +280,11 @@ class _AirAttachable:
         self._air = value
 
     def with_air(self, air: Air | AirSlide | AirHold) -> Self:
-        """Return a copy of this note with ``air`` attached, leaving the original unchanged."""
+        """Clone this note and attach the supplied ``air`` object to the clone.
+
+        The supplied air is shared; pass ``air.clone()`` for an independent attachment.
+        Its timing, lane, and width must match the host's attachment point when validated.
+        """
         from .transform import _clone
 
         new: Self = _clone(cast(Any, self))
@@ -288,6 +292,6 @@ class _AirAttachable:
         return new
 
     def add_air(self, air: Air | AirSlide | AirHold) -> Self:
-        """Attach ``air`` to this note in place and return ``self``."""
+        """Attach the supplied ``air`` object by reference and return ``self``."""
         self.air = air
         return self

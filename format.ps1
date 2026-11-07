@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Format Rust plugin and Python client sources in this repository.
+  Format Rust and Python sources, then apply Ruff lint fixes to python/.
 
 .PARAMETER SkipRust
   Do not run cargo fmt.
@@ -9,7 +9,7 @@
   Do not run ruff on the Python client.
 
 .PARAMETER Check
-  Use cargo fmt --check and ruff format --check
+  Check Rust formatting, Python formatting, and Python lint without changing files.
 
 .EXAMPLE
   .\format.ps1

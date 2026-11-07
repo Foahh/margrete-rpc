@@ -37,22 +37,22 @@ events without threading them through every call."""
 
 
 class Division(NamedTuple):
-    """A duration as a reduced ``(numerator, denominator)`` beat fraction.
+    """A duration as a fraction of a whole note.
 
-    The named view of a tick count (see :func:`tick_to_div`); e.g. ``Division(1, 4)`` is a
-    quarter note. To convert back to ticks use :func:`div_to_tick` or pass it where a
-    :data:`DivisionLike` is accepted."""
+    ``Division(1, 4)`` is a quarter note, regardless of the time signature. Convert to ticks
+    with :func:`div_to_tick` or pass it where a :data:`DivisionLike` is accepted.
+    """
 
     numerator: int
     denominator: int
 
 
 DivisionLike: TypeAlias = Division | tuple[int, int]
-"""An input duration as a ``(numerator, denominator)`` beat fraction.
+"""A ``(numerator, denominator)`` fraction of a whole note, e.g. ``(1, 4)`` for a quarter.
 
-The accepted, loose form for fractional durations; converted to ticks via :func:`div_to_tick`,
-e.g. ``(1, 4)`` is a quarter note. Pair with ``int`` (``int | DivisionLike``) to also
-accept a raw tick count. Functions return the canonical :class:`Division`."""
+Arguments typed ``int | DivisionLike`` also accept a duration in ticks. Fractional durations
+are quantized by :func:`div_to_tick`; they do not depend on the chart's time signature.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,12 +105,12 @@ def _measure_length(ts: _TimeSignature) -> int:
 
 
 class TimeCalculator:
-    """Converts between ticks and ``(bar, beat, offset)`` positions for a chart.
+    """Convert between ticks and positions using a snapshot of time-signature events.
 
-    Built from the chart's :class:`BeatEvent` list, which partitions the timeline into
-    time-signature segments. Bars before the first event default to 4/4. Most callers use
-    the module-level :func:`tick_to_pos` / :func:`pos_to_tick` instead of constructing this
-    directly.
+    Events are sorted by bar; negative bars are ignored and duplicate non-negative bars
+    raise ``ValueError``. Bars before the first event use 4/4. Rebuild the calculator after
+    changing the events, or use :func:`tick_to_pos` and :func:`pos_to_tick`, which construct
+    one per call.
     """
 
     def __init__(self, beat_events: Iterable[BeatEvent]) -> None:
@@ -323,10 +323,12 @@ def resolve_tick(value: int | PositionLike) -> int:
 
 
 def div_to_tick(numerator: int, denominator: int) -> int:
-    """Convert a ``numerator/denominator`` beat fraction to a tick count.
+    """Convert a fraction of a whole note to ticks.
 
     For example ``div_to_tick(1, 4)`` is the ticks in a quarter note and
-    ``div_to_tick(1, 1)`` equals ``TICK_RESOLUTION``.
+    ``div_to_tick(1, 1)`` equals ``TICK_RESOLUTION``. Fractional ticks round down; positive
+    durations smaller than one tick become one tick. Zero and negative numerators are
+    accepted.
 
     Args:
         numerator: Fraction numerator (number of divisions).
@@ -336,6 +338,7 @@ def div_to_tick(numerator: int, denominator: int) -> int:
         The duration in ticks.
 
     Raises:
+        TypeError: If either argument is not an int (booleans are rejected).
         ValueError: If the denominator is non-positive.
     """
     if type(numerator) is not int or type(denominator) is not int:
@@ -349,17 +352,20 @@ def div_to_tick(numerator: int, denominator: int) -> int:
 
 
 def tick_to_div(ticks: int) -> Division:
-    """Convert a tick count to the reduced ``(numerator, denominator)`` beat fraction.
+    """Express a non-negative tick count as a reduced fraction of a whole note.
 
-    The inverse of :func:`div_to_tick`; e.g. one beat's worth of ticks yields ``(1, 1)``.
+    ``TICK_RESOLUTION`` ticks gives ``Division(1, 1)``; a quarter note gives
+    ``Division(1, 4)``. Converting the result with :func:`div_to_tick` preserves the tick
+    count, but cannot recover a fraction that was quantized on its way to ticks.
 
     Args:
         ticks: Non-negative duration in ticks.
 
     Returns:
-        The reduced ``(numerator, denominator)`` beat fraction.
+        The reduced ``(numerator, denominator)`` whole-note fraction.
 
     Raises:
+        TypeError: If ``ticks`` is not an int (booleans are rejected).
         ValueError: If ``ticks`` is negative.
     """
     if type(ticks) is not int:
@@ -375,7 +381,7 @@ def resolve_division(value: int | DivisionLike) -> int:
 
     Args:
         value: An int tick count (returned unchanged) or a :data:`DivisionLike`
-            ``(numerator, denominator)`` beat fraction, converted via :func:`div_to_tick`.
+            whole-note fraction, converted via :func:`div_to_tick`.
 
     Returns:
         The duration in ticks.

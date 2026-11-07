@@ -15,7 +15,7 @@ def client_version() -> str:
 
 
 def plugin_api_is_compatible(api_version: int) -> bool:
-    """Return whether a plugin RPC API version is supported by this client."""
+    """Return whether the plugin API version exactly equals this client's API version."""
     return api_version == RPC_API_VERSION
 
 

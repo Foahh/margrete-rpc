@@ -1,31 +1,43 @@
 # Margrete RPC
 
-**Margrete RPC** is a [UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete) plugin plus a Python client package that lets you script **charting**.
+Margrete RPC lets Python scripts read and edit charts in
+[UMIGURI/Margrete](https://umgr.inonote.jp/en/margrete). A Rust plugin runs inside
+Margrete and communicates with the Python client over a local Windows named pipe.
 
 ## Documentation
 
-For installation instructions and usage examples of this project, see:
-https://mg.foahh.com
+See the [documentation](https://mg.foahh.com) for installation, tutorials, and the
+Python API reference.
 
-关于此项目的安装说明和使用示例请见：
-https://mg.foahh.com
+安装说明、教程和 Python API 参考请见[项目文档](https://mg.foahh.com)。
 
-## Motivation
+## Repository
 
-Existing tooling (including my earlier project, [margrete-air-curve-converter](https://github.com/Foahh/margrete-air-curve-converter)) can be useful for
-specific transforms, but it can also feel brittle when you want to:
+- [`python/margrete_rpc/`](python/margrete_rpc/): client, chart models, and pattern
+  utilities. Public docstrings supply the generated API reference.
+- [`plugin/src/`](plugin/src/): RPC server and Margrete ABI bindings.
+- [`proto/`](proto/): shared RPC schema and API compatibility version. Edit the
+  schema here; Python and Rust protobuf bindings are generated during builds.
+- [`examples/`](examples/): scripts for generating patterns and streaming video
+  into a chart.
+- [`website/`](website/): documentation site, including tutorials and generated
+  API reference pages.
 
-- generate / adjust **complex pattern**
-- apply **chart edits** programmatically
-- iterate quickly with small patterns instead of manual editing
-- leverage agentic charting using Codex / Claude Code
+## Development
 
-## Core repository content
+Use `uv` for Python development. From the repository root:
 
-- **[`plugin/`](plugin/)**: Rust Margrete plugin that hosts the local protobuf RPC **server** over a Windows named pipe
+```powershell
+uv run --extra dev pytest
+.\format.ps1 -Check
+```
 
-- **[`python/margrete_rpc`](python/margrete_rpc)**: Python **client** controlling the Margrete plugin
+Build the plugin on Windows with stable Rust, the MSVC target, and `protoc` on
+`PATH`. The SDK headers in `plugin/margrete/` are a reference, not a build dependency.
 
-- **[`proto/`](proto/)**: protobuf definitions shared by the plugin and the Python client
+```powershell
+.\build.ps1 -Test
+```
 
-- **[`website/`](website/)**: Fumadocs documentation site; auto-generates API reference from the Python package
+This runs Rust tests, then writes the release DLL and INI to `plugin/target/release/`.
+Add `-Publish` to replace `publish/` with those files and the installation README.

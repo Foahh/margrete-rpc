@@ -82,6 +82,8 @@ impl UiDispatcher {
         self.inner.thread_id
     }
 
+    /// Run on the owner thread and wait for completion, or run inline on that thread.
+    /// The owner must keep processing window messages while callers are waiting.
     pub fn call<R, F>(&self, f: F) -> Result<R>
     where
         R: Send,
@@ -115,6 +117,8 @@ impl UiDispatcher {
                 Err(payload) => data.panic = Some(payload),
             }
         }
+        // The queued pointer borrows this stack frame. Keep waiting until the job
+        // runs or shutdown removes it, so neither the closure nor its data outlive us.
         self.inner.queue.lock().expect("ui marshal").push_back(Job {
             run: run::<F, R>,
             data: SendPtr(std::ptr::from_mut(&mut data).cast()),

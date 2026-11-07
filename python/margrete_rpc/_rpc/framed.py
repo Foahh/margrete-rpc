@@ -23,6 +23,13 @@ class ByteStream(Protocol):
 
 @dataclass
 class FramedRpcClient:
+    """Serialize requests over one reusable connection and match response IDs.
+
+    Transport and framing failures close the connection; a later request reconnects.
+    Requests are never replayed automatically. A remote error response keeps the
+    connection open.
+    """
+
     endpoint: str
     timeout: float = 60.0
     tracer: Tracer = field(default_factory=NoopTracer)

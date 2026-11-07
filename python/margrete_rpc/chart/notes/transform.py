@@ -346,21 +346,26 @@ def merge(
     *,
     join: JointKindLike | Callable[[_SlideT, _SlideT], JointKindLike] = JointKind.STEP,
 ) -> _SlideT:
-    """Combine consecutive slides / air-slides / air-crushes into a single note.
+    """Build one note from non-overlapping slides, air-slides, or air-crushes.
 
-    The notes are chained end-to-begin in order; each boundary becomes a joint.
+    Inputs are sorted by start tick without changing the sequence or its notes. The result
+    is a clone of the earliest note with the remaining joints appended and all server IDs
+    cleared. A gap adds a joint at the next begin; when endpoints share a tick, the earlier
+    note's end geometry is kept.
 
     Args:
-        notes: The notes to merge, all of the same long type, in timeline order.
+        notes: Notes of exactly the same supported type, each with at least one joint.
         join: Kind of joint to insert at each boundary (:class:`JointKind`), or a callable
-            ``(prev, next) -> JointKindLike`` choosing it per boundary.
+            ``(prev, next) -> JointKindLike`` choosing it per boundary. Air-crush boundaries
+            always use control joints.
 
     Returns:
         A single merged note of the same type as the inputs.
 
     Raises:
-        ValueError: If ``notes`` is empty.
-        TypeError: If the notes are not a mergeable long type.
+        ValueError: If ``notes`` is empty, a note has no joints, notes overlap, or the result
+            fails validation.
+        TypeError: If the notes have mixed types or an unsupported type.
     """
     items = list(notes)
     if not items:
@@ -436,17 +441,22 @@ def _locate_split(
 def split(note: _SlideT, at: Joint | int | PositionLike) -> tuple[_SlideT, _SlideT]:
     """Divide a slide / air-slide / air-crush into two notes at a joint or time.
 
+    The source is unchanged. Both results are new notes without server IDs; a ground
+    slide's attached air is not copied. Between joints, lane, width, and height are linearly
+    interpolated and rounded to integers, even for curved segments.
+
     Args:
         note: The long note to split.
         at: Where to split: one of the note's :class:`Joint` objects, an absolute tick, or
-            a :data:`Position`.
+            a :data:`PositionLike`. The split must fall strictly between the begin and end.
 
     Returns:
         A ``(left, right)`` pair of notes meeting at the split point.
 
     Raises:
         TypeError: If ``note`` is not a splittable long type.
-        ValueError: If the note has fewer than two joints.
+        ValueError: If the note has fewer than two joints, the split point is invalid, or
+            either result fails validation.
     """
     if not isinstance(note, _SPLITTABLE):
         raise TypeError(

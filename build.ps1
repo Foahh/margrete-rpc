@@ -3,16 +3,18 @@
   Build the Margrete RPC Rust plugin (cdylib).
 
 .PARAMETER Configuration
-  Debug or Release (maps to Cargo's dev / release profiles).
+  Debug or Release (default). Selects Cargo's dev or release build profile.
 
 .PARAMETER Test
-  Run `cargo test` after a successful build.
+  Run `cargo test` before building. A test failure stops the build and packaging.
 
 .PARAMETER Publish
-  Copy margrete_rpc.dll and margrete_rpc.ini into repo-root publish/ for manual install.
+  Replace repo-root publish/ with margrete_rpc.dll, margrete_rpc.ini, and
+  README-install.txt from the selected build. Existing publish/ contents are removed.
 
 .PARAMETER InitSubmodules
-  Run `git submodule update --init --recursive` before the build (Margrete SDK headers).
+  Fetch the Margrete SDK header reference before building. The Rust plugin builds
+  without this submodule; use it when inspecting the SDK ABI.
 
 .EXAMPLE
   .\build.ps1

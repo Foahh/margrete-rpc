@@ -81,10 +81,13 @@ class Chart:
         )
 
     def normalized_events(self) -> Chart:
-        """Return a copy keeping only the last event for each duplicate key.
+        """Return a chart with the last event at each key, as used when applying edits.
 
-        Collapses events that share the same position (tick/bar) so each timeline slot
-        holds a single event.
+        BPM and note-speed events are keyed by tick, beat events by bar, and timeline-speed
+        events by ``(tick, timeline_id)``. Keys retain their first appearance order.
+
+        The result has new event lists but shares their event objects and the original
+        ``notes`` list. The source lists are not modified.
         """
         return Chart(
             notes=self.notes,

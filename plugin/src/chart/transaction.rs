@@ -9,6 +9,7 @@ use crate::rpc::proto::{ApplyEditRequest, Note as ProtoNote};
 use std::collections::{HashMap, HashSet};
 
 pub fn apply_edit(session: &MargreteSession, request: &ApplyEditRequest) -> Result<()> {
+    // Reject invalid ID references before deletions or undo recording can begin.
     validate_note_edit(session.chart(), request)?;
     with_undo(session, || {
         apply_edit_notes(session.chart(), request)?;
@@ -276,6 +277,8 @@ fn apply_edit_notes(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
 }
 
 fn apply_edit_events(chart: &Chart, request: &ApplyEditRequest) -> Result<()> {
+    // The client expands event replacement into explicit delete keys. The server
+    // retains no opening snapshot from which to infer additional deletions.
     for tick in &request.bpm_ticks_delete {
         if let Some(event) = chart.find_event_bpm(*tick) {
             chart.delete_event(event.get()?.as_event())?;

@@ -81,6 +81,8 @@ enum Color {
   COLOR_NONE = 35;
 }
 
+// Each pipe frame contains one envelope. Responses echo the request ID; IDs do
+// not identify transactions or prevent a repeated request from executing again.
 message Envelope {
   uint64 request_id = 1;
   oneof body {
@@ -120,6 +122,7 @@ message StatusResponse {
 }
 
 message Note {
+  // Present for existing notes. Omit IDs throughout a newly created note tree.
   optional int32 id = 1;
   NoteType type = 2;
   LongAttr long_attr = 3;
@@ -129,7 +132,7 @@ message Note {
   int32 x = 7;
   int32 width = 8;
   int32 height = 9;
-  int32 tick = 10;
+  int32 tick = 10; // Absolute chart position; 1920 ticks per whole note.
   int32 timeline_id = 11;
   int32 option_value = 12;
   repeated Note children = 13;
@@ -161,9 +164,15 @@ message EventScanTilIds {
   repeated int32 ids = 1;
 }
 
+// Read the current chart; no server-side transaction or document lock is kept.
 message BeginEditRequest {
+  // Scan from zero through the last note/child tick plus this value, inclusive.
+  // Zero or negative values use the server default of 19200 ticks.
   int32 event_scan_lookahead_ticks = 1;
+  // Absent: scan timelines 0..15 that contain notes, including child notes.
+  // Present but empty: scan all timelines 0..15. Otherwise scan the listed IDs.
   optional EventScanTilIds event_scan_til_ids = 2;
+  // False returns the playhead and scan settings with empty note/event lists.
   bool snapshot = 3;
 }
 
@@ -184,11 +193,19 @@ message TimelineSpeedKey {
   int32 timeline_id = 2;
 }
 
+// Apply to the document current when this request runs, as one undo recording.
+// The server does not compare against a previous BeginEditResponse.
 message ApplyEditRequest {
+  // Delete every root note, then create notes_upsert. All note IDs must be absent.
   bool replace_all_notes = 1;
+  // Without replacement: ID-less roots create trees; roots with IDs update fields
+  // and listed descendants in place. Descendants must already exist under their
+  // parent and have IDs. To change tree structure, delete and recreate the root.
   repeated Note notes_upsert = 2;
+  // Root IDs only; missing IDs are ignored. Applied before notes_upsert.
   repeated int32 note_ids_delete = 3;
 
+  // Events are upserted by tick, bar, or (tick, timeline_id), after deletions.
   repeated BpmEvent bpm_upsert = 4;
   repeated BeatChangeEvent beat_upsert = 5;
   repeated TimelineSpeedEvent til_upsert = 6;
@@ -198,6 +215,8 @@ message ApplyEditRequest {
   repeated int32 beat_bars_delete = 9;
   repeated TimelineSpeedKey til_keys_delete = 10;
   repeated int32 note_speed_ticks_delete = 11;
+  // Client replacement marker. The server applies only explicit deletes/upserts;
+  // the client supplies delete keys from its opening snapshot.
   bool replace_all_events = 12;
 }
 
