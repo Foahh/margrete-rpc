@@ -10,9 +10,8 @@ title: 谱面编辑
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+with Margrete() as m, m.open_edit() as tx:
+    tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
 ```
 
 当 `open_edit()` 的代码块正常退出时，修改会发送到 Margrete。如果这个代码块抛出异常，则不会发生任何事情。
@@ -44,17 +43,16 @@ with Margrete() as m:
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        for note in tx.chart.notes:
-            if isinstance(note, Tap):
-                print(f"Tap at tick {note.t}, lane {note.x}")
+with Margrete() as m, m.open_edit() as tx:
+    for note in tx.chart.notes:
+        if isinstance(note, Tap):
+            print(f"Tap at tick {note.t}, lane {note.x}")
 
-        for event in tx.chart.bpms:
-            print(f"BPM {event.bpm} at tick {event.t}")
+    for event in tx.chart.bpms:
+        print(f"BPM {event.bpm} at tick {event.t}")
 
-        for event in tx.chart.beats:
-            print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+    for event in tx.chart.beats:
+        print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
 ```
 
 ### 在当前光标处添加物件
@@ -65,9 +63,8 @@ with Margrete() as m:
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
+with Margrete() as m, m.open_edit() as tx:
+    tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
 ```
 
 ### 将所有物件向右移动两个轨道
@@ -118,7 +115,7 @@ from margrete_rpc.chart.events import BpmEvent, TimelineSpeedEvent
 
 with m.open_edit() as tx:
     tx.chart.bpms.append(BpmEvent(t=0, bpm=180.0))
-    tx.chart.tils.append(TimelineSpeedEvent(til=0, t=(4 * 1920), speed=1.5))
+    tx.chart.tils.append(TimelineSpeedEvent(til=0, t=4 * 1920, speed=1.5))
 
     # 删除 4/4 谱面中第 8 小节之后的物件速度事件。
     tx.chart.speeds = [

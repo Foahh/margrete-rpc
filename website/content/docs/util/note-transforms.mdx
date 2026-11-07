@@ -9,10 +9,9 @@ title: Note Transforms
 ```python
 from margrete_rpc import Margrete
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        for note in tx.chart.notes:
-            note.shift(x=2)  # move right by 2 lanes
+with Margrete() as m, m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.shift(x=2)  # move right by 2 lanes
 ```
 
 ## Mutating or cloning

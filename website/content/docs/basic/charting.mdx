@@ -10,9 +10,8 @@ We often use [`open_edit()`](/docs/reference/client/Margrete) to read and edit a
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
+with Margrete() as m, m.open_edit() as tx:
+    tx.chart.notes.append(Tap(t=(0, 0), x=4, w=4))
 ```
 
 The edit is sent to Margrete when the `open_edit()` block exits normally. If this block raises an
@@ -45,17 +44,16 @@ To read or modify a chart, use these fields returned by `open_edit()`:
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        for note in tx.chart.notes:
-            if isinstance(note, Tap):
-                print(f"Tap at tick {note.t}, lane {note.x}")
+with Margrete() as m, m.open_edit() as tx:
+    for note in tx.chart.notes:
+        if isinstance(note, Tap):
+            print(f"Tap at tick {note.t}, lane {note.x}")
 
-        for event in tx.chart.bpms:
-            print(f"BPM {event.bpm} at tick {event.t}")
+    for event in tx.chart.bpms:
+        print(f"BPM {event.bpm} at tick {event.t}")
 
-        for event in tx.chart.beats:
-            print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
+    for event in tx.chart.beats:
+        print(f"Bar {event.bar}: {event.beats_per_bar}/{event.beat_unit}")
 ```
 
 ### Add a note at the current cursor
@@ -66,9 +64,8 @@ Inside `open_edit()`, use `tx.current_tick`, which does not change while the blo
 from margrete_rpc import Margrete
 from margrete_rpc.chart.notes import Tap
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
+with Margrete() as m, m.open_edit() as tx:
+    tx.chart.notes.append(Tap(t=tx.current_tick, x=4, w=4))
 ```
 
 ### Move every note right by two lanes
@@ -119,7 +116,7 @@ from margrete_rpc.chart.events import BpmEvent, TimelineSpeedEvent
 
 with m.open_edit() as tx:
     tx.chart.bpms.append(BpmEvent(t=0, bpm=180.0))
-    tx.chart.tils.append(TimelineSpeedEvent(til=0, t=(4 * 1920), speed=1.5))
+    tx.chart.tils.append(TimelineSpeedEvent(til=0, t=4 * 1920, speed=1.5))
 
     # Remove note-speed events after bar 8 in a 4/4 chart.
     tx.chart.speeds = [

@@ -14,15 +14,14 @@ import CurveSlide1Image from "../assets/curve-slide-1.png";
     from margrete_rpc import Margrete
     from margrete_rpc.chart.util import Curve
 
-    with Margrete() as m:
-        with m.open_edit() as tx:
-            slide = (
-                Curve(t=(0, 0), x=-1)
-                .to(t=(1, 0), x=13, ease_x="in_out_cubic")
-                .to_slide(w=4)
-                .clamp()
-            )
-            tx.chart.notes.append(slide)
+    with Margrete() as m, m.open_edit() as tx:
+        slide = (
+            Curve(t=(0, 0), x=-1)
+            .to(t=(1, 0), x=13, ease_x="in_out_cubic")
+            .to_slide(w=4)
+            .clamp()
+        )
+        tx.chart.notes.append(slide)
     ```
 
     <ImageZoom src={CurveSlide1Image} alt="Curve slide example 1" width="300" />

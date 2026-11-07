@@ -25,15 +25,14 @@ import ExtensionToMargreteRpcImage from "./assets/extension-to-margrete-rpc.png"
    from margrete_rpc import Margrete
    from margrete_rpc.chart.notes import Tap
 
-   with Margrete() as m:
+   with Margrete() as m, m.open_edit() as tx:
        m.ping()
        status = m.status()
        print(status.server_version)
        print(status.instance_id)
 
-       with m.open_edit() as tx:
-           tx.chart.notes.append(Tap(t=0, x=0, w=4))
-           # changes are applied when this block exits successfully
+       tx.chart.notes.append(Tap(t=0, x=0, w=4))
+       # changes are applied when this block exits successfully
    ```
 
    ```bash

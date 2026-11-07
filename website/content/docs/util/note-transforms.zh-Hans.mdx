@@ -9,10 +9,9 @@ title: 物件变换
 ```python
 from margrete_rpc import Margrete
 
-with Margrete() as m:
-    with m.open_edit() as tx:
-        for note in tx.chart.notes:
-            note.shift(x=2)  # 向右移动 2 格
+with Margrete() as m, m.open_edit() as tx:
+    for note in tx.chart.notes:
+        note.shift(x=2)  # 向右移动 2 格
 ```
 
 大多数变换方法都有两种形式：

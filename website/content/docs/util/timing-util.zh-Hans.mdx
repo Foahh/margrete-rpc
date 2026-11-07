@@ -13,16 +13,15 @@ import TimingExampleImage from "../assets/timing-example.png";
 from margrete_rpc.chart.util import timing_easing
 
 with m.open_edit() as tx:
-    tx.chart.tils.extend(
-        timing_easing(
-            t0=(0, 0),
-            t1=(1, 0),
-            start_speed=0.0,
-            end_speed=10.0,
-            count=8,
-            easing="in_out_cubic",
-        )
+    events = timing_easing(
+        t0=(0, 0),
+        t1=(1, 0),
+        start_speed=0.0,
+        end_speed=10.0,
+        count=8,
+        easing="in_out_cubic",
     )
+    tx.chart.tils.extend(events)
 ```
 
 <ImageZoom src={TimingExampleImage} alt="Timing easing example" width="300" />
@@ -42,7 +41,7 @@ events = timing_glitch(
     count=4,
     speed_range=2.0,
     base_speed=1.0,
-    spike_ticks=5
+    spike_ticks=5,
 )
 
 with m.open_edit() as tx:

@@ -67,8 +67,8 @@ drops = rain(
     color="sky",
 )
 
-for n in drops:
-    n.clamp()
+for drop in drops:
+    drop.clamp()
 
 tx.chart.notes.extend(drops)
 ```
