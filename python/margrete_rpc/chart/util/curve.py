@@ -201,7 +201,8 @@ class Curve:
                 linked by short ramps, including for linear legs.
             interval: Fixed spacing in ticks or a whole-note fraction, e.g. ``(1, 16)``.
                 Measured from the curve start across all legs; ``None`` uses auto sampling.
-            ramp: Fixed-interval stair ramp duration in ticks (default ``5``), shortened for small gaps.
+            ramp: Duration of the sloped segment between steps, in ticks (default ``5``).
+                Requires ``mode="stair"`` and ``interval``; capped by the gap between samples.
 
         Returns:
             All sampled waypoints in order; useful to preview the realized joints before
@@ -271,7 +272,7 @@ class Curve:
             grid: Auto-sampling tick grid; mutually exclusive with ``interval``. See :meth:`points`.
             mode: ``"smooth"`` (default) or ``"stair"``. See :meth:`points`.
             interval: Fixed sampling spacing; ``None`` for automatic. See :meth:`points`.
-            ramp: Fixed-interval stair ramp duration in ticks. See :meth:`points`.
+            ramp: Duration of the sloped segment between steps, in ticks. See :meth:`points`.
 
         Returns:
             A :class:`Slide` whose joints follow the quantized path. Height is preserved
@@ -306,7 +307,7 @@ class Curve:
             grid: Auto-sampling tick grid; mutually exclusive with ``interval``. See :meth:`points`.
             mode: ``"smooth"`` (default) or ``"stair"``. See :meth:`points`.
             interval: Fixed sampling spacing; ``None`` for automatic. See :meth:`points`.
-            ramp: Fixed-interval stair ramp duration in ticks. See :meth:`points`.
+            ramp: Duration of the sloped segment between steps, in ticks. See :meth:`points`.
 
         Returns:
             An :class:`AirSlide` whose joints follow the quantized path.
@@ -343,7 +344,7 @@ class Curve:
             grid: Auto-sampling tick grid; mutually exclusive with ``interval``. See :meth:`points`.
             mode: ``"smooth"`` (default) or ``"stair"``. See :meth:`points`.
             interval: Fixed sampling spacing; ``None`` for automatic. See :meth:`points`.
-            ramp: Fixed-interval stair ramp duration in ticks. See :meth:`points`.
+            ramp: Duration of the sloped segment between steps, in ticks. See :meth:`points`.
 
         Returns:
             An :class:`AirCrush` whose joints follow the quantized path.

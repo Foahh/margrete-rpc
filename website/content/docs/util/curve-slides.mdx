@@ -142,6 +142,9 @@ slide = path.to_slide(w=4, mode="stair", interval=(1, 16), ramp=5)
 points = path.points(interval=120)
 ```
 
+`ramp` sets how many ticks the sloped segment between steps lasts (default `5`);
+smaller values make steeper steps.
+
 <ImageZoom
   src={CurveSlideIntervalImage}
   alt="Staircase Slide sampled at fixed sixteenth-note intervals"
