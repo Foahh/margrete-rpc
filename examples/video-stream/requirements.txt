@@ -1,4 +1,4 @@
-opencv-python>=4.9
+opencv-python>=5.0.0.93
 numpy>=1.26
 psutil>=6.0
 sounddevice>=0.4
