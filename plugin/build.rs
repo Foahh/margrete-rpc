@@ -64,12 +64,12 @@ fn main() {
     let ini_name = format!("{DLL_NAME}.ini");
     let ini_path = out_dir.join(&ini_name);
     fs::write(&ini_path, ini).expect("write ini");
-    if let Some(profile_dir) = out_dir.ancestors().nth(3) {
-        let _ = fs::write(
-            profile_dir.join(&ini_name),
-            fs::read(&ini_path).expect("read generated ini"),
-        );
-    }
+    let profile = env::var("PROFILE").expect("PROFILE");
+    let profile_dir = out_dir
+        .ancestors()
+        .find(|dir| dir.file_name().is_some_and(|name| name == profile.as_str()))
+        .expect("profile output directory");
+    fs::copy(&ini_path, profile_dir.join(&ini_name)).expect("stage generated ini");
 
     embed_version_resource(
         &version,
