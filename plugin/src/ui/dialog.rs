@@ -799,5 +799,6 @@ fn window_text(hwnd: HWND) -> Vec<u16> {
 fn active_config_differs(status: &ServerControllerStatus) -> bool {
     status.running
         && status.has_active_config
-        && status.loaded_config.logging != status.active_config.logging
+        && (status.loaded_config.logging != status.active_config.logging
+            || status.loaded_config.allow_low_integrity != status.active_config.allow_low_integrity)
 }

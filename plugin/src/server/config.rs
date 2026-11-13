@@ -8,6 +8,7 @@ pub struct ServerConfig {
     pub source_path: PathBuf,
     pub loaded_from_file: bool,
     pub logging: bool,
+    pub allow_low_integrity: bool,
 }
 
 impl Default for ServerConfig {
@@ -16,6 +17,7 @@ impl Default for ServerConfig {
             source_path: PathBuf::new(),
             loaded_from_file: false,
             logging: false,
+            allow_low_integrity: false,
         }
     }
 }
@@ -40,15 +42,20 @@ pub fn load_server_config(ini_path: impl AsRef<Path>) -> Result<ServerConfig> {
     ini.read(text.to_owned())
         .map_err(|err| PluginError::internal(format!("failed to parse server config: {err}")))?;
     if let Some(value) = ini.get("server", "logging") {
-        config.logging = parse_logging(&value)?;
+        config.logging = parse_switch("logging", &value)?;
+    }
+    if let Some(value) = ini.get("server", "allow_low_integrity") {
+        config.allow_low_integrity = parse_switch("allow_low_integrity", &value)?;
     }
     Ok(config)
 }
 
-fn parse_logging(value: &str) -> Result<bool> {
+fn parse_switch(key: &str, value: &str) -> Result<bool> {
     match value {
         "on" => Ok(true),
         "off" => Ok(false),
-        _ => Err(PluginError::internal("server logging must be on or off")),
+        _ => Err(PluginError::internal(format!(
+            "server {key} must be on or off"
+        ))),
     }
 }

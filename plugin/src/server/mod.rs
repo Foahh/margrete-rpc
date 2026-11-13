@@ -138,8 +138,11 @@ impl ServerController {
             });
         log::info!("server starting pipe={}", self.shared.pipe_name);
 
-        let mut server =
-            NamedPipeServer::new(self.shared.pipe_name.clone(), Arc::clone(&self.router));
+        let mut server = NamedPipeServer::new(
+            self.shared.pipe_name.clone(),
+            Arc::clone(&self.router),
+            config.allow_low_integrity,
+        );
         if let Err(err) = server.start() {
             log::error!("pipe server failed to start: {err}");
             ui.shutdown();
@@ -213,8 +216,13 @@ fn log_config(config: &ServerConfig, label: &str, log_path: &Path) {
         );
     }
     log::info!(
-        "{label} logging={} resolved_log={}",
+        "{label} logging={} allow_low_integrity={} resolved_log={}",
         if config.logging { "on" } else { "off" },
+        if config.allow_low_integrity {
+            "on"
+        } else {
+            "off"
+        },
         if log_path.as_os_str().is_empty() {
             "(disabled)".to_string()
         } else {
@@ -236,6 +244,7 @@ mod tests {
         let mut occupying = NamedPipeServer::new(
             controller.status().pipe_name,
             Arc::new(RequestRouter::new(ptr::null_mut())),
+            false,
         );
         occupying.start().expect("occupy");
         controller.start(ptr::null_mut());

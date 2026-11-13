@@ -12,6 +12,30 @@ fn config_uses_defaults_when_file_is_missing() {
     assert_eq!(config.source_path.file_name().unwrap(), "missing-file.ini");
     assert!(!config.loaded_from_file);
     assert!(!config.logging);
+    assert!(!config.allow_low_integrity);
+}
+
+#[test]
+fn config_reads_low_integrity_switch_and_rejects_invalid_values() {
+    let dir = std::env::temp_dir().join(format!("margrete-low-integrity-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("server.ini");
+    for (value, expected) in [("on", true), ("off", false)] {
+        fs::write(&path, format!("[server]\nallow_low_integrity = {value}\n")).unwrap();
+        assert_eq!(
+            load_server_config(&path).unwrap().allow_low_integrity,
+            expected
+        );
+    }
+    fs::write(&path, "[server]\nallow_low_integrity = true\n").unwrap();
+    assert!(
+        load_server_config(&path)
+            .unwrap_err()
+            .to_string()
+            .contains("server allow_low_integrity must be on or off")
+    );
+    fs::remove_file(path).unwrap();
+    fs::remove_dir(dir).unwrap();
 }
 
 #[test]

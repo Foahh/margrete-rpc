@@ -1,6 +1,6 @@
 [package]
 name = "margrete_rpc"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2024"
 description = "Local RPC/protobuf bridge for Margrete"
 publish = false
@@ -17,6 +17,7 @@ log = "0.4"
 prost = "0.14"
 rand = "0.10"
 thiserror = "2"
+widestring = "1"
 windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Environment", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Controls", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [build-dependencies]

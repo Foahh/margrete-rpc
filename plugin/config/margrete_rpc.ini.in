@@ -5,3 +5,6 @@ dev = @DEVELOPER@
 
 [server]
 logging = off
+
+# Allow low-integrity pipe clients.
+allow_low_integrity = on
