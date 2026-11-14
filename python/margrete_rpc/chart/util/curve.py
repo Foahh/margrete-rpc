@@ -198,6 +198,8 @@ class Curve:
 
         Auto smooth sampling fits both axes within half a unit at the grid samples.
         Flat endpoint approaches are added when they improve the fit.
+        Joint positions are refined against finer samples, constraining each leg's
+        error and slope variation on both axes while keeping turns and pauses fixed.
 
         Args:
             grid: Auto-sampling tick grid; omitted uses ``5``. Mutually exclusive with ``interval``.
@@ -520,6 +522,7 @@ def _sample_segment(
     keep_lanes = dx > 0 and (dh == 0 or dx <= dh)
     last_x = x0
     anchors = [0]
+    fixed = {t0, t1}
     for i, ((_, px, ph), (_, rx, rh), (_, qx, qh)) in enumerate(
         zip(reals, reals[1:], reals[2:]), 1
     ):
@@ -530,12 +533,16 @@ def _sample_segment(
         if turns_x or turns_h or pause or crossing:
             anchors.append(i)
             last_x = round(rx)
+        if turns_x or turns_h or pause:
+            fixed.add(reals[i][0])
     anchors.append(len(reals) - 1)
 
     pts = [Waypoint(t0, x0, h0)]
     for start, end in zip(anchors, anchors[1:]):
         pts.extend(_fit_samples(reals[start : end + 1])[1:])
     _fit_endpoints(pts, reals)
+    pts = list(_drop_collinear(pts))
+    _refine_points(pts, fixed, grid, ease_x, ease_h)
     return _drop_collinear(pts)
 
 
@@ -634,6 +641,171 @@ def _fit_tail(reals: list[tuple[int, float, float]]) -> int | None:
         low_h = max(low_h, (h - h0 - 0.5) / t)
         high_h = min(high_h, (h - h0 + 0.5) / t)
     return best_tick if best_score < baseline - _LINEAR_TOL * max(1, abs(baseline)) else None
+
+
+def _slope_variation(points: list[Waypoint]) -> tuple[float, float]:
+    slopes = [
+        ((b.x - a.x) / (b.t - a.t), (b.h - a.h) / (b.t - a.t)) for a, b in zip(points, points[1:])
+    ]
+    return (
+        sum(abs(b[0] - a[0]) for a, b in zip(slopes, slopes[1:])),
+        sum(abs(b[1] - a[1]) for a, b in zip(slopes, slopes[1:])),
+    )
+
+
+def _refine_points(
+    pts: list[Waypoint], fixed: set[int], grid: int, ease_x: Easing, ease_h: Easing
+) -> None:
+    """Move grid joints to reduce error without worsening either axis or its slope variation."""
+    if len(pts) <= 2:
+        return
+    first, last = pts[0], pts[-1]
+    start_tick = first.t
+    span = last.t - start_tick
+    # Check between grid samples without expanding coarse, long legs to every tick.
+    check_step = max(1, min(grid // 4, span // 4096))
+    ticks = sorted(
+        set(range(start_tick, last.t, check_step))
+        | set(range((start_tick // grid + 1) * grid, last.t, grid))
+        | {last.t}
+    )
+    sample_index = {t: i for i, t in enumerate(ticks)}
+    reals = [
+        (
+            first.x + ease_x.solve((t - start_tick) / span) * (last.x - first.x),
+            first.h + ease_h.solve((t - start_tick) / span) * (last.h - first.h),
+        )
+        for t in ticks
+    ]
+    reals[0], reals[-1] = (float(first.x), float(first.h)), (float(last.x), float(last.h))
+
+    # Each axis records time-weighted squared error, probe peak and grid peak.
+    cache: dict[tuple[int, int], tuple[tuple[float, float, float], ...]] = {}
+    limits: tuple[tuple[float, float, float], ...] | None = None
+
+    def error(a: Waypoint, b: Waypoint) -> tuple[tuple[float, float, float], ...]:
+        key = (a.t, b.t)
+        if key not in cache:
+            ta, tb = key
+            dt = tb - ta
+            sx, sh = (b.x - a.x) / dt, (b.h - a.h) / dt
+            ax, ah = a.x, a.h
+            bound_x, bound_h = (limits[0][1], limits[1][1]) if limits else (inf, inf)
+            bound_grid_x, bound_grid_h = (limits[0][2], limits[1][2]) if limits else (inf, inf)
+            square_x = square_h = peak_x = peak_h = grid_x = grid_h = 0.0
+            for j in range(sample_index[ta], sample_index[tb] + 1):
+                t = ticks[j]
+                x, h = reals[j]
+                ex, eh = abs(ax + (t - ta) * sx - x), abs(ah + (t - ta) * sh - h)
+                if (
+                    ex > bound_x + _LINEAR_TOL
+                    or eh > bound_h + _LINEAR_TOL
+                    or (
+                        t % grid == 0
+                        and (ex > bound_grid_x + _LINEAR_TOL or eh > bound_grid_h + _LINEAR_TOL)
+                    )
+                ):
+                    cache[key] = ((inf, inf, inf), (inf, inf, inf))
+                    return cache[key]
+                # Count a shared joint once in the path's squared error.
+                if t < tb:
+                    weight = ticks[j + 1] - t
+                    square_x += ex * ex * weight
+                    square_h += eh * eh * weight
+                if ex > peak_x:
+                    peak_x = ex
+                if eh > peak_h:
+                    peak_h = eh
+                if t % grid == 0:
+                    if ex > grid_x:
+                        grid_x = ex
+                    if eh > grid_h:
+                        grid_h = eh
+            cache[key] = ((square_x, peak_x, grid_x), (square_h, peak_h, grid_h))
+        return cache[key]
+
+    def directions(a: Waypoint, b: Waypoint) -> tuple[int, int]:
+        return (b.x > a.x) - (b.x < a.x), (b.h > a.h) - (b.h < a.h)
+
+    edges = [error(a, b) for a, b in zip(pts, pts[1:])]
+    squared = tuple(sum(edge[axis][0] for edge in edges) for axis in (0, 1))
+    limits = tuple(
+        (squared[axis], max(e[axis][1] for e in edges), max(e[axis][2] for e in edges))
+        for axis in (0, 1)
+    )
+    variation = _slope_variation(pts)
+    variation_limit = variation
+    for sweep in range(8):
+        changed = False
+        indices = range(1, len(pts) - 1)
+        for i in indices if sweep % 2 == 0 else reversed(indices):
+            a, cur, b = pts[i - 1 : i + 2]
+            if cur.t in fixed:
+                continue
+            candidates = {cur.t + step * grid for step in range(-8, 9)}
+            candidates.update(
+                round((a.t + (b.t - a.t) * step / 16) / grid) * grid for step in range(1, 16)
+            )
+            window = pts[max(0, i - 2) : i + 3]
+            old_variation = _slope_variation(window)
+            best, best_squared, best_variation = cur, squared, variation
+            best_edges = edges[i - 1 : i + 1]
+            for t in sorted(candidates):
+                if t == cur.t or not a.t < t < b.t:
+                    continue
+                x, h = reals[sample_index[t]]
+                candidate = Waypoint(t, round(x), round(h))
+                if directions(a, candidate) != directions(a, cur) or directions(
+                    candidate, b
+                ) != directions(cur, b):
+                    continue
+                updated = window.copy()
+                updated[min(i, 2)] = candidate
+                local_variation = _slope_variation(updated)
+                new_variation = tuple(
+                    variation[axis] - old_variation[axis] + local_variation[axis] for axis in (0, 1)
+                )
+                if any(
+                    new_variation[axis] > variation_limit[axis] + _LINEAR_TOL for axis in (0, 1)
+                ):
+                    continue
+                left = error(a, candidate)
+                if left[0][0] == inf:
+                    continue
+                right = error(candidate, b)
+                if right[0][0] == inf:
+                    continue
+                pair = [left, right]
+                new_squared = tuple(
+                    squared[axis]
+                    - edges[i - 1][axis][0]
+                    - edges[i][axis][0]
+                    + pair[0][axis][0]
+                    + pair[1][axis][0]
+                    for axis in (0, 1)
+                )
+                if sum(new_squared) >= sum(best_squared) - _LINEAR_TOL:
+                    continue
+                if any(
+                    new_squared[axis] > limits[axis][0] + _LINEAR_TOL
+                    or max(e[axis][1] for e in pair) > limits[axis][1] + _LINEAR_TOL
+                    or max(e[axis][2] for e in pair) > limits[axis][2] + _LINEAR_TOL
+                    for axis in (0, 1)
+                ):
+                    continue
+                best, best_squared, best_variation, best_edges = (
+                    candidate,
+                    new_squared,
+                    new_variation,
+                    pair,
+                )
+            if best is not cur:
+                pts[i] = best
+                squared, variation = best_squared, best_variation
+                edges[i - 1 : i + 1] = best_edges
+                changed = True
+        if not changed:
+            break
 
 
 def _stored_height(obj: object) -> int:
