@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from math import inf
 from typing import Literal, TypeAlias
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
@@ -194,6 +195,9 @@ class Curve:
         ramp: int | None = None,
     ) -> tuple[Waypoint, ...]:
         """Quantize the path into integer waypoints.
+
+        Auto smooth sampling fits both axes within half a unit at the grid samples.
+        Flat endpoint approaches are added when they improve the fit.
 
         Args:
             grid: Auto-sampling tick grid; omitted uses ``5``. Mutually exclusive with ``interval``.
@@ -510,32 +514,126 @@ def _sample_segment(
     if _is_linear(reals):
         return (Waypoint(t0, x0, h0), Waypoint(t1, x1, h1))
 
+    # Retain lane crossings when lanes are the coarser axis; height-only paths
+    # need error-based spacing instead of a joint for every integer height.
     dx, dh = abs(x1 - x0), abs(h1 - h0)
-    drive_x = dh == 0 or (dx != 0 and dx <= dh)
-
-    terminal_start = t1
-    for t, rx, rh in reversed(reals[1:-1]):
-        if (round(rx), round(rh)) != (x1, h1):
-            break
-        terminal_start = t
-
-    pts = [Waypoint(t0, x0, h0)]
-    last = x0 if drive_x else h0
-    for (_, px, ph), (t, rx, rh), (_, qx, qh) in zip(reals, reals[1:], reals[2:]):
-        v = rx if drive_x else rh
-        nx, nh = round(rx), round(rh)
-        # A reversal can fall short of the next integer crossing on either axis.
+    keep_lanes = dx > 0 and (dh == 0 or dx <= dh)
+    last_x = x0
+    anchors = [0]
+    for i, ((_, px, ph), (_, rx, rh), (_, qx, qh)) in enumerate(
+        zip(reals, reals[1:], reals[2:]), 1
+    ):
         turns_x = px < rx > qx or px > rx < qx
         turns_h = ph < rh > qh or ph > rh < qh
-        turn = (turns_x or turns_h) and (nx, nh) != (pts[-1].x, pts[-1].h)
         pause = _pause_boundary(px, rx, qx) or _pause_boundary(ph, rh, qh)
-        advanced = v >= last + 1 or v <= last - 1
-        # Suppress a rounded terminal plateau, retaining real pauses and earlier crossings.
-        if turn or pause or (advanced and t < terminal_start):
-            pts.append(Waypoint(t, nx, nh))
-            last = nx if drive_x else nh
-    pts.append(Waypoint(t1, x1, h1))
+        crossing = keep_lanes and (rx >= last_x + 1 or rx <= last_x - 1)
+        if turns_x or turns_h or pause or crossing:
+            anchors.append(i)
+            last_x = round(rx)
+    anchors.append(len(reals) - 1)
+
+    pts = [Waypoint(t0, x0, h0)]
+    for start, end in zip(anchors, anchors[1:]):
+        pts.extend(_fit_samples(reals[start : end + 1])[1:])
+    _fit_endpoints(pts, reals)
     return _drop_collinear(pts)
+
+
+def _fit_samples(reals: list[tuple[int, float, float]]) -> list[Waypoint]:
+    """Fit long quantized chords within half a unit on both axes at each grid sample."""
+    t, x, h = reals[0]
+    out = [Waypoint(t, round(x), round(h))]
+    start = 0
+    while start < len(reals) - 1:
+        a = out[-1]
+        low_x = low_h = -inf
+        high_x = high_h = inf
+        end = start + 1
+        for i in range(start + 1, len(reals)):
+            t, x, h = reals[i]
+            dt = t - a.t
+            sx, sh = (round(x) - a.x) / dt, (round(h) - a.h) / dt
+            if (
+                low_x - _LINEAR_TOL / dt <= sx <= high_x + _LINEAR_TOL / dt
+                and low_h - _LINEAR_TOL / dt <= sh <= high_h + _LINEAR_TOL / dt
+            ):
+                end = i
+            # Every intervening sample constrains the slope of future chords.
+            low_x = max(low_x, (x - a.x - 0.5) / dt)
+            high_x = min(high_x, (x - a.x + 0.5) / dt)
+            low_h = max(low_h, (h - a.h - 0.5) / dt)
+            high_h = min(high_h, (h - a.h + 0.5) / dt)
+            if low_x > high_x or low_h > high_h:
+                break
+        t, x, h = reals[end]
+        out.append(Waypoint(t, round(x), round(h)))
+        start = end
+    return out
+
+
+def _fit_endpoints(pts: list[Waypoint], reals: list[tuple[int, float, float]]) -> None:
+    """Add flat endpoint approaches when they reduce squared reconstruction error."""
+    a, b = pts[-2:]
+    tail = [(t - a.t, x, h) for t, x, h in reals if a.t <= t <= b.t]
+    offset = _fit_tail(tail)
+    if offset is not None:
+        pts.insert(-1, Waypoint(a.t + offset, b.x, b.h))
+
+    a, b = pts[:2]
+    head = [(b.t - t, x, h) for t, x, h in reversed(reals) if a.t <= t <= b.t]
+    offset = _fit_tail(head)
+    if offset is not None:
+        pts.insert(1, Waypoint(b.t - offset, a.x, a.h))
+
+
+def _fit_tail(reals: list[tuple[int, float, float]]) -> int | None:
+    """Choose a grid-aligned terminal plateau using prefix sums for squared error."""
+    _, x0, h0 = reals[0]
+    _, x1, h1 = reals[-1]
+    x0, h0, x1, h1 = round(x0), round(h0), round(x1), round(h1)
+    dx, dh = x1 - x0, h1 - h0
+    if dx == dh == 0:
+        return None
+
+    terminal = len(reals) - 1
+    while terminal > 0 and (round(reals[terminal - 1][1]), round(reals[terminal - 1][2])) == (
+        x1,
+        h1,
+    ):
+        terminal -= 1
+
+    low_x = low_h = -inf
+    high_x = high_h = inf
+    sum_t = sum_t2 = sum_p = sum_tp = 0.0
+    best_score = inf
+    best_tick = None
+    baseline = 0.0
+    for i, (t, x, h) in enumerate(reals):
+        projection = (x0 - x1) * (x - x1) + (h0 - h1) * (h - h1)
+        sum_t += t
+        sum_t2 += t * t
+        sum_p += projection
+        sum_tp += t * projection
+        if t == 0:
+            continue
+        # The omitted sum of squared real values is common to all candidates.
+        score = (dx * dx + dh * dh) * (i + 1 - 2 * sum_t / t + sum_t2 / (t * t)) - 2 * (
+            sum_p - sum_tp / t
+        )
+        if i == len(reals) - 1:
+            baseline = score
+        elif (
+            i >= terminal
+            and low_x - _LINEAR_TOL / t <= dx / t <= high_x + _LINEAR_TOL / t
+            and low_h - _LINEAR_TOL / t <= dh / t <= high_h + _LINEAR_TOL / t
+            and score < best_score
+        ):
+            best_score, best_tick = score, t
+        low_x = max(low_x, (x - x0 - 0.5) / t)
+        high_x = min(high_x, (x - x0 + 0.5) / t)
+        low_h = max(low_h, (h - h0 - 0.5) / t)
+        high_h = min(high_h, (h - h0 + 0.5) / t)
+    return best_tick if best_score < baseline - _LINEAR_TOL * max(1, abs(baseline)) else None
 
 
 def _stored_height(obj: object) -> int:

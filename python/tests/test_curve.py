@@ -19,6 +19,20 @@ def _ideal_x(path_t0: int, path_t1: int, x0: int, x1: int, ease_name: str, t: in
     return x0 + EASINGS[ease_name].solve(p) * (x1 - x0)
 
 
+def _assert_sample_error(path: Curve, pts: tuple[Waypoint, ...], grid: int) -> None:
+    start, end = path.waypoints
+    for a, b in zip(pts, pts[1:]):
+        for t in range((a.t // grid + 1) * grid, b.t + 1, grid):
+            f = (t - a.t) / (b.t - a.t)
+            p = (t - start.t) / (end.t - start.t)
+            for axis, ease in (("x", end.ease_x), ("h", end.ease_h)):
+                ideal = getattr(start, axis) + ease.solve(p) * (
+                    getattr(end, axis) - getattr(start, axis)
+                )
+                actual = getattr(a, axis) + f * (getattr(b, axis) - getattr(a, axis))
+                assert abs(actual - ideal) <= 0.5 + 1e-9
+
+
 def test_anchor_alone_cannot_materialize() -> None:
     # A bare Curve(...) has a single waypoint: it is an anchor, not yet a usable path.
     anchor = Curve(t=0, x=0, h=40)
@@ -90,34 +104,33 @@ def test_single_height_constant() -> None:
 
 
 @pytest.mark.parametrize("grid", [1, 5, 20])
-def test_smaller_delta_axis_drives_no_flat_runs(grid: int) -> None:
-    # x moves 12 lanes, h moves 100 units: the smaller-delta axis (x) drives sampling, so x
-    # advances one lane per joint -- no long flat X runs that would look like a blocky
-    # staircase in the main view -- and the joint count tracks the x delta, not the h delta.
-    pts = Curve(t=0, x=1, h=20).to(t=960, x=13, h=120, ease_h="in_out_sine").points(grid=grid)
+def test_lane_crossings_leave_room_for_height_fitting(grid: int) -> None:
+    path = Curve(t=0, x=1, h=20).to(t=960, x=13, h=120, ease_h="in_out_sine")
+    pts = path.points(grid=grid)
     xs = [wp.x for wp in pts]
     assert xs == sorted(xs)
-    assert all(b > a for a, b in zip(xs, xs[1:]))  # strictly increasing: no repeated X
-    assert len(pts) <= 20  # far fewer than the ~100 the height delta would force
+    assert len(pts) <= 25
+    _assert_sample_error(path, pts, grid)
 
 
 @pytest.mark.parametrize("grid", [1, 5, 20])
-def test_height_drives_when_it_has_smaller_delta(grid: int) -> None:
-    # When height has the smaller delta, it drives instead and gains no flat runs.
-    pts = Curve(t=0, x=0, h=0).to(t=960, x=12, h=4, ease_h="in_out_sine").points(grid=grid)
+def test_small_height_delta_preserves_both_axes(grid: int) -> None:
+    path = Curve(t=0, x=0, h=0).to(t=960, x=12, h=4, ease_h="in_out_sine")
+    pts = path.points(grid=grid)
     hs = [wp.h for wp in pts]
     assert hs == sorted(hs)
-    assert all(b > a for a, b in zip(hs, hs[1:]))
+    _assert_sample_error(path, pts, grid)
 
 
 @pytest.mark.parametrize("grid", [1, 5, 20])
 @pytest.mark.parametrize("x0,x1", [(0, 12), (12, 0)])
-def test_eased_driver_has_no_flat_start_run(grid: int, x0: int, x1: int) -> None:
-    # A flat-starting easing must not emit two joints at the same lane (the j1 == j2 == 0 then
-    # j3 == 1 artifact): the driver advances by one lane every joint, never repeating a value.
+def test_eased_start_can_hold_start_lane_without_interior_stairs(
+    grid: int, x0: int, x1: int
+) -> None:
     pts = Curve(t=0, x=x0).to(t=960, x=x1, ease_x="in_quad").points(grid=grid)
     xs = [wp.x for wp in pts]
-    assert all(b != a for a, b in zip(xs, xs[1:]))  # no flat lane segments anywhere
+    assert xs[:2] == [x0, x0]
+    assert all(b != a for a, b in zip(xs[1:], xs[2:]))
 
 
 @pytest.mark.parametrize(
@@ -130,12 +143,13 @@ def test_eased_driver_has_no_flat_start_run(grid: int, x0: int, x1: int) -> None
     ],
 )
 @pytest.mark.parametrize("x0,x1", [(0, 12), (12, 0)])
-def test_quantization_does_not_reach_endpoint_early(
+def test_endpoint_approach_preserves_timing_without_interior_stairs(
     span: int, grid: int, ease: str, x0: int, x1: int
 ) -> None:
     pts = Curve(t=0, x=x0).to(t=span, x=x1, ease_x=ease).points(grid=grid)
     assert pts[-1].t == span
-    assert all(a.x != b.x for a, b in zip(pts, pts[1:]))
+    assert all(a.x != b.x for a, b in zip(pts[1:-2], pts[2:-1]))
+    assert all((b.x - a.x) * (x1 - x0) >= 0 for a, b in zip(pts, pts[1:]))
 
 
 @pytest.mark.parametrize("grid", [1, 5, 20])
@@ -176,7 +190,8 @@ def test_default_grid_materializes_smooth_clamped_cubic(materializer: str) -> No
     assert (points[-1].x, points[-1].w) == (13, 3)
     assert all(point.t % 5 == 0 for point in points[1:-1])
     centers = [point.x + point.w / 2 for point in points]
-    assert all(b > a for a, b in zip(centers, centers[1:]))
+    assert all(b >= a for a, b in zip(centers, centers[1:]))
+    assert all(b > a for a, b in zip(centers[1:-2], centers[2:-1]))
     assert len(points) > 2  # retain the easing instead of collapsing to a straight line
 
 
