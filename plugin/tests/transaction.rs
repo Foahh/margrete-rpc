@@ -5,7 +5,6 @@ use margrete_rpc::abi::{Event, MP_FALSE, MP_NOTETYPE_HOLD, MP_NOTETYPE_TAP, MP_T
 use margrete_rpc::chart::session::MargreteSession;
 use margrete_rpc::chart::transaction::apply_edit;
 use margrete_rpc::rpc::proto::{ApplyEditRequest, Note, NoteType};
-use std::sync::atomic::Ordering;
 
 #[test]
 fn margrete_session_releases_acquired_interfaces() {
@@ -71,7 +70,7 @@ fn apply_edit_releases_created_note_when_root_append_fails() {
 
 #[test]
 fn apply_edit_releases_created_note_tree_when_child_append_fails() {
-    APPEND_CHILD_RESULT.store(MP_FALSE, Ordering::SeqCst);
+    APPEND_CHILD_RESULT.set(MP_FALSE);
     let context = FakeContext::new();
     let session = MargreteSession::new(context.as_ptr()).unwrap();
     let mut request = ApplyEditRequest::default();
@@ -84,7 +83,7 @@ fn apply_edit_releases_created_note_tree_when_child_append_fails() {
         ..Default::default()
     });
     let result = apply_edit(&session, &request);
-    APPEND_CHILD_RESULT.store(MP_TRUE, Ordering::SeqCst);
+    APPEND_CHILD_RESULT.set(MP_TRUE);
     assert!(result.is_err());
     assert_eq!(context.undo.commit_count, 0);
     assert_eq!(context.undo.discard_count, 1);

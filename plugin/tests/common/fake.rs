@@ -1,8 +1,11 @@
 use margrete_rpc::abi::*;
+use std::cell::Cell;
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
-pub static APPEND_CHILD_RESULT: AtomicI32 = AtomicI32::new(MP_TRUE);
+thread_local! {
+    pub static APPEND_CHILD_RESULT: Cell<MpInteger> = const { Cell::new(MP_TRUE) };
+}
 
 fn bump(count: &AtomicI32) -> MpInteger {
     count.fetch_add(1, Ordering::SeqCst) + 1
@@ -507,7 +510,7 @@ unsafe extern "C" fn note_get_parent(_this: *mut Note, _pp: *mut *mut Note) -> M
     MP_FALSE
 }
 unsafe extern "C" fn note_append_child(this: *mut Note, child: *mut Note) -> MpBoolean {
-    let result = APPEND_CHILD_RESULT.load(Ordering::SeqCst);
+    let result = APPEND_CHILD_RESULT.get();
     if result != MP_TRUE {
         return result;
     }
