@@ -88,11 +88,6 @@ with m.open_edit() as tx:
     tx.chart.notes = [note for note in tx.chart.notes if note.x >= 4]
 ```
 
-<Callout type="warn">
-  There is a known issue with undoing edits that deleted notes. See
-  [Limitations](/docs/limitations#undo-note-deletion) for details.
-</Callout>
-
 ### Replace all notes
 
 Use `replace_all_notes=True` when the script is intentionally replacing every note in the chart.

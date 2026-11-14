@@ -31,11 +31,3 @@ with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
 ```
 
 Pass `event_scan_til_ids=[]` to scan common TIL (`0 — 15`).
-
-## Undo note deletion
-
-When your code **deletes** notes, pressing Undo in Margrete restores those notes in a duplicated state instead of cleanly reversing the deletion.
-
-### Workarounds
-
-- Use [`Margrete.undo()`](/docs/reference/client/Margrete) instead of undoing in Margrete.

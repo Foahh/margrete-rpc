@@ -31,11 +31,3 @@ with m.open_edit(event_scan_til_ids=[0, 1, 2]) as tx:
 ```
 
 传入 `event_scan_til_ids=[]` 会扫描常见的 TIL（`0` 到 `15`）。
-
-## 撤销物件删除
-
-当你的代码**删除**物件后，如果在 Margrete 中按下撤销，这些物件会以重复的状态恢复，而不是正常撤销删除。
-
-### 处理方法
-
-- 使用 [`Margrete.undo()`](/docs/reference/client/Margrete)，而不是在 Margrete 中撤销。

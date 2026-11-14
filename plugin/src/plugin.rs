@@ -6,6 +6,7 @@ use crate::error::Result;
 use crate::meta;
 use crate::server::ServerController;
 use crate::server::config::{ServerConfig, load_server_config};
+use crate::ui::undo::NativeUndoGuard;
 use crate::wide::wide_to_path;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicI32, Ordering};
@@ -14,6 +15,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 pub struct Plugin {
     vtable: *const CommandVTable,
     ref_count: AtomicI32,
+    native_undo: Option<NativeUndoGuard>,
     controller: ServerController,
 }
 
@@ -38,6 +40,7 @@ impl Plugin {
         Ok(Box::new(Self {
             vtable: &COMMAND_VT,
             ref_count: AtomicI32::new(0),
+            native_undo: None,
             controller: ServerController::new(config, dll_directory())?,
         }))
     }
@@ -141,6 +144,13 @@ unsafe extern "C" fn plugin_invoke(this: *mut Command, ctx: *mut Context) -> MpB
         return MP_FALSE;
     }
     let plugin = Plugin::from_ptr(this);
+    match NativeUndoGuard::install(ctx) {
+        Ok(guard) => plugin.native_undo = Some(guard),
+        Err(err) => {
+            log::error!("failed to protect native undo: {err}");
+            return MP_FALSE;
+        }
+    }
     let config_error = try_reload_config(&plugin.controller);
     if !plugin.controller.running() && config_error.is_empty() {
         plugin.controller.start(ctx);

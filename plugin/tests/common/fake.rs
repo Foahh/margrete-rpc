@@ -370,6 +370,7 @@ struct FakeContextInner {
     document: *mut FakeDocument,
     current_tick: MpInteger,
     updated: AtomicBool,
+    main_window: *mut c_void,
 }
 
 pub struct FakeContext {
@@ -393,6 +394,7 @@ impl FakeContext {
             document: document_raw,
             current_tick: 960,
             updated: AtomicBool::new(false),
+            main_window: std::ptr::null_mut(),
         });
         Self {
             inner,
@@ -420,6 +422,10 @@ impl FakeContext {
 
     pub fn updated(&self) -> bool {
         self.inner.updated.load(Ordering::SeqCst)
+    }
+
+    pub fn set_main_window(&mut self, hwnd: *mut c_void) {
+        self.inner.main_window = hwnd;
     }
 
     pub fn document(&self) -> &FakeDocument {
@@ -760,9 +766,8 @@ unsafe extern "C" fn chart_delete_note(this: *mut Chart, note: *mut Note) -> MpB
             return chart.delete_note_result;
         }
         let fake = note as *mut FakeNote;
-        let old = chart.notes.len();
-        chart.notes.retain(|n| *n != fake);
-        if chart.notes.len() != old {
+        if let Some(index) = chart.notes.iter().position(|n| *n == fake) {
+            chart.notes.remove(index);
             drop_ref(&(*fake).ref_count);
         }
         MP_TRUE
@@ -1071,8 +1076,8 @@ unsafe extern "C" fn ctx_get_document(this: *mut Context, ppobj: *mut *mut Docum
         MP_TRUE
     }
 }
-unsafe extern "C" fn ctx_hwnd(_this: *mut Context) -> *mut c_void {
-    std::ptr::null_mut()
+unsafe extern "C" fn ctx_hwnd(this: *mut Context) -> *mut c_void {
+    inner_from_ctx(this).main_window
 }
 unsafe extern "C" fn ctx_tick(this: *mut Context) -> MpInteger {
     inner_from_ctx(this).current_tick

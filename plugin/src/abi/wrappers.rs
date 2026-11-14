@@ -112,6 +112,10 @@ impl UndoBuffer {
     pub fn can_redo(&self) -> bool {
         unsafe { call!(self as *const _ as *mut Self, can_redo) == MP_TRUE }
     }
+
+    pub fn is_recording(&self) -> bool {
+        unsafe { call!(self as *const _ as *mut Self, is_recording) == MP_TRUE }
+    }
 }
 
 impl Chart {

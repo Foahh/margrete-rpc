@@ -87,11 +87,6 @@ with m.open_edit() as tx:
     tx.chart.notes = [note for note in tx.chart.notes if note.x >= 4]
 ```
 
-<Callout type="warn">
-  删除物件后，在 Margrete 中撤销这次编辑时存在已知问题。详情见
-  [限制](/docs/limitations#undo-note-deletion)。
-</Callout>
-
 ### 替换所有物件
 
 当有意替换谱面中的所有物件时，请使用 `replace_all_notes=True`。
