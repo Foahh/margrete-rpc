@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from array import array
 from collections.abc import Iterator
-from math import inf
+from math import fsum, inf
 from typing import Literal, TypeAlias
 
 from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
@@ -653,6 +654,86 @@ def _slope_variation(points: list[Waypoint]) -> tuple[float, float]:
     )
 
 
+def _local_variation(
+    left: tuple[float, float],
+    right: tuple[float, float],
+    before: tuple[float, float] | None,
+    after: tuple[float, float] | None,
+) -> tuple[float, float]:
+    x, h = abs(right[0] - left[0]), abs(right[1] - left[1])
+    if before is not None:
+        x, h = abs(left[0] - before[0]) + x, abs(left[1] - before[1]) + h
+    if after is not None:
+        x, h = x + abs(after[0] - right[0]), h + abs(after[1] - right[1])
+    return x, h
+
+
+class _ErrorSums:
+    """Conservative squared-error bounds for pruning; accepted moves still use exact scans."""
+
+    def __init__(self, ticks: list[int], reals: list[tuple[float, float]]) -> None:
+        self.start, self.span = ticks[0], ticks[-1] - ticks[0]
+        self.origin = reals[0]
+        self.extent = tuple(max(abs(p[axis] - self.origin[axis]) for p in reals) for axis in (0, 1))
+        self.roundoff = (len(ticks) + 16) * 2.0**-48
+        # Weighted sums of u, u², x, x², ux, h, h², uh; u is relative leg time.
+        previous = (0.0,) * 8
+        sums = array("d", previous)
+        for i, (t, end) in enumerate(zip(ticks, ticks[1:])):
+            u, w = (t - self.start) / self.span, end - t
+            x, h = reals[i][0] - self.origin[0], reals[i][1] - self.origin[1]
+            values = (u, u * u, x, x * x, u * x, h, h * h, u * h)
+            previous = tuple(a + w * b for a, b in zip(previous, values))
+            sums.extend(previous)
+        self.sums = sums
+
+    def lower_bounds(self, a: Waypoint, b: Waypoint, lo: int, hi: int) -> tuple[float, float]:
+        start, end = self.sums[lo * 8 : lo * 8 + 8], self.sums[hi * 8 : hi * 8 + 8]
+        dt = b.t - a.t
+        u = (a.t - self.start) / self.span
+        su, suu = end[0] - start[0], end[1] - start[1]
+        bounds = []
+        for axis, offset, va, vb in ((0, 2, a.x, b.x), (1, 5, a.h, b.h)):
+            if end[offset + 1] == 0 and va == vb == self.origin[axis]:
+                bounds.append(0.0)
+                continue
+            slope = (vb - va) * self.span / dt
+            intercept = va - self.origin[axis] - slope * u
+            sv, svv, suv = (end[j] - start[j] for j in range(offset, offset + 3))
+            terms = (
+                intercept * intercept * dt,
+                2 * intercept * slope * su,
+                slope * slope * suu,
+                -2 * intercept * sv,
+                svv,
+                -2 * slope * suv,
+            )
+            # Include prefix cancellation and coefficient rounding in the bound.
+            scale = (
+                abs(terms[0])
+                + 2 * abs(intercept * slope) * (abs(start[0]) + abs(end[0]))
+                + slope * slope * (abs(start[1]) + abs(end[1]))
+                + 2 * abs(intercept) * (abs(start[offset]) + abs(end[offset]))
+                + abs(start[offset + 1])
+                + abs(end[offset + 1])
+                + 2 * abs(slope) * (abs(start[offset + 2]) + abs(end[offset + 2]))
+            )
+            # The exact scan adds the absolute coordinate before subtracting the
+            # sample. Account for that rounding too, especially far from zero.
+            residual = (
+                max(abs(va - self.origin[axis]), abs(vb - self.origin[axis])) + self.extent[axis]
+            )
+            rounding = 2.0**-48 * (
+                abs(va) + abs(vb - va) + abs(self.origin[axis]) + self.extent[axis]
+            )
+            bounds.append(
+                fsum(terms)
+                - self.roundoff * max(1.0, scale)
+                - dt * rounding * (2 * residual + rounding)
+            )
+        return bounds[0], bounds[1]
+
+
 def _refine_points(
     pts: list[Waypoint], fixed: set[int], grid: int, ease_x: Easing, ease_h: Easing
 ) -> None:
@@ -678,10 +759,22 @@ def _refine_points(
         for t in ticks
     ]
     reals[0], reals[-1] = (float(first.x), float(first.h)), (float(last.x), float(last.h))
+    error_sums = _ErrorSums(ticks, reals)
+    vertices = {p.t: p for p in pts}
 
     # Each axis records time-weighted squared error, probe peak and grid peak.
     cache: dict[tuple[int, int], tuple[tuple[float, float, float], ...]] = {}
+    bound_cache: dict[tuple[int, int], tuple[float, float]] = {}
     limits: tuple[tuple[float, float, float], ...] | None = None
+
+    def lower_bound(a: Waypoint, b: Waypoint) -> tuple[float, float]:
+        key = (a.t, b.t)
+        if key in cache:
+            exact = cache[key]
+            return exact[0][0], exact[1][0]
+        if key not in bound_cache:
+            bound_cache[key] = error_sums.lower_bounds(a, b, sample_index[a.t], sample_index[b.t])
+        return bound_cache[key]
 
     def error(a: Waypoint, b: Waypoint) -> tuple[tuple[float, float, float], ...]:
         key = (a.t, b.t)
@@ -735,6 +828,7 @@ def _refine_points(
     )
     variation = _slope_variation(pts)
     variation_limit = variation
+    slopes = [((b.x - a.x) / (b.t - a.t), (b.h - a.h) / (b.t - a.t)) for a, b in zip(pts, pts[1:])]
     for sweep in range(8):
         changed = False
         indices = range(1, len(pts) - 1)
@@ -746,27 +840,41 @@ def _refine_points(
             candidates.update(
                 round((a.t + (b.t - a.t) * step / 16) / grid) * grid for step in range(1, 16)
             )
-            window = pts[max(0, i - 2) : i + 3]
-            old_variation = _slope_variation(window)
+            before = slopes[i - 2] if i >= 2 else None
+            after = slopes[i + 1] if i + 1 < len(slopes) else None
+            old_variation = _local_variation(slopes[i - 1], slopes[i], before, after)
+            base_squared = tuple(
+                squared[axis] - edges[i - 1][axis][0] - edges[i][axis][0] for axis in (0, 1)
+            )
             best, best_squared, best_variation = cur, squared, variation
             best_edges = edges[i - 1 : i + 1]
+            best_slopes = slopes[i - 1 : i + 1]
             for t in sorted(candidates):
                 if t == cur.t or not a.t < t < b.t:
                     continue
-                x, h = reals[sample_index[t]]
-                candidate = Waypoint(t, round(x), round(h))
+                candidate = vertices.get(t)
+                if candidate is None:
+                    x, h = reals[sample_index[t]]
+                    candidate = vertices[t] = Waypoint(t, round(x), round(h))
                 if directions(a, candidate) != directions(a, cur) or directions(
                     candidate, b
                 ) != directions(cur, b):
                     continue
-                updated = window.copy()
-                updated[min(i, 2)] = candidate
-                local_variation = _slope_variation(updated)
+                left_slope = ((candidate.x - a.x) / (t - a.t), (candidate.h - a.h) / (t - a.t))
+                right_slope = ((b.x - candidate.x) / (b.t - t), (b.h - candidate.h) / (b.t - t))
+                local_variation = _local_variation(left_slope, right_slope, before, after)
                 new_variation = tuple(
                     variation[axis] - old_variation[axis] + local_variation[axis] for axis in (0, 1)
                 )
                 if any(
                     new_variation[axis] > variation_limit[axis] + _LINEAR_TOL for axis in (0, 1)
+                ):
+                    continue
+                lower_left = lower_bound(a, candidate)
+                lower_right = lower_bound(candidate, b)
+                lower = tuple(base_squared[j] + lower_left[j] + lower_right[j] for j in (0, 1))
+                if sum(lower) >= sum(best_squared) - _LINEAR_TOL or any(
+                    lower[j] > limits[j][0] + _LINEAR_TOL for j in (0, 1)
                 ):
                     continue
                 left = error(a, candidate)
@@ -799,10 +907,12 @@ def _refine_points(
                     new_variation,
                     pair,
                 )
+                best_slopes = [left_slope, right_slope]
             if best is not cur:
                 pts[i] = best
                 squared, variation = best_squared, best_variation
                 edges[i - 1 : i + 1] = best_edges
+                slopes[i - 1 : i + 1] = best_slopes
                 changed = True
         if not changed:
             break
