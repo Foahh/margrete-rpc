@@ -4,6 +4,7 @@ from margrete_rpc.chart.notes import (
     STANDARD_FLIP_LANE,
     Air,
     AirCrush,
+    AirCrushAxis,
     AirDirection,
     AirHold,
     AirSlide,
@@ -443,14 +444,16 @@ def test_merge_single_note_returns_detached_clone():
 
 
 def test_split_at_existing_joint():
-    slide = Slide(t=0, x=0, w=4).with_step(t=100, x=4, w=4).with_step(t=200, x=8, w=4)
+    slide = (
+        Slide(t=0, x=0, w=4, lineless=True).with_step(t=100, x=4, w=4).with_step(t=200, x=8, w=4)
+    )
     first, second = split(slide, slide.joints[0])
 
     assert int(first.joints[-1].t) == 100
     assert (int(second.t), second.x) == (100, 4)
     assert [int(j.t) for j in second.joints] == [200]
-    first.to_raw()
-    second.to_raw()
+    assert first.to_raw().variation_id is Color.NONE
+    assert second.to_raw().variation_id is Color.NONE
 
 
 def test_split_at_tick_interpolates_mid_segment():
@@ -465,15 +468,17 @@ def test_split_at_tick_interpolates_mid_segment():
 
 def test_split_then_merge_round_trips_air_crush():
     crush = (
-        AirCrush(t=0, x=2, w=2, h=80, gap=5, color=Color.RED)
+        AirCrush(t=0, x=2, w=2, h=80, gap=5, color=Color.RED, axis="y")
         .with_ctrl(t=100, x=4, w=2, h=100)
         .with_ctrl(t=200, x=6, w=2, h=120)
     )
     first, second = split(crush, 100)
     assert first.gap == 5
     assert first.color is ColorValue.RED
+    assert first.axis is second.axis is AirCrushAxis.Y
 
     merged = merge([first, second])
+    assert merged.axis is AirCrushAxis.Y
     assert [(int(j.t), j.x, j.w, j.h) for j in merged.joints] == [
         (int(j.t), j.x, j.w, j.h) for j in crush.joints
     ]

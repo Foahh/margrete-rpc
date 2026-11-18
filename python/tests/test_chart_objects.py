@@ -7,11 +7,13 @@ from margrete_rpc.chart import (
     NoteSpeedEvent,
     TimelineSpeedEvent,
 )
+from margrete_rpc.chart.diff import build_apply_edit_request, capture_edit_snapshot
 from margrete_rpc.chart.notes import (
     AIRCRUSH_GAP_HEADONLY,
     AIRCRUSH_GAP_TRACELIKE,
     Air,
     AirCrush,
+    AirCrushAxis,
     AirDirection,
     AirHold,
     AirJoint,
@@ -40,6 +42,74 @@ from margrete_rpc.chart.notes import (
     wrap_raw_note,
 )
 from margrete_rpc.chart.time import TICK_RESOLUTION, div_to_tick
+
+
+@pytest.mark.parametrize("raw_notes", [False, True])
+@pytest.mark.parametrize(("wire_axis", "axis"), [(4, AirCrushAxis.Y), (5, AirCrushAxis.Z)])
+def test_air_crush_axis_survives_chart_snapshot_and_diff(raw_notes, wire_axis, axis):
+    begin = messages_pb2.Note(
+        id=1,
+        type=messages_pb2.NOTE_TYPE_AIRCRUSH,
+        long_attr=messages_pb2.LONG_ATTR_BEGIN,
+        ex_attr=wire_axis,
+        width=4,
+        height=80,
+        children=[R.air_crush_end(t=480, x=6, w=4, h=100).to_proto()],
+    )
+    begin.children[0].id = 2
+    response = messages_pb2.BeginEditResponse(notes=[begin], snapshot=True)
+    chart = Chart.from_begin_edit_response(response, raw_notes=raw_notes)
+    snapshot = capture_edit_snapshot(chart)
+    note = chart.notes[0]
+    if raw_notes:
+        assert isinstance(note, RawNote)
+        assert note.ex_attr.value == wire_axis
+    else:
+        assert isinstance(note, AirCrush)
+        assert note.axis is axis
+    assert snapshot.notes[0].to_proto() == begin
+
+    note.x = 4
+    request = build_apply_edit_request(
+        chart,
+        snapshot_enabled=True,
+        replace_all_notes=False,
+        replace_all_events=False,
+        snapshot=snapshot,
+    )
+    assert request is not None
+    assert request.notes_upsert[0].id == 1
+    assert request.notes_upsert[0].ex_attr == wire_axis
+
+
+def test_margrete_19_note_authoring_uses_native_attributes():
+    crush = AirCrush(t=0, x=4, w=4, h=80, axis="z").add_ctrl(t=480, x=8, w=4, h=80)
+    assert crush.to_raw().ex_attr is ExAttr.AIR_CRUSH_AXIS_Z
+    assert R.air_crush_begin(t=0, x=4, w=4, h=80, axis="y").ex_attr is ExAttr.AIR_CRUSH_AXIS_Y
+    crush.axis = "x"
+    assert crush.to_raw().ex_attr is ExAttr.NONE
+
+    slide = Slide(t=0, x=-3, w=4, lineless=True)
+    curved = slide.with_curve_control(t=120, x=0, w=4).add_step(t=240, x=4, w=4)
+    assert not slide.joints
+    assert curved.to_raw().children[0].long_attr is LongAttr.CURVE_CONTROL
+    assert curved.to_raw().variation_id is Color.NONE
+    assert R.slide_begin(t=0, x=0, w=4, lineless=True).variation_id is Color.NONE
+
+    air = (
+        AirSlide(t=240, x=4, w=4, h=80)
+        .with_curve_control(t=360, x=8, w=4, h=95)
+        .add_ctrl(t=480, x=4, w=4, h=80)
+    )
+    curved.add_air(air)
+    wrapped = wrap_raw_note(RawNote.from_proto(curved.to_raw().to_proto()))
+    assert isinstance(wrapped, Slide) and isinstance(wrapped.air, AirSlide)
+    assert wrapped.lineless
+    assert wrapped.joints[0].kind is JointKind.CURVE_CONTROL
+    assert wrapped.air.joints[0].kind is JointKind.CURVE_CONTROL
+    assert wrapped.air.to_raw().children[0].children[-1].long_attr is LongAttr.END_NOACT
+    wrapped.lineless = False
+    assert wrapped.to_raw().variation_id is Color.DEFAULT
 
 
 def test_note_type_factories_set_kind_and_geometry():

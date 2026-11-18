@@ -132,6 +132,8 @@ slide = (
 )
 ```
 
+用 `Slide(..., lineless=True)` 隐藏连接线。用 `add_curve_control()` 或 `with_curve_control()` 添加贝塞尔控制点。
+
 发送给 Margrete 时，最后一个节点会自动变成 Step。
 
 ### AirCrush
@@ -144,6 +146,7 @@ slide = (
 | `gap`      | Step 间隔。详细请见 [时间与音符位置](/docs/basic/time-position)。                                               |
 | `interval` | Step 间隔的时值表示。例如 `gap=(1, 8)` 表示一个八分音符。详细请见 [时间与音符位置](/docs/basic/time-position)。 |
 | `color`    | 线条颜色，可以是 [`ColorValue`](/docs/reference/chart/notes/color/ColorValue)，也可以是表示颜色的字符串。       |
+| `axis`     | 线条轴向，可设为 `"x"`（默认）、`"y"` 或 `"z"`。                                                                |
 
 `color` 接受的字符串值包括 `"default"`, `"red"`, `"orange"`, `"yellow"`, `"green"`, `"sky"`, `"blue"`, `"violet"`, `"pink"`, `"white"`, `"black"`, `"grass"`, `"sky_blue"`, `"cobalt_blue"`, `"purple"` 和 `"none"`。
 
@@ -229,8 +232,7 @@ hold.add_air(
 
 ### AirSlide
 
-`AirSlide` 的用法与 `Slide` 相同，只是额外增加了 `h` 字段：
-它还有一个 `inverted` 字段，设为 `True` 可以反色。
+`AirSlide` 的起点及每个节点都需要指定高度 `h`。设置 `inverted=True` 可以反色。
 
 ```python
 from margrete_rpc.chart.notes import AirSlide, Slide

@@ -60,6 +60,8 @@ enum ExAttr {
   EX_ATTR_INVERT = 1;
   EX_ATTR_HAS_NOTE = 2;
   EX_ATTR_EXJDG = 3;
+  EX_ATTR_AIR_CRUSH_AXIS_Y = 4;
+  EX_ATTR_AIR_CRUSH_AXIS_Z = 5;
 }
 
 enum Color {

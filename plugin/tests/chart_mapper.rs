@@ -2,11 +2,11 @@ mod common;
 
 use common::fake::{FakeBeatEvent, FakeBpmEvent, FakeContext, FakeNsmEvent, FakeTlsEvent};
 use margrete_rpc::abi::{
-    MP_NOTEDIR_UPLEFT, MP_NOTEEXATTR_HAS_NOTE, MP_NOTELONGATTR_BEGIN, MP_NOTETYPE_SLIDE,
-    MP_NOTETYPE_TAP,
+    MP_NOTEDIR_UPLEFT, MP_NOTEEXATTR_HAS_NOTE, MP_NOTELONGATTR_BEGIN,
+    MP_NOTELONGATTR_CURVE_CONTROL, MP_NOTETYPE_AIRCRUSH, MP_NOTETYPE_SLIDE, MP_NOTETYPE_TAP,
 };
-use margrete_rpc::chart::mapper::{snapshot_for_edit, snapshot_notes};
-use margrete_rpc::rpc::proto::{BeginEditResponse, Direction, ExAttr, LongAttr, NoteType};
+use margrete_rpc::chart::mapper::{proto_to_note_info, snapshot_for_edit, snapshot_notes};
+use margrete_rpc::rpc::proto::{BeginEditResponse, Color, Direction, ExAttr, LongAttr, NoteType};
 
 #[test]
 fn chart_mapper_serializes_root_notes_and_child_notes() {
@@ -49,6 +49,43 @@ fn chart_mapper_serializes_root_notes_and_child_notes() {
         assert_eq!((*context.chart.notes[0]).ref_count_value(), 1);
         assert_eq!((*child_ptr).ref_count_value(), 1);
     }
+}
+
+#[test]
+fn chart_mapper_round_trips_margrete_19_note_attributes() {
+    let mut context = FakeContext::new();
+    for (id, axis) in [(10, 4), (11, 5)] {
+        let root = context.chart.add_existing_note(id);
+        root.info.r#type = MP_NOTETYPE_AIRCRUSH;
+        root.info.long_attr = MP_NOTELONGATTR_BEGIN;
+        root.info.ex_attr = axis;
+    }
+    let slide = context.chart.add_existing_note(12);
+    slide.info.r#type = MP_NOTETYPE_SLIDE;
+    slide.info.long_attr = MP_NOTELONGATTR_BEGIN;
+    slide.info.variation_id = 35;
+    slide.info.x = -3;
+    let control = context.chart.add_detached_note(13);
+    control.info.r#type = MP_NOTETYPE_SLIDE;
+    control.info.long_attr = MP_NOTELONGATTR_CURVE_CONTROL;
+    let control_ptr = control as *mut _;
+    unsafe {
+        (*context.chart.notes[2]).children.push(control_ptr);
+    }
+
+    let notes = snapshot_notes(unsafe { &*context.chart.as_ptr() }).unwrap();
+    assert_eq!(notes[0].ex_attr(), ExAttr::AirCrushAxisY);
+    assert_eq!(notes[1].ex_attr(), ExAttr::AirCrushAxisZ);
+    assert_eq!(proto_to_note_info(&notes[0]).ex_attr, 4);
+    assert_eq!(proto_to_note_info(&notes[1]).ex_attr, 5);
+    assert_eq!(notes[2].variation_id(), Color::None);
+    assert_eq!(proto_to_note_info(&notes[2]).variation_id, 35);
+    assert_eq!(proto_to_note_info(&notes[2]).x, -3);
+    assert_eq!(notes[2].children[0].long_attr(), LongAttr::CurveControl);
+    assert_eq!(
+        proto_to_note_info(&notes[2].children[0]).long_attr,
+        MP_NOTELONGATTR_CURVE_CONTROL
+    );
 }
 
 #[test]

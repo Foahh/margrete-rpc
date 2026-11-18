@@ -132,6 +132,8 @@ slide = (
 )
 ```
 
+Use `Slide(..., lineless=True)` to hide the connecting line. Use `add_curve_control()` or `with_curve_control()` to add Bézier control points.
+
 When the note is sent to Margrete, the final joint is automatically converted to Step.
 
 ### AirCrush
@@ -144,6 +146,7 @@ When the note is sent to Margrete, the final joint is automatically converted to
 | `gap`      | Step interval. See [Time & Musical Position](/docs/basic/time-position) for details.                                                                   |
 | `interval` | The Step interval as a division. For example, `gap=(1, 8)` means an eighth note. See [Time & Musical Position](/docs/basic/time-position) for details. |
 | `color`    | Line color, as [`ColorValue`](/docs/reference/chart/notes/color/ColorValue) or a color string.                                                         |
+| `axis`     | Line orientation. Accepts `"x"` (default), `"y"`, or `"z"`.                                                                                            |
 
 `color` accepts these string values: `"default"`, `"red"`, `"orange"`, `"yellow"`, `"green"`, `"sky"`, `"blue"`, `"violet"`, `"pink"`, `"white"`, `"black"`, `"grass"`, `"sky_blue"`, `"cobalt_blue"`, `"purple"` and `"none"`.
 
@@ -229,8 +232,7 @@ hold.add_air(
 
 ### AirSlide
 
-`AirSlide` works like `Slide`, but adds an `h` field:
-It also has an `inverted` field; set it to `True` to invert its color.
+`AirSlide` requires a height `h` at the start and at each joint. Set `inverted=True` to invert its color.
 
 ```python
 from margrete_rpc.chart.notes import AirSlide, Slide

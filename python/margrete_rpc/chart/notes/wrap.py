@@ -133,7 +133,7 @@ def _wrap_slide(note: RawNote) -> Slide:
         elif child.long_attr is LongAttr.CONTROL:
             slide.add_ctrl(t=int(child.t), x=child.x, w=child.w)
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide._add_curve_control(t=int(child.t), x=child.x, w=child.w)
+            slide.add_curve_control(t=int(child.t), x=child.x, w=child.w)
         elif child.long_attr is LongAttr.END and is_final:
             slide.add_step(t=int(child.t), x=child.x, w=child.w)
         else:
@@ -189,7 +189,7 @@ def _wrap_air_slide(
         elif child.long_attr is LongAttr.CONTROL:
             slide.add_ctrl(t=int(child.t), x=child.x, w=child.w, h=child.h)
         elif child.long_attr is LongAttr.CURVE_CONTROL:
-            slide._add_curve_control(t=int(child.t), x=child.x, w=child.w, h=child.h)
+            slide.add_curve_control(t=int(child.t), x=child.x, w=child.w, h=child.h)
         elif child.long_attr is LongAttr.END and is_final:
             slide.add_step(t=int(child.t), x=child.x, w=child.w, h=child.h)
         elif child.long_attr is LongAttr.END_NOACT and is_final:

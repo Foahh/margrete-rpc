@@ -27,6 +27,8 @@ from .raw import R, RawNote
 from .shared import Note, UnsupportedNoteTree
 from .transform import merge, split
 from .types import (
+    AirCrushAxis,
+    AirCrushAxisLike,
     ExAttr,
     JointKind,
     JointKindLike,
@@ -39,6 +41,8 @@ from .wrap import wrap_raw_note
 __all__ = [
     "Air",
     "AirCrush",
+    "AirCrushAxis",
+    "AirCrushAxisLike",
     "AIRCRUSH_GAP_HEADONLY",
     "AIRCRUSH_GAP_TRACELIKE",
     "AirHold",

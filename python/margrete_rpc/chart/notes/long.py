@@ -8,6 +8,7 @@ from ..constants import DEFAULT_AIRCRUSH_GAP, DEFAULT_H
 from ..time import Division, DivisionLike, PositionLike, resolve_division, resolve_tick, tick_to_div
 from .air import Air, AirHold, AirSlide, _AirAttachable
 from .color import (
+    Color,
     ColorLike,
     ColorValue,
     color_to_value,
@@ -25,7 +26,15 @@ from .shared import (
     _note_enum_line,
     _TransformMixin,
 )
-from .types import LongAttr, NoteInfo, NoteType
+from .types import (
+    _AIR_CRUSH_AXIS_FROM_ATTR,
+    _AIR_CRUSH_AXIS_TO_ATTR,
+    AirCrushAxis,
+    AirCrushAxisLike,
+    LongAttr,
+    NoteInfo,
+    NoteType,
+)
 
 _SlideTarget = TypeVar("_SlideTarget", "AirSlide", "AirCrush")
 _HoldTarget = TypeVar("_HoldTarget", "Slide", "AirSlide", "AirCrush", "AirHold")
@@ -105,6 +114,10 @@ class _PlaceableLong(_GeometryInfoMixin, _TransformMixin):
             parts.append(f"h={self.h}")
             parts.append(f"gap={self.gap}")
             parts.append(f"color={_note_enum_line(self.color)}")
+            if self.axis is not AirCrushAxis.X:
+                parts.append(f"axis={_note_enum_line(self.axis)}")
+        if isinstance(self, Slide) and self.lineless:
+            parts.append("lineless=True")
         head = ", ".join(parts)
         lines = [f"{cls}({head}"]
         if self._joints:
@@ -121,14 +134,52 @@ class Slide(_AirAttachable, _PlaceableLong, _JointHost):
     """A ground slide: a long note threading through a sequence of joints.
 
     Construct with the begin geometry (``t``/``p``, ``x``, ``w``), then add joints with
-    :meth:`add_step` / :meth:`add_ctrl` (in place) or :meth:`with_step` / :meth:`with_ctrl`
-    (returns a copy). A slide needs at least one joint and must end on a step or control
-    joint. An :class:`Air` note may be attached via :attr:`air`.
+    :meth:`add_step`, :meth:`add_ctrl`, or :meth:`add_curve_control`. A slide needs at least
+    one joint and must end on a step or control joint. An :class:`Air` note may be attached
+    via :attr:`air`. Set :attr:`lineless` to hide the connecting line.
     """
 
     __slots__ = ()
 
     _note_type = NoteType.SLIDE
+
+    def __init__(
+        self,
+        *,
+        t: int | PositionLike,
+        x: int,
+        w: int,
+        lineless: bool | None = None,
+        _info: NoteInfo | None = None,
+        _id: int | None = None,
+    ) -> None:
+        """Create a slide with a visible line by default."""
+        super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
+        if lineless is not None:
+            self.lineless = lineless
+
+    @property
+    def lineless(self) -> bool:
+        """Whether the connecting line is hidden."""
+        return self._info.variation_id == Color.NONE
+
+    @lineless.setter
+    def lineless(self, value: bool) -> None:
+        if self.lineless != value:
+            self._info.variation_id = Color.NONE if value else Color.DEFAULT
+
+    def add_curve_control(self, *, t: int | PositionLike, x: int, w: int) -> Self:
+        """Append a native Bézier control joint in place and return ``self``.
+
+        Append joints in increasing tick order and finish the slide with a step or
+        ordinary control.
+        """
+        self._add_curve_control(t=t, x=x, w=w)
+        return self
+
+    def with_curve_control(self, *, t: int | PositionLike, x: int, w: int) -> Self:
+        """Return a copy with a native Bézier control joint appended."""
+        return self.clone().add_curve_control(t=t, x=x, w=w)
 
     def with_step(self, *, t: int | PositionLike, x: int, w: int) -> Self:
         """Return a copy with a step joint appended at the given timing and geometry."""
@@ -193,9 +244,9 @@ class Hold(_AirAttachable, _PlaceableLong, _JointHost):
 class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     """An air-crush note: an air-lane long note with height and a color.
 
-    Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and
-    a gap (:attr:`gap`, expressed as a whole-note fraction by :attr:`interval`) controlling the
-    spacing of generated segments between joints. Add control joints with
+    Like a slide but in the air lane: it carries height ``h``, a :attr:`color`, and an
+    :attr:`axis`. The :attr:`gap` sets the spacing between generated segments. Use
+    :attr:`interval` to read it as a whole-note fraction. Add control joints with
     :meth:`with_ctrl` / :meth:`add_ctrl`.
 
     Special ``gap`` values:
@@ -218,6 +269,7 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
         h: int,
         gap: int | DivisionLike = DEFAULT_AIRCRUSH_GAP,
         color: ColorLike | int = ColorValue.DEFAULT,
+        axis: AirCrushAxisLike | None = None,
         _info: NoteInfo | None = None,
         _id: int | None = None,
     ) -> None:
@@ -232,11 +284,14 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
                 Also accepts :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_TRACELIKE`
                 and :data:`~margrete_rpc.chart.notes.AIRCRUSH_GAP_HEADONLY`.
             color: Crush color (:class:`ColorValue` or raw int).
+            axis: Line axis, defaulting to ``"x"``.
         """
         super().__init__(t=t, x=x, w=w, _info=_info, _id=_id)
         self.h = h
         self.gap = gap
         self.color = color
+        if axis is not None:
+            self.axis = axis
 
     @property
     def gap(self) -> int:
@@ -269,6 +324,15 @@ class AirCrush(_HeightMixin, _PlaceableLong, _AirJointHost):
     @color.setter
     def color(self, value: ColorLike | int) -> None:
         self._info.variation_id = color_to_value(value)
+
+    @property
+    def axis(self) -> AirCrushAxis:
+        """The line's X, Y, or Z orientation. X is the standard orientation."""
+        return _AIR_CRUSH_AXIS_FROM_ATTR.get(self._info.ex_attr, AirCrushAxis.X)
+
+    @axis.setter
+    def axis(self, value: AirCrushAxisLike) -> None:
+        self._info.ex_attr = _AIR_CRUSH_AXIS_TO_ATTR[AirCrushAxis(value)]
 
     def with_ctrl(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
         """Return a copy with a control joint appended at the given timing and geometry."""

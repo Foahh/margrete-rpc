@@ -18,6 +18,9 @@ from .direction import (
     FlickDirectionLike,
 )
 from .types import (
+    _AIR_CRUSH_AXIS_TO_ATTR,
+    AirCrushAxis,
+    AirCrushAxisLike,
     ExAttr,
     LongAttr,
     NoteInfo,
@@ -282,8 +285,24 @@ class R:
         return R._raw(NoteType.HOLD, LongAttr.END, t, x, w, til=til)
 
     @staticmethod
-    def slide_begin(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
-        return R._raw(NoteType.SLIDE, LongAttr.BEGIN, t, x, w, til=til)
+    def slide_begin(
+        *,
+        t: int | PositionLike,
+        x: int,
+        w: int,
+        til: int | None = None,
+        lineless: bool = False,
+    ) -> RawNote:
+        """Build the SLIDE begin node, with an optional transparent line."""
+        return R._raw(
+            NoteType.SLIDE,
+            LongAttr.BEGIN,
+            t,
+            x,
+            w,
+            til=til,
+            color=Color.NONE if lineless else Color.DEFAULT,
+        )
 
     @staticmethod
     def slide_step(*, t: int | PositionLike, x: int, w: int, til: int | None = None) -> RawNote:
@@ -393,8 +412,10 @@ class R:
         gap: int | DivisionLike = 0,
         color: ColorLike | int = ColorValue.DEFAULT,
         til: int | None = None,
+        axis: AirCrushAxisLike = AirCrushAxis.X,
     ) -> RawNote:
-        return R._raw(
+        """Build the AIR-CRUSH begin node with the selected line axis."""
+        note = R._raw(
             NoteType.AIRCRUSH,
             LongAttr.BEGIN,
             t,
@@ -405,6 +426,8 @@ class R:
             color=color,
             til=til,
         )
+        note.ex_attr = _AIR_CRUSH_AXIS_TO_ATTR[AirCrushAxis(axis)]
+        return note
 
     @staticmethod
     def air_crush_control(

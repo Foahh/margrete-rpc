@@ -215,13 +215,26 @@ class AirSlide(_AttachableAirLong):
     """An air slide: a long air note threading through joints, each carrying height ``h``.
 
     Construct with the begin geometry (including ``h``), then add joints with
-    :meth:`add_step` / :meth:`add_ctrl` or their copy-returning ``with_*`` forms. May be
-    attached above a ground note like a plain :class:`Air`.
+    :meth:`add_step`, :meth:`add_ctrl`, or :meth:`add_curve_control`. May be attached
+    above a ground note like a plain :class:`Air`.
     """
 
     __slots__ = ()
 
     _note_type = NoteType.AIRSLIDE
+
+    def add_curve_control(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
+        """Append a native Bézier control joint with height and return ``self``.
+
+        Append joints in increasing tick order and finish the slide with a step or
+        ordinary control.
+        """
+        self._add_curve_control(t=t, x=x, w=w, h=h)
+        return self
+
+    def with_curve_control(self, *, t: int | PositionLike, x: int, w: int, h: int) -> Self:
+        """Return a copy with a native Bézier control joint appended."""
+        return self.clone().add_curve_control(t=t, x=x, w=w, h=h)
 
     def _terminus_attr(self, joint: Joint) -> LongAttr:
         if joint.kind is JointKind.CONTROL:

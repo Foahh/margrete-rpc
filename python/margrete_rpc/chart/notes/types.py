@@ -98,12 +98,33 @@ def joint_kind_from_long_attr(value: LongAttr) -> JointKind:
 
 
 class ExAttr(IntEnum):
-    """Extra per-note attribute flags (e.g. inverted air, judgement options)."""
+    """Extra per-note attributes such as inverted air and the AIR-CRUSH axis."""
 
     NONE = messages_pb2.EX_ATTR_NONE
     INVERT = messages_pb2.EX_ATTR_INVERT
     HAS_NOTE = messages_pb2.EX_ATTR_HAS_NOTE
     EXJDG = messages_pb2.EX_ATTR_EXJDG
+    AIR_CRUSH_AXIS_Y = messages_pb2.EX_ATTR_AIR_CRUSH_AXIS_Y
+    AIR_CRUSH_AXIS_Z = messages_pb2.EX_ATTR_AIR_CRUSH_AXIS_Z
+
+
+class AirCrushAxis(StrEnum):
+    """Orientation of the line drawn by an :class:`AirCrush`."""
+
+    X = "x"
+    Y = "y"
+    Z = "z"
+
+
+AirCrushAxisLike: TypeAlias = AirCrushAxis | Literal["x", "y", "z"]
+"""An :class:`AirCrushAxis` or its equivalent string name."""
+
+_AIR_CRUSH_AXIS_TO_ATTR = {
+    AirCrushAxis.X: ExAttr.NONE,
+    AirCrushAxis.Y: ExAttr.AIR_CRUSH_AXIS_Y,
+    AirCrushAxis.Z: ExAttr.AIR_CRUSH_AXIS_Z,
+}
+_AIR_CRUSH_AXIS_FROM_ATTR = {value: axis for axis, value in _AIR_CRUSH_AXIS_TO_ATTR.items()}
 
 
 def _enum_line(value: IntEnum | StrEnum) -> str:
@@ -272,6 +293,8 @@ def _format_note_info(info: NoteInfo) -> str:
 
 
 __all__ = [
+    "AirCrushAxis",
+    "AirCrushAxisLike",
     "Color",
     "ColorLike",
     "ColorValue",

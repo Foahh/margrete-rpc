@@ -265,6 +265,10 @@ def _convert_long(note: LongLike, target: type[Note], overrides: dict[str, Any])
     new: LongLike
     if issubclass(target, Slide):
         new = _build_slide(begin, joints)
+        if isinstance(note, Slide):
+            new._info.variation_id = note._info.variation_id
+        if "lineless" in overrides:
+            new.lineless = overrides["lineless"]
         source_air = getattr(note, "_air", None)
         if source_air is not None:
             new._air = _clone_air(source_air)
@@ -302,8 +306,15 @@ def _build_air_long(
         color = overrides.get(
             "color", note.color if isinstance(note, AirCrush) else ColorValue.DEFAULT
         )
+        axis = overrides.get("axis", note.axis if isinstance(note, AirCrush) else None)
         new = AirCrush(
-            t=begin.t, x=begin.x, w=begin.w, h=h0, gap=gap if gap is not None else 0, color=color
+            t=begin.t,
+            x=begin.x,
+            w=begin.w,
+            h=h0,
+            gap=gap if gap is not None else 0,
+            color=color,
+            axis=axis,
         )
     else:
         inverted = overrides.get(
@@ -493,9 +504,12 @@ def split(note: _SlideT, at: Joint | int | PositionLike) -> tuple[_SlideT, _Slid
 def _new_long_like(note: SlideLike, point: _Point) -> SlideLike:
     if isinstance(note, Slide):
         new: SlideLike = Slide(t=point.t, x=point.x, w=point.w)
+        new._info.variation_id = note._info.variation_id
     elif isinstance(note, AirCrush):
         h = point.h if point.h is not None else int(note._info.h)
-        new = AirCrush(t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color)
+        new = AirCrush(
+            t=point.t, x=point.x, w=point.w, h=h, gap=note.gap, color=note.color, axis=note.axis
+        )
     elif isinstance(note, AirSlide):
         h = point.h if point.h is not None else int(note._info.h)
         new = AirSlide(t=point.t, x=point.x, w=point.w, h=h, inverted=note.inverted)
