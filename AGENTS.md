@@ -1,13 +1,6 @@
 # AGENTS.md
 
-Margrete RPC connects a Python client to a Rust plugin running inside Margrete over Windows named pipes and protobuf.
-
-## Where to look
-
-- Python client: `python/margrete_rpc/`; tests: `python/tests/`; tooling: `pyproject.toml`.
-- Rust server: `plugin/src/`; build and dependencies: `plugin/Cargo.toml` and `plugin/build.rs`.
-- RPC contract: `proto/margrete/rpc/messages.proto` and `proto/API_VERSION`. For protocol changes, review compatibility and the corresponding Rust handlers and Python client behavior together.
-- Documentation: `website/` is a Fumadocs site. For website work, use the scripts in `website/package.json`.
+See the [README](README.md) for component layout and setup. For protocol compatibility reviews, use subagents as needed to inspect the Rust handler and Python client independently. Reconcile both against `proto/margrete/rpc/messages.proto` and `proto/API_VERSION`.
 
 ## Source and generated files
 
@@ -15,11 +8,9 @@ Margrete RPC connects a Python client to a Rust plugin running inside Margrete o
 - Edit Python docstrings or `website/scripts/generate-docs.mjs` for API-reference changes. The generator replaces `website/content/docs/reference/`.
 - Use `plugin/margrete/` as the ABI header reference only; do not compile this submodule.
 
-## Completion and verification
+## Verification
 
-Complete the requested behavior, verify it, and fix failures caused by the change. Proceed with local edits, builds, and checks within that scope without repeated confirmation. Ask when a missing decision materially changes the intended behavior or scope.
-
-Choose checks for the affected behavior and component; the commands below are available checks, not a mandatory sequence. Prose-only edits usually need a diff and accuracy review. Protocol changes need coverage on both sides. Report the result, checks run, and unresolved blockers.
+Choose checks for the affected components. Protocol changes require coverage on both sides.
 
 | Component / working directory | Checks |
 | --- | --- |
